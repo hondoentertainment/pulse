@@ -748,6 +748,226 @@ export const MOCK_VENUES: Venue[] = [
     },
     pulseScore: 32,
     category: 'Café'
+  },
+  {
+    id: 'venue-69',
+    name: 'Daniel\'s Broiler',
+    location: {
+      lat: 47.6246,
+      lng: -122.3370,
+      address: '809 Fairview Pl N, Seattle, WA'
+    },
+    pulseScore: 68,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-70',
+    name: 'Lunchbox Laboratory',
+    location: {
+      lat: 47.6247,
+      lng: -122.3372,
+      address: '800 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 54,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-71',
+    name: 'The Whale Wins',
+    location: {
+      lat: 47.6497,
+      lng: -122.3506,
+      address: '3506 Stone Way N, Seattle, WA'
+    },
+    pulseScore: 72,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-72',
+    name: 'Ten Mercer',
+    location: {
+      lat: 47.6246,
+      lng: -122.3563,
+      address: '10 Mercer St, Seattle, WA'
+    },
+    pulseScore: 61,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-73',
+    name: 'Cactus',
+    location: {
+      lat: 47.6247,
+      lng: -122.3371,
+      address: '350 Terry Ave N, Seattle, WA'
+    },
+    pulseScore: 58,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-74',
+    name: 'Duke\'s Seafood',
+    location: {
+      lat: 47.6251,
+      lng: -122.3398,
+      address: '901 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 64,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-75',
+    name: 'I Love Sushi on Lake Union',
+    location: {
+      lat: 47.6251,
+      lng: -122.3392,
+      address: '1001 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 70,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-76',
+    name: 'Cantinetta',
+    location: {
+      lat: 47.6250,
+      lng: -122.3380,
+      address: '1000 Westlake Ave N, Seattle, WA'
+    },
+    pulseScore: 66,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-77',
+    name: 'Pan Africa Market',
+    location: {
+      lat: 47.6241,
+      lng: -122.3368,
+      address: '1521 1st Ave, Seattle, WA'
+    },
+    pulseScore: 42,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-78',
+    name: 'Mod Market',
+    location: {
+      lat: 47.6244,
+      lng: -122.3364,
+      address: '175 Denny Way, Seattle, WA'
+    },
+    pulseScore: 38,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-79',
+    name: 'Tavolàta',
+    location: {
+      lat: 47.6164,
+      lng: -122.3495,
+      address: '2323 2nd Ave, Seattle, WA'
+    },
+    pulseScore: 76,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-80',
+    name: 'Bambinos Pizzeria',
+    location: {
+      lat: 47.6243,
+      lng: -122.3369,
+      address: '401 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 52,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-81',
+    name: 'Orfeo',
+    location: {
+      lat: 47.6248,
+      lng: -122.3374,
+      address: '400 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 68,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-82',
+    name: 'Mediterranean Kitchen',
+    location: {
+      lat: 47.6234,
+      lng: -122.3359,
+      address: '366 Roy St, Seattle, WA'
+    },
+    pulseScore: 48,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-83',
+    name: 'Noodle Boat',
+    location: {
+      lat: 47.6239,
+      lng: -122.3362,
+      address: '300 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 44,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-84',
+    name: 'Paragon',
+    location: {
+      lat: 47.6245,
+      lng: -122.3558,
+      address: '2125 Queen Anne Ave N, Seattle, WA'
+    },
+    pulseScore: 62,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-85',
+    name: 'Ezell\'s Famous Chicken',
+    location: {
+      lat: 47.6237,
+      lng: -122.3367,
+      address: '501 Mercer St, Seattle, WA'
+    },
+    pulseScore: 56,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-86',
+    name: 'Blue Moon Burgers',
+    location: {
+      lat: 47.6500,
+      lng: -122.3510,
+      address: '712 N 34th St, Seattle, WA'
+    },
+    pulseScore: 50,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-87',
+    name: 'Morsel',
+    location: {
+      lat: 47.6496,
+      lng: -122.3497,
+      address: '3520 Fremont Ave N, Seattle, WA'
+    },
+    pulseScore: 64,
+    category: 'Restaurant'
+  },
+  {
+    id: 'venue-88',
+    name: 'Westward',
+    location: {
+      lat: 47.6437,
+      lng: -122.3397,
+      address: '2501 N Northlake Way, Seattle, WA'
+    },
+    pulseScore: 82,
+    category: 'Restaurant'
   }
 ]
 
