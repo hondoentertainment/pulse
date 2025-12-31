@@ -4,7 +4,7 @@ import { getEnergyColor, getEnergyLabel } from '@/lib/pulse-engine'
 
 interface PulseScoreProps {
   score: number
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   showLabel?: boolean
 }
 
@@ -20,12 +20,14 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
   const label = getEnergyLabel(score)
 
   const sizeClasses = {
+    xs: 'text-xs',
     sm: 'text-2xl',
     md: 'text-5xl',
     lg: 'text-7xl'
   }
 
   const glowSize = {
+    xs: 8,
     sm: 15,
     md: 25,
     lg: 35

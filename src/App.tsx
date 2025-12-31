@@ -638,13 +638,49 @@ function App() {
                     <Star size={20} weight="fill" className="text-accent" />
                     <h3 className="text-lg font-bold">Favorite Venues</h3>
                   </div>
-                  <Favorites
-                    favoriteVenues={favoriteVenues}
-                    userLocation={userLocation}
-                    unitSystem={unitSystem}
-                    onVenueClick={(venue) => setSelectedVenue(venue)}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
+                  <div className="grid grid-cols-4 gap-2">
+                    {favoriteVenues.map((venue) => {
+                      const venuePulses = pulses.filter((p) => p.venueId === venue.id)
+                      const latestPulse = venuePulses.sort(
+                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      )[0]
+                      
+                      return (
+                        <button
+                          key={venue.id}
+                          onClick={() => setSelectedVenue(venue)}
+                          className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-all group"
+                        >
+                          {latestPulse?.photos?.[0] ? (
+                            <img
+                              src={latestPulse.photos[0]}
+                              alt={venue.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-muted to-secondary flex items-center justify-center">
+                              <MapPin size={24} weight="fill" className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                            <p className="text-xs font-bold text-white truncate">{venue.name}</p>
+                          </div>
+                          <div className="absolute top-1 right-1">
+                            <PulseScore score={venue.pulseScore} size="xs" showLabel={false} />
+                          </div>
+                        </button>
+                      )
+                    })}
+                    {Array.from({ length: Math.max(0, 4 - favoriteVenues.length) }).map((_, i) => (
+                      <div
+                        key={`empty-${i}`}
+                        className="aspect-square rounded-lg border border-dashed border-border bg-muted/30 flex items-center justify-center"
+                      >
+                        <Star size={20} className="text-muted-foreground/50" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <Separator />
