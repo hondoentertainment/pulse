@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { EnergyRating, ENERGY_CONFIG } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
+import { triggerEnergyChangeHaptic } from '@/lib/haptics'
 
 interface EnergySliderProps {
   value: EnergyRating
@@ -14,8 +15,20 @@ const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
 export function EnergySlider({ value, onChange }: EnergySliderProps) {
   const [isDragging, setIsDragging] = useState(false)
+  const previousIndexRef = useRef(energyLevels.indexOf(value))
   const currentIndex = energyLevels.indexOf(value)
   const currentConfig = ENERGY_CONFIG[value]
+
+  const handleEnergyChange = (newIndex: number) => {
+    const newValue = energyLevels[newIndex]
+    
+    if (newIndex !== previousIndexRef.current) {
+      triggerEnergyChangeHaptic(previousIndexRef.current, newIndex)
+      previousIndexRef.current = newIndex
+    }
+    
+    onChange(newValue)
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -73,7 +86,7 @@ export function EnergySlider({ value, onChange }: EnergySliderProps) {
             max="3"
             step="1"
             value={currentIndex}
-            onChange={(e) => onChange(energyLevels[Number(e.target.value)])}
+            onChange={(e) => handleEnergyChange(Number(e.target.value))}
             onMouseDown={() => setIsDragging(true)}
             onMouseUp={() => setIsDragging(false)}
             onTouchStart={() => setIsDragging(true)}

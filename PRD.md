@@ -27,11 +27,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Users can only create pulses for venues within simulated proximity; attempts to post from wrong location are blocked
 
 ### Create Pulse
-- **Functionality**: Quick post creation with optional photos (up to 3), optional video (up to 30 seconds), required energy rating, and optional caption
-- **Purpose**: Captures the current vibe of a venue through multimedia and energy level
+- **Functionality**: Quick post creation with optional photos (up to 3), optional video (up to 30 seconds), required energy rating with haptic feedback, and optional caption
+- **Purpose**: Captures the current vibe of a venue through multimedia and energy level with tactile feedback that enhances the selection experience
 - **Trigger**: User checks into a venue
-- **Progression**: Check-in verified → Energy slider (Dead/Chill/Buzzing/Electric) selected → Optional media uploaded (photos or video, mutually exclusive) → Optional caption added → Pulse posted → Appears in feeds
-- **Success criteria**: Pulses successfully save with all metadata, video duration validation enforces 30-second limit, display in venue feeds, and contribute to energy score
+- **Progression**: Check-in verified → Energy slider (Dead/Chill/Buzzing/Electric) selected with haptic feedback on each level change → Optional media uploaded (photos or video, mutually exclusive) → Optional caption added → Pulse posted → Appears in feeds
+- **Success criteria**: Pulses successfully save with all metadata, video duration validation enforces 30-second limit, display in venue feeds, contribute to energy score, and haptic feedback triggers appropriately on supported devices (light vibration for Dead/Chill, medium for Buzzing, heavy for Electric)
 
 ### Real-Time Pulse Score
 - **Functionality**: Calculates live energy score based on recent pulse volume, energy ratings, engagement, and velocity
@@ -78,6 +78,7 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Media Upload Failure**: Save pulse without media and show retry option; don't block posting
 - **Video Too Long**: Reject videos over 30 seconds with clear error message and duration display
 - **Video Format Unsupported**: Handle unsupported formats gracefully with error message
+- **Haptic Feedback Unavailable**: Gracefully degrade on devices without vibration support; functionality remains unchanged
 - **Offline Mode**: Queue pulses locally and sync when connection restored; show offline indicator
 - **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
 - **Empty Venue**: Show empty state encouraging user to post first pulse
@@ -134,7 +135,8 @@ Key animation moments:
 - Location permission screen slides in from right with smooth transition
 - Permission icon has continuous pulsing rings expanding outward
 - Pulse score numbers count up/down with spring physics when updated
-- Energy slider glows and pulses as user drags
+- Energy slider glows and pulses as user drags with haptic feedback vibration at each energy level
+- Energy level indicator scales up when selected with color-coded glow
 - New pulses slide in from bottom with scale + fade
 - Trending badges pulse gently every 2 seconds
 - Map heatmap gradients animate smoothly when venue energy changes
