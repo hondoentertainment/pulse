@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
+import { MapSearch } from '@/components/MapSearch'
 import { MapPin, NavigationArrow, Plus, Minus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -259,6 +260,17 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
     }
   }
 
+  const handleVenueSelect = (venue: Venue) => {
+    setCenter({ lat: venue.location.lat, lng: venue.location.lng })
+    setZoom(2)
+    setTimeout(() => {
+      setHoveredVenue(venue)
+      setTimeout(() => {
+        setHoveredVenue(null)
+      }, 3000)
+    }, 300)
+  }
+
   const getVenuePixelPosition = (venue: Venue) => {
     if (!center) return null
     return latLngToPixel(venue.location.lat, venue.location.lng, center, zoom, dimensions)
@@ -410,6 +422,16 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
           )
         })()}
       </AnimatePresence>
+
+      <div className="absolute top-4 left-4 right-4 z-10 flex items-start gap-2">
+        <div className="flex-1 max-w-md">
+          <MapSearch
+            venues={venues}
+            onVenueSelect={handleVenueSelect}
+            userLocation={userLocation}
+          />
+        </div>
+      </div>
 
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <MapFilters
