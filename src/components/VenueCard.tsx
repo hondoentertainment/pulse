@@ -2,7 +2,7 @@ import { Venue } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock } from '@phosphor-icons/react'
+import { MapPin, Clock, Star } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
@@ -13,9 +13,11 @@ interface VenueCardProps {
   distance?: number
   onClick?: () => void
   isJustPopped?: boolean
+  isFavorite?: boolean
+  onToggleFavorite?: (venueId: string) => void
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   
   return (
@@ -24,11 +26,27 @@ export function VenueCard({ venue, distance, onClick, isJustPopped }: VenueCardP
       whileTap={{ scale: 0.98 }}
     >
       <Card
-        className="p-5 cursor-pointer border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/20"
+        className="p-5 cursor-pointer border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 relative"
         onClick={onClick}
       >
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleFavorite(venue.id)
+            }}
+            className="absolute top-3 right-3 p-2 rounded-lg hover:bg-secondary transition-colors z-10"
+          >
+            <Star
+              size={18}
+              weight={isFavorite ? 'fill' : 'regular'}
+              className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
+            />
+          </button>
+        )}
+
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 pr-8">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-xl font-bold">{venue.name}</h3>

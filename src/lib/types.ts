@@ -5,6 +5,7 @@ export interface User {
   username: string
   profilePhoto?: string
   friends: string[]
+  favoriteVenues?: string[]
   createdAt: string
 }
 

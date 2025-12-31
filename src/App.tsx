@@ -9,12 +9,13 @@ import { InteractiveMap } from '@/components/InteractiveMap'
 import { Settings } from '@/components/Settings'
 import { NotificationFeed } from '@/components/NotificationFeed'
 import { SplashScreen } from '@/components/SplashScreen'
+import { Favorites } from '@/components/Favorites'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, ArrowLeft, Clock } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation, SIMULATED_USER_LOCATION } from '@/lib/mock-data'
 import {
   calculatePulseScore,
@@ -44,11 +45,12 @@ function App() {
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
 
-  const [currentUser] = useKV<User>('currentUser', {
+  const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
     id: 'user-1',
     username: 'nightowl',
     profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
     friends: [],
+    favoriteVenues: [],
     createdAt: new Date().toISOString()
   })
 
@@ -257,6 +259,41 @@ function App() {
     setHasCompletedOnboarding(true)
   }
 
+  const handleToggleFavorite = (venueId: string) => {
+    setCurrentUser((user) => {
+      if (!user) return {
+        id: 'user-1',
+        username: 'nightowl',
+        profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+        friends: [],
+        favoriteVenues: [venueId],
+        createdAt: new Date().toISOString()
+      }
+      const favorites = user.favoriteVenues || []
+      const isFavorite = favorites.includes(venueId)
+      
+      if (isFavorite) {
+        toast.success('Removed from favorites')
+        return {
+          ...user,
+          favoriteVenues: favorites.filter((id) => id !== venueId)
+        }
+      } else {
+        if (favorites.length >= 4) {
+          toast.error('Maximum 4 favorites', {
+            description: 'Remove one to add another'
+          })
+          return user
+        }
+        toast.success('Added to favorites')
+        return {
+          ...user,
+          favoriteVenues: [...favorites, venueId]
+        }
+      }
+    })
+  }
+
   if (hasCompletedOnboarding === false) {
     return <SplashScreen onComplete={handleSplashComplete} />
   }
@@ -272,6 +309,14 @@ function App() {
     : [...venues].sort((a, b) => b.pulseScore - a.pulseScore)
 
   const trendingVenues = [...venues].sort((a, b) => b.pulseScore - a.pulseScore)
+
+  const favoriteVenues = (currentUser?.favoriteVenues || [])
+    .map((id) => venues.find((v) => v.id === id))
+    .filter((v): v is Venue => v !== undefined)
+
+  const isFavorite = (venueId: string) => {
+    return currentUser?.favoriteVenues?.includes(venueId) || false
+  }
 
   if (selectedVenue) {
     const venuePulses = getPulsesWithUsers().filter((p) => p.venueId === selectedVenue.id)
@@ -313,7 +358,19 @@ function App() {
                   )}
                 </div>
               </div>
-              <PulseScore score={selectedVenue.pulseScore} size="sm" showLabel={false} />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggleFavorite(selectedVenue.id)}
+                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <Star
+                    size={24}
+                    weight={isFavorite(selectedVenue.id) ? 'fill' : 'regular'}
+                    className={isFavorite(selectedVenue.id) ? 'text-accent' : 'text-muted-foreground'}
+                  />
+                </button>
+                <PulseScore score={selectedVenue.pulseScore} size="sm" showLabel={false} />
+              </div>
             </div>
             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
               {locationName && (
@@ -420,6 +477,24 @@ function App() {
             transition={{ duration: 0.2 }}
             className="max-w-2xl mx-auto px-4 py-6 space-y-6"
           >
+            {favoriteVenues.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Star size={20} weight="fill" className="text-accent" />
+                  <h2 className="text-xl font-bold">Favorites</h2>
+                </div>
+                <Favorites
+                  favoriteVenues={favoriteVenues}
+                  userLocation={userLocation}
+                  unitSystem={unitSystem}
+                  onVenueClick={(venue) => setSelectedVenue(venue)}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            )}
+
+            {favoriteVenues.length > 0 && <Separator />}
+
             <div className="space-y-2">
               <h2 className="text-xl font-bold">Trending Near You</h2>
               <p className="text-sm text-muted-foreground">
@@ -456,6 +531,8 @@ function App() {
                         distance={distance}
                         onClick={() => setSelectedVenue(venue)}
                         isJustPopped
+                        isFavorite={isFavorite(venue.id)}
+                        onToggleFavorite={handleToggleFavorite}
                       />
                     )
                   })}
@@ -481,6 +558,8 @@ function App() {
                     venue={venue}
                     distance={distance}
                     onClick={() => setSelectedVenue(venue)}
+                    isFavorite={isFavorite(venue.id)}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 )
               })}
