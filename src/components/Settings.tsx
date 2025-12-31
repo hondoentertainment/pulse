@@ -294,7 +294,7 @@ export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
                     Demo Mode
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Generate sample notifications to test the feed
+                    Generate sample pulses and notifications from popular Seattle venues
                   </p>
                 </div>
                 <Button
@@ -303,8 +303,14 @@ export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
                   className="w-full border-accent text-accent hover:bg-accent hover:text-accent-foreground"
                 >
                   <Flask size={18} weight="bold" className="mr-2" />
-                  Generate Demo Notifications
+                  Generate Seattle Demo Data
                 </Button>
+                <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
+                  <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Creates sample pulses with realistic captions, photos, and reactions from venues across Seattle neighborhoods including Capitol Hill, Fremont, Georgetown, and South Lake Union.
+                  </p>
+                </div>
               </div>
             </div>
           </Card>
