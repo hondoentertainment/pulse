@@ -7,11 +7,13 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Progress } from '@/components/ui/progress'
 import { EnergySlider } from './EnergySlider'
 import { EnergyRating, Venue } from '@/lib/types'
-import { Camera, X, VideoCamera, Play } from '@phosphor-icons/react'
+import { Camera, X, VideoCamera, Play, CheckCircle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -37,6 +39,10 @@ export function CreatePulseDialog({
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionProgress, setCompressionProgress] = useState(0)
+  const [originalSize, setOriginalSize] = useState<number>(0)
+  const [compressedSize, setCompressedSize] = useState<number>(0)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async () => {
@@ -51,6 +57,9 @@ export function CreatePulseDialog({
     setPhotos([])
     setVideo(null)
     setVideoDuration(0)
+    setOriginalSize(0)
+    setCompressedSize(0)
+    setCompressionProgress(0)
     onClose()
   }
 
@@ -70,7 +79,7 @@ export function CreatePulseDialog({
     setPhotos(photos.filter((_, i) => i !== index))
   }
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -81,10 +90,12 @@ export function CreatePulseDialog({
       return
     }
 
+    setOriginalSize(file.size)
+
     const videoElement = document.createElement('video')
     videoElement.preload = 'metadata'
     
-    videoElement.onloadedmetadata = () => {
+    videoElement.onloadedmetadata = async () => {
       window.URL.revokeObjectURL(videoElement.src)
       
       if (videoElement.duration > 30) {
@@ -94,12 +105,53 @@ export function CreatePulseDialog({
         return
       }
 
-      const videoUrl = URL.createObjectURL(file)
-      setVideo(videoUrl)
       setVideoDuration(videoElement.duration)
-      toast.success('Video added!', {
-        description: `${Math.round(videoElement.duration)}s video ready to post`
-      })
+
+      try {
+        setIsCompressing(true)
+        setCompressionProgress(0)
+
+        toast.loading('Compressing video...', {
+          id: 'video-compression',
+          description: 'This may take a moment'
+        })
+
+        const compressedBlob = await compressVideo(
+          file,
+          {
+            maxWidth: 1280,
+            maxHeight: 720,
+            quality: 0.8,
+            videoBitrate: 1500000,
+            audioBitrate: 128000
+          },
+          (progress) => {
+            setCompressionProgress(progress.percent)
+          }
+        )
+
+        setCompressedSize(compressedBlob.size)
+        const videoUrl = URL.createObjectURL(compressedBlob)
+        setVideo(videoUrl)
+        setIsCompressing(false)
+
+        const ratio = getCompressionRatio(file.size, compressedBlob.size)
+        toast.success('Video compressed!', {
+          id: 'video-compression',
+          description: `Reduced by ${ratio}% (${formatFileSize(file.size)} → ${formatFileSize(compressedBlob.size)})`
+        })
+      } catch (error) {
+        console.error('Compression error:', error)
+        setIsCompressing(false)
+        toast.error('Compression failed', {
+          id: 'video-compression',
+          description: 'Using original video instead'
+        })
+        
+        const videoUrl = URL.createObjectURL(file)
+        setVideo(videoUrl)
+        setCompressedSize(file.size)
+      }
     }
 
     videoElement.onerror = () => {
@@ -111,26 +163,15 @@ export function CreatePulseDialog({
     videoElement.src = URL.createObjectURL(file)
   }
 
-  const handleMockVideoUpload = () => {
-    const mockVideos = [
-      'https://videos.pexels.com/video-files/3015486/3015486-uhd_2560_1440_24fps.mp4',
-      'https://videos.pexels.com/video-files/3141206/3141206-uhd_2560_1440_25fps.mp4',
-      'https://videos.pexels.com/video-files/2611250/2611250-uhd_2560_1440_30fps.mp4'
-    ]
-    const randomVideo = mockVideos[Math.floor(Math.random() * mockVideos.length)]
-    setVideo(randomVideo)
-    setVideoDuration(15)
-    toast.success('Demo video added!', {
-      description: '15s video ready to post'
-    })
-  }
-
   const removeVideo = () => {
     if (video?.startsWith('blob:')) {
       URL.revokeObjectURL(video)
     }
     setVideo(null)
     setVideoDuration(0)
+    setOriginalSize(0)
+    setCompressedSize(0)
+    setCompressionProgress(0)
     if (videoInputRef.current) {
       videoInputRef.current.value = ''
     }
@@ -175,7 +216,28 @@ export function CreatePulseDialog({
                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
                   {Math.round(videoDuration)}s
                 </div>
+                {compressedSize > 0 && originalSize > 0 && (
+                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono flex items-center gap-1">
+                    <CheckCircle size={12} weight="fill" className="text-accent" />
+                    {formatFileSize(compressedSize)}
+                  </div>
+                )}
               </motion.div>
+              {compressedSize > 0 && originalSize > 0 && originalSize !== compressedSize && (
+                <p className="text-xs text-muted-foreground">
+                  Compressed from {formatFileSize(originalSize)} (saved {getCompressionRatio(originalSize, compressedSize)}%)
+                </p>
+              )}
+            </div>
+          )}
+
+          {isCompressing && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Compressing video...</span>
+                <span className="font-mono text-accent">{Math.round(compressionProgress)}%</span>
+              </div>
+              <Progress value={compressionProgress} className="h-2" />
             </div>
           )}
 
@@ -208,7 +270,7 @@ export function CreatePulseDialog({
           )}
 
           <div className="flex gap-2">
-            {!video && (
+            {!video && !isCompressing && (
               <>
                 <input
                   ref={videoInputRef}
@@ -218,18 +280,22 @@ export function CreatePulseDialog({
                   className="hidden"
                   id="video-upload"
                 />
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleMockVideoUpload}
-                  type="button"
-                >
-                  <VideoCamera size={20} weight="fill" className="mr-2" />
-                  Add Video (max 30s)
-                </Button>
+                <label htmlFor="video-upload" className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    type="button"
+                    asChild
+                  >
+                    <span>
+                      <VideoCamera size={20} weight="fill" className="mr-2" />
+                      Add Video (max 30s)
+                    </span>
+                  </Button>
+                </label>
               </>
             )}
-            {photos.length < 3 && !video && (
+            {photos.length < 3 && !video && !isCompressing && (
               <Button
                 variant="outline"
                 className="flex-1"
@@ -271,7 +337,7 @@ export function CreatePulseDialog({
             <Button
               className="flex-1 bg-primary hover:bg-primary/90"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCompressing}
             >
               {isSubmitting ? 'Posting...' : 'Post Pulse'}
             </Button>
