@@ -32,7 +32,7 @@ import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile' | 'settings'>('trending')
+  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile' | 'settings'>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
