@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
-export type DistanceFilter = 500 | 1000 | 2000 | 5000 | typeof Infinity
+export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
 
 export interface MapFiltersState {
   energyLevels: EnergyFilter[]
@@ -31,10 +31,10 @@ const ENERGY_LEVELS = [
 ]
 
 const DISTANCE_OPTIONS = [
-  { value: 500, label: '500m' },
-  { value: 1000, label: '1km' },
-  { value: 2000, label: '2km' },
-  { value: 5000, label: '5km' },
+  { value: 0.3, label: '0.3mi' },
+  { value: 0.6, label: '0.6mi' },
+  { value: 1.2, label: '1.2mi' },
+  { value: 3.1, label: '3mi' },
   { value: Infinity, label: 'All' }
 ]
 

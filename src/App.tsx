@@ -20,7 +20,7 @@ import {
   canPostPulse,
   isWithinRadius
 } from '@/lib/pulse-engine'
-import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_METERS } from '@/lib/types'
+import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -84,7 +84,7 @@ function App() {
       userLocation.lng,
       venue.location.lat,
       venue.location.lng,
-      CHECK_IN_RADIUS_METERS
+      CHECK_IN_RADIUS_MILES
     )) {
       toast.error('Too far from venue', {
         description: 'You must be at the venue to create a pulse'
@@ -184,13 +184,11 @@ function App() {
   if (selectedVenue) {
     const venuePulses = getPulsesWithUsers().filter((p) => p.venueId === selectedVenue.id)
     const distance = userLocation
-      ? Math.round(
-          calculateDistance(
-            userLocation.lat,
-            userLocation.lng,
-            selectedVenue.location.lat,
-            selectedVenue.location.lng
-          )
+      ? calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          selectedVenue.location.lat,
+          selectedVenue.location.lng
         )
       : undefined
 
@@ -217,7 +215,7 @@ function App() {
                       <span>•</span>
                       <div className="flex items-center gap-1">
                         <MapPin size={14} weight="fill" />
-                        <span>{distance < 1000 ? `${distance}m away` : `${(distance / 1000).toFixed(1)}km away`}</span>
+                        <span>{distance < 0.1 ? `${Math.round(distance * 5280)}ft away` : `${distance.toFixed(1)}mi away`}</span>
                       </div>
                     </>
                   )}
@@ -328,13 +326,11 @@ function App() {
                   .slice(0, 3)
                   .map((venue) => {
                     const distance = userLocation
-                      ? Math.round(
-                          calculateDistance(
-                            userLocation.lat,
-                            userLocation.lng,
-                            venue.location.lat,
-                            venue.location.lng
-                          )
+                      ? calculateDistance(
+                          userLocation.lat,
+                          userLocation.lng,
+                          venue.location.lat,
+                          venue.location.lng
                         )
                       : undefined
                     return (
@@ -356,13 +352,11 @@ function App() {
               <h3 className="text-lg font-bold">All Venues</h3>
               {sortedVenues.map((venue) => {
                 const distance = userLocation
-                  ? Math.round(
-                      calculateDistance(
-                        userLocation.lat,
-                        userLocation.lng,
-                        venue.location.lat,
-                        venue.location.lng
-                      )
+                  ? calculateDistance(
+                      userLocation.lat,
+                      userLocation.lng,
+                      venue.location.lat,
+                      venue.location.lng
                     )
                   : undefined
                 return (
@@ -471,7 +465,7 @@ function App() {
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3
+  const R = 3958.8
   const φ1 = (lat1 * Math.PI) / 180
   const φ2 = (lat2 * Math.PI) / 180
   const Δφ = ((lat2 - lat1) * Math.PI) / 180

@@ -74,4 +74,4 @@ export const ENERGY_CONFIG = {
 
 export const COOLDOWN_MINUTES = 120
 export const PULSE_DECAY_MINUTES = 90
-export const CHECK_IN_RADIUS_METERS = 100
+export const CHECK_IN_RADIUS_MILES = 0.062

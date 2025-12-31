@@ -42,7 +42,7 @@ export function VenueCard({ venue, distance, onClick, isJustPopped }: VenueCardP
                 {distance !== undefined && (
                   <div className="flex items-center gap-1">
                     <MapPin size={12} weight="fill" />
-                    <span>{distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`}</span>
+                    <span>{distance < 0.1 ? `${Math.round(distance * 5280)}ft` : `${distance.toFixed(1)}mi`}</span>
                   </div>
                 )}
               </div>

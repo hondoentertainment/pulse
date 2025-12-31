@@ -41,7 +41,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
     lat2: number,
     lon2: number
   ): number => {
-    const R = 6371e3
+    const R = 3958.8
     const φ1 = (lat1 * Math.PI) / 180
     const φ2 = (lat2 * Math.PI) / 180
     const Δφ = ((lat2 - lat1) * Math.PI) / 180

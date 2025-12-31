@@ -6,7 +6,7 @@ export function calculateDistance(
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371e3
+  const R = 3958.8
   const φ1 = (lat1 * Math.PI) / 180
   const φ2 = (lat2 * Math.PI) / 180
   const Δφ = ((lat2 - lat1) * Math.PI) / 180
@@ -25,10 +25,10 @@ export function isWithinRadius(
   userLng: number,
   venueLat: number,
   venueLng: number,
-  radiusMeters: number
+  radiusMiles: number
 ): boolean {
   const distance = calculateDistance(userLat, userLng, venueLat, venueLng)
-  return distance <= radiusMeters
+  return distance <= radiusMiles
 }
 
 export function calculatePulseScore(pulses: Pulse[]): number {
