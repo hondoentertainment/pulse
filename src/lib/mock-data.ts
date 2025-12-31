@@ -3,339 +3,339 @@ import { Venue } from './types'
 export const MOCK_VENUES: Venue[] = [
   {
     id: 'venue-1',
-    name: 'The Electric Lounge',
+    name: 'Neumos',
     location: {
-      lat: 40.7580,
-      lng: -73.9855,
-      address: '234 W 42nd St, New York, NY'
+      lat: 47.6145,
+      lng: -122.3205,
+      address: '925 E Pike St, Seattle, WA'
     },
     pulseScore: 85,
-    category: 'Nightclub'
+    category: 'Music Venue'
   },
   {
     id: 'venue-2',
-    name: 'Midnight Rooftop',
+    name: 'The Crocodile',
     location: {
-      lat: 40.7589,
-      lng: -73.9851,
-      address: '456 Broadway, New York, NY'
+      lat: 47.6162,
+      lng: -122.3488,
+      address: '2200 2nd Ave, Seattle, WA'
     },
     pulseScore: 72,
-    category: 'Bar'
+    category: 'Music Venue'
   },
   {
     id: 'venue-3',
-    name: 'Neon Underground',
+    name: 'Q Nightclub',
     location: {
-      lat: 40.7571,
-      lng: -73.9862,
-      address: '789 8th Ave, New York, NY'
+      lat: 47.6138,
+      lng: -122.3198,
+      address: '1426 Broadway, Seattle, WA'
     },
-    pulseScore: 45,
-    category: 'Club'
+    pulseScore: 92,
+    category: 'Nightclub'
   },
   {
     id: 'venue-4',
-    name: 'Pulse Dance Hall',
+    name: 'Kremwerk',
     location: {
-      lat: 40.7595,
-      lng: -73.9845,
-      address: '321 W 44th St, New York, NY'
+      lat: 47.6154,
+      lng: -122.3213,
+      address: '1809 Minor Ave, Seattle, WA'
     },
     pulseScore: 68,
-    category: 'Dance Club'
+    category: 'Nightclub'
   },
   {
     id: 'venue-5',
-    name: 'Vibe Café',
+    name: 'Cafe Racer',
     location: {
-      lat: 40.7563,
-      lng: -73.9870,
-      address: '567 9th Ave, New York, NY'
+      lat: 47.6698,
+      lng: -122.3214,
+      address: '5828 Roosevelt Way NE, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Café'
   },
   {
     id: 'venue-6',
-    name: 'The Frequency',
+    name: 'The Showbox',
     location: {
-      lat: 40.7602,
-      lng: -73.9840,
-      address: '890 W 45th St, New York, NY'
+      lat: 47.6088,
+      lng: -122.3371,
+      address: '1426 1st Ave, Seattle, WA'
     },
-    pulseScore: 0,
+    pulseScore: 81,
     category: 'Music Venue'
   },
   {
     id: 'venue-7',
-    name: 'Skyline Bar',
+    name: 'The Triple Door',
     location: {
-      lat: 40.7614,
-      lng: -73.9776,
-      address: '123 W 49th St, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Bar'
-  },
-  {
-    id: 'venue-8',
-    name: 'Bass Drop',
-    location: {
-      lat: 40.7505,
-      lng: -73.9934,
-      address: '445 W 33rd St, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Nightclub'
-  },
-  {
-    id: 'venue-9',
-    name: 'Velvet Lounge',
-    location: {
-      lat: 40.7489,
-      lng: -73.9680,
-      address: '789 3rd Ave, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Lounge'
-  },
-  {
-    id: 'venue-10',
-    name: 'The Dive',
-    location: {
-      lat: 40.7558,
-      lng: -73.9903,
-      address: '234 10th Ave, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Bar'
-  },
-  {
-    id: 'venue-11',
-    name: 'Warehouse 54',
-    location: {
-      lat: 40.7645,
-      lng: -73.9885,
-      address: '890 W 54th St, New York, NY'
-    },
-    pulseScore: 92,
-    category: 'Club'
-  },
-  {
-    id: 'venue-12',
-    name: 'Jazz Cellar',
-    location: {
-      lat: 40.7530,
-      lng: -73.9825,
-      address: '567 W 37th St, New York, NY'
+      lat: 47.6064,
+      lng: -122.3334,
+      address: '216 Union St, Seattle, WA'
     },
     pulseScore: 58,
     category: 'Music Venue'
   },
   {
-    id: 'venue-13',
-    name: 'Rooftop 360',
+    id: 'venue-8',
+    name: 'Foundation Nightclub',
     location: {
-      lat: 40.7592,
-      lng: -73.9787,
-      address: '321 7th Ave, New York, NY'
+      lat: 47.5981,
+      lng: -122.3293,
+      address: '2218 Western Ave, Seattle, WA'
     },
-    pulseScore: 81,
+    pulseScore: 88,
+    category: 'Nightclub'
+  },
+  {
+    id: 'venue-9',
+    name: 'Aston Manor',
+    location: {
+      lat: 47.6658,
+      lng: -122.3138,
+      address: '2113 N 45th St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-10',
+    name: 'Tractor Tavern',
+    location: {
+      lat: 47.6651,
+      lng: -122.3841,
+      address: '5213 Ballard Ave NW, Seattle, WA'
+    },
+    pulseScore: 45,
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-11',
+    name: 'The Sunset Tavern',
+    location: {
+      lat: 47.6667,
+      lng: -122.3841,
+      address: '5433 Ballard Ave NW, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-12',
+    name: 'Barboza',
+    location: {
+      lat: 47.6145,
+      lng: -122.3207,
+      address: '925 E Pike St, Seattle, WA'
+    },
+    pulseScore: 64,
+    category: 'Lounge'
+  },
+  {
+    id: 'venue-13',
+    name: 'The Unicorn',
+    location: {
+      lat: 47.6142,
+      lng: -122.3196,
+      address: '1118 E Pike St, Seattle, WA'
+    },
+    pulseScore: 76,
     category: 'Bar'
   },
   {
     id: 'venue-14',
-    name: 'The Grid',
+    name: 'Monkey Loft',
     location: {
-      lat: 40.7478,
-      lng: -73.9877,
-      address: '678 W 31st St, New York, NY'
+      lat: 47.5981,
+      lng: -122.3311,
+      address: '2915 1st Ave, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Dance Club'
   },
   {
     id: 'venue-15',
-    name: 'Espresso Bar',
+    name: 'Espresso Vivace',
     location: {
-      lat: 40.7612,
-      lng: -73.9833,
-      address: '145 W 47th St, New York, NY'
+      lat: 47.6145,
+      lng: -122.3208,
+      address: '901 E Denny Way, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Café'
   },
   {
     id: 'venue-16',
-    name: 'Analog',
+    name: 'Nectar Lounge',
     location: {
-      lat: 40.7521,
-      lng: -73.9772,
-      address: '234 5th Ave, New York, NY'
+      lat: 47.6709,
+      lng: -122.3167,
+      address: '412 N 36th St, Seattle, WA'
     },
-    pulseScore: 0,
+    pulseScore: 38,
     category: 'Music Venue'
   },
   {
     id: 'venue-17',
-    name: 'Circuit Lounge',
+    name: 'Re-bar',
     location: {
-      lat: 40.7668,
-      lng: -73.9821,
-      address: '789 W 56th St, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Lounge'
-  },
-  {
-    id: 'venue-18',
-    name: 'The Basement',
-    location: {
-      lat: 40.7542,
-      lng: -73.9912,
-      address: '456 11th Ave, New York, NY'
+      lat: 47.6152,
+      lng: -122.3202,
+      address: '1114 Howell St, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Nightclub'
   },
   {
-    id: 'venue-19',
-    name: 'Horizon Bar',
+    id: 'venue-18',
+    name: 'The 5 Point Cafe',
     location: {
-      lat: 40.7463,
-      lng: -73.9815,
-      address: '890 W 29th St, New York, NY'
+      lat: 47.6205,
+      lng: -122.3473,
+      address: '415 Cedar St, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Bar'
   },
   {
-    id: 'venue-20',
-    name: 'Echo Chamber',
+    id: 'venue-19',
+    name: 'Chop Suey',
     location: {
-      lat: 40.7625,
-      lng: -73.9755,
-      address: '123 6th Ave, New York, NY'
+      lat: 47.6145,
+      lng: -122.3194,
+      address: '1325 E Madison St, Seattle, WA'
     },
-    pulseScore: 64,
+    pulseScore: 0,
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-20',
+    name: 'Columbia City Theater',
+    location: {
+      lat: 47.5591,
+      lng: -122.2922,
+      address: '4916 Rainier Ave S, Seattle, WA'
+    },
+    pulseScore: 0,
     category: 'Music Venue'
   },
   {
     id: 'venue-21',
-    name: 'Luna Lounge',
+    name: 'Dimitriou\'s Jazz Alley',
     location: {
-      lat: 40.7498,
-      lng: -73.9723,
-      address: '567 Madison Ave, New York, NY'
+      lat: 47.6118,
+      lng: -122.3401,
+      address: '2033 6th Ave, Seattle, WA'
     },
-    pulseScore: 38,
-    category: 'Lounge'
+    pulseScore: 0,
+    category: 'Music Venue'
   },
   {
     id: 'venue-22',
-    name: 'The Loft',
+    name: 'The Comet Tavern',
     location: {
-      lat: 40.7687,
-      lng: -73.9867,
-      address: '234 W 58th St, New York, NY'
+      lat: 47.6142,
+      lng: -122.3181,
+      address: '922 E Pike St, Seattle, WA'
     },
-    pulseScore: 76,
-    category: 'Club'
+    pulseScore: 0,
+    category: 'Bar'
   },
   {
     id: 'venue-23',
-    name: 'Soundwave',
+    name: 'Ora Seattle',
     location: {
-      lat: 40.7445,
-      lng: -73.9892,
-      address: '678 W 27th St, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Dance Club'
-  },
-  {
-    id: 'venue-24',
-    name: 'Underground NYC',
-    location: {
-      lat: 40.7512,
-      lng: -73.9945,
-      address: '345 12th Ave, New York, NY'
+      lat: 47.6163,
+      lng: -122.3487,
+      address: '2208 1st Ave, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Nightclub'
   },
   {
-    id: 'venue-25',
-    name: 'Rooftop Social',
+    id: 'venue-24',
+    name: 'The Black Lodge',
     location: {
-      lat: 40.7655,
-      lng: -73.9802,
-      address: '456 W 55th St, New York, NY'
+      lat: 47.6702,
+      lng: -122.3186,
+      address: '340 15th Ave E, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-25',
+    name: 'The Central Saloon',
+    location: {
+      lat: 47.6019,
+      lng: -122.3332,
+      address: '207 1st Ave S, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Bar'
   },
   {
     id: 'venue-26',
-    name: 'Synth Bar',
+    name: 'The Royal Room',
     location: {
-      lat: 40.7434,
-      lng: -73.9801,
-      address: '789 W 26th St, New York, NY'
-    },
-    pulseScore: 0,
-    category: 'Bar'
-  },
-  {
-    id: 'venue-27',
-    name: 'Tempo',
-    location: {
-      lat: 40.7608,
-      lng: -73.9710,
-      address: '123 Park Ave, New York, NY'
+      lat: 47.5594,
+      lng: -122.2925,
+      address: '5000 Rainier Ave S, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Music Venue'
   },
   {
-    id: 'venue-28',
-    name: 'Blaze Club',
+    id: 'venue-27',
+    name: 'Lava Lounge',
     location: {
-      lat: 40.7571,
-      lng: -73.9738,
-      address: '567 Lexington Ave, New York, NY'
-    },
-    pulseScore: 88,
-    category: 'Club'
-  },
-  {
-    id: 'venue-29',
-    name: 'The Hideout',
-    location: {
-      lat: 40.7423,
-      lng: -73.9865,
-      address: '890 W 25th St, New York, NY'
+      lat: 47.6599,
+      lng: -122.3843,
+      address: '2226 2nd Ave, Seattle, WA'
     },
     pulseScore: 0,
     category: 'Lounge'
   },
   {
-    id: 'venue-30',
-    name: 'Voltage',
+    id: 'venue-28',
+    name: 'El Corazon',
     location: {
-      lat: 40.7702,
-      lng: -73.9843,
-      address: '234 W 60th St, New York, NY'
+      lat: 47.6183,
+      lng: -122.3302,
+      address: '109 Eastlake Ave E, Seattle, WA'
     },
     pulseScore: 0,
-    category: 'Dance Club'
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-29',
+    name: 'The Paramount Theatre',
+    location: {
+      lat: 47.6125,
+      lng: -122.3317,
+      address: '911 Pine St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-30',
+    name: 'The Moore Theatre',
+    location: {
+      lat: 47.6106,
+      lng: -122.3378,
+      address: '1932 2nd Ave, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Music Venue'
   }
 ]
 
 export const SIMULATED_USER_LOCATION = {
-  lat: 40.7580,
-  lng: -73.9855
+  lat: 47.6145,
+  lng: -122.3205
 }
 
 export function getSimulatedLocation(): Promise<GeolocationPosition> {
