@@ -41,11 +41,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Scores update in real-time, reflect current activity accurately, and auto-decay old pulses
 
 ### Venue Discovery
-- **Functionality**: Browse trending venues via interactive map view with energy heatmap or list view with "Just Popped" surges
-- **Purpose**: Help users find where the energy is happening right now through visual heat mapping
-- **Trigger**: User opens Trending tab or Map view
-- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue → Venue page opens
-- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover
+- **Functionality**: Browse trending venues via interactive map view with energy heatmap and voice-enabled search or list view with "Just Popped" surges
+- **Purpose**: Help users find where the energy is happening right now through visual heat mapping and hands-free voice search
+- **Trigger**: User opens Trending tab or Map view, or activates voice search with microphone button
+- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens
+- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover, voice recognition accurately transcribes venue names, voice search works hands-free on supported browsers
 
 ### Social Layer
 - **Functionality**: Follow friends, see their recent pulses, add emoji reactions
@@ -79,6 +79,10 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Video Too Long**: Reject videos over 30 seconds with clear error message and duration display
 - **Video Format Unsupported**: Handle unsupported formats gracefully with error message
 - **Haptic Feedback Unavailable**: Gracefully degrade on devices without vibration support; functionality remains unchanged
+- **Voice Search Not Supported**: Show disabled microphone icon with tooltip explaining browser compatibility; fall back to text-only search
+- **Microphone Permission Denied**: Show error toast explaining permission needed; guide user to browser settings
+- **No Speech Detected**: Show "No speech detected" message after brief timeout; allow retry
+- **Voice Recognition Error**: Display error toast with retry option; search field remains functional for text input
 - **Offline Mode**: Queue pulses locally and sync when connection restored; show offline indicator
 - **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
 - **Empty Venue**: Show empty state encouraging user to post first pulse
@@ -170,11 +174,12 @@ Key animation moments:
   - Splash Screen: Custom two-step onboarding with animated logo, gradient backgrounds, pulsing location icon with expanding rings, and clear permission explanations
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
   - Pulse Score Display: Large animated number with pulsing glow ring
-  - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, and energy legend
+  - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, voice-enabled search with microphone button, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
   - Video Player: Native HTML5 video controls with play overlay icon, duration badge, and 16:9 aspect ratio display in feed
+  - Voice Search Button: Microphone icon that pulses and changes color when listening, disabled state for unsupported browsers
   
 - **States**:
   - Buttons: Rest (purple), Hover (lighter purple + glow), Active (darker + scale down), Disabled (gray 40% opacity)
@@ -198,6 +203,8 @@ Key animation moments:
   - Info (informational messages)
   - Bell (notifications icon with badge)
   - CheckCircle (mark notifications as read)
+  - MagnifyingGlass (text search)
+  - Microphone (voice search activation)
 
 - **Spacing**:
   - Section padding: `p-6` (24px)

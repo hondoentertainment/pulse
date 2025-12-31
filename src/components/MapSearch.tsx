@@ -3,11 +3,13 @@ import { Venue } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, MapPin, X, Microphone } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { PulseScore } from '@/components/PulseScore'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useVoiceSearch } from '@/hooks/use-voice-search'
+import { toast } from 'sonner'
 
 interface MapSearchProps {
   venues: Venue[]
@@ -20,6 +22,15 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
   const [isFocused, setIsFocused] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const {
+    isListening,
+    transcript,
+    isSupported,
+    error,
+    startListening,
+    stopListening,
+    resetTranscript
+  } = useVoiceSearch()
 
   const calculateDistance = (
     lat1: number,
@@ -72,6 +83,22 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
     setSelectedIndex(0)
   }, [query])
 
+  useEffect(() => {
+    if (transcript && !isListening) {
+      setQuery(transcript)
+      setIsFocused(true)
+      inputRef.current?.focus()
+    }
+  }, [transcript, isListening])
+
+  useEffect(() => {
+    if (error) {
+      toast.error('Voice search error', {
+        description: error
+      })
+    }
+  }, [error])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (sortedResults.length === 0) return
 
@@ -100,7 +127,27 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
 
   const handleClear = () => {
     setQuery('')
+    resetTranscript()
     inputRef.current?.focus()
+  }
+
+  const handleVoiceSearch = () => {
+    if (!isSupported) {
+      toast.error('Voice search not supported', {
+        description: 'Your browser does not support voice recognition'
+      })
+      return
+    }
+
+    if (isListening) {
+      stopListening()
+    } else {
+      startListening()
+      toast.success('Listening...', {
+        description: 'Speak the name of a venue',
+        duration: 2000
+      })
+    }
   }
 
   const formatDistance = (miles: number): string => {
@@ -122,7 +169,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search venues..."
+          placeholder={isListening ? 'Listening...' : 'Search venues...'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -130,18 +177,41 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             setTimeout(() => setIsFocused(false), 200)
           }}
           onKeyDown={handleKeyDown}
-          className="pl-10 pr-10 bg-card/95 backdrop-blur-sm border-border h-11 focus:ring-2 focus:ring-accent"
+          className={cn(
+            'pl-10 bg-card/95 backdrop-blur-sm border-border h-11 focus:ring-2 focus:ring-accent transition-all',
+            query ? 'pr-20' : 'pr-12',
+            isListening && 'ring-2 ring-accent animate-pulse'
+          )}
         />
-        {query && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {query && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={handleClear}
+            >
+              <X size={16} weight="bold" />
+            </Button>
+          )}
           <Button
             size="icon"
             variant="ghost"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-            onClick={handleClear}
+            className={cn(
+              'h-8 w-8 transition-colors',
+              isListening && 'bg-accent text-accent-foreground animate-pulse',
+              !isSupported && 'opacity-50 cursor-not-allowed'
+            )}
+            onClick={handleVoiceSearch}
+            disabled={!isSupported}
           >
-            <X size={16} weight="bold" />
+            <Microphone
+              size={18}
+              weight={isListening ? 'fill' : 'bold'}
+              className={isListening ? 'animate-pulse' : ''}
+            />
           </Button>
-        )}
+        </div>
       </div>
 
       <AnimatePresence>
