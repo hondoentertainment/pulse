@@ -41,11 +41,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Scores update in real-time, reflect current activity accurately, and auto-decay old pulses
 
 ### Venue Discovery
-- **Functionality**: Browse trending venues via interactive map view with energy heatmap and voice-enabled search or list view with "Just Popped" surges
-- **Purpose**: Help users find where the energy is happening right now through visual heat mapping and hands-free voice search
-- **Trigger**: User opens Trending tab or Map view, or activates voice search with microphone button
-- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens
-- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover, voice recognition accurately transcribes venue names, voice search works hands-free on supported browsers
+- **Functionality**: Browse trending venues via interactive map view with energy heatmap, voice-enabled search, and voice-activated filters or list view with "Just Popped" surges
+- **Purpose**: Help users find where the energy is happening right now through visual heat mapping, hands-free voice search, and voice-controlled filtering by energy level and category
+- **Trigger**: User opens Trending tab or Map view, activates voice search with microphone button, or activates voice filter in map filters panel
+- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens OR User opens filters panel → Taps voice filter button → Speaks filter command (e.g., "show electric venues" or "filter bars and clubs") → Voice command parsed → Filters applied automatically → Map updates to show filtered results
+- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover, voice recognition accurately transcribes venue names and filter commands, voice search works hands-free on supported browsers, voice filter understands natural language commands for energy levels (dead/chill/buzzing/electric) and categories, filters apply instantly after voice command completes, toast notifications confirm applied filters
 
 ### Social Layer
 - **Functionality**: Follow friends, see their recent pulses, add emoji reactions
@@ -80,9 +80,12 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Video Format Unsupported**: Handle unsupported formats gracefully with error message
 - **Haptic Feedback Unavailable**: Gracefully degrade on devices without vibration support; functionality remains unchanged
 - **Voice Search Not Supported**: Show disabled microphone icon with tooltip explaining browser compatibility; fall back to text-only search
+- **Voice Filter Not Supported**: Hide voice filter button in filters panel when browser doesn't support speech recognition; manual filter buttons remain functional
 - **Microphone Permission Denied**: Show error toast explaining permission needed; guide user to browser settings
 - **No Speech Detected**: Show "No speech detected" message after brief timeout; allow retry
 - **Voice Recognition Error**: Display error toast with retry option; search field remains functional for text input
+- **Ambiguous Voice Command**: If voice filter command is unclear or doesn't match any filters, show toast with suggested commands and examples
+- **Voice Command Success**: Show success toast with applied filter summary (e.g., "Filters applied: buzzing, electric • bars")
 - **Offline Mode**: Queue pulses locally and sync when connection restored; show offline indicator
 - **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
 - **Empty Venue**: Show empty state encouraging user to post first pulse
@@ -174,12 +177,13 @@ Key animation moments:
   - Splash Screen: Custom two-step onboarding with animated logo, gradient backgrounds, pulsing location icon with expanding rings, and clear permission explanations
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
   - Pulse Score Display: Large animated number with pulsing glow ring
-  - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, voice-enabled search with microphone button, and energy legend
+  - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, voice-enabled search with microphone button, voice-activated filters with natural language parsing, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
   - Video Player: Native HTML5 video controls with play overlay icon, duration badge, and 16:9 aspect ratio display in feed
   - Voice Search Button: Microphone icon that pulses and changes color when listening, disabled state for unsupported browsers
+  - Voice Filter Button: Microphone icon in filters panel that pulses with cyan glow when listening, shows live transcript, provides example commands, and displays applied filters in toast notifications
   
 - **States**:
   - Buttons: Rest (purple), Hover (lighter purple + glow), Active (darker + scale down), Disabled (gray 40% opacity)
@@ -204,7 +208,8 @@ Key animation moments:
   - Bell (notifications icon with badge)
   - CheckCircle (mark notifications as read)
   - MagnifyingGlass (text search)
-  - Microphone (voice search activation)
+  - Microphone (voice search and voice filter activation)
+  - MicrophoneSlash (voice listening active state)
 
 - **Spacing**:
   - Section padding: `p-6` (24px)

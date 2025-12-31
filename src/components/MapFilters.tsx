@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Faders, X, Lightning, Fire, Coffee, MapPin } from '@phosphor-icons/react'
+import { Faders, X, Lightning, Fire, Coffee, MapPin, Microphone, MicrophoneSlash } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
+import { useVoiceFilter } from '@/hooks/use-voice-filter'
 import { convertMilesToKm } from '@/lib/units'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
@@ -43,6 +44,16 @@ const DISTANCE_OPTIONS_MILES = [
 export function MapFilters({ filters, onChange, availableCategories }: MapFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { unitSystem } = useUnitPreference()
+  const {
+    isListening,
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+    isSupported,
+    parseVoiceCommand,
+    applyVoiceFilters
+  } = useVoiceFilter(availableCategories, onChange)
 
   const toggleEnergyLevel = (level: EnergyFilter) => {
     if (level === 'all') {
@@ -90,6 +101,25 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
     filters.energyLevels.length +
     filters.categories.length +
     (filters.maxDistance !== Infinity ? 1 : 0)
+
+  const handleVoiceToggle = () => {
+    if (isListening) {
+      stopListening()
+    } else {
+      resetTranscript()
+      startListening()
+    }
+  }
+
+  useEffect(() => {
+    if (!isListening && transcript) {
+      const result = parseVoiceCommand(transcript)
+      if (result) {
+        applyVoiceFilters(result, filters)
+      }
+      resetTranscript()
+    }
+  }, [isListening, transcript, parseVoiceCommand, applyVoiceFilters, filters, resetTranscript])
 
   return (
     <>
@@ -147,6 +177,53 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                     </Button>
                   </div>
                 </div>
+
+                {isSupported && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Microphone size={16} weight="fill" className="text-accent" />
+                        <h4 className="font-semibold text-sm">Voice Filter</h4>
+                      </div>
+                      <Button
+                        variant={isListening ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleVoiceToggle}
+                        className={cn(
+                          'w-full gap-2',
+                          isListening && 'bg-accent text-accent-foreground animate-pulse-glow'
+                        )}
+                      >
+                        {isListening ? (
+                          <>
+                            <MicrophoneSlash size={16} weight="fill" />
+                            <span>Listening...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Microphone size={16} weight="fill" />
+                            <span>Tap to speak</span>
+                          </>
+                        )}
+                      </Button>
+                      {transcript && (
+                        <div className="text-xs text-muted-foreground bg-muted rounded-lg p-2">
+                          "{transcript}"
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p className="font-semibold">Try saying:</p>
+                        <ul className="list-disc list-inside space-y-0.5 ml-2">
+                          <li>"Show electric venues"</li>
+                          <li>"Filter buzzing or chill"</li>
+                          <li>"Find bars"</li>
+                          <li>"Clear filters"</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 
