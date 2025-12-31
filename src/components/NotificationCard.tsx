@@ -17,6 +17,51 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
       case 'friend_pulse':
         if (!notification.pulse || !notification.user || !notification.venue) return null
         const energyConfig = ENERGY_CONFIG[notification.pulse.energyRating]
+        const isGroupedPulse = notification.count && notification.count > 1
+        
+        if (isGroupedPulse && notification.groupedUsers) {
+          const displayUsers = notification.groupedUsers.slice(0, 3)
+          const remainingCount = (notification.count || 0) - displayUsers.length
+          
+          return (
+            <>
+              <div className="flex items-start gap-3">
+                <div className="flex -space-x-2 flex-shrink-0">
+                  {displayUsers.map((user, index) => (
+                    <div
+                      key={user.id}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border-2 border-card"
+                      style={{ zIndex: displayUsers.length - index }}
+                    >
+                      <span className="text-xs font-bold">
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">
+                    <span className="font-semibold text-foreground">
+                      {displayUsers.map(u => u.username).join(', ')}
+                      {remainingCount > 0 && ` and ${remainingCount} other${remainingCount !== 1 ? 's' : ''}`}
+                    </span>
+                    {' '}posted pulses at{' '}
+                    <span className="font-semibold text-foreground">{notification.venue.name}</span>
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className="text-xs px-2 py-0.5 bg-primary text-primary-foreground">
+                      {notification.count} pulses
+                    </Badge>
+                    <span className="text-xs text-muted-foreground font-mono uppercase">
+                      {formatTimeAgo(notification.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        }
+        
         return (
           <>
             <div className="flex items-start gap-3">
@@ -174,6 +219,8 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
 
       case 'trending_venue':
         if (!notification.venue) return null
+        const isGroupedTrending = notification.count && notification.count > 1
+        
         return (
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-energy-electric to-energy-buzzing flex items-center justify-center flex-shrink-0 animate-pulse-glow">
@@ -183,6 +230,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
               <p className="text-sm">
                 <span className="font-semibold text-foreground">{notification.venue.name}</span>
                 {' '}is trending near you
+                {isGroupedTrending && ` (${notification.count} alerts)`}
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <Badge className="bg-accent text-accent-foreground text-xs px-2 py-0.5">

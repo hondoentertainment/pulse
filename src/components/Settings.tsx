@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask } from '@phosphor-icons/react'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack } from '@phosphor-icons/react'
 
 interface SettingsProps {
   onGenerateDemoNotifications?: () => void
@@ -132,6 +132,83 @@ export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
               <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Notification preferences are saved automatically. You can change them anytime.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Separator />
+
+      <Card className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Stack size={20} weight="bold" className="text-primary" />
+          </div>
+          <div className="flex-1 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold">
+                Grouping Preferences
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Control how similar notifications are grouped together
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Sparkle size={18} weight="fill" className="text-accent" />
+                  <div>
+                    <p className="text-sm font-medium">Group Reactions</p>
+                    <p className="text-xs text-muted-foreground">Combine multiple reactions on same pulse</p>
+                  </div>
+                </div>
+                <Switch
+                  id="group-reactions"
+                  checked={settings?.groupReactions ?? true}
+                  onCheckedChange={(checked) => updateSetting('groupReactions', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <UsersFour size={18} weight="fill" className="text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Group Friend Pulses</p>
+                    <p className="text-xs text-muted-foreground">Combine friend pulses from same venue</p>
+                  </div>
+                </div>
+                <Switch
+                  id="group-friend-pulses"
+                  checked={settings?.groupFriendPulses ?? false}
+                  onCheckedChange={(checked) => updateSetting('groupFriendPulses', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <TrendUp size={18} weight="fill" className="text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Group Trending Venues</p>
+                    <p className="text-xs text-muted-foreground">Combine trending alerts for same venue</p>
+                  </div>
+                </div>
+                <Switch
+                  id="group-trending-venues"
+                  checked={settings?.groupTrendingVenues ?? false}
+                  onCheckedChange={(checked) => updateSetting('groupTrendingVenues', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
+              <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Grouping helps reduce clutter by combining similar notifications. You'll see a count when multiple are grouped.
               </p>
             </div>
           </div>

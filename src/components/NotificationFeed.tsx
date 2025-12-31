@@ -3,6 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Notification, GroupedNotification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
 import { NotificationCard } from '@/components/NotificationCard'
 import { groupNotifications } from '@/lib/notification-grouping'
+import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -24,6 +25,7 @@ export function NotificationFeed({
 }: NotificationFeedProps) {
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const { settings } = useNotificationSettings()
 
   const enrichNotification = (notification: Notification): NotificationWithData | null => {
     const pulse = notification.pulseId
@@ -62,7 +64,11 @@ export function NotificationFeed({
     .filter((n): n is NotificationWithData => n !== null)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-  const groupedNotifications = groupNotifications(enrichedNotifications)
+  const groupedNotifications = groupNotifications(enrichedNotifications, {
+    groupReactions: settings?.groupReactions ?? true,
+    groupFriendPulses: settings?.groupFriendPulses ?? false,
+    groupTrendingVenues: settings?.groupTrendingVenues ?? false
+  })
 
   const filteredNotifications =
     filter === 'unread'

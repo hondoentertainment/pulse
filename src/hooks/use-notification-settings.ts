@@ -6,6 +6,9 @@ export interface NotificationSettings {
   trendingVenues: boolean
   pulseReactions: boolean
   weeklyDigest: boolean
+  groupReactions: boolean
+  groupFriendPulses: boolean
+  groupTrendingVenues: boolean
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
@@ -13,7 +16,10 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   friendNearbyVenues: true,
   trendingVenues: true,
   pulseReactions: true,
-  weeklyDigest: false
+  weeklyDigest: false,
+  groupReactions: true,
+  groupFriendPulses: false,
+  groupTrendingVenues: false
 }
 
 export function useNotificationSettings() {
