@@ -1,32 +1,32 @@
 import { useState } from 'react'
 import { EnergyRating, ENERGY_CONFIG } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from '@phosphor-icons/react'
+import { X, Camera } from '@phosphor-icons/react'
 
 interface EnergySliderProps {
   value: EnergyRating
   onChange: (value: EnergyRating) => void
-  photos?: string[]
-  onRemovePhoto?: () => void
+  energyPhotos: Record<EnergyRating, string | null>
+  onAddPhoto: (energy: EnergyRating) => void
+  onRemovePhoto: (energy: EnergyRating) => void
 }
 
 const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
-export function EnergySlider({ value, onChange, photos = [], onRemovePhoto }: EnergySliderProps) {
+export function EnergySlider({ value, onChange, energyPhotos, onAddPhoto, onRemovePhoto }: EnergySliderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const currentIndex = energyLevels.indexOf(value)
   const currentConfig = ENERGY_CONFIG[value]
-
-  const hasPhotos = photos.length > 0
+  const currentPhoto = energyPhotos[value]
 
   return (
     <div className="w-full space-y-6">
       <div className="text-center space-y-3">
-        {hasPhotos && (
-          <div className="relative mx-auto w-32 h-32">
-            <AnimatePresence mode="wait">
+        <div className="relative mx-auto w-32 h-32">
+          <AnimatePresence mode="wait">
+            {currentPhoto ? (
               <motion.div
-                key={photos[0]}
+                key={`${value}-${currentPhoto}`}
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
@@ -38,23 +38,41 @@ export function EnergySlider({ value, onChange, photos = [], onRemovePhoto }: En
                 }}
               >
                 <img
-                  src={photos[0]}
-                  alt="Preview"
+                  src={currentPhoto}
+                  alt={`${currentConfig.label} energy`}
                   className="w-full h-full object-cover"
                 />
+                <button
+                  onClick={() => onRemovePhoto(value)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/80 hover:bg-black flex items-center justify-center transition-colors shadow-lg z-10"
+                  type="button"
+                >
+                  <X size={14} weight="bold" className="text-white" />
+                </button>
               </motion.div>
-            </AnimatePresence>
-            {onRemovePhoto && (
-              <button
-                onClick={onRemovePhoto}
-                className="absolute top-0 right-0 translate-x-2 -translate-y-2 w-8 h-8 rounded-full bg-black/80 hover:bg-black flex items-center justify-center transition-colors shadow-lg z-10"
+            ) : (
+              <motion.button
+                key={`${value}-empty`}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => onAddPhoto(value)}
+                className="w-32 h-32 rounded-2xl border-4 border-dashed shadow-lg flex flex-col items-center justify-center gap-2 hover:bg-secondary/50 transition-colors"
+                style={{ 
+                  borderColor: currentConfig.color,
+                  boxShadow: `0 8px 24px ${currentConfig.color}20`
+                }}
                 type="button"
               >
-                <X size={16} weight="bold" className="text-white" />
-              </button>
+                <Camera size={32} weight="fill" style={{ color: currentConfig.color, opacity: 0.6 }} />
+                <span className="text-xs font-medium" style={{ color: currentConfig.color }}>
+                  Add Photo
+                </span>
+              </motion.button>
             )}
-          </div>
-        )}
+          </AnimatePresence>
+        </div>
         <motion.div
           key={value}
           initial={{ y: 10, opacity: 0 }}
@@ -97,7 +115,7 @@ export function EnergySlider({ value, onChange, photos = [], onRemovePhoto }: En
             {energyLevels.map((level, idx) => (
               <motion.div
                 key={level}
-                className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs"
+                className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs relative"
                 style={{
                   borderColor: currentConfig.color,
                   backgroundColor: idx <= currentIndex ? currentConfig.color : 'transparent'
@@ -108,6 +126,9 @@ export function EnergySlider({ value, onChange, photos = [], onRemovePhoto }: En
                 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
+                {energyPhotos[level] && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full border border-background" style={{ backgroundColor: ENERGY_CONFIG[level].color }} />
+                )}
                 {idx <= currentIndex && (
                   <motion.div
                     initial={{ scale: 0 }}

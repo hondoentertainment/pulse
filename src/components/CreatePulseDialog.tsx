@@ -35,7 +35,12 @@ export function CreatePulseDialog({
 }: CreatePulseDialogProps) {
   const [energyRating, setEnergyRating] = useState<EnergyRating>('chill')
   const [caption, setCaption] = useState('')
-  const [photos, setPhotos] = useState<string[]>([])
+  const [energyPhotos, setEnergyPhotos] = useState<Record<EnergyRating, string | null>>({
+    dead: null,
+    chill: null,
+    buzzing: null,
+    electric: null
+  })
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -48,13 +53,20 @@ export function CreatePulseDialog({
   const handleSubmit = async () => {
     if (!venue) return
     
+    const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
+    
     setIsSubmitting(true)
     await onSubmit({ energyRating, caption, photos, video: video || undefined })
     setIsSubmitting(false)
     
     setEnergyRating('chill')
     setCaption('')
-    setPhotos([])
+    setEnergyPhotos({
+      dead: null,
+      chill: null,
+      buzzing: null,
+      electric: null
+    })
     setVideo(null)
     setVideoDuration(0)
     setOriginalSize(0)
@@ -63,20 +75,24 @@ export function CreatePulseDialog({
     onClose()
   }
 
-  const handlePhotoUpload = () => {
+  const handlePhotoUpload = (energy: EnergyRating) => {
     const mockPhotos = [
       'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80',
       'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
     ]
     const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    if (photos.length < 1) {
-      setPhotos([randomPhoto])
-    }
+    setEnergyPhotos(prev => ({
+      ...prev,
+      [energy]: randomPhoto
+    }))
   }
 
-  const removePhoto = () => {
-    setPhotos([])
+  const removePhoto = (energy: EnergyRating) => {
+    setEnergyPhotos(prev => ({
+      ...prev,
+      [energy]: null
+    }))
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,8 +208,9 @@ export function CreatePulseDialog({
             <EnergySlider 
               value={energyRating} 
               onChange={setEnergyRating}
-              photos={photos}
-              onRemovePhoto={photos.length > 0 ? removePhoto : undefined}
+              energyPhotos={energyPhotos}
+              onAddPhoto={handlePhotoUpload}
+              onRemovePhoto={removePhoto}
             />
           </div>
 
@@ -246,44 +263,31 @@ export function CreatePulseDialog({
             </div>
           )}
 
-          <div className="flex gap-2">
-            {!video && !isCompressing && (
-              <>
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                  id="video-upload"
-                />
-                <label htmlFor="video-upload" className="flex-1">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    type="button"
-                    asChild
-                  >
-                    <span>
-                      <VideoCamera size={20} weight="fill" className="mr-2" />
-                      Add Video (max 30s)
-                    </span>
-                  </Button>
-                </label>
-              </>
-            )}
-            {photos.length < 1 && !video && !isCompressing && (
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={handlePhotoUpload}
-                type="button"
-              >
-                <Camera size={20} weight="fill" className="mr-2" />
-                Add Photo
-              </Button>
-            )}
-          </div>
+          {!video && !isCompressing && (
+            <div className="flex gap-2">
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                onChange={handleVideoUpload}
+                className="hidden"
+                id="video-upload"
+              />
+              <label htmlFor="video-upload" className="flex-1">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  asChild
+                >
+                  <span>
+                    <VideoCamera size={20} weight="fill" className="mr-2" />
+                    Add Video (max 30s)
+                  </span>
+                </Button>
+              </label>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">
