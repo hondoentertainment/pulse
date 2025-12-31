@@ -4,8 +4,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
-import { Fire, Eye, Skull, Lightning } from '@phosphor-icons/react'
+import { Fire, Eye, Skull, Lightning, Play } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 
 interface PulseCardProps {
   pulse: PulseWithUser
@@ -14,6 +15,7 @@ interface PulseCardProps {
 
 export function PulseCard({ pulse, onReaction }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
   return (
     <motion.div
@@ -49,6 +51,27 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
             {energyConfig.emoji} {energyConfig.label}
           </Badge>
         </div>
+
+        {pulse.video && (
+          <div className="rounded-lg overflow-hidden bg-secondary aspect-video relative">
+            <video
+              src={pulse.video}
+              controls
+              className="w-full h-full object-cover"
+              onPlay={() => setIsVideoPlaying(true)}
+              onPause={() => setIsVideoPlaying(false)}
+            >
+              Your browser does not support the video tag.
+            </video>
+            {!isVideoPlaying && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                  <Play size={32} weight="fill" className="text-black ml-1" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {pulse.photos.length > 0 && (
           <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">

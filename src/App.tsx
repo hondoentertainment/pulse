@@ -135,6 +135,7 @@ function App() {
     energyRating: EnergyRating
     caption: string
     photos: string[]
+    video?: string
   }) => {
     if (!venueForPulse || !currentUser) return
 
@@ -146,6 +147,7 @@ function App() {
       userId: currentUser.id,
       venueId: venueForPulse.id,
       photos: data.photos,
+      video: data.video,
       energyRating: data.energyRating,
       caption: data.caption,
       createdAt: now.toISOString(),

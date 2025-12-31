@@ -27,11 +27,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Users can only create pulses for venues within simulated proximity; attempts to post from wrong location are blocked
 
 ### Create Pulse
-- **Functionality**: Quick post creation with optional photos/video, required energy rating, and optional caption
+- **Functionality**: Quick post creation with optional photos (up to 3), optional video (up to 30 seconds), required energy rating, and optional caption
 - **Purpose**: Captures the current vibe of a venue through multimedia and energy level
 - **Trigger**: User checks into a venue
-- **Progression**: Check-in verified → Energy slider (Dead/Chill/Buzzing/Electric) selected → Optional media uploaded → Optional caption added → Pulse posted → Appears in feeds
-- **Success criteria**: Pulses successfully save with all metadata, display in venue feeds, and contribute to energy score
+- **Progression**: Check-in verified → Energy slider (Dead/Chill/Buzzing/Electric) selected → Optional media uploaded (photos or video, mutually exclusive) → Optional caption added → Pulse posted → Appears in feeds
+- **Success criteria**: Pulses successfully save with all metadata, video duration validation enforces 30-second limit, display in venue feeds, and contribute to energy score
 
 ### Real-Time Pulse Score
 - **Functionality**: Calculates live energy score based on recent pulse volume, energy ratings, engagement, and velocity
@@ -76,6 +76,8 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Cooldown Active**: Display countdown timer and last pulse when user tries to post too soon at same venue
 - **No Nearby Venues**: Prompt user to add venue or show map of closest options within expanded radius
 - **Media Upload Failure**: Save pulse without media and show retry option; don't block posting
+- **Video Too Long**: Reject videos over 30 seconds with clear error message and duration display
+- **Video Format Unsupported**: Handle unsupported formats gracefully with error message
 - **Offline Mode**: Queue pulses locally and sync when connection restored; show offline indicator
 - **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
 - **Empty Venue**: Show empty state encouraging user to post first pulse
@@ -170,6 +172,7 @@ Key animation moments:
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
+  - Video Player: Native HTML5 video controls with play overlay icon, duration badge, and 16:9 aspect ratio display in feed
   
 - **States**:
   - Buttons: Rest (purple), Hover (lighter purple + glow), Active (darker + scale down), Disabled (gray 40% opacity)
@@ -179,7 +182,8 @@ Key animation moments:
 - **Icon Selection**:
   - MapPin (venue locations)
   - TrendingUp (trending indicators)
-  - Camera, Video (media upload)
+  - Camera, VideoCamera (media upload)
+  - Play (video playback indicators)
   - Lightning (electric energy)
   - Fire (hot/trending)
   - Users (friends/social)
