@@ -330,6 +330,204 @@ export const MOCK_VENUES: Venue[] = [
     },
     pulseScore: 0,
     category: 'Music Venue'
+  },
+  {
+    id: 'venue-31',
+    name: 'The George & Dragon Pub',
+    location: {
+      lat: 47.6497,
+      lng: -122.3499,
+      address: '206 N 36th St, Seattle, WA'
+    },
+    pulseScore: 52,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-32',
+    name: 'Norm\'s Eatery & Ale House',
+    location: {
+      lat: 47.6504,
+      lng: -122.3503,
+      address: '460 N 36th St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-33',
+    name: 'The Nectar Lounge',
+    location: {
+      lat: 47.6509,
+      lng: -122.3508,
+      address: '412 N 36th St, Seattle, WA'
+    },
+    pulseScore: 68,
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-34',
+    name: 'Fremont Brewing',
+    location: {
+      lat: 47.6514,
+      lng: -122.3541,
+      address: '1050 N 34th St, Seattle, WA'
+    },
+    pulseScore: 45,
+    category: 'Brewery'
+  },
+  {
+    id: 'venue-35',
+    name: 'The Barrel Thief',
+    location: {
+      lat: 47.6493,
+      lng: -122.3492,
+      address: '3417 Evanston Ave N, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-36',
+    name: 'Fremont Abbey Arts Center',
+    location: {
+      lat: 47.6515,
+      lng: -122.3518,
+      address: '4272 Fremont Ave N, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Music Venue'
+  },
+  {
+    id: 'venue-37',
+    name: 'Pacific Inn Pub',
+    location: {
+      lat: 47.6502,
+      lng: -122.3480,
+      address: '3501 Stone Way N, Seattle, WA'
+    },
+    pulseScore: 38,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-38',
+    name: 'Milstead & Co',
+    location: {
+      lat: 47.6494,
+      lng: -122.3491,
+      address: '770 N 34th St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-39',
+    name: 'Georgetown Liquor Company',
+    location: {
+      lat: 47.5414,
+      lng: -122.3222,
+      address: '5501 Airport Way S, Seattle, WA'
+    },
+    pulseScore: 62,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-40',
+    name: 'Jules Maes Saloon',
+    location: {
+      lat: 47.5441,
+      lng: -122.3216,
+      address: '5919 Airport Way S, Seattle, WA'
+    },
+    pulseScore: 48,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-41',
+    name: 'The Backdoor at Roxy\'s',
+    location: {
+      lat: 47.5428,
+      lng: -122.3224,
+      address: '462 S Horton St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Lounge'
+  },
+  {
+    id: 'venue-42',
+    name: 'Machine House Brewery',
+    location: {
+      lat: 47.5421,
+      lng: -122.3235,
+      address: '5840 Airport Way S, Seattle, WA'
+    },
+    pulseScore: 56,
+    category: 'Brewery'
+  },
+  {
+    id: 'venue-43',
+    name: 'Fantagraphics Bookstore & Gallery',
+    location: {
+      lat: 47.5431,
+      lng: -122.3229,
+      address: '1201 S Vale St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Gallery'
+  },
+  {
+    id: 'venue-44',
+    name: 'Nine Pound Hammer',
+    location: {
+      lat: 47.5436,
+      lng: -122.3218,
+      address: '6009 Airport Way S, Seattle, WA'
+    },
+    pulseScore: 70,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-45',
+    name: 'Locöl Barley & Vine',
+    location: {
+      lat: 47.5419,
+      lng: -122.3228,
+      address: '5821 Airport Way S, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-46',
+    name: 'El Porvenir',
+    location: {
+      lat: 47.5439,
+      lng: -122.3214,
+      address: '6013 12th Ave S, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-47',
+    name: 'All City Coffee',
+    location: {
+      lat: 47.5424,
+      lng: -122.3221,
+      address: '1205 S Vale St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-48',
+    name: 'Georgetown Music Studios',
+    location: {
+      lat: 47.5433,
+      lng: -122.3240,
+      address: '6200 13th Ave S, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Music Venue'
   }
 ]
 
