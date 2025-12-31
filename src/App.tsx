@@ -527,10 +527,13 @@ function App() {
                   <span className="text-2xl font-bold">{currentUser.username.slice(0, 2).toUpperCase()}</span>
                 </div>
               </div>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-2xl font-bold">{currentUser.username}</h2>
                 <p className="text-sm text-muted-foreground">
                   {pulses.filter((p) => p.userId === currentUser.id).length} pulses
+                </p>
+                <p className="text-xs text-muted-foreground font-mono mt-1">
+                  Member since {new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </p>
               </div>
             </div>
