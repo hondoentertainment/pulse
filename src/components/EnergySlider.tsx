@@ -1,40 +1,92 @@
 import { useState } from 'react'
 import { EnergyRating, ENERGY_CONFIG } from '@/lib/types'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 
 interface EnergySliderProps {
   value: EnergyRating
   onChange: (value: EnergyRating) => void
-  photoPreview?: string | null
+  photos?: string[]
 }
 
 const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
-export function EnergySlider({ value, onChange, photoPreview }: EnergySliderProps) {
+export function EnergySlider({ value, onChange, photos = [] }: EnergySliderProps) {
   const [isDragging, setIsDragging] = useState(false)
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const currentIndex = energyLevels.indexOf(value)
   const currentConfig = ENERGY_CONFIG[value]
+
+  const hasPhotos = photos.length > 0
+  const hasMultiplePhotos = photos.length > 1
+
+  const nextPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length)
+  }
+
+  const prevPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
+  }
 
   return (
     <div className="w-full space-y-6">
       <div className="text-center space-y-3">
-        {photoPreview ? (
-          <motion.div
-            key={photoPreview}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="mx-auto w-32 h-32 rounded-2xl overflow-hidden border-4 shadow-lg"
-            style={{ 
-              borderColor: currentConfig.color,
-              boxShadow: `0 8px 24px ${currentConfig.color}40`
-            }}
-          >
-            <img
-              src={photoPreview}
-              alt="Preview"
-              className="w-full h-full object-cover"
-            />
-          </motion.div>
+        {hasPhotos ? (
+          <div className="relative mx-auto w-32 h-32">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${photos[currentPhotoIndex]}-${currentPhotoIndex}`}
+                initial={{ scale: 0.9, opacity: 0, rotateY: -20 }}
+                animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                exit={{ scale: 0.9, opacity: 0, rotateY: 20 }}
+                transition={{ duration: 0.3 }}
+                className="w-32 h-32 rounded-2xl overflow-hidden border-4 shadow-lg"
+                style={{ 
+                  borderColor: currentConfig.color,
+                  boxShadow: `0 8px 24px ${currentConfig.color}40`
+                }}
+              >
+                <img
+                  src={photos[currentPhotoIndex]}
+                  alt={`Preview ${currentPhotoIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </motion.div>
+            </AnimatePresence>
+
+            {hasMultiplePhotos && (
+              <>
+                <button
+                  onClick={prevPhoto}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-8 h-8 rounded-full bg-black/70 hover:bg-black flex items-center justify-center transition-colors shadow-lg"
+                  type="button"
+                >
+                  <CaretLeft size={16} weight="bold" className="text-white" />
+                </button>
+                <button
+                  onClick={nextPhoto}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-8 h-8 rounded-full bg-black/70 hover:bg-black flex items-center justify-center transition-colors shadow-lg"
+                  type="button"
+                >
+                  <CaretRight size={16} weight="bold" className="text-white" />
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {photos.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPhotoIndex(idx)}
+                      className="w-1.5 h-1.5 rounded-full transition-all"
+                      style={{
+                        backgroundColor: idx === currentPhotoIndex ? currentConfig.color : 'rgba(255,255,255,0.5)',
+                        boxShadow: idx === currentPhotoIndex ? `0 0 8px ${currentConfig.color}` : 'none'
+                      }}
+                      type="button"
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         ) : (
           <motion.div
             key={value}
