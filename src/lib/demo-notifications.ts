@@ -87,6 +87,22 @@ export function generateDemoNotifications(
     notifications.push(notification)
   }
 
+  for (let i = 0; i < 3; i++) {
+    const minutesAgo = Math.floor(Math.random() * 30) + 2
+    const venueId = usableVenueIds[i % usableVenueIds.length]
+    
+    const trendingNotification: Notification = {
+      id: `demo-trending-${now - minutesAgo * 60000}-${i}`,
+      type: 'trending_venue',
+      userId: 'system',
+      venueId,
+      createdAt: new Date(now - minutesAgo * 60000).toISOString(),
+      read: Math.random() > 0.6
+    }
+
+    notifications.push(trendingNotification)
+  }
+
   return {
     notifications,
     pulses: [...existingPulses, ...newPulses]

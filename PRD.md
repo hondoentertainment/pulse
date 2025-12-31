@@ -62,11 +62,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
 
 ### In-App Notifications
-- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue alerts. Multiple reactions on the same pulse are intelligently grouped together.
-- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof while reducing notification clutter
-- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, or venue becomes trending
-- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
-- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status, multiple reactions on same pulse display as single grouped notification showing all reactors and reaction types
+- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue surge alerts. Multiple reactions on the same pulse are intelligently grouped together. Surge tracking monitors venues in real-time and generates notifications when nearby venues experience rapid score increases.
+- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof while reducing notification clutter. Surge notifications help users catch venues at peak energy moments.
+- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, or venue surges in popularity (score reaches 60+ with 20+ point increase within alert window)
+- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → Trending venue notifications show "Hot Right Now" badge with animated glow → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
+- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status, multiple reactions on same pulse display as single grouped notification showing all reactors and reaction types, surge detection runs every 30 seconds monitoring venue score changes, surge notifications only trigger for venues within 5 miles, maximum 3 surge alerts per venue per session, 15-minute cooldown between surge alerts for same venue
 
 ## Edge Case Handling
 
@@ -94,6 +94,10 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Empty Notifications**: Show friendly empty state explaining that notifications appear when friends are active
 - **Notification Settings Off**: Respect user preferences and don't generate notifications for disabled categories
 - **Grouped Notifications**: When multiple users react to the same pulse, combine into single notification showing up to 3 user avatars with overflow count
+- **Venue Surge Detection**: Continuously monitor venue scores; trigger trending notifications when score reaches threshold with significant increase
+- **Duplicate Surge Alerts**: Prevent spam by enforcing cooldown period between alerts for same venue; cap alerts per venue per session
+- **Out of Range Surge**: Only notify for surging venues within 5-mile radius of user location
+- **Surge Alert Disabled**: When trending venue notifications disabled in settings, venue surge tracker stops monitoring
 
 ## Design Direction
 

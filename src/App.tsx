@@ -30,6 +30,7 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
+import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
 import { generateDemoNotifications } from '@/lib/demo-notifications'
 import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -67,6 +68,12 @@ function App() {
   const userLocation = realtimeLocation 
     ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } 
     : simulatedLocation
+
+  useVenueSurgeTracker(
+    venues || [],
+    userLocation,
+    notificationSettings?.trendingVenues ?? true
+  )
 
   useEffect(() => {
     if (!realtimeLocation && !simulatedLocation) {
