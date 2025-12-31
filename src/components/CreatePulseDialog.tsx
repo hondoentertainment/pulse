@@ -70,13 +70,13 @@ export function CreatePulseDialog({
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
     ]
     const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    if (photos.length < 3) {
-      setPhotos([...photos, randomPhoto])
+    if (photos.length < 1) {
+      setPhotos([randomPhoto])
     }
   }
 
-  const removePhoto = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index))
+  const removePhoto = () => {
+    setPhotos([])
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +193,7 @@ export function CreatePulseDialog({
               value={energyRating} 
               onChange={setEnergyRating}
               photos={photos}
+              onRemovePhoto={photos.length > 0 ? removePhoto : undefined}
             />
           </div>
 
@@ -245,34 +246,6 @@ export function CreatePulseDialog({
             </div>
           )}
 
-          {photos.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Photos ({photos.length}/3)</label>
-              <div className="grid grid-cols-3 gap-2">
-                {photos.map((photo, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative rounded-lg overflow-hidden bg-secondary aspect-square"
-                  >
-                    <img
-                      src={photo}
-                      alt={`Upload ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() => removePhoto(index)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
-                    >
-                      <X size={12} weight="bold" className="text-white" />
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex gap-2">
             {!video && !isCompressing && (
               <>
@@ -299,7 +272,7 @@ export function CreatePulseDialog({
                 </label>
               </>
             )}
-            {photos.length < 3 && !video && !isCompressing && (
+            {photos.length < 1 && !video && !isCompressing && (
               <Button
                 variant="outline"
                 className="flex-1"
@@ -307,7 +280,7 @@ export function CreatePulseDialog({
                 type="button"
               >
                 <Camera size={20} weight="fill" className="mr-2" />
-                Add Photo {photos.length > 0 && `(${photos.length}/3)`}
+                Add Photo
               </Button>
             )}
           </div>
