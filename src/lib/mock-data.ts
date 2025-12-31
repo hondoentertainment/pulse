@@ -528,6 +528,226 @@ export const MOCK_VENUES: Venue[] = [
     },
     pulseScore: 0,
     category: 'Music Venue'
+  },
+  {
+    id: 'venue-49',
+    name: 'Starbucks Reserve Roastery',
+    location: {
+      lat: 47.6274,
+      lng: -122.3366,
+      address: '1124 Pike St, Seattle, WA'
+    },
+    pulseScore: 42,
+    category: 'Café'
+  },
+  {
+    id: 'venue-50',
+    name: 'Portage Bay Cafe',
+    location: {
+      lat: 47.6252,
+      lng: -122.3365,
+      address: '391 Terry Ave N, Seattle, WA'
+    },
+    pulseScore: 35,
+    category: 'Café'
+  },
+  {
+    id: 'venue-51',
+    name: 'Serious Pie',
+    location: {
+      lat: 47.6248,
+      lng: -122.3378,
+      address: '401 Westlake Ave N, Seattle, WA'
+    },
+    pulseScore: 58,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-52',
+    name: 'Brave Horse Tavern',
+    location: {
+      lat: 47.6242,
+      lng: -122.3364,
+      address: '310 Terry Ave N, Seattle, WA'
+    },
+    pulseScore: 65,
+    category: 'Brewery'
+  },
+  {
+    id: 'venue-53',
+    name: 'MOD Pizza',
+    location: {
+      lat: 47.6253,
+      lng: -122.3372,
+      address: '305 Harrison St, Seattle, WA'
+    },
+    pulseScore: 28,
+    category: 'Café'
+  },
+  {
+    id: 'venue-54',
+    name: 'Whole Foods Market',
+    location: {
+      lat: 47.6205,
+      lng: -122.3372,
+      address: '2210 Westlake Ave, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-55',
+    name: 'Chandler\'s Crabhouse',
+    location: {
+      lat: 47.6253,
+      lng: -122.3394,
+      address: '901 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 48,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-56',
+    name: 'RE:public',
+    location: {
+      lat: 47.6247,
+      lng: -122.3368,
+      address: '429 Westlake Ave N, Seattle, WA'
+    },
+    pulseScore: 72,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-57',
+    name: 'Caffé Ladro',
+    location: {
+      lat: 47.6235,
+      lng: -122.3358,
+      address: '452 Terry Ave N, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-58',
+    name: 'Cupcake Royale',
+    location: {
+      lat: 47.6228,
+      lng: -122.3381,
+      address: '108 Republican St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-59',
+    name: 'Dough Zone',
+    location: {
+      lat: 47.6251,
+      lng: -122.3370,
+      address: '760 Terry Ave N, Seattle, WA'
+    },
+    pulseScore: 44,
+    category: 'Café'
+  },
+  {
+    id: 'venue-60',
+    name: 'Barrio South Lake Union',
+    location: {
+      lat: 47.6239,
+      lng: -122.3375,
+      address: '925 Westlake Ave N, Seattle, WA'
+    },
+    pulseScore: 82,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-61',
+    name: 'Fogón Cocina Mexicana',
+    location: {
+      lat: 47.6243,
+      lng: -122.3369,
+      address: '600 Fairview Ave N, Seattle, WA'
+    },
+    pulseScore: 54,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-62',
+    name: 'Local 360',
+    location: {
+      lat: 47.6166,
+      lng: -122.3488,
+      address: '2234 1st Ave, Seattle, WA'
+    },
+    pulseScore: 67,
+    category: 'Brewery'
+  },
+  {
+    id: 'venue-63',
+    name: 'Café Yarmarka',
+    location: {
+      lat: 47.6232,
+      lng: -122.3352,
+      address: '166 S Chandler St, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-64',
+    name: 'Tat\'s Delicatessen',
+    location: {
+      lat: 47.6019,
+      lng: -122.3342,
+      address: '159 Yesler Way, Seattle, WA'
+    },
+    pulseScore: 38,
+    category: 'Café'
+  },
+  {
+    id: 'venue-65',
+    name: 'Mbar',
+    location: {
+      lat: 47.6245,
+      lng: -122.3373,
+      address: '160 Republican St, Seattle, WA'
+    },
+    pulseScore: 75,
+    category: 'Bar'
+  },
+  {
+    id: 'venue-66',
+    name: 'Stoup Brewing',
+    location: {
+      lat: 47.6668,
+      lng: -122.3835,
+      address: '1108 NW 52nd St, Seattle, WA'
+    },
+    pulseScore: 88,
+    category: 'Brewery'
+  },
+  {
+    id: 'venue-67',
+    name: 'Urban Coffee Lounge',
+    location: {
+      lat: 47.6218,
+      lng: -122.3369,
+      address: '1333 5th Ave, Seattle, WA'
+    },
+    pulseScore: 0,
+    category: 'Café'
+  },
+  {
+    id: 'venue-68',
+    name: 'Anchorhead Coffee',
+    location: {
+      lat: 47.6238,
+      lng: -122.3365,
+      address: '1600 7th Ave, Seattle, WA'
+    },
+    pulseScore: 32,
+    category: 'Café'
   }
 ]
 
