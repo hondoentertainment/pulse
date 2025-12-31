@@ -3,6 +3,7 @@ import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
+import { GPSIndicator } from '@/components/GPSIndicator'
 import { MapPin, NavigationArrow, Plus, Minus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -13,9 +14,11 @@ interface InteractiveMapProps {
   venues: Venue[]
   userLocation: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
+  isTracking?: boolean
+  locationAccuracy?: number
 }
 
-export function InteractiveMap({ venues, userLocation, onVenueClick }: InteractiveMapProps) {
+export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking = false, locationAccuracy }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [zoom, setZoom] = useState(1)
@@ -23,6 +26,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
   const [hoveredVenue, setHoveredVenue] = useState<Venue | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const [followUser, setFollowUser] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const [filters, setFilters] = useState<MapFiltersState>({
     energyLevels: [],
@@ -31,10 +35,16 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
   })
 
   useEffect(() => {
-    if (userLocation) {
+    if (userLocation && followUser) {
       setCenter(userLocation)
     }
-  }, [userLocation])
+  }, [userLocation, followUser])
+
+  useEffect(() => {
+    if (userLocation && !center) {
+      setCenter(userLocation)
+    }
+  }, [userLocation, center])
 
   const calculateDistance = (
     lat1: number,
@@ -222,6 +232,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true)
     setDragStart({ x: e.clientX, y: e.clientY })
+    setFollowUser(false)
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -247,22 +258,26 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
 
   const handleZoomIn = () => {
     setZoom((z) => Math.min(z * 1.5, 5))
+    setFollowUser(false)
   }
 
   const handleZoomOut = () => {
     setZoom((z) => Math.max(z / 1.5, 0.5))
+    setFollowUser(false)
   }
 
   const handleCenterOnUser = () => {
     if (userLocation) {
       setCenter(userLocation)
       setZoom(1)
+      setFollowUser(true)
     }
   }
 
   const handleVenueSelect = (venue: Venue) => {
     setCenter({ lat: venue.location.lat, lng: venue.location.lng })
     setZoom(2)
+    setFollowUser(false)
     setTimeout(() => {
       setHoveredVenue(venue)
       setTimeout(() => {
@@ -343,8 +358,28 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
 
         {userLocation && (() => {
           const userPos = latLngToPixel(userLocation.lat, userLocation.lng, center, zoom, dimensions)
+          const accuracyRadiusInMeters = locationAccuracy || 50
+          const metersToPixels = (meters: number) => {
+            const scale = 500000 * zoom
+            const metersPerDegree = 111320
+            return (meters / metersPerDegree) * scale
+          }
+          const accuracyRadius = metersToPixels(accuracyRadiusInMeters)
+          
           return (
             <g>
+              {locationAccuracy && (
+                <circle
+                  cx={userPos.x}
+                  cy={userPos.y}
+                  r={accuracyRadius}
+                  fill="oklch(0.75 0.18 195)"
+                  opacity={0.15}
+                  stroke="oklch(0.75 0.18 195)"
+                  strokeWidth={1}
+                  strokeOpacity={0.3}
+                />
+              )}
               <circle
                 cx={userPos.x}
                 cy={userPos.y}
@@ -458,7 +493,10 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
         <Button
           size="icon"
           variant="secondary"
-          className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
+          className={cn(
+            "bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg transition-colors",
+            followUser && "bg-accent text-accent-foreground hover:bg-accent/90"
+          )}
           onClick={handleCenterOnUser}
         >
           <NavigationArrow size={20} weight="fill" />
@@ -466,6 +504,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
       </div>
 
       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+        <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
           filters.maxDistance !== Infinity) && (

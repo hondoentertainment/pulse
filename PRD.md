@@ -20,11 +20,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Onboarding shown only once on first launch, permission state persists, users understand why location is needed, graceful handling of permission denial
 
 ### Location-Based Check-In
-- **Functionality**: Detects nearby venues using simulated GPS and allows users to check in only when physically present
-- **Purpose**: Ensures authenticity and prevents fake posts from people not actually at the venue
+- **Functionality**: Detects nearby venues using real-time GPS tracking with continuous position updates and allows users to check in only when physically present
+- **Purpose**: Ensures authenticity and prevents fake posts from people not actually at the venue, while providing live tracking of user movement on the map
 - **Trigger**: User opens app, grants location permission, and taps a nearby venue
-- **Progression**: App loads → Location detected → Nearby venues displayed → User selects venue → Geo-fence verified → Check-in confirmed
-- **Success criteria**: Users can only create pulses for venues within simulated proximity; attempts to post from wrong location are blocked
+- **Progression**: App loads → Real-time GPS tracking begins → Location continuously updates on map → Nearby venues displayed → User selects venue → Geo-fence verified with current position → Check-in confirmed
+- **Success criteria**: Users can only create pulses for venues within proximity to their current real-time location; attempts to post from wrong location are blocked; user position marker updates smoothly on map as they move; GPS accuracy indicator shows tracking status and precision level
 
 ### Create Pulse
 - **Functionality**: Quick post creation with optional photos (up to 3), optional video (up to 30 seconds), required energy rating with haptic feedback, and optional caption
@@ -41,11 +41,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Scores update in real-time, reflect current activity accurately, and auto-decay old pulses
 
 ### Venue Discovery
-- **Functionality**: Browse trending venues via interactive map view with energy heatmap, voice-enabled search, and voice-activated filters or list view with "Just Popped" surges
-- **Purpose**: Help users find where the energy is happening right now through visual heat mapping, hands-free voice search, and voice-controlled filtering by energy level and category
+- **Functionality**: Browse trending venues via interactive map view with energy heatmap, real-time GPS tracking with live position updates, voice-enabled search, and voice-activated filters or list view with "Just Popped" surges
+- **Purpose**: Help users find where the energy is happening right now through visual heat mapping, continuous location tracking, hands-free voice search, and voice-controlled filtering by energy level and category
 - **Trigger**: User opens Trending tab or Map view, activates voice search with microphone button, or activates voice filter in map filters panel
-- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens OR User opens filters panel → Taps voice filter button → Speaks filter command (e.g., "show electric venues" or "filter bars and clubs") → Voice command parsed → Filters applied automatically → Map updates to show filtered results
-- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover, voice recognition accurately transcribes venue names and filter commands, voice search works hands-free on supported browsers, voice filter understands natural language commands for energy levels (dead/chill/buzzing/electric) and categories, filters apply instantly after voice command completes, toast notifications confirm applied filters
+- **Progression**: View loaded → Venues sorted by score → Real-time GPS tracking begins → User position continuously updates on map with accuracy indicator → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens OR User opens filters panel → Taps voice filter button → Speaks filter command (e.g., "show electric venues" or "filter bars and clubs") → Voice command parsed → Filters applied automatically → Map updates to show filtered results → Re-center button with tracking indicator allows following user movement
+- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, user position updates continuously with pulsing location marker and accuracy circle, GPS tracking indicator shows live tracking status with accuracy measurement, manual pan/zoom disables auto-follow mode, re-center button re-enables position tracking, tooltips show venue details on hover, voice recognition accurately transcribes venue names and filter commands, voice search works hands-free on supported browsers, voice filter understands natural language commands for energy levels (dead/chill/buzzing/electric) and categories, filters apply instantly after voice command completes, toast notifications confirm applied filters
 
 ### Social Layer
 - **Functionality**: Follow friends, see their recent pulses, add emoji reactions

@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
 import { Plus, MapPin, ArrowLeft, Clock, Star } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation, SIMULATED_USER_LOCATION } from '@/lib/mock-data'
+import { cn } from '@/lib/utils'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -28,6 +29,7 @@ import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
+import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { generateDemoNotifications } from '@/lib/demo-notifications'
 import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -39,11 +41,14 @@ function App() {
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationName, setLocationName] = useState<string>('')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
+  const { location: realtimeLocation, error: locationError, isTracking } = useRealtimeLocation({
+    enableHighAccuracy: true,
+    distanceFilter: 0.001
+  })
 
   const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
     id: 'user-1',
@@ -57,15 +62,26 @@ function App() {
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
   const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
+  const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
+
+  const userLocation = realtimeLocation 
+    ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } 
+    : simulatedLocation
 
   useEffect(() => {
-    getSimulatedLocation().then((pos) => {
-      setUserLocation({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
+    if (!realtimeLocation && !simulatedLocation) {
+      getSimulatedLocation().then((pos) => {
+        setSimulatedLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        })
       })
-      
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
+    }
+  }, [realtimeLocation, simulatedLocation])
+
+  useEffect(() => {
+    if (userLocation) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json`)
         .then(res => res.json())
         .then(data => {
           const city = data.address?.city || data.address?.town || data.address?.village || 'New York'
@@ -75,8 +91,16 @@ function App() {
         .catch(() => {
           setLocationName('New York, NY')
         })
-    })
-  }, [])
+    }
+  }, [userLocation])
+
+  useEffect(() => {
+    if (locationError) {
+      toast.error('Location Error', {
+        description: locationError
+      })
+    }
+  }, [locationError])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -375,7 +399,10 @@ function App() {
             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
               {locationName && (
                 <div className="flex items-center gap-1.5">
-                  <MapPin size={12} weight="fill" className="text-accent" />
+                  <MapPin size={12} weight="fill" className={cn(
+                    "transition-colors",
+                    isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
+                  )} />
                   <span>{locationName}</span>
                 </div>
               )}
@@ -455,7 +482,10 @@ function App() {
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
             {locationName && (
               <div className="flex items-center gap-1.5">
-                <MapPin size={14} weight="fill" className="text-accent" />
+                <MapPin size={14} weight="fill" className={cn(
+                  "transition-colors",
+                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
+                )} />
                 <span>{locationName}</span>
               </div>
             )}
@@ -581,6 +611,8 @@ function App() {
                 venues={venues}
                 userLocation={userLocation}
                 onVenueClick={(venue) => setSelectedVenue(venue)}
+                isTracking={isTracking}
+                locationAccuracy={realtimeLocation?.accuracy}
               />
             </div>
           </motion.div>
