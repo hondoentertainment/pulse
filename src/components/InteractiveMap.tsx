@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
+import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapPin, NavigationArrow, Plus, Minus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -22,12 +23,77 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [filters, setFilters] = useState<MapFiltersState>({
+    energyLevels: [],
+    categories: [],
+    maxDistance: Infinity
+  })
 
   useEffect(() => {
     if (userLocation && !center) {
       setCenter(userLocation)
     }
   }, [userLocation, center])
+
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371e3
+    const φ1 = (lat1 * Math.PI) / 180
+    const φ2 = (lat2 * Math.PI) / 180
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c
+  }
+
+  const getEnergyLevelFromScore = (score: number): string => {
+    if (score >= 80) return 'electric'
+    if (score >= 60) return 'buzzing'
+    if (score >= 30) return 'chill'
+    return 'dead'
+  }
+
+  const filteredVenues = venues.filter((venue) => {
+    if (filters.energyLevels.length > 0) {
+      const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
+      if (!filters.energyLevels.includes(energyLevel as any)) {
+        return false
+      }
+    }
+
+    if (filters.categories.length > 0 && venue.category) {
+      if (!filters.categories.includes(venue.category)) {
+        return false
+      }
+    }
+
+    if (filters.maxDistance !== Infinity && userLocation) {
+      const distance = calculateDistance(
+        userLocation.lat,
+        userLocation.lng,
+        venue.location.lat,
+        venue.location.lng
+      )
+      if (distance > filters.maxDistance) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  const availableCategories = Array.from(
+    new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
+  ).sort()
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -53,8 +119,8 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
     canvas.height = dimensions.height * window.devicePixelRatio
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
 
-    drawHeatmap(ctx, venues, center, zoom, dimensions)
-  }, [venues, center, zoom, dimensions])
+    drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+  }, [filteredVenues, center, zoom, dimensions])
 
   const latLngToPixel = (
     lat: number,
@@ -221,7 +287,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
       />
 
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        {venues.map((venue) => {
+        {filteredVenues.map((venue) => {
           const pos = getVenuePixelPosition(venue)
           if (!pos || pos.x < 0 || pos.x > dimensions.width || pos.y < 0 || pos.y > dimensions.height)
             return null
@@ -288,7 +354,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
         })()}
       </svg>
 
-      {venues.map((venue) => {
+      {filteredVenues.map((venue) => {
         const pos = getVenuePixelPosition(venue)
         if (!pos || pos.x < 0 || pos.x > dimensions.width || pos.y < 0 || pos.y > dimensions.height)
           return null
@@ -346,6 +412,11 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
       </AnimatePresence>
 
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+        <MapFilters
+          filters={filters}
+          onChange={setFilters}
+          availableCategories={availableCategories}
+        />
         <Button
           size="icon"
           variant="secondary"
@@ -372,7 +443,17 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
         </Button>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-10">
+      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+        {(filters.energyLevels.length > 0 ||
+          filters.categories.length > 0 ||
+          filters.maxDistance !== Infinity) && (
+          <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}
+              {venues.length} venues
+            </p>
+          </Card>
+        )}
         <Card className="bg-card/95 backdrop-blur-sm border-border p-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
