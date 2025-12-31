@@ -64,6 +64,7 @@ function App() {
   const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
 
   const userLocation = realtimeLocation 
     ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } 
@@ -76,15 +77,20 @@ function App() {
   )
 
   useEffect(() => {
-    if (!realtimeLocation && !simulatedLocation) {
-      getSimulatedLocation().then((pos) => {
-        setSimulatedLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        })
-      })
+    if (!realtimeLocation && !simulatedLocation && !locationPermissionDenied) {
+      const timer = setTimeout(() => {
+        if (!realtimeLocation) {
+          getSimulatedLocation().then((pos) => {
+            setSimulatedLocation({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            })
+          })
+        }
+      }, 2000)
+      return () => clearTimeout(timer)
     }
-  }, [realtimeLocation, simulatedLocation])
+  }, [realtimeLocation, simulatedLocation, locationPermissionDenied])
 
   useEffect(() => {
     if (userLocation) {
@@ -103,9 +109,18 @@ function App() {
 
   useEffect(() => {
     if (locationError) {
-      toast.error('Location Error', {
-        description: locationError
-      })
+      if (locationError.includes('denied')) {
+        setLocationPermissionDenied(true)
+        toast.error('Location Access Needed', {
+          description: 'Grant location permission to see venues near you',
+          duration: 5000
+        })
+      } else {
+        toast.error('Location Error', {
+          description: locationError,
+          duration: 3000
+        })
+      }
     }
   }, [locationError])
 
@@ -411,6 +426,11 @@ function App() {
                     isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
                   )} />
                   <span>{locationName}</span>
+                  {realtimeLocation && (
+                    <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
+                      LIVE
+                    </span>
+                  )}
                 </div>
               )}
               <div className="flex items-center gap-1.5">
@@ -494,7 +514,25 @@ function App() {
                   isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
                 )} />
                 <span>{locationName}</span>
+                {realtimeLocation && (
+                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
+                    LIVE
+                  </span>
+                )}
               </div>
+            )}
+            {locationPermissionDenied && (
+              <button
+                onClick={() => {
+                  toast.info('Enable Location', {
+                    description: 'Please enable location in your browser settings and refresh the page'
+                  })
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
+              >
+                <MapPin size={14} weight="fill" />
+                <span>Enable Location</span>
+              </button>
             )}
             <div className="flex items-center gap-1.5">
               <Clock size={14} weight="fill" className="text-accent" />
