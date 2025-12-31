@@ -70,8 +70,8 @@ export function CreatePulseDialog({
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
     ]
     const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    if (photos.length < 3) {
-      setPhotos([...photos, randomPhoto])
+    if (photos.length < 1) {
+      setPhotos([randomPhoto])
     }
   }
 
@@ -243,29 +243,24 @@ export function CreatePulseDialog({
 
           {photos.length > 0 && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Photos</label>
-              <div className="grid grid-cols-3 gap-2">
-                {photos.map((photo, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-secondary"
-                  >
-                    <img
-                      src={photo}
-                      alt={`Upload ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() => removePhoto(idx)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
-                    >
-                      <X size={14} weight="bold" className="text-white" />
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
+              <label className="text-sm font-medium">Photo</label>
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative rounded-lg overflow-hidden bg-secondary aspect-video"
+              >
+                <img
+                  src={photos[0]}
+                  alt="Upload"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => removePhoto(0)}
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
+                >
+                  <X size={16} weight="bold" className="text-white" />
+                </button>
+              </motion.div>
             </div>
           )}
 
@@ -295,7 +290,7 @@ export function CreatePulseDialog({
                 </label>
               </>
             )}
-            {photos.length < 3 && !video && !isCompressing && (
+            {photos.length < 1 && !video && !isCompressing && (
               <Button
                 variant="outline"
                 className="flex-1"
@@ -303,7 +298,7 @@ export function CreatePulseDialog({
                 type="button"
               >
                 <Camera size={20} weight="fill" className="mr-2" />
-                Add Photo ({photos.length}/3)
+                Add Photo
               </Button>
             )}
           </div>
