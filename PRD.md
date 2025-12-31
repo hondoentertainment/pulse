@@ -47,6 +47,13 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Progression**: Friends feed opens → Recent friend pulses displayed → User taps emoji → Reaction saved → Count increments
 - **Success criteria**: Friend activity updates in real-time, reactions are instant, no comment threads
 
+### Settings & Preferences
+- **Functionality**: Configure app preferences including imperial/metric unit system toggle
+- **Purpose**: Personalize the app experience to match user's location and preferences
+- **Trigger**: User navigates to Settings tab in bottom navigation
+- **Progression**: Settings tab opened → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
+- **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
+
 ## Edge Case Handling
 
 - **Location Denied**: Show prominent permission prompt explaining why location is required; gracefully degrade to browse-only mode
@@ -57,6 +64,7 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
 - **Empty Venue**: Show empty state encouraging user to post first pulse
 - **Expired Pulses**: Visually fade older pulses and show "90 min ago" timestamp before removal
+- **Unit System Change**: All distance displays update instantly when user switches between imperial/metric in settings
 
 ## Design Direction
 
@@ -120,6 +128,7 @@ Key animation moments:
   - **Card**: Venue cards, pulse posts - dark variant with subtle borders and hover lift effect
   - **Button**: Primary actions (Create Pulse, Check In) - filled primary variant with glow effect
   - **Slider**: Energy rating selector - custom rail with gradient based on value
+  - **Switch**: Unit system toggle in settings - primary color when active
   - **Tabs**: Navigation between Trending/Map/Friends - indicator bar with cyan accent
   - **Avatar**: User profiles - circular with online status indicator
   - **Badge**: "Just Popped", "Electric", energy labels - neon variants with pulse animation
@@ -128,6 +137,7 @@ Key animation moments:
   - **Separator**: Section dividers - subtle gray with glow effect
   - **Progress**: Upload progress, cooldown timer - gradient fill with pulse
   - **Skeleton**: Loading states for cards - animated shimmer gradient
+  - **Label**: Form labels in settings - clear, readable typography
 
 - **Customizations**:
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
@@ -152,6 +162,9 @@ Key animation moments:
   - Prohibit (blocked/cooldown)
   - Eye (views/engagement)
   - Plus (create pulse FAB)
+  - Gear (settings navigation)
+  - Ruler (distance units setting)
+  - Info (informational messages)
 
 - **Spacing**:
   - Section padding: `p-6` (24px)
@@ -163,10 +176,11 @@ Key animation moments:
 
 - **Mobile**:
   - Single-column feed layout with full-width cards
-  - Bottom tab navigation (Trending, Map, Create, Friends, Profile)
+  - Bottom tab navigation (Trending, Map, Profile, Settings)
   - Full-screen create pulse flow as bottom sheet dialog
   - Floating action button for quick pulse creation
   - Touch-optimized 44px minimum tap targets
   - Sticky venue header on venue pages
   - Swipeable image carousels for multi-photo pulses
   - Pull-to-refresh on feeds
+  - Settings page with clear sections and toggle controls for unit preferences

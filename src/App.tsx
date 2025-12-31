@@ -6,6 +6,7 @@ import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
+import { Settings } from '@/components/Settings'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -20,16 +21,19 @@ import {
   canPostPulse,
   isWithinRadius
 } from '@/lib/pulse-engine'
+import { formatDistance } from '@/lib/units'
+import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'profile'>('trending')
+  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'profile' | 'settings'>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const { unitSystem } = useUnitPreference()
 
   const [currentUser] = useKV<User>('currentUser', {
     id: 'user-1',
@@ -215,7 +219,7 @@ function App() {
                       <span>•</span>
                       <div className="flex items-center gap-1">
                         <MapPin size={14} weight="fill" />
-                        <span>{distance < 0.1 ? `${Math.round(distance * 5280)}ft away` : `${distance.toFixed(1)}mi away`}</span>
+                        <span>{formatDistance(distance, unitSystem)} away</span>
                       </div>
                     </>
                   )}
@@ -433,6 +437,18 @@ function App() {
                 </p>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'settings' && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Settings />
           </motion.div>
         )}
       </AnimatePresence>

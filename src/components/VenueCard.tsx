@@ -4,6 +4,8 @@ import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
 import { MapPin, Clock } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatDistance } from '@/lib/units'
+import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -14,6 +16,8 @@ interface VenueCardProps {
 }
 
 export function VenueCard({ venue, distance, onClick, isJustPopped }: VenueCardProps) {
+  const { unitSystem } = useUnitPreference()
+  
   return (
     <motion.div
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
@@ -42,7 +46,7 @@ export function VenueCard({ venue, distance, onClick, isJustPopped }: VenueCardP
                 {distance !== undefined && (
                   <div className="flex items-center gap-1">
                     <MapPin size={12} weight="fill" />
-                    <span>{distance < 0.1 ? `${Math.round(distance * 5280)}ft` : `${distance.toFixed(1)}mi`}</span>
+                    <span>{formatDistance(distance, unitSystem)}</span>
                   </div>
                 )}
               </div>

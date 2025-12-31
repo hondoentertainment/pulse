@@ -1,16 +1,17 @@
-import { TrendUp, MapTrifold, User } from '@phosphor-icons/react'
+import { TrendUp, MapTrifold, User, Gear } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface BottomNavProps {
-  activeTab: 'trending' | 'map' | 'profile'
-  onTabChange: (tab: 'trending' | 'map' | 'profile') => void
+  activeTab: 'trending' | 'map' | 'profile' | 'settings'
+  onTabChange: (tab: 'trending' | 'map' | 'profile' | 'settings') => void
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: 'trending' as const, icon: TrendUp, label: 'Trending' },
     { id: 'map' as const, icon: MapTrifold, label: 'Map' },
-    { id: 'profile' as const, icon: User, label: 'Profile' }
+    { id: 'profile' as const, icon: User, label: 'Profile' },
+    { id: 'settings' as const, icon: Gear, label: 'Settings' }
   ]
 
   return (

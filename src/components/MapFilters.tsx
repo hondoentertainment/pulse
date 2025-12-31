@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Faders, X, Lightning, Fire, Coffee, MapPin } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useUnitPreference } from '@/hooks/use-unit-preference'
+import { convertMilesToKm } from '@/lib/units'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
 export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
@@ -30,16 +32,17 @@ const ENERGY_LEVELS = [
   { value: 'electric' as const, label: 'Electric', color: 'oklch(0.65 0.28 340)', emoji: '⚡' }
 ]
 
-const DISTANCE_OPTIONS = [
-  { value: 0.3, label: '0.3mi' },
-  { value: 0.6, label: '0.6mi' },
-  { value: 1.2, label: '1.2mi' },
-  { value: 3.1, label: '3mi' },
-  { value: Infinity, label: 'All' }
+const DISTANCE_OPTIONS_MILES = [
+  { value: 0.3, labelMi: '0.3mi', labelKm: '0.5km' },
+  { value: 0.6, labelMi: '0.6mi', labelKm: '1km' },
+  { value: 1.2, labelMi: '1.2mi', labelKm: '2km' },
+  { value: 3.1, labelMi: '3mi', labelKm: '5km' },
+  { value: Infinity, labelMi: 'All', labelKm: 'All' }
 ]
 
 export function MapFilters({ filters, onChange, availableCategories }: MapFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const { unitSystem } = useUnitPreference()
 
   const toggleEnergyLevel = (level: EnergyFilter) => {
     if (level === 'all') {
@@ -235,7 +238,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                         <h4 className="font-semibold text-sm">Distance</h4>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {DISTANCE_OPTIONS.map((option) => (
+                        {DISTANCE_OPTIONS_MILES.map((option) => (
                           <Button
                             key={option.value}
                             variant={filters.maxDistance === option.value ? 'default' : 'outline'}
@@ -243,7 +246,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                             onClick={() => setDistance(option.value)}
                             className="h-9"
                           >
-                            {option.label}
+                            {unitSystem === 'imperial' ? option.labelMi : option.labelKm}
                           </Button>
                         ))}
                       </div>
