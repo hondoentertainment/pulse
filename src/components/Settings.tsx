@@ -4,10 +4,12 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
-import { Ruler, Info } from '@phosphor-icons/react'
+import { useNotificationSettings } from '@/hooks/use-notification-settings'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple } from '@phosphor-icons/react'
 
 export function Settings() {
   const { unitSystem, setUnitSystem, isImperial } = useUnitPreference()
+  const { settings, updateSetting } = useNotificationSettings()
 
   const handleToggleUnits = (checked: boolean) => {
     setUnitSystem(checked ? 'metric' : 'imperial')
@@ -21,6 +23,115 @@ export function Settings() {
           Customize your Pulse experience
         </p>
       </div>
+
+      <Separator />
+
+      <Card className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-accent/10">
+            <Bell size={20} weight="bold" className="text-accent" />
+          </div>
+          <div className="flex-1 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold">
+                Notifications
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Control what updates you receive
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <UsersFour size={18} weight="fill" className="text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Friend Pulses</p>
+                    <p className="text-xs text-muted-foreground">When friends post new pulses</p>
+                  </div>
+                </div>
+                <Switch
+                  id="friend-pulses"
+                  checked={settings?.friendPulses ?? true}
+                  onCheckedChange={(checked) => updateSetting('friendPulses', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <UsersFour size={18} weight="fill" className="text-accent" />
+                  <div>
+                    <p className="text-sm font-medium">Friends Nearby</p>
+                    <p className="text-xs text-muted-foreground">When friends are at nearby venues</p>
+                  </div>
+                </div>
+                <Switch
+                  id="friend-nearby"
+                  checked={settings?.friendNearbyVenues ?? true}
+                  onCheckedChange={(checked) => updateSetting('friendNearbyVenues', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <TrendUp size={18} weight="fill" className="text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Trending Venues</p>
+                    <p className="text-xs text-muted-foreground">Hot spots popping off near you</p>
+                  </div>
+                </div>
+                <Switch
+                  id="trending-venues"
+                  checked={settings?.trendingVenues ?? true}
+                  onCheckedChange={(checked) => updateSetting('trendingVenues', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Sparkle size={18} weight="fill" className="text-accent" />
+                  <div>
+                    <p className="text-sm font-medium">Pulse Reactions</p>
+                    <p className="text-xs text-muted-foreground">When someone reacts to your pulses</p>
+                  </div>
+                </div>
+                <Switch
+                  id="pulse-reactions"
+                  checked={settings?.pulseReactions ?? true}
+                  onCheckedChange={(checked) => updateSetting('pulseReactions', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <EnvelopeSimple size={18} weight="fill" className="text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Weekly Digest</p>
+                    <p className="text-xs text-muted-foreground">Summary of top spots each week</p>
+                  </div>
+                </div>
+                <Switch
+                  id="weekly-digest"
+                  checked={settings?.weeklyDigest ?? false}
+                  onCheckedChange={(checked) => updateSetting('weeklyDigest', checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
+              <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Notification preferences are saved automatically. You can change them anytime.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Separator />
 
