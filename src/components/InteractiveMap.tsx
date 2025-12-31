@@ -31,10 +31,10 @@ export function InteractiveMap({ venues, userLocation, onVenueClick }: Interacti
   })
 
   useEffect(() => {
-    if (userLocation && !center) {
+    if (userLocation) {
       setCenter(userLocation)
     }
-  }, [userLocation, center])
+  }, [userLocation])
 
   const calculateDistance = (
     lat1: number,
