@@ -1,5 +1,23 @@
 import { Notification, Pulse, User, EnergyRating } from './types'
 
+const POPULAR_SEATTLE_VENUES = [
+  'venue-3',
+  'venue-8',
+  'venue-1',
+  'venue-6',
+  'venue-13',
+  'venue-60',
+  'venue-66',
+  'venue-56',
+  'venue-52',
+  'venue-88',
+  'venue-71',
+  'venue-79',
+  'venue-75',
+  'venue-69',
+  'venue-65'
+]
+
 export function generateDemoNotifications(
   currentUser: User,
   existingPulses: Pulse[],
@@ -21,10 +39,18 @@ export function generateDemoNotifications(
     null
   ]
 
+  const usableVenueIds = POPULAR_SEATTLE_VENUES.filter(id => venueIds.includes(id))
+  if (usableVenueIds.length === 0) {
+    return {
+      notifications,
+      pulses: existingPulses
+    }
+  }
+
   for (let i = 0; i < 5; i++) {
     const minutesAgo = Math.floor(Math.random() * 120) + 5
     const pulseId = `demo-pulse-${now - minutesAgo * 60000}-${i}`
-    const venueId = venueIds[Math.floor(Math.random() * venueIds.length)]
+    const venueId = usableVenueIds[i % usableVenueIds.length]
     const energyRating = energyRatings[Math.floor(Math.random() * energyRatings.length)]
     const caption = captions[Math.floor(Math.random() * captions.length)]
     
