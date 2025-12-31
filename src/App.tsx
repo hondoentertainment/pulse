@@ -8,6 +8,7 @@ import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { Settings } from '@/components/Settings'
 import { NotificationFeed } from '@/components/NotificationFeed'
+import { SplashScreen } from '@/components/SplashScreen'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +33,7 @@ import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile' | 'settings'>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -247,6 +249,14 @@ function App() {
       user: currentUser,
       venue: venues.find((v) => v.id === pulse.venueId)!
     })).filter(p => p.venue)
+  }
+
+  const handleSplashComplete = () => {
+    setHasCompletedOnboarding(true)
+  }
+
+  if (hasCompletedOnboarding === false) {
+    return <SplashScreen onComplete={handleSplashComplete} />
   }
 
   if (!venues || !currentUser || !pulses) {

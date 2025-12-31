@@ -12,6 +12,13 @@ Pulse shows users where the energy is happening right now by letting them check 
 
 ## Essential Features
 
+### Onboarding & Splash Screen
+- **Functionality**: First-launch experience with branded splash screen and location permission request
+- **Purpose**: Welcome new users, explain app value proposition, and request necessary permissions upfront
+- **Trigger**: User opens app for the first time (before main app loads)
+- **Progression**: Welcome screen with app logo and tagline → User taps "Get Started" → Location permission screen with benefits explanation → User grants or skips permission → Main app loads
+- **Success criteria**: Onboarding shown only once on first launch, permission state persists, users understand why location is needed, graceful handling of permission denial
+
 ### Location-Based Check-In
 - **Functionality**: Detects nearby venues using simulated GPS and allows users to check in only when physically present
 - **Purpose**: Ensures authenticity and prevents fake posts from people not actually at the venue
@@ -63,6 +70,8 @@ Pulse shows users where the energy is happening right now by letting them check 
 
 ## Edge Case Handling
 
+- **First Launch**: Show splash screen with welcome message and location permission request; persist onboarding completion state
+- **Location Permission Denied on Onboarding**: Allow user to skip and still access app in browse-only mode
 - **Location Denied**: Show prominent permission prompt explaining why location is required; gracefully degrade to browse-only mode
 - **Cooldown Active**: Display countdown timer and last pulse when user tries to post too soon at same venue
 - **No Nearby Venues**: Prompt user to add venue or show map of closest options within expanded radius
@@ -118,6 +127,10 @@ Typography should feel modern, technical, and slightly futuristic to match the r
 Animations should emphasize real-time activity and energy - use pulsing effects for live scores, smooth transitions for feed updates, and energetic springs for interactions.
 
 Key animation moments:
+- Splash screen logo scales in with spring physics and glows
+- Welcome screen elements fade in sequentially with staggered delays
+- Location permission screen slides in from right with smooth transition
+- Permission icon has continuous pulsing rings expanding outward
 - Pulse score numbers count up/down with spring physics when updated
 - Energy slider glows and pulses as user drags
 - New pulses slide in from bottom with scale + fade
@@ -150,6 +163,7 @@ Key animation moments:
   - **Label**: Form labels in settings - clear, readable typography
 
 - **Customizations**:
+  - Splash Screen: Custom two-step onboarding with animated logo, gradient backgrounds, pulsing location icon with expanding rings, and clear permission explanations
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
   - Pulse Score Display: Large animated number with pulsing glow ring
   - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, and energy legend
