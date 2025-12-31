@@ -631,6 +631,26 @@ function App() {
 
             <Separator />
 
+            {favoriteVenues.length > 0 && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Star size={20} weight="fill" className="text-accent" />
+                    <h3 className="text-lg font-bold">Favorite Venues</h3>
+                  </div>
+                  <Favorites
+                    favoriteVenues={favoriteVenues}
+                    userLocation={userLocation}
+                    unitSystem={unitSystem}
+                    onVenueClick={(venue) => setSelectedVenue(venue)}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                </div>
+
+                <Separator />
+              </>
+            )}
+
             <div className="space-y-3">
               <h3 className="text-lg font-bold">Your Pulses</h3>
               {getPulsesWithUsers()
