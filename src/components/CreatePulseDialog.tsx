@@ -189,7 +189,11 @@ export function CreatePulseDialog({
         <div className="space-y-6 py-4">
           <div>
             <label className="text-sm font-medium mb-3 block">How's the energy?</label>
-            <EnergySlider value={energyRating} onChange={setEnergyRating} />
+            <EnergySlider 
+              value={energyRating} 
+              onChange={setEnergyRating}
+              photoPreview={photos[0] || null}
+            />
           </div>
 
           {video && (

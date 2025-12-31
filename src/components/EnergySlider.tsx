@@ -5,26 +5,46 @@ import { motion } from 'framer-motion'
 interface EnergySliderProps {
   value: EnergyRating
   onChange: (value: EnergyRating) => void
+  photoPreview?: string | null
 }
 
 const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
-export function EnergySlider({ value, onChange }: EnergySliderProps) {
+export function EnergySlider({ value, onChange, photoPreview }: EnergySliderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const currentIndex = energyLevels.indexOf(value)
   const currentConfig = ENERGY_CONFIG[value]
 
   return (
     <div className="w-full space-y-6">
-      <div className="text-center space-y-2">
-        <motion.div
-          key={value}
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-6xl"
-        >
-          {currentConfig.emoji}
-        </motion.div>
+      <div className="text-center space-y-3">
+        {photoPreview ? (
+          <motion.div
+            key={photoPreview}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mx-auto w-32 h-32 rounded-2xl overflow-hidden border-4 shadow-lg"
+            style={{ 
+              borderColor: currentConfig.color,
+              boxShadow: `0 8px 24px ${currentConfig.color}40`
+            }}
+          >
+            <img
+              src={photoPreview}
+              alt="Preview"
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={value}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-6xl"
+          >
+            {currentConfig.emoji}
+          </motion.div>
+        )}
         <motion.div
           key={value}
           initial={{ y: 10, opacity: 0 }}
