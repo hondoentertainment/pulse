@@ -34,11 +34,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Scores update in real-time, reflect current activity accurately, and auto-decay old pulses
 
 ### Venue Discovery
-- **Functionality**: Browse trending venues via map view with energy heatmap or list view with "Just Popped" surges
-- **Purpose**: Help users find where the energy is happening right now
+- **Functionality**: Browse trending venues via interactive map view with energy heatmap or list view with "Just Popped" surges
+- **Purpose**: Help users find where the energy is happening right now through visual heat mapping
 - **Trigger**: User opens Trending tab or Map view
-- **Progression**: View loaded → Venues sorted by score → Map shows color-coded energy levels → User selects venue → Venue page opens
-- **Success criteria**: Trending list updates in real-time, map visualizes energy density, users can navigate to any venue
+- **Progression**: View loaded → Venues sorted by score → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue → Venue page opens
+- **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, tooltips show venue details on hover
 
 ### Social Layer
 - **Functionality**: Follow friends, see their recent pulses, add emoji reactions
@@ -104,7 +104,11 @@ Key animation moments:
 - Energy slider glows and pulses as user drags
 - New pulses slide in from bottom with scale + fade
 - Trending badges pulse gently every 2 seconds
-- Map pins bounce when tapped
+- Map heatmap gradients animate smoothly when venue energy changes
+- Map pins pulse continuously for active venues with score > 0
+- User location indicator pulses on map to show current position
+- Venue tooltip cards fade in/out on hover with smooth slide up
+- Map zoom and pan transitions use smooth easing curves
 - Venue cards lift on hover with subtle shadow expansion
 - Loading states use expanding ripple effect, not spinners
 - Success states use quick scale + glow burst
@@ -128,7 +132,7 @@ Key animation moments:
 - **Customizations**:
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
   - Pulse Score Display: Large animated number with pulsing glow ring
-  - Map Heatmap: Custom D3 visualization showing energy density with color intensity
+  - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   

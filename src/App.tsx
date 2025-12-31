@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
+import { InteractiveMap } from '@/components/InteractiveMap'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -384,18 +385,14 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6"
+            className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
           >
-            <div className="aspect-[4/3] bg-secondary rounded-xl overflow-hidden relative">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <MapPin size={48} className="mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground">Interactive map coming soon</p>
-                  <p className="text-sm text-muted-foreground">
-                    Heatmap visualization of live venue energy
-                  </p>
-                </div>
-              </div>
+            <div className="h-full">
+              <InteractiveMap
+                venues={venues}
+                userLocation={userLocation}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+              />
             </div>
           </motion.div>
         )}
