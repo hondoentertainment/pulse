@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, ArrowLeft } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation, SIMULATED_USER_LOCATION } from '@/lib/mock-data'
 import {
   calculatePulseScore,
@@ -25,6 +25,7 @@ import {
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
+import { useCurrentTime } from '@/hooks/use-current-time'
 import { generateDemoNotifications } from '@/lib/demo-notifications'
 import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -36,8 +37,10 @@ function App() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationName, setLocationName] = useState<string>('')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
+  const currentTime = useCurrentTime()
 
   const [currentUser] = useKV<User>('currentUser', {
     id: 'user-1',
@@ -57,6 +60,17 @@ function App() {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude
       })
+      
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
+        .then(res => res.json())
+        .then(data => {
+          const city = data.address?.city || data.address?.town || data.address?.village || 'New York'
+          const state = data.address?.state || 'NY'
+          setLocationName(`${city}, ${state}`)
+        })
+        .catch(() => {
+          setLocationName('New York, NY')
+        })
     })
   }, [])
 
@@ -262,7 +276,7 @@ function App() {
       <div className="min-h-screen bg-background pb-20">
         <Toaster position="top-center" theme="dark" />
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-          <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="max-w-2xl mx-auto px-4 py-3">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSelectedVenue(null)}
@@ -288,6 +302,18 @@ function App() {
                 </div>
               </div>
               <PulseScore score={selectedVenue.pulseScore} size="sm" showLabel={false} />
+            </div>
+            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
+              {locationName && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={12} weight="fill" className="text-accent" />
+                  <span>{locationName}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <Clock size={12} weight="fill" className="text-accent" />
+                <span>{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -357,6 +383,18 @@ function App() {
           <p className="text-sm text-muted-foreground mt-1">
             Where the energy is — right now
           </p>
+          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
+            {locationName && (
+              <div className="flex items-center gap-1.5">
+                <MapPin size={14} weight="fill" className="text-accent" />
+                <span>{locationName}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Clock size={14} weight="fill" className="text-accent" />
+              <span>{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
+          </div>
         </div>
       </div>
 
