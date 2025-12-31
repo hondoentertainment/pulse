@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { EnergyRating, ENERGY_CONFIG } from '@/lib/types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Camera } from '@phosphor-icons/react'
 
 interface EnergySliderProps {
   value: EnergyRating
@@ -13,64 +12,35 @@ interface EnergySliderProps {
 
 const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
-export function EnergySlider({ value, onChange, energyPhotos, onAddPhoto, onRemovePhoto }: EnergySliderProps) {
+export function EnergySlider({ value, onChange }: EnergySliderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const currentIndex = energyLevels.indexOf(value)
   const currentConfig = ENERGY_CONFIG[value]
-  const currentPhoto = energyPhotos[value]
 
   return (
     <div className="w-full space-y-6">
       <div className="text-center space-y-3">
         <div className="relative mx-auto w-32 h-32">
           <AnimatePresence mode="wait">
-            {currentPhoto ? (
-              <motion.div
-                key={`${value}-${currentPhoto}`}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="w-32 h-32 rounded-2xl overflow-hidden border-4 shadow-lg"
-                style={{ 
-                  borderColor: currentConfig.color,
-                  boxShadow: `0 8px 24px ${currentConfig.color}40`
-                }}
-              >
-                <img
-                  src={currentPhoto}
-                  alt={`${currentConfig.label} energy`}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => onRemovePhoto(value)}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/80 hover:bg-black flex items-center justify-center transition-colors shadow-lg z-10"
-                  type="button"
-                >
-                  <X size={14} weight="bold" className="text-white" />
-                </button>
-              </motion.div>
-            ) : (
-              <motion.button
-                key={`${value}-empty`}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                onClick={() => onAddPhoto(value)}
-                className="w-32 h-32 rounded-2xl border-4 border-dashed shadow-lg flex flex-col items-center justify-center gap-2 hover:bg-secondary/50 transition-colors"
-                style={{ 
-                  borderColor: currentConfig.color,
-                  boxShadow: `0 8px 24px ${currentConfig.color}20`
-                }}
-                type="button"
-              >
-                <Camera size={32} weight="fill" style={{ color: currentConfig.color, opacity: 0.6 }} />
-                <span className="text-xs font-medium" style={{ color: currentConfig.color }}>
-                  Add Photo
-                </span>
-              </motion.button>
-            )}
+            <motion.div
+              key={value}
+              initial={{ scale: 0.9, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              exit={{ scale: 0.9, opacity: 0, rotate: 10 }}
+              transition={{ 
+                type: 'spring',
+                stiffness: 300,
+                damping: 20
+              }}
+              className="w-32 h-32 rounded-2xl border-4 shadow-lg flex items-center justify-center"
+              style={{ 
+                borderColor: currentConfig.color,
+                boxShadow: `0 8px 24px ${currentConfig.color}40`,
+                backgroundColor: `${currentConfig.color}15`
+              }}
+            >
+              <span className="text-7xl">{currentConfig.emoji}</span>
+            </motion.div>
           </AnimatePresence>
         </div>
         <motion.div
@@ -126,9 +96,6 @@ export function EnergySlider({ value, onChange, energyPhotos, onAddPhoto, onRemo
                 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                {energyPhotos[level] && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full border border-background" style={{ backgroundColor: ENERGY_CONFIG[level].color }} />
-                )}
                 {idx <= currentIndex && (
                   <motion.div
                     initial={{ scale: 0 }}
