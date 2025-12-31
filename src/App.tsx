@@ -312,7 +312,7 @@ function App() {
               )}
               <div className="flex items-center gap-1.5">
                 <Clock size={12} weight="fill" className="text-accent" />
-                <span>{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               </div>
             </div>
           </div>
@@ -392,7 +392,7 @@ function App() {
             )}
             <div className="flex items-center gap-1.5">
               <Clock size={14} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
             </div>
           </div>
         </div>
