@@ -45,6 +45,25 @@ export interface PulseWithUser extends Pulse {
   venue: Venue
 }
 
+export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  userId: string
+  pulseId?: string
+  venueId?: string
+  reactionType?: 'fire' | 'eyes' | 'skull' | 'lightning'
+  createdAt: string
+  read: boolean
+}
+
+export interface NotificationWithData extends Notification {
+  user?: User
+  pulse?: PulseWithUser
+  venue?: Venue
+}
+
 export const ENERGY_CONFIG = {
   dead: {
     label: 'Dead',

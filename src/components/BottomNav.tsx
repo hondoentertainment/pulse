@@ -1,22 +1,24 @@
-import { TrendUp, MapTrifold, User, Gear } from '@phosphor-icons/react'
+import { TrendUp, MapTrifold, User, Gear, Bell } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface BottomNavProps {
-  activeTab: 'trending' | 'map' | 'profile' | 'settings'
-  onTabChange: (tab: 'trending' | 'map' | 'profile' | 'settings') => void
+  activeTab: 'trending' | 'map' | 'notifications' | 'profile' | 'settings'
+  onTabChange: (tab: 'trending' | 'map' | 'notifications' | 'profile' | 'settings') => void
+  unreadNotifications?: number
 }
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: BottomNavProps) {
   const tabs = [
     { id: 'trending' as const, icon: TrendUp, label: 'Trending' },
     { id: 'map' as const, icon: MapTrifold, label: 'Map' },
+    { id: 'notifications' as const, icon: Bell, label: 'Notifications', badge: unreadNotifications },
     { id: 'profile' as const, icon: User, label: 'Profile' },
     { id: 'settings' as const, icon: Gear, label: 'Settings' }
   ]
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-inset-bottom">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-4">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -36,15 +38,26 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               )}
               
               <div className="relative z-10 flex flex-col items-center gap-1">
-                <Icon
-                  size={24}
-                  weight={isActive ? 'fill' : 'regular'}
-                  className={`transition-colors ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                />
+                <div className="relative">
+                  <Icon
+                    size={24}
+                    weight={isActive ? 'fill' : 'regular'}
+                    className={`transition-colors ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  />
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold"
+                    >
+                      {tab.badge > 9 ? '9+' : tab.badge}
+                    </motion.div>
+                  )}
+                </div>
                 <span
-                  className={`text-xs font-medium transition-colors ${
+                  className={`text-[10px] font-medium transition-colors ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 >

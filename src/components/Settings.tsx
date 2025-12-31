@@ -3,11 +3,16 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple } from '@phosphor-icons/react'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask } from '@phosphor-icons/react'
 
-export function Settings() {
+interface SettingsProps {
+  onGenerateDemoNotifications?: () => void
+}
+
+export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
   const { unitSystem, setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
 
@@ -197,6 +202,37 @@ export function Settings() {
           </p>
         </div>
       </Card>
+
+      {onGenerateDemoNotifications && (
+        <>
+          <Separator />
+          <Card className="p-5 space-y-4 border-accent/50">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-accent/10">
+                <Flask size={20} weight="bold" className="text-accent" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold">
+                    Demo Mode
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Generate sample notifications to test the feed
+                  </p>
+                </div>
+                <Button
+                  onClick={onGenerateDemoNotifications}
+                  variant="outline"
+                  className="w-full border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Flask size={18} weight="bold" className="mr-2" />
+                  Generate Demo Notifications
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

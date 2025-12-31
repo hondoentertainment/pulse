@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Pulse, PulseWithUser, Venue, User, EnergyRating } from '@/lib/types'
+import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, NotificationWithData } from '@/lib/types'
 import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { Settings } from '@/components/Settings'
+import { NotificationFeed } from '@/components/NotificationFeed'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -23,17 +24,20 @@ import {
 } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
+import { useNotificationSettings } from '@/hooks/use-notification-settings'
+import { generateDemoNotifications } from '@/lib/demo-notifications'
 import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'profile' | 'settings'>('trending')
+  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile' | 'settings'>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const { unitSystem } = useUnitPreference()
+  const { settings: notificationSettings } = useNotificationSettings()
 
   const [currentUser] = useKV<User>('currentUser', {
     id: 'user-1',
@@ -45,6 +49,7 @@ function App() {
 
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
   const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
+  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
 
   useEffect(() => {
     getSimulatedLocation().then((pos) => {
@@ -142,6 +147,24 @@ function App() {
       if (!current) return [newPulse]
       return [newPulse, ...current]
     })
+
+    if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
+      const friendNotification: Notification = {
+        id: `notif-${Date.now()}`,
+        type: 'friend_pulse',
+        userId: currentUser.id,
+        pulseId: newPulse.id,
+        venueId: venueForPulse.id,
+        createdAt: now.toISOString(),
+        read: false
+      }
+
+      setNotifications((current) => {
+        if (!current) return [friendNotification]
+        return [friendNotification, ...current]
+      })
+    }
+
     toast.success('Pulse posted!', {
       description: `Your vibe at ${venueForPulse.name} is live`
     })
@@ -162,6 +185,45 @@ function App() {
           : p
       )
     })
+  }
+
+  const handleNotificationClick = (notification: NotificationWithData) => {
+    if (notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') {
+      if (notification.venue) {
+        setSelectedVenue(notification.venue)
+      }
+    } else if (notification.type === 'trending_venue' || notification.type === 'friend_nearby') {
+      if (notification.venue) {
+        setSelectedVenue(notification.venue)
+      }
+    }
+    setActiveTab('trending')
+  }
+
+  const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
+
+  const handleGenerateDemoNotifications = () => {
+    if (!currentUser || !venues) return
+    
+    const venueIds = venues.map((v) => v.id)
+    const { notifications: demoNotifications, pulses: updatedPulses } = generateDemoNotifications(
+      currentUser,
+      pulses || [],
+      venueIds
+    )
+
+    setNotifications((current) => {
+      if (!current) return demoNotifications
+      return [...demoNotifications, ...current]
+    })
+
+    setPulses(updatedPulses)
+
+    toast.success('Demo notifications generated!', {
+      description: `Added ${demoNotifications.length} sample notifications to your feed`
+    })
+
+    setActiveTab('notifications')
   }
 
   const getPulsesWithUsers = (): PulseWithUser[] => {
@@ -271,7 +333,7 @@ function App() {
           )}
         </div>
 
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
         <CreatePulseDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -395,6 +457,23 @@ function App() {
           </motion.div>
         )}
 
+        {activeTab === 'notifications' && (
+          <motion.div
+            key="notifications"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <NotificationFeed
+              currentUser={currentUser}
+              pulses={pulses}
+              venues={venues}
+              onNotificationClick={handleNotificationClick}
+            />
+          </motion.div>
+        )}
+
         {activeTab === 'profile' && (
           <motion.div
             key="profile"
@@ -448,12 +527,12 @@ function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <Settings />
+            <Settings onGenerateDemoNotifications={handleGenerateDemoNotifications} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
       <CreatePulseDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}

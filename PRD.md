@@ -48,11 +48,18 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Friend activity updates in real-time, reactions are instant, no comment threads
 
 ### Settings & Preferences
-- **Functionality**: Configure app preferences including imperial/metric unit system toggle
+- **Functionality**: Configure app preferences including imperial/metric unit system toggle and notification preferences
 - **Purpose**: Personalize the app experience to match user's location and preferences
 - **Trigger**: User navigates to Settings tab in bottom navigation
 - **Progression**: Settings tab opened → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
 - **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
+
+### In-App Notifications
+- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue alerts
+- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof
+- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, or venue becomes trending
+- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → User taps notification → Navigates to relevant venue or pulse → Notification marked as read
+- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status
 
 ## Edge Case Handling
 
@@ -65,6 +72,8 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Empty Venue**: Show empty state encouraging user to post first pulse
 - **Expired Pulses**: Visually fade older pulses and show "90 min ago" timestamp before removal
 - **Unit System Change**: All distance displays update instantly when user switches between imperial/metric in settings
+- **Empty Notifications**: Show friendly empty state explaining that notifications appear when friends are active
+- **Notification Settings Off**: Respect user preferences and don't generate notifications for disabled categories
 
 ## Design Direction
 
@@ -165,6 +174,8 @@ Key animation moments:
   - Gear (settings navigation)
   - Ruler (distance units setting)
   - Info (informational messages)
+  - Bell (notifications icon with badge)
+  - CheckCircle (mark notifications as read)
 
 - **Spacing**:
   - Section padding: `p-6` (24px)
@@ -176,7 +187,7 @@ Key animation moments:
 
 - **Mobile**:
   - Single-column feed layout with full-width cards
-  - Bottom tab navigation (Trending, Map, Profile, Settings)
+  - Bottom tab navigation (Trending, Map, Notifications, Profile, Settings) with unread badge on Notifications
   - Full-screen create pulse flow as bottom sheet dialog
   - Floating action button for quick pulse creation
   - Touch-optimized 44px minimum tap targets
@@ -184,3 +195,4 @@ Key animation moments:
   - Swipeable image carousels for multi-photo pulses
   - Pull-to-refresh on feeds
   - Settings page with clear sections and toggle controls for unit preferences
+  - Notification feed with filter toggle (All/Unread) and quick "Mark all read" action
