@@ -1,12 +1,13 @@
-import { NotificationWithData, ENERGY_CONFIG } from '@/lib/types'
+import { GroupedNotification, ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Avatar } from '@/components/ui/avatar'
 import { Lightning, Fire, Eye, Skull, MapPin, TrendUp } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface NotificationCardProps {
-  notification: NotificationWithData
+  notification: GroupedNotification
   onClick?: () => void
 }
 
@@ -64,13 +65,69 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
         )
 
       case 'pulse_reaction':
-        if (!notification.pulse || !notification.user || !notification.venue) return null
+        if (!notification.pulse || !notification.venue) return null
         const reactionIcons = {
           fire: Fire,
           eyes: Eye,
           skull: Skull,
           lightning: Lightning
         }
+        
+        const isGrouped = notification.count && notification.count > 1
+        
+        if (isGrouped && notification.groupedUsers && notification.groupedReactionTypes) {
+          const displayUsers = notification.groupedUsers.slice(0, 3)
+          const remainingCount = (notification.count || 0) - displayUsers.length
+          
+          return (
+            <div className="flex items-start gap-3">
+              <div className="flex -space-x-2 flex-shrink-0">
+                {displayUsers.map((user, index) => (
+                  <div
+                    key={user.id}
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border-2 border-card"
+                    style={{ zIndex: displayUsers.length - index }}
+                  >
+                    <span className="text-xs font-bold">
+                      {user.username.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm">
+                  <span className="font-semibold text-foreground">
+                    {displayUsers.map(u => u.username).join(', ')}
+                    {remainingCount > 0 && ` and ${remainingCount} other${remainingCount !== 1 ? 's' : ''}`}
+                  </span>
+                  {' '}reacted to your pulse at{' '}
+                  <span className="font-semibold text-foreground">{notification.venue.name}</span>
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1">
+                    {notification.groupedReactionTypes.map((reactionType) => {
+                      const ReactionIcon = reactionIcons[reactionType]
+                      return (
+                        <ReactionIcon
+                          key={reactionType}
+                          size={16}
+                          weight="fill"
+                          className="text-accent"
+                        />
+                      )
+                    })}
+                  </div>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground font-mono uppercase">
+                    {formatTimeAgo(notification.createdAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        
+        if (!notification.user) return null
         const ReactionIcon = notification.reactionType ? reactionIcons[notification.reactionType] : Fire
         return (
           <div className="flex items-start gap-3">

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Notification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
+import { Notification, GroupedNotification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
 import { NotificationCard } from '@/components/NotificationCard'
+import { groupNotifications } from '@/lib/notification-grouping'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -12,7 +13,7 @@ interface NotificationFeedProps {
   currentUser: User
   pulses: Pulse[]
   venues: Venue[]
-  onNotificationClick: (notification: NotificationWithData) => void
+  onNotificationClick: (notification: GroupedNotification) => void
 }
 
 export function NotificationFeed({
@@ -61,12 +62,14 @@ export function NotificationFeed({
     .filter((n): n is NotificationWithData => n !== null)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
+  const groupedNotifications = groupNotifications(enrichedNotifications)
+
   const filteredNotifications =
     filter === 'unread'
-      ? enrichedNotifications.filter((n) => !n.read)
-      : enrichedNotifications
+      ? groupedNotifications.filter((n) => !n.read)
+      : groupedNotifications
 
-  const unreadCount = enrichedNotifications.filter((n) => !n.read).length
+  const unreadCount = groupedNotifications.filter((n) => !n.read).length
 
   const markAsRead = (notificationId: string) => {
     setNotifications((current) => {
@@ -82,12 +85,20 @@ export function NotificationFeed({
     })
   }
 
-  const handleNotificationClick = (notification: NotificationWithData) => {
+  const handleNotificationClick = (notification: GroupedNotification) => {
     markAsRead(notification.id)
+    
+    if (notification.groupedUsers && notification.count && notification.count > 1) {
+      const relatedNotifications = (notifications || []).filter(
+        n => n.type === 'pulse_reaction' && n.pulseId === notification.pulseId
+      )
+      relatedNotifications.forEach(n => markAsRead(n.id))
+    }
+    
     onNotificationClick(notification)
   }
 
-  if (enrichedNotifications.length === 0) {
+  if (groupedNotifications.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="flex flex-col items-center justify-center py-16 space-y-4">

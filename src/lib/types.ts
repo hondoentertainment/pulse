@@ -64,6 +64,12 @@ export interface NotificationWithData extends Notification {
   venue?: Venue
 }
 
+export interface GroupedNotification extends NotificationWithData {
+  groupedUsers?: User[]
+  groupedReactionTypes?: ('fire' | 'eyes' | 'skull' | 'lightning')[]
+  count?: number
+}
+
 export const ENERGY_CONFIG = {
   dead: {
     label: 'Dead',

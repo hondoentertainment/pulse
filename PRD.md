@@ -55,11 +55,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
 
 ### In-App Notifications
-- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue alerts
-- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof
+- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue alerts. Multiple reactions on the same pulse are intelligently grouped together.
+- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof while reducing notification clutter
 - **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, or venue becomes trending
-- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → User taps notification → Navigates to relevant venue or pulse → Notification marked as read
-- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status
+- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
+- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status, multiple reactions on same pulse display as single grouped notification showing all reactors and reaction types
 
 ## Edge Case Handling
 
@@ -74,6 +74,7 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Unit System Change**: All distance displays update instantly when user switches between imperial/metric in settings
 - **Empty Notifications**: Show friendly empty state explaining that notifications appear when friends are active
 - **Notification Settings Off**: Respect user preferences and don't generate notifications for disabled categories
+- **Grouped Notifications**: When multiple users react to the same pulse, combine into single notification showing up to 3 user avatars with overflow count
 
 ## Design Direction
 
@@ -154,6 +155,7 @@ Key animation moments:
   - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
+  - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
   
 - **States**:
   - Buttons: Rest (purple), Hover (lighter purple + glow), Active (darker + scale down), Disabled (gray 40% opacity)

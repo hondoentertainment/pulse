@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, NotificationWithData } from '@/lib/types'
+import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, GroupedNotification } from '@/lib/types'
 import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
@@ -187,7 +187,7 @@ function App() {
     })
   }
 
-  const handleNotificationClick = (notification: NotificationWithData) => {
+  const handleNotificationClick = (notification: GroupedNotification) => {
     if (notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') {
       if (notification.venue) {
         setSelectedVenue(notification.venue)
