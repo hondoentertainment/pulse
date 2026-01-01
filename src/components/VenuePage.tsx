@@ -1,10 +1,11 @@
 import { Venue, PulseWithUser } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Card } from '@/components/ui/card'
 import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
-import { Plus, MapPin, ArrowLeft, Clock, Star } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { cn } from '@/lib/utils'
@@ -112,6 +113,87 @@ export function VenuePage({
         transition={{ duration: 0.3 }}
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
+        {(venue.location.address || venue.phone || venue.website || venue.hours) && (
+          <>
+            <Card className="p-4 space-y-4 bg-card border-border">
+              <h3 className="text-lg font-bold">Venue Details</h3>
+              
+              {venue.location.address && (
+                <div className="flex items-start gap-3">
+                  <MapPin size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Address</p>
+                    <p className="text-sm">{venue.location.address}</p>
+                  </div>
+                </div>
+              )}
+
+              {venue.phone && (
+                <div className="flex items-start gap-3">
+                  <Phone size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                    <a 
+                      href={`tel:${venue.phone}`} 
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {venue.phone}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {venue.website && (
+                <div className="flex items-start gap-3">
+                  <Globe size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Website</p>
+                    <a 
+                      href={venue.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {venue.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {venue.hours && (
+                <div className="flex items-start gap-3">
+                  <Clock size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Hours</p>
+                    <div className="space-y-1.5">
+                      {Object.entries(venue.hours).map(([day, hours]) => {
+                        const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+                        const isToday = day === currentDay
+                        return (
+                          <div 
+                            key={day} 
+                            className={cn(
+                              "flex justify-between text-sm",
+                              isToday && "font-bold text-accent"
+                            )}
+                          >
+                            <span className="capitalize">{day}</span>
+                            <span className={cn(
+                              hours === 'Closed' && "text-muted-foreground"
+                            )}>{hours}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            <Separator />
+          </>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold">Live Energy</h2>

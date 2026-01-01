@@ -25,6 +25,17 @@ export interface Venue {
   pulseScore: number
   lastPulseAt?: string
   category?: string
+  hours?: {
+    monday?: string
+    tuesday?: string
+    wednesday?: string
+    thursday?: string
+    friday?: string
+    saturday?: string
+    sunday?: string
+  }
+  phone?: string
+  website?: string
 }
 
 export interface Pulse {

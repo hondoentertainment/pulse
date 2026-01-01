@@ -10,7 +10,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '925 E Pike St, Seattle, WA'
     },
     pulseScore: 85,
-    category: 'Music Venue'
+    category: 'Music Venue',
+    hours: {
+      monday: 'Closed',
+      tuesday: 'Closed',
+      wednesday: '8:00 PM - 2:00 AM',
+      thursday: '8:00 PM - 2:00 AM',
+      friday: '8:00 PM - 2:00 AM',
+      saturday: '8:00 PM - 2:00 AM',
+      sunday: 'Closed'
+    },
+    phone: '(206) 709-9442',
+    website: 'https://neumos.com'
   },
   {
     id: 'venue-2',
@@ -21,7 +32,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '2200 2nd Ave, Seattle, WA'
     },
     pulseScore: 72,
-    category: 'Music Venue'
+    category: 'Music Venue',
+    hours: {
+      monday: 'Closed',
+      tuesday: '6:00 PM - 2:00 AM',
+      wednesday: '6:00 PM - 2:00 AM',
+      thursday: '6:00 PM - 2:00 AM',
+      friday: '6:00 PM - 2:00 AM',
+      saturday: '6:00 PM - 2:00 AM',
+      sunday: 'Closed'
+    },
+    phone: '(206) 441-4618',
+    website: 'https://thecrocodile.com'
   },
   {
     id: 'venue-3',
@@ -32,7 +54,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1426 Broadway, Seattle, WA'
     },
     pulseScore: 92,
-    category: 'Nightclub'
+    category: 'Nightclub',
+    hours: {
+      monday: 'Closed',
+      tuesday: 'Closed',
+      wednesday: 'Closed',
+      thursday: '9:00 PM - 3:00 AM',
+      friday: '9:00 PM - 4:00 AM',
+      saturday: '9:00 PM - 4:00 AM',
+      sunday: 'Closed'
+    },
+    phone: '(206) 200-7074',
+    website: 'https://qnightclub.com'
   },
   {
     id: 'venue-4',
@@ -54,7 +87,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '5828 Roosevelt Way NE, Seattle, WA'
     },
     pulseScore: 0,
-    category: 'Café'
+    category: 'Café',
+    hours: {
+      monday: '7:00 AM - 10:00 PM',
+      tuesday: '7:00 AM - 10:00 PM',
+      wednesday: '7:00 AM - 10:00 PM',
+      thursday: '7:00 AM - 10:00 PM',
+      friday: '7:00 AM - 11:00 PM',
+      saturday: '8:00 AM - 11:00 PM',
+      sunday: '8:00 AM - 10:00 PM'
+    },
+    phone: '(206) 523-5282',
+    website: 'https://caferacerseattle.com'
   },
   {
     id: 'venue-6',
@@ -65,7 +109,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1426 1st Ave, Seattle, WA'
     },
     pulseScore: 81,
-    category: 'Music Venue'
+    category: 'Music Venue',
+    hours: {
+      monday: 'Closed',
+      tuesday: 'Closed',
+      wednesday: '7:00 PM - 2:00 AM',
+      thursday: '7:00 PM - 2:00 AM',
+      friday: '7:00 PM - 2:00 AM',
+      saturday: '7:00 PM - 2:00 AM',
+      sunday: '7:00 PM - 2:00 AM'
+    },
+    phone: '(206) 628-3151',
+    website: 'https://showboxpresents.com'
   },
   {
     id: 'venue-7',
@@ -87,7 +142,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '2218 Western Ave, Seattle, WA'
     },
     pulseScore: 88,
-    category: 'Nightclub'
+    category: 'Nightclub',
+    hours: {
+      monday: 'Closed',
+      tuesday: 'Closed',
+      wednesday: 'Closed',
+      thursday: '10:00 PM - 3:00 AM',
+      friday: '10:00 PM - 4:00 AM',
+      saturday: '10:00 PM - 4:00 AM',
+      sunday: 'Closed'
+    },
+    phone: '(206) 223-0480',
+    website: 'https://foundationnightclub.com'
   },
   {
     id: 'venue-9',
@@ -142,7 +208,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1118 E Pike St, Seattle, WA'
     },
     pulseScore: 76,
-    category: 'Bar'
+    category: 'Bar',
+    hours: {
+      monday: '4:00 PM - 2:00 AM',
+      tuesday: '4:00 PM - 2:00 AM',
+      wednesday: '4:00 PM - 2:00 AM',
+      thursday: '4:00 PM - 2:00 AM',
+      friday: '4:00 PM - 2:00 AM',
+      saturday: '12:00 PM - 2:00 AM',
+      sunday: '12:00 PM - 2:00 AM'
+    },
+    phone: '(206) 325-6492',
+    website: 'https://unicornseattle.com'
   },
   {
     id: 'venue-14',
@@ -373,7 +450,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1050 N 34th St, Seattle, WA'
     },
     pulseScore: 45,
-    category: 'Brewery'
+    category: 'Brewery',
+    hours: {
+      monday: '11:00 AM - 9:00 PM',
+      tuesday: '11:00 AM - 9:00 PM',
+      wednesday: '11:00 AM - 9:00 PM',
+      thursday: '11:00 AM - 9:00 PM',
+      friday: '11:00 AM - 10:00 PM',
+      saturday: '11:00 AM - 10:00 PM',
+      sunday: '11:00 AM - 9:00 PM'
+    },
+    phone: '(206) 420-2407',
+    website: 'https://fremontbrewing.com'
   },
   {
     id: 'venue-35',
@@ -538,7 +626,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1124 Pike St, Seattle, WA'
     },
     pulseScore: 42,
-    category: 'Café'
+    category: 'Café',
+    hours: {
+      monday: '7:00 AM - 9:00 PM',
+      tuesday: '7:00 AM - 9:00 PM',
+      wednesday: '7:00 AM - 9:00 PM',
+      thursday: '7:00 AM - 9:00 PM',
+      friday: '7:00 AM - 10:00 PM',
+      saturday: '7:00 AM - 10:00 PM',
+      sunday: '7:00 AM - 9:00 PM'
+    },
+    phone: '(206) 624-0173',
+    website: 'https://starbucksreserve.com'
   },
   {
     id: 'venue-50',
@@ -659,7 +758,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '925 Westlake Ave N, Seattle, WA'
     },
     pulseScore: 82,
-    category: 'Bar'
+    category: 'Bar',
+    hours: {
+      monday: '4:00 PM - 12:00 AM',
+      tuesday: '4:00 PM - 12:00 AM',
+      wednesday: '4:00 PM - 12:00 AM',
+      thursday: '4:00 PM - 2:00 AM',
+      friday: '4:00 PM - 2:00 AM',
+      saturday: '11:00 AM - 2:00 AM',
+      sunday: '11:00 AM - 12:00 AM'
+    },
+    phone: '(206) 588-0065',
+    website: 'https://barriorestaurant.com'
   },
   {
     id: 'venue-61',
@@ -725,7 +835,18 @@ export const MOCK_VENUES: Venue[] = [
       address: '1108 NW 52nd St, Seattle, WA'
     },
     pulseScore: 88,
-    category: 'Brewery'
+    category: 'Brewery',
+    hours: {
+      monday: '3:00 PM - 9:00 PM',
+      tuesday: '3:00 PM - 9:00 PM',
+      wednesday: '3:00 PM - 9:00 PM',
+      thursday: '3:00 PM - 10:00 PM',
+      friday: '12:00 PM - 11:00 PM',
+      saturday: '12:00 PM - 11:00 PM',
+      sunday: '12:00 PM - 9:00 PM'
+    },
+    phone: '(206) 457-5524',
+    website: 'https://stoupbrewing.com'
   },
   {
     id: 'venue-67',
