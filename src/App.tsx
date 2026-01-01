@@ -38,7 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile'>('map')
+  const [activeTab, setActiveTab] = useState<'trending' | 'venues' | 'map' | 'notifications' | 'profile'>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
@@ -636,6 +636,47 @@ function App() {
 
             <div className="space-y-3">
               <h3 className="text-lg font-bold">All Venues</h3>
+              {sortedVenues.map((venue) => {
+                const distance = userLocation
+                  ? calculateDistance(
+                      userLocation.lat,
+                      userLocation.lng,
+                      venue.location.lat,
+                      venue.location.lng
+                    )
+                  : undefined
+                return (
+                  <VenueCard
+                    key={venue.id}
+                    venue={venue}
+                    distance={distance}
+                    onClick={() => setSelectedVenue(venue)}
+                    isFavorite={isFavorite(venue.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'venues' && (
+          <motion.div
+            key="venues"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="max-w-2xl mx-auto px-4 py-6 space-y-6"
+          >
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold">All Venues</h2>
+              <p className="text-sm text-muted-foreground">
+                Browse all venues sorted by distance
+              </p>
+            </div>
+
+            <div className="space-y-3">
               {sortedVenues.map((venue) => {
                 const distance = userLocation
                   ? calculateDistance(
