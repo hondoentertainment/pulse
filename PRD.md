@@ -82,9 +82,9 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 ### Settings & Preferences
 - **Functionality**: Configure app preferences including imperial/metric unit system toggle and notification preferences
 - **Purpose**: Personalize the app experience to match user's location and preferences
-- **Trigger**: User navigates to Settings tab in bottom navigation
-- **Progression**: Settings tab opened → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
-- **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
+- **Trigger**: User navigates to Profile tab in bottom navigation and scrolls to Settings section
+- **Progression**: Profile tab opened → User scrolls to Settings section at bottom → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
+- **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system, Settings section is accessible within Profile page
 
 ### Pulse Credibility & Trust Badges
 - **Functionality**: Weighted credibility system that increases the influence of trusted users' pulses on venue scores. Users earn trust badges displayed on their pulse cards based on venue check-in history and engagement patterns. No public scores or ranks — just ambient trust signals.
@@ -225,6 +225,7 @@ Key animation moments:
   - Score Breakdown Panel: Expandable info panel showing transparent score calculation breakdown (pulse count in last 90 mins, average energy level, recent score changes, last pulse time)
   - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, voice-enabled search with microphone button, voice-activated filters with natural language parsing, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
+  - Venue Page: Dedicated full-screen component with sticky header, back button, venue details, live energy score with breakdown, and chronological pulse feed
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
   - Impact Notification Card: Special animated notification when user's pulse moves venue across energy thresholds (Buzzing/Electric) with gradient background and "You Moved The Needle" badge
@@ -269,12 +270,14 @@ Key animation moments:
 
 - **Mobile**:
   - Single-column feed layout with full-width cards
-  - Bottom tab navigation (Trending, Map, Notifications, Profile, Settings) with unread badge on Notifications
+  - Bottom tab navigation (Trending, Map, Notifications, Profile) with unread badge on Notifications
   - Full-screen create pulse flow as bottom sheet dialog
   - Floating action button for quick pulse creation
   - Touch-optimized 44px minimum tap targets
-  - Sticky venue header on venue pages
+  - Dedicated venue page with sticky header showing venue name, category, distance, score, and favorite toggle
+  - Venue page displays live energy score with score breakdown panel and chronological pulse feed
   - Swipeable image carousels for multi-photo pulses
   - Pull-to-refresh on feeds
-  - Settings page with clear sections and toggle controls for unit preferences
+  - Settings section integrated within Profile page (no separate Settings tab)
+  - Profile page displays user info, favorite venues grid, user's pulses, and Settings section at bottom
   - Notification feed with filter toggle (All/Unread) and quick "Mark all read" action

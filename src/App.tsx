@@ -10,19 +10,17 @@ import { Settings } from '@/components/Settings'
 import { NotificationFeed } from '@/components/NotificationFeed'
 import { SplashScreen } from '@/components/SplashScreen'
 import { Favorites } from '@/components/Favorites'
-import { ScoreBreakdown } from '@/components/ScoreBreakdown'
+import { VenuePage } from '@/components/VenuePage'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, ArrowLeft, Clock, Star } from '@phosphor-icons/react'
-import { MOCK_VENUES, getSimulatedLocation, SIMULATED_USER_LOCATION } from '@/lib/mock-data'
+import { Plus, MapPin, Clock, Star, Gear } from '@phosphor-icons/react'
+import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import {
   calculatePulseScore,
   getVenuesByProximity,
-  formatTimeAgo,
   canPostPulse,
   isWithinRadius
 } from '@/lib/pulse-engine'
@@ -40,7 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile' | 'settings'>('map')
+  const [activeTab, setActiveTab] = useState<'trending' | 'map' | 'notifications' | 'profile'>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
@@ -485,115 +483,23 @@ function App() {
       : undefined
 
     return (
-      <div className="min-h-screen bg-background pb-20">
+      <>
         <Toaster position="top-center" theme="dark" />
-        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-          <div className="max-w-2xl mx-auto px-4 py-3">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSelectedVenue(null)}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <ArrowLeft size={24} />
-              </button>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold">{selectedVenue.name}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                  {selectedVenue.category && (
-                    <span className="font-mono uppercase">{selectedVenue.category}</span>
-                  )}
-                  {distance !== undefined && (
-                    <>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <MapPin size={14} weight="fill" />
-                        <span>{formatDistance(distance, unitSystem)} away</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleToggleFavorite(selectedVenue.id)}
-                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  <Star
-                    size={24}
-                    weight={isFavorite(selectedVenue.id) ? 'fill' : 'regular'}
-                    className={isFavorite(selectedVenue.id) ? 'text-accent' : 'text-muted-foreground'}
-                  />
-                </button>
-                <PulseScore score={selectedVenue.pulseScore} size="sm" showLabel={false} />
-              </div>
-            </div>
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
-              {locationName && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin size={12} weight="fill" className={cn(
-                    "transition-colors",
-                    isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
-                  )} />
-                  <span>{locationName}</span>
-                  {realtimeLocation && (
-                    <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
-                      LIVE
-                    </span>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center gap-1.5">
-                <Clock size={12} weight="fill" className="text-accent" />
-                <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">Live Energy</h2>
-              {selectedVenue.lastPulseAt && (
-                <p className="text-sm text-muted-foreground">
-                  Last pulse {formatTimeAgo(selectedVenue.lastPulseAt)}
-                </p>
-              )}
-            </div>
-            <Button
-              onClick={() => handleCreatePulse(selectedVenue.id)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus size={20} weight="bold" className="mr-2" />
-              Create Pulse
-            </Button>
-          </div>
-
-          <ScoreBreakdown venue={selectedVenue} pulses={venuePulses.map(p => ({ ...p }))} />
-
-          <Separator />
-
-          {venuePulses.length === 0 ? (
-            <div className="text-center py-12 space-y-3">
-              <p className="text-lg text-muted-foreground">No pulses yet</p>
-              <p className="text-sm text-muted-foreground">
-                Be the first to capture the vibe here
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {venuePulses.map((pulse) => (
-                <PulseCard
-                  key={pulse.id}
-                  pulse={pulse}
-                  allPulses={getPulsesWithUsers()}
-                  onReaction={(type) => handleReaction(pulse.id, type)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
+        <VenuePage
+          venue={selectedVenue}
+          venuePulses={venuePulses}
+          distance={distance}
+          unitSystem={unitSystem}
+          locationName={locationName}
+          currentTime={currentTime}
+          isTracking={isTracking}
+          hasRealtimeLocation={!!realtimeLocation}
+          isFavorite={isFavorite(selectedVenue.id)}
+          onBack={() => setSelectedVenue(null)}
+          onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
+          onReaction={handleReaction}
+          onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
+        />
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
         <CreatePulseDialog
           open={createDialogOpen}
@@ -601,7 +507,7 @@ function App() {
           venue={venueForPulse}
           onSubmit={handleSubmitPulse}
         />
-      </div>
+      </>
     )
   }
 
@@ -894,18 +800,16 @@ function App() {
                 </p>
               )}
             </div>
-          </motion.div>
-        )}
 
-        {activeTab === 'settings' && (
-          <motion.div
-            key="settings"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Settings onGenerateDemoNotifications={handleGenerateDemoNotifications} />
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Gear size={20} weight="fill" className="text-primary" />
+                <h3 className="text-lg font-bold">Settings</h3>
+              </div>
+              <Settings onGenerateDemoNotifications={handleGenerateDemoNotifications} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
