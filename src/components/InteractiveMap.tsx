@@ -319,37 +319,66 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           if (!pos || pos.x < 0 || pos.x > dimensions.width || pos.y < 0 || pos.y > dimensions.height)
             return null
 
+          const getEnergyColor = (score: number) => {
+            if (score >= 80) return 'oklch(0.65 0.28 340)'
+            if (score >= 60) return 'oklch(0.70 0.22 60)'
+            if (score >= 30) return 'oklch(0.60 0.15 150)'
+            return 'oklch(0.35 0.05 240)'
+          }
+
+          const markerSize = venue.pulseScore > 0 ? 12 * zoom : 8 * zoom
+          const isHighlighted = hoveredVenue?.id === venue.id
+          const isHighEnergy = venue.pulseScore >= 60
+
           return (
             <g key={venue.id}>
-              {venue.pulseScore > 0 && (
+              {isHighEnergy && (
                 <>
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={8 * zoom}
-                    fill="oklch(0.65 0.25 300)"
+                    r={markerSize * 3}
+                    fill={getEnergyColor(venue.pulseScore)}
+                    opacity={0.1}
                     className="animate-pulse-glow"
-                    opacity={0.6}
                   />
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={4 * zoom}
-                    fill="oklch(0.75 0.18 195)"
-                    stroke="oklch(0.98 0 0)"
-                    strokeWidth={1.5 * zoom}
+                    r={markerSize * 2}
+                    fill={getEnergyColor(venue.pulseScore)}
+                    opacity={0.2}
+                    className="animate-pulse"
                   />
                 </>
               )}
-              {venue.pulseScore === 0 && (
+              {venue.pulseScore > 0 && !isHighEnergy && (
                 <circle
                   cx={pos.x}
                   cy={pos.y}
-                  r={4 * zoom}
-                  fill="oklch(0.35 0 0)"
-                  stroke="oklch(0.65 0 0)"
-                  strokeWidth={1 * zoom}
-                  opacity={0.5}
+                  r={markerSize * 2}
+                  fill={getEnergyColor(venue.pulseScore)}
+                  opacity={0.15}
+                />
+              )}
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={markerSize}
+                fill={getEnergyColor(venue.pulseScore)}
+                stroke="oklch(0.98 0 0)"
+                strokeWidth={isHighlighted ? 3 : 2}
+                className="transition-all"
+                opacity={venue.pulseScore === 0 ? 0.5 : 1}
+                filter={isHighEnergy ? "drop-shadow(0 0 4px rgba(168, 85, 247, 0.6))" : undefined}
+              />
+              {venue.pulseScore > 0 && (
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={markerSize * 0.4}
+                  fill="oklch(0.98 0 0)"
+                  opacity={0.9}
                 />
               )}
             </g>
@@ -403,24 +432,62 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
       {filteredVenues.map((venue) => {
         const pos = getVenuePixelPosition(venue)
-        if (!pos || pos.x < 0 || pos.x > dimensions.width || pos.y < 0 || pos.y > dimensions.height)
+        if (!pos || pos.x < -50 || pos.x > dimensions.width + 50 || pos.y < -50 || pos.y > dimensions.height + 50)
           return null
 
+        const showLabel = zoom >= 1.2 || venue.pulseScore >= 70 || hoveredVenue?.id === venue.id
+        const isHovered = hoveredVenue?.id === venue.id
+
         return (
-          <button
+          <div
             key={venue.id}
-            className="absolute pointer-events-auto"
+            className="absolute pointer-events-none"
             style={{
               left: pos.x,
               top: pos.y,
               transform: 'translate(-50%, -50%)'
             }}
-            onMouseEnter={() => setHoveredVenue(venue)}
-            onMouseLeave={() => setHoveredVenue(null)}
-            onClick={() => onVenueClick(venue)}
           >
-            <div className="w-8 h-8" />
-          </button>
+            <button
+              className="pointer-events-auto relative z-20 cursor-pointer hover:scale-110 transition-transform"
+              onMouseEnter={() => setHoveredVenue(venue)}
+              onMouseLeave={() => setHoveredVenue(null)}
+              onClick={() => onVenueClick(venue)}
+            >
+              <div className="w-10 h-10" />
+            </button>
+            <AnimatePresence>
+              {showLabel && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: 5 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 5 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute top-full mt-3 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10"
+                >
+                  {isHovered && (
+                    <motion.div 
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gradient-to-t from-border to-transparent mb-0.5 origin-bottom" 
+                    />
+                  )}
+                  <div className={cn(
+                    "bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-lg transition-all",
+                    isHovered && "bg-card border-accent shadow-2xl scale-110",
+                    venue.pulseScore >= 70 && "border-accent/50"
+                  )}>
+                    <p className="text-xs font-bold">{venue.name}</p>
+                    {venue.category && (
+                      <p className="text-[10px] text-muted-foreground uppercase font-mono">
+                        {venue.category}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )
       })}
 
@@ -429,28 +496,63 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           const pos = getVenuePixelPosition(hoveredVenue)
           if (!pos) return null
 
+          const tooltipWidth = 240
+          const tooltipHeight = 100
+          const padding = 16
+
+          let left = pos.x
+          let top = pos.y - tooltipHeight - 20
+
+          if (left - tooltipWidth / 2 < padding) {
+            left = tooltipWidth / 2 + padding
+          } else if (left + tooltipWidth / 2 > dimensions.width - padding) {
+            left = dimensions.width - tooltipWidth / 2 - padding
+          }
+
+          if (top < padding) {
+            top = pos.y + 30
+          }
+
           return (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
               className="absolute pointer-events-none z-50"
               style={{
-                left: Math.min(Math.max(pos.x, 120), dimensions.width - 120),
-                top: Math.max(pos.y - 80, 10)
+                left,
+                top,
+                width: tooltipWidth,
+                transform: 'translateX(-50%)'
               }}
             >
-              <Card className="bg-card/95 backdrop-blur-sm border-border p-3 shadow-xl">
-                <div className="flex items-start gap-3 min-w-[200px]">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-sm">{hoveredVenue.name}</h3>
-                    {hoveredVenue.category && (
-                      <p className="text-xs text-muted-foreground uppercase font-mono mt-1">
-                        {hoveredVenue.category}
-                      </p>
+              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl">
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm truncate">{hoveredVenue.name}</h3>
+                      {hoveredVenue.category && (
+                        <p className="text-xs text-muted-foreground uppercase font-mono mt-0.5">
+                          {hoveredVenue.category}
+                        </p>
+                      )}
+                    </div>
+                    <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
+                  </div>
+                  
+                  {hoveredVenue.location.address && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {hoveredVenue.location.address}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Click to view details</span>
+                    {hoveredVenue.pulseScore > 0 && (
+                      <span className="text-accent font-bold">LIVE</span>
                     )}
                   </div>
-                  <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
                 </div>
               </Card>
             </motion.div>
@@ -469,27 +571,40 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       </div>
 
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+        <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <MapPin size={16} weight="fill" className="text-primary" />
+            <div className="text-xs">
+              <span className="font-bold text-foreground">{filteredVenues.length}</span>
+              <span className="text-muted-foreground ml-1">
+                {filteredVenues.length === 1 ? 'venue' : 'venues'}
+              </span>
+            </div>
+          </div>
+        </Card>
         <MapFilters
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
         />
-        <Button
-          size="icon"
-          variant="secondary"
-          className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
-          onClick={handleZoomIn}
-        >
-          <Plus size={20} weight="bold" />
-        </Button>
-        <Button
-          size="icon"
-          variant="secondary"
-          className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
-          onClick={handleZoomOut}
-        >
-          <Minus size={20} weight="bold" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
+            onClick={handleZoomIn}
+          >
+            <Plus size={20} weight="bold" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
+            onClick={handleZoomOut}
+          >
+            <Minus size={20} weight="bold" />
+          </Button>
+        </div>
         <Button
           size="icon"
           variant="secondary"
@@ -516,22 +631,25 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           </Card>
         )}
         <Card className="bg-card/95 backdrop-blur-sm border-border p-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0_0)]" />
-              <span className="text-xs text-muted-foreground">Dead</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)]" />
-              <span className="text-xs text-muted-foreground">Chill</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)]" />
-              <span className="text-xs text-muted-foreground">Buzzing</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)]" />
-              <span className="text-xs text-muted-foreground">Electric</span>
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-foreground mb-2">Energy Levels</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
+                <span className="text-xs text-muted-foreground">Dead</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)] border border-foreground/20" />
+                <span className="text-xs text-muted-foreground">Chill</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)] border border-foreground/20 shadow-sm" />
+                <span className="text-xs text-muted-foreground">Buzzing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)] border border-foreground/20 shadow-sm animate-pulse-glow" />
+                <span className="text-xs text-muted-foreground">Electric</span>
+              </div>
             </div>
           </div>
         </Card>
