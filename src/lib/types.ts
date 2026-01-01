@@ -6,6 +6,7 @@ export interface User {
   profilePhoto?: string
   friends: string[]
   favoriteVenues?: string[]
+  followedVenues?: string[]
   createdAt: string
 }
 
@@ -39,6 +40,8 @@ export interface Pulse {
     lightning: number
   }
   views: number
+  isPending?: boolean
+  uploadError?: boolean
 }
 
 export interface PulseWithUser extends Pulse {
@@ -46,7 +49,7 @@ export interface PulseWithUser extends Pulse {
   venue: Venue
 }
 
-export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue'
+export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact'
 
 export interface Notification {
   id: string
@@ -55,6 +58,7 @@ export interface Notification {
   pulseId?: string
   venueId?: string
   reactionType?: 'fire' | 'eyes' | 'skull' | 'lightning'
+  energyThreshold?: 'buzzing' | 'electric'
   createdAt: string
   read: boolean
 }

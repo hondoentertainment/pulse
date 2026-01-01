@@ -244,6 +244,40 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           </div>
         )
 
+      case 'impact':
+        if (!notification.venue || !notification.energyThreshold) return null
+        const thresholdEmoji = notification.energyThreshold === 'electric' ? '⚡' : '🔥'
+        const thresholdLabel = notification.energyThreshold === 'electric' ? 'Electric' : 'Buzzing'
+        const thresholdColor = notification.energyThreshold === 'electric' 
+          ? 'from-energy-electric to-primary' 
+          : 'from-energy-buzzing to-accent'
+        
+        return (
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${thresholdColor} flex items-center justify-center flex-shrink-0 animate-pulse-glow`}>
+              <Lightning size={20} weight="fill" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm">
+                <span className="font-semibold text-accent">Your pulse</span>
+                {' '}pushed{' '}
+                <span className="font-semibold text-foreground">{notification.venue.name}</span>
+                {' '}into{' '}
+                <span className="font-semibold text-accent">{thresholdLabel}</span>
+                {' '}{thresholdEmoji}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className="bg-accent text-accent-foreground text-xs px-2 py-0.5">
+                  You Moved The Needle
+                </Badge>
+                <span className="text-xs text-muted-foreground font-mono uppercase">
+                  {formatTimeAgo(notification.createdAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+
       default:
         return null
     }

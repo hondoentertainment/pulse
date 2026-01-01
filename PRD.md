@@ -2,6 +2,17 @@
 
 Pulse shows users where the energy is happening right now by letting them check into venues and share the vibe through quick posts with photos, videos, and energy ratings.
 
+## Pulse Core Loop
+
+The fundamental habit loop that drives engagement and retention:
+
+1. **User opens app** → sees nearby venues surging right now
+2. **User goes to venue** → checks in → posts a pulse with energy rating
+3. **Pulse increases venue score** → triggers friend notifications + surge alerts
+4. **Friends discover venue** → repeat cycle
+
+This loop creates a self-reinforcing network effect where each pulse contributes to discovery, driving more users to venues, generating more pulses, and amplifying the signal of where the energy is happening right now.
+
 **Experience Qualities**:
 1. **Immediate** - Every interaction should feel instant, with real-time updates showing what's happening now, not five minutes ago
 2. **Visceral** - Users should feel the energy of a place through bold visuals, pulsing animations, and high-energy design that mirrors the excitement they're tracking
@@ -34,11 +45,18 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Pulses successfully save with all metadata, video duration validation enforces 30-second limit, display in venue feeds, contribute to energy score, and haptic feedback triggers appropriately on supported devices (light vibration for Dead/Chill, medium for Buzzing, heavy for Electric)
 
 ### Real-Time Pulse Score
-- **Functionality**: Calculates live energy score based on recent pulse volume, energy ratings, engagement, and velocity
-- **Purpose**: Shows which venues are hot right now, not yesterday
+- **Functionality**: Calculates live energy score based on recent pulse volume, energy ratings, engagement, and velocity with transparent explainability
+- **Purpose**: Shows which venues are hot right now, not yesterday, with trust-building transparency
 - **Trigger**: New pulse posted or engagement added
-- **Progression**: Pulse created → Score algorithm runs → Weighted calculation (recency + energy rating + engagement) → Score updated → UI reflects new score → Old pulses decay after 90 minutes
-- **Success criteria**: Scores update in real-time, reflect current activity accurately, and auto-decay old pulses
+- **Progression**: Pulse created → Score algorithm runs → Weighted calculation (recency + energy rating + engagement) → Score updated → UI reflects new score → Old pulses decay after 90 minutes → User taps "Why this score?" → Expandable panel shows breakdown
+- **Success criteria**: Scores update in real-time, reflect current activity accurately, auto-decay old pulses, and transparent breakdown builds trust without exposing gaming vulnerabilities
+
+### Score Transparency Panel
+- **Functionality**: Optional expandable panel on venue pages showing score calculation breakdown in simple, read-only format
+- **Purpose**: Build trust in the energy score without creating gamification or exposing the full algorithm
+- **Trigger**: User taps "Why this score?" link below the main energy score display
+- **Progression**: Venue page loaded → User sees energy score → Taps info icon or "Why?" text → Panel expands → Shows: pulse count in last 90 mins, average energy level, recent score change (+/- points in last 10 min), time of last pulse → User taps to collapse
+- **Success criteria**: Panel displays clear, non-technical explanations; doesn't show individual weights or formula details; updates in real-time as score changes; reinforces authenticity without enabling gaming
 
 ### Venue Discovery
 - **Functionality**: Browse trending venues via interactive map view with energy heatmap, real-time GPS tracking with live position updates, voice-enabled search, and voice-activated filters or list view with "Just Popped" surges
@@ -48,11 +66,18 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, user position updates continuously with pulsing location marker and accuracy circle, GPS tracking indicator shows live tracking status with accuracy measurement, manual pan/zoom disables auto-follow mode, re-center button re-enables position tracking, tooltips show venue details on hover, voice recognition accurately transcribes venue names and filter commands, voice search works hands-free on supported browsers, voice filter understands natural language commands for energy levels (dead/chill/buzzing/electric) and categories, filters apply instantly after voice command completes, toast notifications confirm applied filters
 
 ### Social Layer
-- **Functionality**: Follow friends, see their recent pulses, add emoji reactions
-- **Purpose**: Adds social proof and helps users discover venues through trusted connections
-- **Trigger**: User navigates to Friends feed or reacts to a pulse
-- **Progression**: Friends feed opens → Recent friend pulses displayed → User taps emoji → Reaction saved → Count increments
-- **Success criteria**: Friend activity updates in real-time, reactions are instant, no comment threads
+- **Functionality**: Follow friends and venues, see recent pulses from both, add emoji reactions
+- **Purpose**: Adds social proof through friends and allows solo users to follow venues they care about for sustained engagement
+- **Trigger**: User navigates to Friends feed, Followed Venues tab, or reacts to a pulse
+- **Progression**: Social feed opens → Toggle between "Friends" and "My Spots" → Recent pulses displayed from followed users or venues → User taps emoji → Reaction saved → Count increments
+- **Success criteria**: Friend and venue activity updates in real-time, reactions are instant, no comment threads, venue following creates sustained engagement even without active friend network
+
+### Venue Following
+- **Functionality**: Users can follow up to 10 favorite venues to create a personalized feed of activity at places they care about
+- **Purpose**: Keeps users engaged even without an active friend network; allows discovery without social pressure
+- **Trigger**: User stars a venue on venue page or from trending list
+- **Progression**: Venue page opened → User taps star icon → Venue added to followed list → New tab "My Spots" appears in navigation → Feed shows chronological pulses from all followed venues → User can unfollow to remove
+- **Success criteria**: Users can follow/unfollow venues easily, followed venue feed updates in real-time, limit of 10 venues prevents list bloat, provides engagement path for solo users
 
 ### Settings & Preferences
 - **Functionality**: Configure app preferences including imperial/metric unit system toggle and notification preferences
@@ -62,11 +87,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
 
 ### In-App Notifications
-- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, and trending venue surge alerts. Multiple reactions on the same pulse are intelligently grouped together. Surge tracking monitors venues in real-time and generates notifications when nearby venues experience rapid score increases.
-- **Purpose**: Keep users connected to their friends' activity and discover trending venues through social proof while reducing notification clutter. Surge notifications help users catch venues at peak energy moments.
-- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, or venue surges in popularity (score reaches 60+ with 20+ point increase within alert window)
-- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → Trending venue notifications show "Hot Right Now" badge with animated glow → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
-- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status, multiple reactions on same pulse display as single grouped notification showing all reactors and reaction types, surge detection runs every 30 seconds monitoring venue score changes, surge notifications only trigger for venues within 5 miles, maximum 3 surge alerts per venue per session, 15-minute cooldown between surge alerts for same venue
+- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, trending venue surge alerts, and impact notifications when user's pulse moves venue score across energy thresholds. Multiple reactions on the same pulse are intelligently grouped together. Surge tracking monitors venues in real-time and generates notifications when nearby venues experience rapid score increases.
+- **Purpose**: Keep users connected to their friends' activity, discover trending venues through social proof, and create ownership/pride when user contributions move the needle. Surge notifications help users catch venues at peak energy moments. Grouped notifications reduce clutter.
+- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, venue surges in popularity (score reaches 60+ with 20+ point increase within alert window), or user's pulse causes venue to cross energy threshold (e.g., Chill → Buzzing, Buzzing → Electric)
+- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → Trending venue notifications show "Hot Right Now" badge with animated glow → Impact notification shows "Your pulse pushed [Venue] into Electric ⚡" → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
+- **Success criteria**: Notifications appear in real-time, unread count displays on tab badge, tapping notification navigates to relevant content, notifications respect user's notification settings preferences, "Mark all read" clears unread status, multiple reactions on same pulse display as single grouped notification showing all reactors and reaction types, surge detection runs every 30 seconds monitoring venue score changes, surge notifications only trigger for venues within 5 miles, maximum 3 surge alerts per venue per session, 15-minute cooldown between surge alerts for same venue, impact notifications trigger when pulse causes score to cross 50 (Buzzing) or 75 (Electric) thresholds
 
 ## Edge Case Handling
 
@@ -98,6 +123,11 @@ Pulse shows users where the energy is happening right now by letting them check 
 - **Duplicate Surge Alerts**: Prevent spam by enforcing cooldown period between alerts for same venue; cap alerts per venue per session
 - **Out of Range Surge**: Only notify for surging venues within 5-mile radius of user location
 - **Surge Alert Disabled**: When trending venue notifications disabled in settings, venue surge tracker stops monitoring
+- **Impact Notification Trigger**: Only fire when user's pulse directly causes threshold cross (check score before/after)
+- **Followed Venue Limit**: Cap at 10 followed venues; show friendly error when limit reached with option to unfollow others
+- **Score Transparency Panel Offline**: Show cached breakdown with "Last updated X ago" indicator
+- **Pulse Pending State**: When offline or high latency, show pulse card immediately with "Sending…" badge and animated glow; update to confirmed state when successful
+- **Failed Pulse Upload**: Show retry button on pulse card with error indicator; keep in pending state until user retries or dismisses
 
 ## Design Direction
 
@@ -181,10 +211,13 @@ Key animation moments:
   - Splash Screen: Custom two-step onboarding with animated logo, gradient backgrounds, pulsing location icon with expanding rings, and clear permission explanations
   - Energy Slider: Custom component with gradient rail, glowing thumb, emoji markers at each value
   - Pulse Score Display: Large animated number with pulsing glow ring
+  - Score Breakdown Panel: Expandable info panel showing transparent score calculation breakdown (pulse count in last 90 mins, average energy level, recent score changes, last pulse time)
   - Interactive Map: Custom HTML5 Canvas-based visualization with draggable pan, pinch-zoom controls, radial gradient heatmap overlay showing energy intensity, clickable venue pins with hover tooltips, user location indicator, voice-enabled search with microphone button, voice-activated filters with natural language parsing, and energy legend
   - Venue Card: Custom design with large energy score, last active timestamp, preview images
   - Floating Action Button: Fixed bottom-right create pulse button with pulse animation
   - Grouped Notification Card: Shows overlapping user avatars (up to 3) with z-index stacking, combined reaction icons, and count of additional reactors
+  - Impact Notification Card: Special animated notification when user's pulse moves venue across energy thresholds (Buzzing/Electric) with gradient background and "You Moved The Needle" badge
+  - Pulse Card Pending State: Shows "Sending…" badge with animated glow when pulse is uploading; transitions to confirmed state when successful; shows "Failed" badge with retry button on error
   - Video Player: Native HTML5 video controls with play overlay icon, duration badge, and 16:9 aspect ratio display in feed
   - Voice Search Button: Microphone icon that pulses and changes color when listening, disabled state for unsupported browsers
   - Voice Filter Button: Microphone icon in filters panel that pulses with cyan glow when listening, shows live transcript, provides example commands, and displays applied filters in toast notifications

@@ -10,6 +10,7 @@ import { Settings } from '@/components/Settings'
 import { NotificationFeed } from '@/components/NotificationFeed'
 import { SplashScreen } from '@/components/SplashScreen'
 import { Favorites } from '@/components/Favorites'
+import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +58,7 @@ function App() {
     profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
     friends: [],
     favoriteVenues: [],
+    followedVenues: [],
     createdAt: new Date().toISOString()
   })
 
@@ -185,10 +187,12 @@ function App() {
     photos: string[]
     video?: string
   }) => {
-    if (!venueForPulse || !currentUser) return
+    if (!venueForPulse || !currentUser || !venues) return
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000)
+
+    const previousScore = venueForPulse.pulseScore
 
     const newPulse: Pulse = {
       id: `pulse-${Date.now()}`,
@@ -206,7 +210,8 @@ function App() {
         skull: 0,
         lightning: 0
       },
-      views: 0
+      views: 0,
+      isPending: true
     }
 
     setPulses((current) => {
@@ -214,26 +219,62 @@ function App() {
       return [newPulse, ...current]
     })
 
-    if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
-      const friendNotification: Notification = {
-        id: `notif-${Date.now()}`,
-        type: 'friend_pulse',
-        userId: currentUser.id,
-        pulseId: newPulse.id,
-        venueId: venueForPulse.id,
-        createdAt: now.toISOString(),
-        read: false
-      }
-
-      setNotifications((current) => {
-        if (!current) return [friendNotification]
-        return [friendNotification, ...current]
-      })
-    }
-
     toast.success('Pulse posted!', {
       description: `Your vibe at ${venueForPulse.name} is live`
     })
+
+    setTimeout(() => {
+      setPulses((current) => {
+        if (!current) return []
+        return current.map((p) =>
+          p.id === newPulse.id ? { ...p, isPending: false } : p
+        )
+      })
+
+      const updatedVenuePulses = [...(pulses || []), newPulse].filter((p) => p.venueId === venueForPulse.id)
+      const newScore = calculatePulseScore(updatedVenuePulses)
+
+      if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
+        const friendNotification: Notification = {
+          id: `notif-${Date.now()}`,
+          type: 'friend_pulse',
+          userId: currentUser.id,
+          pulseId: newPulse.id,
+          venueId: venueForPulse.id,
+          createdAt: now.toISOString(),
+          read: false
+        }
+
+        setNotifications((current) => {
+          if (!current) return [friendNotification]
+          return [friendNotification, ...current]
+        })
+      }
+
+      if ((previousScore < 50 && newScore >= 50) || (previousScore < 75 && newScore >= 75)) {
+        const impactNotification: Notification = {
+          id: `notif-impact-${Date.now()}`,
+          type: 'impact',
+          userId: currentUser.id,
+          pulseId: newPulse.id,
+          venueId: venueForPulse.id,
+          energyThreshold: newScore >= 75 ? 'electric' : 'buzzing',
+          createdAt: now.toISOString(),
+          read: false
+        }
+
+        setNotifications((current) => {
+          if (!current) return [impactNotification]
+          return [impactNotification, ...current]
+        })
+
+        const thresholdLabel = newScore >= 75 ? 'Electric ⚡' : 'Buzzing 🔥'
+        toast.success('You moved the needle!', {
+          description: `Your pulse pushed ${venueForPulse.name} into ${thresholdLabel}`,
+          duration: 5000
+        })
+      }
+    }, 1500)
   }
 
   const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
@@ -313,6 +354,7 @@ function App() {
         profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
         friends: [],
         favoriteVenues: [venueId],
+        followedVenues: [],
         createdAt: new Date().toISOString()
       }
       const favorites = user.favoriteVenues || []
@@ -335,6 +377,42 @@ function App() {
         return {
           ...user,
           favoriteVenues: [...favorites, venueId]
+        }
+      }
+    })
+  }
+
+  const handleToggleFollow = (venueId: string) => {
+    setCurrentUser((user) => {
+      if (!user) return {
+        id: 'user-1',
+        username: 'nightowl',
+        profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+        friends: [],
+        favoriteVenues: [],
+        followedVenues: [venueId],
+        createdAt: new Date().toISOString()
+      }
+      const followed = user.followedVenues || []
+      const isFollowing = followed.includes(venueId)
+      
+      if (isFollowing) {
+        toast.success('Unfollowed venue')
+        return {
+          ...user,
+          followedVenues: followed.filter((id) => id !== venueId)
+        }
+      } else {
+        if (followed.length >= 10) {
+          toast.error('Maximum 10 followed venues', {
+            description: 'Unfollow one to add another'
+          })
+          return user
+        }
+        toast.success('Following venue')
+        return {
+          ...user,
+          followedVenues: [...followed, venueId]
         }
       }
     })
@@ -459,6 +537,8 @@ function App() {
               Create Pulse
             </Button>
           </div>
+
+          <ScoreBreakdown venue={selectedVenue} pulses={venuePulses.map(p => ({ ...p }))} />
 
           <Separator />
 

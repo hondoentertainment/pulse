@@ -2,18 +2,21 @@ import { PulseWithUser } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
-import { Fire, Eye, Skull, Lightning, Play } from '@phosphor-icons/react'
+import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface PulseCardProps {
   pulse: PulseWithUser
   onReaction?: (type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
+  onRetry?: () => void
 }
 
-export function PulseCard({ pulse, onReaction }: PulseCardProps) {
+export function PulseCard({ pulse, onReaction, onRetry }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
@@ -23,7 +26,28 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="p-4 space-y-4 border-border">
+      <Card className={cn(
+        "p-4 space-y-4 border-border relative",
+        pulse.isPending && "border-accent/50",
+        pulse.uploadError && "border-destructive/50"
+      )}>
+        {pulse.isPending && !pulse.uploadError && (
+          <div className="absolute top-2 right-2">
+            <Badge className="bg-accent/20 text-accent border-accent/30 animate-pulse-glow">
+              <span className="font-mono text-xs uppercase tracking-wider">Sending…</span>
+            </Badge>
+          </div>
+        )}
+        
+        {pulse.uploadError && (
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            <Badge className="bg-destructive/20 text-destructive border-destructive/30">
+              <Warning size={14} weight="fill" className="mr-1" />
+              <span className="font-mono text-xs uppercase tracking-wider">Failed</span>
+            </Badge>
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10 border-2 border-border">
@@ -101,6 +125,7 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
             <button
               onClick={() => onReaction?.('fire')}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={pulse.isPending || pulse.uploadError}
             >
               <Fire size={18} weight="fill" />
               <span className="text-sm font-mono">{pulse.reactions.fire || 0}</span>
@@ -108,6 +133,7 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
             <button
               onClick={() => onReaction?.('lightning')}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={pulse.isPending || pulse.uploadError}
             >
               <Lightning size={18} weight="fill" />
               <span className="text-sm font-mono">{pulse.reactions.lightning || 0}</span>
@@ -115,6 +141,7 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
             <button
               onClick={() => onReaction?.('eyes')}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={pulse.isPending || pulse.uploadError}
             >
               <Eye size={18} weight="fill" />
               <span className="text-sm font-mono">{pulse.reactions.eyes || 0}</span>
@@ -122,15 +149,29 @@ export function PulseCard({ pulse, onReaction }: PulseCardProps) {
             <button
               onClick={() => onReaction?.('skull')}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={pulse.isPending || pulse.uploadError}
             >
               <Skull size={18} weight="fill" />
               <span className="text-sm font-mono">{pulse.reactions.skull || 0}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-            <Eye size={14} />
-            <span>{pulse.views}</span>
+          <div className="flex items-center gap-2">
+            {pulse.uploadError && onRetry && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetry}
+                className="h-7 px-2 border-destructive/50 text-destructive hover:bg-destructive/10"
+              >
+                <ArrowClockwise size={14} className="mr-1" />
+                Retry
+              </Button>
+            )}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+              <Eye size={14} />
+              <span>{pulse.views}</span>
+            </div>
           </div>
         </div>
       </Card>
