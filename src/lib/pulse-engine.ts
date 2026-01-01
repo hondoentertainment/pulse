@@ -31,7 +31,7 @@ export function isWithinRadius(
   return distance <= radiusMiles
 }
 
-export function calculatePulseScore(pulses: Pulse[]): number {
+export function calculatePulseScore(pulses: Pulse[], useCredibilityWeighting: boolean = true): number {
   const now = new Date().getTime()
   const decayMs = PULSE_DECAY_MINUTES * 60 * 1000
 
@@ -52,7 +52,11 @@ export function calculatePulseScore(pulses: Pulse[]): number {
            pulse.reactions.eyes * 0.2 +
            pulse.views * 0.1) / 100
 
-    totalScore += energyValue * recencyFactor * engagementFactor * 25
+    const credibilityWeight = useCredibilityWeighting && pulse.credibilityWeight 
+      ? pulse.credibilityWeight 
+      : 1.0
+
+    totalScore += energyValue * recencyFactor * engagementFactor * credibilityWeight * 25
     validPulses++
   })
 

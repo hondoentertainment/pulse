@@ -86,6 +86,13 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 - **Progression**: Settings tab opened → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
 - **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system
 
+### Pulse Credibility & Trust Badges
+- **Functionality**: Weighted credibility system that increases the influence of trusted users' pulses on venue scores. Users earn trust badges displayed on their pulse cards based on venue check-in history and engagement patterns. No public scores or ranks — just ambient trust signals.
+- **Purpose**: Prevent gaming, reduce spam impact, and reinforce authentic contributions without killing the vibe or creating social hierarchy
+- **Trigger**: New user creates account → starts with neutral credibility weight (0.5-0.7) → weight increases with genuine activity → badges appear automatically on pulse cards when thresholds met
+- **Progression**: New user posts pulse with reduced weight → User checks in frequently → Credibility increases (up to 2.0x max) → "Regular here" badge appears after 10+ check-ins at venue → "Frequent visitor" after 5+ → "Veteran" badge for 90+ day accounts with 20+ pulses → "3rd pulse tonight" badge shows recent activity → Trusted users' pulses contribute more to venue scores → No user-facing credibility number displayed
+- **Success criteria**: Credibility weight applies transparently to pulse score calculations, new users can't artificially inflate scores, regular users gain influence naturally, badges display on pulse cards only (not profiles), subtle visual design reinforces trust without creating status competition, tooltip shows badge meaning on hover, no gaming incentive created
+
 ### In-App Notifications
 - **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, trending venue surge alerts, and impact notifications when user's pulse moves venue score across energy thresholds. Multiple reactions on the same pulse are intelligently grouped together. Surge tracking monitors venues in real-time and generates notifications when nearby venues experience rapid score increases.
 - **Purpose**: Keep users connected to their friends' activity, discover trending venues through social proof, and create ownership/pride when user contributions move the needle. Surge notifications help users catch venues at peak energy moments. Grouped notifications reduce clutter.
@@ -128,6 +135,10 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 - **Score Transparency Panel Offline**: Show cached breakdown with "Last updated X ago" indicator
 - **Pulse Pending State**: When offline or high latency, show pulse card immediately with "Sending…" badge and animated glow; update to confirmed state when successful
 - **Failed Pulse Upload**: Show retry button on pulse card with error indicator; keep in pending state until user retries or dismisses
+- **New User Credibility**: New accounts start with reduced credibility weight (0.5-0.7) to prevent fake account spam; weight increases naturally with genuine activity
+- **Credibility Calculation Failure**: If credibility can't be calculated, default to 1.0 weight to avoid blocking pulses
+- **Zero Check-In History**: Users without venue history don't get badges; functionality remains unchanged
+- **Badge Overflow**: Maximum 2 badges displayed per pulse to prevent visual clutter; prioritize most relevant badges
 
 ## Design Direction
 

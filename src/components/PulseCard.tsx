@@ -5,20 +5,30 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
+import { getUserTrustBadges, TrustBadge } from '@/lib/credibility'
 import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface PulseCardProps {
   pulse: PulseWithUser
+  allPulses?: PulseWithUser[]
   onReaction?: (type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onRetry?: () => void
 }
 
-export function PulseCard({ pulse, onReaction, onRetry }: PulseCardProps) {
+export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+
+  const trustBadges = getUserTrustBadges(pulse.user, pulse.venueId, allPulses)
 
   return (
     <motion.div
@@ -49,23 +59,30 @@ export function PulseCard({ pulse, onReaction, onRetry }: PulseCardProps) {
         )}
 
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10 border-2 border-border">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Avatar className="w-10 h-10 border-2 border-border flex-shrink-0">
               <AvatarImage src={pulse.user.profilePhoto} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {pulse.user.username.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold">{pulse.user.username}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{pulse.user.username}</p>
               <p className="text-xs text-muted-foreground font-mono uppercase tracking-wide">
                 {formatTimeAgo(pulse.createdAt)}
               </p>
+              {trustBadges.length > 0 && (
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  {trustBadges.map((badge) => (
+                    <TrustBadgeComponent key={badge.id} badge={badge} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <Badge
-            className="text-xs font-mono uppercase tracking-wider"
+            className="text-xs font-mono uppercase tracking-wider flex-shrink-0"
             style={{
               backgroundColor: energyConfig.color,
               color: 'white',
@@ -176,5 +193,30 @@ export function PulseCard({ pulse, onReaction, onRetry }: PulseCardProps) {
         </div>
       </Card>
     </motion.div>
+  )
+}
+
+function TrustBadgeComponent({ badge }: { badge: TrustBadge }) {
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <Badge
+            className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 cursor-help"
+            style={{
+              backgroundColor: `${badge.color}20`,
+              color: badge.color,
+              borderColor: `${badge.color}40`
+            }}
+          >
+            <span className="mr-1">{badge.icon}</span>
+            {badge.label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{badge.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

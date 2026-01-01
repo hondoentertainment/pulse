@@ -26,6 +26,7 @@ import {
   canPostPulse,
   isWithinRadius
 } from '@/lib/pulse-engine'
+import { calculateUserCredibility } from '@/lib/credibility'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
@@ -59,7 +60,9 @@ function App() {
     friends: [],
     favoriteVenues: [],
     followedVenues: [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    venueCheckInHistory: {},
+    credibilityScore: 1.0
   })
 
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
@@ -194,6 +197,8 @@ function App() {
 
     const previousScore = venueForPulse.pulseScore
 
+    const userCredibility = calculateUserCredibility(currentUser, pulses || [])
+
     const newPulse: Pulse = {
       id: `pulse-${Date.now()}`,
       userId: currentUser.id,
@@ -211,12 +216,38 @@ function App() {
         lightning: 0
       },
       views: 0,
-      isPending: true
+      isPending: true,
+      credibilityWeight: userCredibility
     }
 
     setPulses((current) => {
       if (!current) return [newPulse]
       return [newPulse, ...current]
+    })
+
+    setCurrentUser((user) => {
+      if (!user) {
+        return {
+          id: 'user-1',
+          username: 'nightowl',
+          profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+          friends: [],
+          favoriteVenues: [],
+          followedVenues: [],
+          createdAt: new Date().toISOString(),
+          venueCheckInHistory: {
+            [venueForPulse.id]: 1
+          }
+        }
+      }
+      const checkInHistory = user.venueCheckInHistory || {}
+      return {
+        ...user,
+        venueCheckInHistory: {
+          ...checkInHistory,
+          [venueForPulse.id]: (checkInHistory[venueForPulse.id] || 0) + 1
+        }
+      }
     })
 
     toast.success('Pulse posted!', {
@@ -555,6 +586,7 @@ function App() {
                 <PulseCard
                   key={pulse.id}
                   pulse={pulse}
+                  allPulses={getPulsesWithUsers()}
                   onReaction={(type) => handleReaction(pulse.id, type)}
                 />
               ))}
@@ -852,6 +884,7 @@ function App() {
                   <PulseCard
                     key={pulse.id}
                     pulse={pulse}
+                    allPulses={getPulsesWithUsers()}
                     onReaction={(type) => handleReaction(pulse.id, type)}
                   />
                 ))}

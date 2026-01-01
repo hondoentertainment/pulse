@@ -8,6 +8,10 @@ export interface User {
   favoriteVenues?: string[]
   followedVenues?: string[]
   createdAt: string
+  venueCheckInHistory?: {
+    [venueId: string]: number
+  }
+  credibilityScore?: number
 }
 
 export interface Venue {
@@ -42,6 +46,7 @@ export interface Pulse {
   views: number
   isPending?: boolean
   uploadError?: boolean
+  credibilityWeight?: number
 }
 
 export interface PulseWithUser extends Pulse {
