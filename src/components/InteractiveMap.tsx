@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { formatDistance } from '@/lib/units'
+import { useUnitPreference } from '@/hooks/use-unit-preference'
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -33,6 +35,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     categories: [],
     maxDistance: Infinity
   })
+  const { unitSystem } = useUnitPreference()
 
   useEffect(() => {
     if (userLocation && followUser) {
@@ -437,6 +440,15 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
         const showLabel = zoom >= 1.2 || venue.pulseScore >= 70 || hoveredVenue?.id === venue.id
         const isHovered = hoveredVenue?.id === venue.id
+        
+        const distance = userLocation
+          ? calculateDistance(
+              userLocation.lat,
+              userLocation.lng,
+              venue.location.lat,
+              venue.location.lng
+            )
+          : undefined
 
         return (
           <div
@@ -478,11 +490,23 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                     venue.pulseScore >= 70 && "border-accent/50"
                   )}>
                     <p className="text-xs font-bold">{venue.name}</p>
-                    {venue.category && (
-                      <p className="text-[10px] text-muted-foreground uppercase font-mono">
-                        {venue.category}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {venue.category && (
+                        <p className="text-[10px] text-muted-foreground uppercase font-mono">
+                          {venue.category}
+                        </p>
+                      )}
+                      {distance !== undefined && (
+                        <>
+                          {venue.category && (
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                          )}
+                          <p className="text-[10px] text-accent font-mono font-bold">
+                            {formatDistance(distance, unitSystem)}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -495,6 +519,15 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         {hoveredVenue && (() => {
           const pos = getVenuePixelPosition(hoveredVenue)
           if (!pos) return null
+
+          const distance = userLocation
+            ? calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                hoveredVenue.location.lat,
+                hoveredVenue.location.lng
+              )
+            : undefined
 
           const tooltipWidth = 240
           const tooltipHeight = 100
@@ -532,11 +565,23 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-sm truncate">{hoveredVenue.name}</h3>
-                      {hoveredVenue.category && (
-                        <p className="text-xs text-muted-foreground uppercase font-mono mt-0.5">
-                          {hoveredVenue.category}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {hoveredVenue.category && (
+                          <p className="text-xs text-muted-foreground uppercase font-mono">
+                            {hoveredVenue.category}
+                          </p>
+                        )}
+                        {distance !== undefined && (
+                          <>
+                            {hoveredVenue.category && (
+                              <span className="text-xs text-muted-foreground">•</span>
+                            )}
+                            <p className="text-xs text-accent font-mono font-bold">
+                              {formatDistance(distance, unitSystem)}
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
                   </div>
