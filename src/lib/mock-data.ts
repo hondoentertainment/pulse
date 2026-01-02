@@ -262,8 +262,11 @@ export const MOCK_VENUES: Venue[] = [
       lng: -122.3202,
       address: '1114 Howell St, Seattle, WA'
     },
-    pulseScore: 0,
-    category: 'Nightclub'
+    pulseScore: 15,
+    category: 'nightlife',
+    preTrending: true,
+    seeded: true,
+    verifiedCheckInCount: 0
   },
   {
     id: 'venue-18',
@@ -306,8 +309,11 @@ export const MOCK_VENUES: Venue[] = [
       lng: -122.3401,
       address: '2033 6th Ave, Seattle, WA'
     },
-    pulseScore: 0,
-    category: 'Music Venue'
+    pulseScore: 18,
+    category: 'music',
+    preTrending: true,
+    seeded: true,
+    verifiedCheckInCount: 0
   },
   {
     id: 'venue-22',
@@ -328,8 +334,11 @@ export const MOCK_VENUES: Venue[] = [
       lng: -122.3487,
       address: '2208 1st Ave, Seattle, WA'
     },
-    pulseScore: 0,
-    category: 'Nightclub'
+    pulseScore: 20,
+    category: 'nightlife',
+    preTrending: true,
+    seeded: true,
+    verifiedCheckInCount: 0
   },
   {
     id: 'venue-24',

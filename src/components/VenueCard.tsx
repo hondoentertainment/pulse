@@ -6,6 +6,7 @@ import { MapPin, Clock, Star } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
+import { getPreTrendingLabel } from '@/lib/venue-trending'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -15,10 +16,12 @@ interface VenueCardProps {
   isJustPopped?: boolean
   isFavorite?: boolean
   onToggleFavorite?: (venueId: string) => void
+  showPreTrendingLabel?: boolean
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, showPreTrendingLabel }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
+  const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   
   return (
     <motion.div
@@ -53,6 +56,11 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 {isJustPopped && (
                   <Badge className="bg-accent text-accent-foreground animate-pulse-glow text-xs">
                     Just Popped
+                  </Badge>
+                )}
+                {preTrendingLabel && (
+                  <Badge variant="outline" className="text-xs border-dashed border-muted-foreground/50 text-muted-foreground">
+                    {preTrendingLabel}
                   </Badge>
                 )}
               </div>

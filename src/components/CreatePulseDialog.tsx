@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,12 +8,15 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { EnergySlider } from './EnergySlider'
-import { EnergyRating, Venue } from '@/lib/types'
-import { Camera, X, VideoCamera, Play, CheckCircle } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
+import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext } from '@/lib/types'
+import { Camera, X, VideoCamera, Play, CheckCircle, Hash } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
+import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
+import { useKV } from '@github/spark/hooks'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -24,6 +27,7 @@ interface CreatePulseDialogProps {
     caption: string
     photos: string[]
     video?: string
+    hashtags?: string[]
   }) => void
 }
 
@@ -35,6 +39,7 @@ export function CreatePulseDialog({
 }: CreatePulseDialogProps) {
   const [energyRating, setEnergyRating] = useState<EnergyRating>('chill')
   const [caption, setCaption] = useState('')
+  const [selectedHashtags, setSelectedHashtags] = useState<string[]>([])
   const [energyPhotos, setEnergyPhotos] = useState<Record<EnergyRating, string | null>>({
     dead: null,
     chill: null,
@@ -49,6 +54,39 @@ export function CreatePulseDialog({
   const [originalSize, setOriginalSize] = useState<number>(0)
   const [compressedSize, setCompressedSize] = useState<number>(0)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
+  const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
+
+  useEffect(() => {
+    if (venue && allHashtags && allHashtags.length > 0) {
+      const now = new Date()
+      const context: HashtagSuggestionContext = {
+        venueCategory: venue.category,
+        timeOfDay: getTimeOfDay(now.getHours()),
+        dayOfWeek: getDayOfWeek(now),
+        pulseScore: venue.pulseScore,
+        energyRating
+      }
+      
+      const suggestions = suggestHashtags(context, allHashtags, 5)
+      setSuggestedGroups(suggestions)
+    }
+  }, [venue, energyRating, allHashtags])
+
+  const toggleHashtag = (hashtagName: string) => {
+    setSelectedHashtags(prev => {
+      if (prev.includes(hashtagName)) {
+        return prev.filter(h => h !== hashtagName)
+      }
+      if (prev.length >= 5) {
+        toast.error('Maximum 5 hashtags', {
+          description: 'Remove one to add another'
+        })
+        return prev
+      }
+      return [...prev, hashtagName]
+    })
+  }
 
   const handleSubmit = async () => {
     if (!venue) return
@@ -56,11 +94,18 @@ export function CreatePulseDialog({
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
     
     setIsSubmitting(true)
-    await onSubmit({ energyRating, caption, photos, video: video || undefined })
+    await onSubmit({ 
+      energyRating, 
+      caption, 
+      photos, 
+      video: video || undefined,
+      hashtags: selectedHashtags
+    })
     setIsSubmitting(false)
     
     setEnergyRating('chill')
     setCaption('')
+    setSelectedHashtags([])
     setEnergyPhotos({
       dead: null,
       chill: null,
@@ -305,6 +350,58 @@ export function CreatePulseDialog({
               {caption.length}/140
             </p>
           </div>
+
+          {suggestedGroups.length > 0 && (
+            <div className="space-y-3">
+              {suggestedGroups.map((group, groupIndex) => (
+                <div key={groupIndex} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Hash size={14} weight="bold" className="text-muted-foreground" />
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {group.label}
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {group.hashtags.map((hashtag) => {
+                      const isSelected = selectedHashtags.includes(hashtag.name)
+                      const isSeeded = hashtag.seeded
+                      
+                      return (
+                        <motion.button
+                          key={hashtag.id}
+                          type="button"
+                          onClick={() => toggleHashtag(hashtag.name)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Badge
+                            variant={isSelected ? "default" : "outline"}
+                            className={`cursor-pointer transition-all ${
+                              isSelected 
+                                ? 'bg-primary text-primary-foreground border-primary' 
+                                : 'hover:border-primary/50'
+                            } ${
+                              isSeeded && !isSelected ? 'border-dashed' : ''
+                            }`}
+                          >
+                            <span className="mr-1">{hashtag.emoji}</span>
+                            #{hashtag.name}
+                          </Badge>
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              {selectedHashtags.length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedHashtags.length}/5 hashtags selected
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-3">
             <Button

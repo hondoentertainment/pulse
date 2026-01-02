@@ -137,6 +137,20 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseC
           <p className="text-sm leading-relaxed">{pulse.caption}</p>
         )}
 
+        {pulse.hashtags && pulse.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {pulse.hashtags.map((tag, idx) => (
+              <Badge
+                key={idx}
+                variant="secondary"
+                className="text-xs font-mono"
+              >
+                #{tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <div className="flex items-center gap-4">
             <button

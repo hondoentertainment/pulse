@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack } from '@phosphor-icons/react'
@@ -313,6 +314,10 @@ export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
                 </div>
               </div>
             </div>
+          </Card>
+          <Separator />
+          <Card className="p-5">
+            <AnalyticsDashboard />
           </Card>
         </>
       )}

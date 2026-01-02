@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, GroupedNotification } from '@/lib/types'
+import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, GroupedNotification, Hashtag } from '@/lib/types'
 import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
@@ -11,6 +11,7 @@ import { NotificationFeed } from '@/components/NotificationFeed'
 import { SplashScreen } from '@/components/SplashScreen'
 import { Favorites } from '@/components/Favorites'
 import { VenuePage } from '@/components/VenuePage'
+import { TrendingSections } from '@/components/TrendingSections'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -34,6 +35,8 @@ import { generateDemoNotifications } from '@/lib/demo-notifications'
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
+import { getTrendingSections, updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
@@ -65,8 +68,15 @@ function App() {
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
   const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
+  const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
+
+  useEffect(() => {
+    if (!hashtags || hashtags.length === 0) {
+      setHashtags(initializeSeededHashtags())
+    }
+  }, [])
 
   const userLocation = realtimeLocation 
     ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } 
@@ -133,6 +143,7 @@ function App() {
         return currentVenues.map((venue) => {
           const venuePulses = pulses.filter((p) => p.venueId === venue.id)
           const score = calculatePulseScore(venuePulses)
+          const velocity = calculateScoreVelocity(venue, venuePulses)
           const lastPulse = venuePulses.sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0]
@@ -140,14 +151,20 @@ function App() {
           return {
             ...venue,
             pulseScore: score,
+            scoreVelocity: velocity,
             lastPulseAt: lastPulse?.createdAt
           }
         })
       })
+      
+      setHashtags((currentHashtags) => {
+        if (!currentHashtags) return []
+        return applyHashtagDecay(currentHashtags)
+      })
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [pulses, setVenues])
+  }, [pulses, setVenues, setHashtags])
 
   const handleCreatePulse = (venueId: string) => {
     if (!venues || !currentUser || !pulses) return
@@ -173,6 +190,7 @@ function App() {
     caption: string
     photos: string[]
     video?: string
+    hashtags?: string[]
   }) => {
     if (!venueForPulse || !currentUser || !venues) return
 
@@ -191,6 +209,7 @@ function App() {
       video: data.video,
       energyRating: data.energyRating,
       caption: data.caption,
+      hashtags: data.hashtags || [],
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       reactions: {
@@ -207,6 +226,25 @@ function App() {
     setPulses((current) => {
       if (!current) return [newPulse]
       return [newPulse, ...current]
+    })
+
+    if (data.hashtags && data.hashtags.length > 0) {
+      setHashtags((currentHashtags) => {
+        if (!currentHashtags) return []
+        return currentHashtags.map(tag => {
+          if (data.hashtags!.includes(tag.name)) {
+            return updateHashtagUsage(tag, true)
+          }
+          return tag
+        })
+      })
+    }
+
+    setVenues((currentVenues) => {
+      if (!currentVenues) return []
+      return currentVenues.map(v => 
+        v.id === venueForPulse.id ? updateVenueWithCheckIn(v, newPulse) : v
+      )
     })
 
     setCurrentUser((user) => {
@@ -554,95 +592,33 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6 space-y-6"
           >
             {favoriteVenues.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Star size={20} weight="fill" className="text-accent" />
-                  <h2 className="text-xl font-bold">Favorites</h2>
-                </div>
-                <Favorites
-                  favoriteVenues={favoriteVenues}
-                  userLocation={userLocation}
-                  unitSystem={unitSystem}
-                  onVenueClick={(venue) => setSelectedVenue(venue)}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              </div>
-            )}
-
-            {favoriteVenues.length > 0 && <Separator />}
-
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold">Trending Near You</h2>
-              <p className="text-sm text-muted-foreground">
-                Live energy scores from venues around you
-              </p>
-            </div>
-
-            {trendingVenues.filter((v) => v.pulseScore > 0).length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-accent text-accent-foreground animate-pulse-glow">
-                    Just Popped
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    Surging right now
-                  </span>
-                </div>
-                {trendingVenues
-                  .filter((v) => v.pulseScore >= 60)
-                  .slice(0, 3)
-                  .map((venue) => {
-                    const distance = userLocation
-                      ? calculateDistance(
-                          userLocation.lat,
-                          userLocation.lng,
-                          venue.location.lat,
-                          venue.location.lng
-                        )
-                      : undefined
-                    return (
-                      <VenueCard
-                        key={venue.id}
-                        venue={venue}
-                        distance={distance}
-                        onClick={() => setSelectedVenue(venue)}
-                        isJustPopped
-                        isFavorite={isFavorite(venue.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                      />
-                    )
-                  })}
-              </div>
-            )}
-
-            <Separator />
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-bold">All Venues</h3>
-              {sortedVenues.map((venue) => {
-                const distance = userLocation
-                  ? calculateDistance(
-                      userLocation.lat,
-                      userLocation.lng,
-                      venue.location.lat,
-                      venue.location.lng
-                    )
-                  : undefined
-                return (
-                  <VenueCard
-                    key={venue.id}
-                    venue={venue}
-                    distance={distance}
-                    onClick={() => setSelectedVenue(venue)}
-                    isFavorite={isFavorite(venue.id)}
+              <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Star size={20} weight="fill" className="text-accent" />
+                    <h2 className="text-xl font-bold">Favorites</h2>
+                  </div>
+                  <Favorites
+                    favoriteVenues={favoriteVenues}
+                    userLocation={userLocation}
+                    unitSystem={unitSystem}
+                    onVenueClick={(venue) => setSelectedVenue(venue)}
                     onToggleFavorite={handleToggleFavorite}
                   />
-                )
-              })}
-            </div>
+                </div>
+                <Separator className="mt-6" />
+              </div>
+            )}
+
+            <TrendingSections
+              sections={getTrendingSections(venues || [], pulses || [])}
+              userLocation={userLocation}
+              onVenueClick={(venue) => setSelectedVenue(venue)}
+              isFavorite={isFavorite}
+              onToggleFavorite={handleToggleFavorite}
+            />
           </motion.div>
         )}
 

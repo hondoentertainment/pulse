@@ -36,6 +36,12 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  preTrending?: boolean
+  preTrendingLabel?: string
+  seeded?: boolean
+  verifiedCheckInCount?: number
+  firstRealCheckInAt?: string
+  scoreVelocity?: number
 }
 
 export interface Pulse {
@@ -46,6 +52,7 @@ export interface Pulse {
   video?: string
   energyRating: EnergyRating
   caption?: string
+  hashtags?: string[]
   createdAt: string
   expiresAt: string
   reactions: {
@@ -121,3 +128,38 @@ export const ENERGY_CONFIG = {
 export const COOLDOWN_MINUTES = 120
 export const PULSE_DECAY_MINUTES = 90
 export const CHECK_IN_RADIUS_MILES = 0.062
+
+export type HashtagCategory = 'nightlife' | 'sports' | 'music' | 'food' | 'cafes' | 'general'
+export type HashtagVibeType = 'energetic' | 'chill' | 'social' | 'foodie' | 'cultural'
+
+export interface Hashtag {
+  id: string
+  name: string
+  emoji: string
+  category: HashtagCategory
+  vibeType: HashtagVibeType
+  seeded: boolean
+  usageCount: number
+  verifiedUsageCount: number
+  decayScore: number
+  lastUsedAt?: string
+  createdAt: string
+  createdByUserId?: string
+}
+
+export interface HashtagSuggestionContext {
+  venueCategory?: string
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'latenight'
+  dayOfWeek: 'weekday' | 'weekend'
+  pulseScore: number
+  energyRating: EnergyRating
+}
+
+export interface VenueAnalytics {
+  venueId: string
+  preTrendingConversionRate?: number
+  timeToFirstRealActivity?: number
+  seededHashtagConversionRate?: number
+  totalVerifiedCheckIns: number
+  lastAnalyzedAt: string
+}
