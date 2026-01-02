@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack } from '@phosphor-icons/react'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack, ChartLine } from '@phosphor-icons/react'
 
 interface SettingsProps {
   onGenerateDemoNotifications?: () => void
+  onOpenSocialPulseDashboard?: () => void
 }
 
-export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
+export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboard }: SettingsProps) {
   const { unitSystem, setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
 
@@ -315,6 +316,48 @@ export function Settings({ onGenerateDemoNotifications }: SettingsProps) {
               </div>
             </div>
           </Card>
+        </>
+      )}
+
+      {onOpenSocialPulseDashboard && (
+        <>
+          <Separator />
+          <Card className="p-5 space-y-4 border-primary/50">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ChartLine size={20} weight="bold" className="text-primary" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold">
+                    Social Pulse Dashboard
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Track and correlate social media activity with venue energy
+                  </p>
+                </div>
+                <Button
+                  onClick={onOpenSocialPulseDashboard}
+                  variant="outline"
+                  className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                >
+                  <ChartLine size={18} weight="bold" className="mr-2" />
+                  Open Admin Dashboard
+                </Button>
+                <div className="flex items-start gap-2 p-3 bg-primary/10 rounded-lg">
+                  <Info size={16} weight="fill" className="text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Monitor real-time social media activity, track hashtags, and analyze correlation between social buzz and venue check-ins.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {onGenerateDemoNotifications && (
+        <>
           <Separator />
           <Card className="p-5">
             <AnalyticsDashboard />

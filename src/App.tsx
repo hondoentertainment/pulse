@@ -12,11 +12,12 @@ import { SplashScreen } from '@/components/SplashScreen'
 import { Favorites } from '@/components/Favorites'
 import { VenuePage } from '@/components/VenuePage'
 import { TrendingSections } from '@/components/TrendingSections'
+import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, Clock, Star, Gear } from '@phosphor-icons/react'
+import { Plus, MapPin, Clock, Star, Gear, ChartLine } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import {
@@ -45,6 +46,7 @@ function App() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [locationName, setLocationName] = useState<string>('')
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
@@ -481,6 +483,16 @@ function App() {
     </div>
   }
 
+  if (showAdminDashboard) {
+    return (
+      <SocialPulseDashboard
+        venues={venues}
+        pulses={pulses}
+        onBack={() => setShowAdminDashboard(false)}
+      />
+    )
+  }
+
   const sortedVenues = userLocation
     ? getVenuesByProximity(venues, userLocation.lat, userLocation.lng)
     : [...venues].sort((a, b) => b.pulseScore - a.pulseScore)
@@ -811,7 +823,10 @@ function App() {
                 <Gear size={20} weight="fill" className="text-primary" />
                 <h3 className="text-lg font-bold">Settings</h3>
               </div>
-              <Settings onGenerateDemoNotifications={handleGenerateDemoNotifications} />
+              <Settings 
+                onGenerateDemoNotifications={handleGenerateDemoNotifications}
+                onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
+              />
             </div>
           </motion.div>
         )}

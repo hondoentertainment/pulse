@@ -163,3 +163,81 @@ export interface VenueAnalytics {
   totalVerifiedCheckIns: number
   lastAnalyzedAt: string
 }
+
+export interface SocialPost {
+  id: string
+  postId: string
+  text: string
+  timestamp: string
+  likes: number
+  replies: number
+  reposts: number
+  placeId?: string
+  placeName?: string
+  venueId?: string
+  hashtag: string
+  createdAt: string
+}
+
+export interface TrackedHashtag {
+  id: string
+  hashtag: string
+  venueId?: string
+  active: boolean
+  lastPolledAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type TimeWindowSize = '5min' | '15min' | '60min'
+
+export interface SocialPulseWindow {
+  id: string
+  hashtag: string
+  venueId?: string
+  windowSize: TimeWindowSize
+  startTime: string
+  endTime: string
+  postCount: number
+  totalEngagement: number
+  engagementWeightedIntensity: number
+  velocity: number
+  normalizedScore: number
+  createdAt: string
+}
+
+export interface VenuePulseWindow {
+  id: string
+  venueId: string
+  windowSize: TimeWindowSize
+  startTime: string
+  endTime: string
+  pulseScore: number
+  pulseCount: number
+  averageEnergy: number
+  createdAt: string
+}
+
+export interface PulseCorrelation {
+  id: string
+  venueId: string
+  windowSize: '60min' | '120min'
+  correlationCoefficient: number
+  lag: number
+  socialPulseScore: number
+  venuePulseScore: number
+  strength: 'low' | 'medium' | 'high'
+  calculatedAt: string
+}
+
+export interface CorrelationInsight {
+  venueId: string
+  venueName: string
+  correlation60: number
+  correlation120: number
+  lag: number
+  strength: 'low' | 'medium' | 'high'
+  hasSocialBuzz: boolean
+  socialPulseScore: number
+  venuePulseScore: number
+}
