@@ -21,8 +21,7 @@ import { cn } from '@/lib/utils'
 import {
   calculatePulseScore,
   getVenuesByProximity,
-  canPostPulse,
-  isWithinRadius
+  canPostPulse
 } from '@/lib/pulse-engine'
 import { calculateUserCredibility } from '@/lib/credibility'
 import { formatDistance } from '@/lib/units'
@@ -32,7 +31,7 @@ import { useCurrentTime } from '@/hooks/use-current-time'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
 import { generateDemoNotifications } from '@/lib/demo-notifications'
-import { COOLDOWN_MINUTES, CHECK_IN_RADIUS_MILES } from '@/lib/types'
+import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -151,22 +150,9 @@ function App() {
   }, [pulses, setVenues])
 
   const handleCreatePulse = (venueId: string) => {
-    if (!venues || !userLocation || !currentUser || !pulses) return
+    if (!venues || !currentUser || !pulses) return
     const venue = venues.find((v) => v.id === venueId)
     if (!venue) return
-
-    if (!isWithinRadius(
-      userLocation.lat,
-      userLocation.lng,
-      venue.location.lat,
-      venue.location.lng,
-      CHECK_IN_RADIUS_MILES
-    )) {
-      toast.error('Too far from venue', {
-        description: 'You must be at the venue to create a pulse'
-      })
-      return
-    }
 
     const userPulses = pulses.filter((p) => p.userId === currentUser.id)
     const cooldownCheck = canPostPulse(venueId, userPulses, COOLDOWN_MINUTES)
