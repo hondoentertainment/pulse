@@ -121,6 +121,26 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 - **Trigger**: User opens "Create Pulse" dialog.
 - **Success criteria**: Suggestions refresh as user changes energy slider; prioritized "Seeded" hashtags show first; automatic decay of hashtag scoring keeps trends fresh.
 
+### UX Enhancements
+
+#### Feed Experience
+- **Pull-to-Refresh**: Drag gesture to refresh feeds with animated indicator showing pull progress
+- **Skeleton Loading States**: Shimmer-effect placeholders matching card layouts during initial load
+- **Empty State Illustrations**: Engaging visual empty states with icons, descriptions, and CTAs for no-pulses, no-notifications, and no-favorites scenarios
+
+#### Engagement Features
+- **First Pulse Celebration**: Confetti animation and "Pioneer" badge when user posts the first pulse at a venue
+- **Streak Tracking**: Visual streak badge showing consecutive days of posting with fire emoji animation
+- **Quick Reactions**: Compact reaction bar for single-tap reactions directly from feed without expanding cards
+
+#### Mobile Polish
+- **Extended Haptic Feedback**: Tactile feedback on reactions, favorites, and navigation (light/medium/heavy/success/error patterns)
+- **Swipe Gestures**: Swipe left on pulse cards to reveal quick reactions; swipe right on notifications to dismiss
+
+#### Map Experience
+- **Near Me Filter**: One-tap button to filter venues within 0.5 mile walking distance
+- **Live Activity Indicators**: Pulsing ring animation on map pins for venues with activity in the last 10 minutes
+
 ## Edge Case Handling
 
 - **First Launch**: Show splash screen with welcome message and location permission request; persist onboarding completion state
