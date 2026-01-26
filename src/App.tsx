@@ -28,9 +28,10 @@ import { TrendingSections } from '@/components/TrendingSections'
 import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, Clock, Star, Gear, ChartLine } from '@phosphor-icons/react'
+import { Plus, MapPin, Clock, Star, Gear, ChartLine, MagnifyingGlass } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import {
@@ -70,6 +71,7 @@ function App() {
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
+  const [venueSearchQuery, setVenueSearchQuery] = useState('')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
@@ -720,27 +722,61 @@ function App() {
               </p>
             </div>
 
-            <div className="space-y-3">
-              {sortedVenues.map((venue) => {
-                const distance = userLocation
-                  ? calculateDistance(
-                    userLocation.lat,
-                    userLocation.lng,
-                    venue.location.lat,
-                    venue.location.lng
-                  )
-                  : undefined
-                return (
-                  <VenueCard
-                    key={venue.id}
-                    venue={venue}
-                    distance={distance}
-                    onClick={() => setSelectedVenue(venue)}
-                    isFavorite={isFavorite(venue.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                )
-              })}
+            <div className="space-y-4">
+              <div className="relative">
+                <MagnifyingGlass
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  size={16}
+                />
+                <Input
+                  placeholder="Search venues by name or category..."
+                  value={venueSearchQuery}
+                  onChange={(e) => setVenueSearchQuery(e.target.value)}
+                  className="pl-9 bg-card/50 backdrop-blur-sm"
+                />
+              </div>
+
+              <div className="space-y-3">
+                {sortedVenues
+                  .filter(venue => {
+                    if (!venueSearchQuery) return true
+                    const query = venueSearchQuery.toLowerCase()
+                    return (
+                      venue.name.toLowerCase().includes(query) ||
+                      venue.category?.toLowerCase().includes(query)
+                    )
+                  })
+                  .map((venue) => {
+                    const distance = userLocation
+                      ? calculateDistance(
+                        userLocation.lat,
+                        userLocation.lng,
+                        venue.location.lat,
+                        venue.location.lng
+                      )
+                      : undefined
+                    return (
+                      <VenueCard
+                        key={venue.id}
+                        venue={venue}
+                        distance={distance}
+                        onClick={() => setSelectedVenue(venue)}
+                        isFavorite={isFavorite(venue.id)}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    )
+                  })}
+
+                {sortedVenues.filter(venue =>
+                  venue.name.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
+                  venue.category?.toLowerCase().includes(venueSearchQuery.toLowerCase())
+                ).length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MagnifyingGlass size={32} className="mx-auto mb-2 opacity-50" />
+                      <p>No venues found matching "{venueSearchQuery}"</p>
+                    </div>
+                  )}
+              </div>
             </div>
           </motion.div>
         )}
