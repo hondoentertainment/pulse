@@ -4,7 +4,7 @@ import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
-import { MapPin, NavigationArrow, Plus, Minus } from '@phosphor-icons/react'
+import { MapPin, NavigationArrow, Plus, Minus, Info, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,8 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     maxDistance: Infinity
   })
   const [nearMeActive, setNearMeActive] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const { unitSystem } = useUnitPreference()
 
   useEffect(() => {
@@ -184,26 +186,26 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   ) => {
     ctx.clearRect(0, 0, dims.width, dims.height)
 
-    const gradient = ctx.createLinearGradient(0, dims.height, 0, 0)
-    gradient.addColorStop(0, 'oklch(0.15 0 0)')
-    gradient.addColorStop(1, 'oklch(0.20 0 0)')
-    ctx.fillStyle = gradient
+    // Clean dark background with subtle vignette
+    const bgGradient = ctx.createRadialGradient(
+      dims.width / 2, dims.height / 2, 0,
+      dims.width / 2, dims.height / 2, Math.max(dims.width, dims.height) * 0.7
+    )
+    bgGradient.addColorStop(0, 'oklch(0.18 0.01 260)')
+    bgGradient.addColorStop(1, 'oklch(0.12 0 0)')
+    ctx.fillStyle = bgGradient
     ctx.fillRect(0, 0, dims.width, dims.height)
 
-    ctx.strokeStyle = 'oklch(0.35 0 0 / 0.3)'
-    ctx.lineWidth = 1
-    const gridSize = 50 * mapZoom
-    for (let x = 0; x < dims.width; x += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, dims.height)
-      ctx.stroke()
-    }
-    for (let y = 0; y < dims.height; y += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(dims.width, y)
-      ctx.stroke()
+    // Subtle dot grid pattern instead of lines
+    ctx.fillStyle = 'oklch(0.25 0 0 / 0.3)'
+    const dotSpacing = 40 * mapZoom
+    const dotSize = 1.5
+    for (let x = dotSpacing; x < dims.width; x += dotSpacing) {
+      for (let y = dotSpacing; y < dims.height; y += dotSpacing) {
+        ctx.beginPath()
+        ctx.arc(x, y, dotSize, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
 
     const heatmapCanvas = document.createElement('canvas')
@@ -290,6 +292,85 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     }
   }
 
+  // Touch event handlers for mobile
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return null
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      setLastTouchDistance(getTouchDistance(e.touches))
+    } else if (e.touches.length === 1) {
+      setIsDragging(true)
+      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+      setFollowUser(false)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastTouchDistance !== null) {
+      // Pinch to zoom
+      const newDistance = getTouchDistance(e.touches)
+      if (newDistance !== null) {
+        const scale = newDistance / lastTouchDistance
+        setZoom(z => Math.max(0.5, Math.min(5, z * scale)))
+        setLastTouchDistance(newDistance)
+        setFollowUser(false)
+      }
+    } else if (e.touches.length === 1 && isDragging && dragStart && center) {
+      // Touch pan
+      const dx = e.touches[0].clientX - dragStart.x
+      const dy = e.touches[0].clientY - dragStart.y
+      const scale = 500000 * zoom
+      setCenter({
+        lng: center.lng - dx / scale,
+        lat: center.lat + dy / scale
+      })
+      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    setDragStart(null)
+    setLastTouchDistance(null)
+  }
+
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!center) return
+    const panAmount = 0.0005 / zoom
+
+    switch (e.key) {
+      case 'ArrowUp':
+        setCenter({ ...center, lat: center.lat + panAmount })
+        setFollowUser(false)
+        break
+      case 'ArrowDown':
+        setCenter({ ...center, lat: center.lat - panAmount })
+        setFollowUser(false)
+        break
+      case 'ArrowLeft':
+        setCenter({ ...center, lng: center.lng - panAmount })
+        setFollowUser(false)
+        break
+      case 'ArrowRight':
+        setCenter({ ...center, lng: center.lng + panAmount })
+        setFollowUser(false)
+        break
+      case '+':
+      case '=':
+        handleZoomIn()
+        break
+      case '-':
+        handleZoomOut()
+        break
+    }
+  }
+
   const handleVenueSelect = (venue: Venue) => {
     setCenter({ lat: venue.location.lat, lng: venue.location.lng })
     setZoom(2)
@@ -316,17 +397,25 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-full rounded-xl overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <canvas
         ref={canvasRef}
         className={cn(
-          'absolute inset-0 w-full h-full',
+          'absolute inset-0 w-full h-full touch-none',
           isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
 
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -592,7 +681,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                 transform: 'translateX(-50%)'
               }}
             >
-              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl">
+              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl relative">
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -631,6 +720,11 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                     )}
                   </div>
                 </div>
+                {/* Pointer arrow */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-card/98"
+                  style={{ filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}
+                />
               </Card>
             </motion.div>
           )
@@ -647,7 +741,9 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         </div>
       </div>
 
+      {/* Consolidated Right Controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+        {/* Venue Count Badge */}
         <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2 shadow-lg">
           <div className="flex items-center gap-2">
             <MapPin size={16} weight="fill" className="text-primary" />
@@ -659,56 +755,76 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
             </div>
           </div>
         </Card>
+
         <MapFilters
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
         />
-        <div className="flex gap-2">
-          <Button
-            size="icon"
-            variant="secondary"
-            className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
-            onClick={handleZoomIn}
-          >
-            <Plus size={20} weight="bold" />
-          </Button>
-          <Button
-            size="icon"
-            variant="secondary"
-            className="bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg"
-            onClick={handleZoomOut}
-          >
-            <Minus size={20} weight="bold" />
-          </Button>
+
+        {/* Unified Control Group */}
+        <Card className="bg-card/95 backdrop-blur-sm border-border p-1.5 shadow-lg">
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 hover:bg-secondary"
+                onClick={handleZoomIn}
+                title="Zoom in (+)"
+              >
+                <Plus size={18} weight="bold" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 hover:bg-secondary"
+                onClick={handleZoomOut}
+                title="Zoom out (-)"
+              >
+                <Minus size={18} weight="bold" />
+              </Button>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-8 w-8",
+                  followUser && "bg-accent text-accent-foreground"
+                )}
+                onClick={handleCenterOnUser}
+                title="Center on me"
+              >
+                <NavigationArrow size={18} weight="fill" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-8 w-8",
+                  nearMeActive && "bg-accent text-accent-foreground"
+                )}
+                onClick={() => setNearMeActive(!nearMeActive)}
+                title="Near me (0.5 mi)"
+              >
+                <MapPin size={18} weight="fill" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Zoom Level Indicator */}
+        <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1">
+          {zoom.toFixed(1)}x
         </div>
-        <Button
-          size="icon"
-          variant="secondary"
-          className={cn(
-            "bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg transition-colors",
-            followUser && "bg-accent text-accent-foreground hover:bg-accent/90"
-          )}
-          onClick={handleCenterOnUser}
-        >
-          <NavigationArrow size={20} weight="fill" />
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className={cn(
-            "bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg transition-colors",
-            nearMeActive && "bg-accent text-accent-foreground hover:bg-accent/90"
-          )}
-          onClick={() => setNearMeActive(!nearMeActive)}
-        >
-          <MapPin size={16} weight="fill" className="mr-1" />
-          Near Me
-        </Button>
       </div>
 
+      {/* Bottom Left Controls */}
       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
         <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
+
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
           filters.maxDistance !== Infinity) && (
@@ -719,28 +835,50 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
               </p>
             </Card>
           )}
-        <Card className="bg-card/95 backdrop-blur-sm border-border p-3">
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-foreground mb-2">Energy Levels</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
-                <span className="text-xs text-muted-foreground">Dead</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)] border border-foreground/20" />
-                <span className="text-xs text-muted-foreground">Chill</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)] border border-foreground/20 shadow-sm" />
-                <span className="text-xs text-muted-foreground">Buzzing</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)] border border-foreground/20 shadow-sm animate-pulse-glow" />
-                <span className="text-xs text-muted-foreground">Electric</span>
-              </div>
-            </div>
-          </div>
+
+        {/* Collapsible Legend */}
+        <Card className="bg-card/95 backdrop-blur-sm border-border overflow-hidden">
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+          >
+            <span className="text-xs font-bold text-foreground">Energy Levels</span>
+            {showLegend ? (
+              <CaretUp size={14} className="text-muted-foreground" />
+            ) : (
+              <CaretDown size={14} className="text-muted-foreground" />
+            )}
+          </button>
+          <AnimatePresence>
+            {showLegend && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
+                    <span className="text-xs text-muted-foreground">Dead</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)] border border-foreground/20" />
+                    <span className="text-xs text-muted-foreground">Chill</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)] border border-foreground/20 shadow-sm" />
+                    <span className="text-xs text-muted-foreground">Buzzing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)] border border-foreground/20 shadow-sm animate-pulse-glow" />
+                    <span className="text-xs text-muted-foreground">Electric</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       </div>
     </div>
