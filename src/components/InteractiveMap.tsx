@@ -35,6 +35,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     categories: [],
     maxDistance: Infinity
   })
+  const [nearMeActive, setNearMeActive] = useState(false)
   const { unitSystem } = useUnitPreference()
 
   useEffect(() => {
@@ -98,6 +99,18 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         venue.location.lng
       )
       if (distance > filters.maxDistance) {
+        return false
+      }
+    }
+    // Near Me filter (0.5 mile radius)
+    if (nearMeActive && userLocation) {
+      const distance = calculateDistance(
+        userLocation.lat,
+        userLocation.lng,
+        venue.location.lat,
+        venue.location.lng
+      )
+      if (distance > 0.5) {
         return false
       }
     }
@@ -333,6 +346,11 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           const isHighlighted = hoveredVenue?.id === venue.id
           const isHighEnergy = venue.pulseScore >= 60
 
+          // Check for recent activity (within last 10 minutes)
+          const hasRecentActivity = venue.lastActivity
+            ? (Date.now() - new Date(venue.lastActivity).getTime()) < 10 * 60 * 1000
+            : venue.pulseScore >= 50
+
           return (
             <g key={venue.id}>
               {isHighEnergy && (
@@ -354,6 +372,20 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                     className="animate-pulse"
                   />
                 </>
+              )}
+              {/* Live activity ring */}
+              {hasRecentActivity && !isHighEnergy && (
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={markerSize * 1.8}
+                  fill="none"
+                  stroke={getEnergyColor(venue.pulseScore)}
+                  strokeWidth={2}
+                  opacity={0.6}
+                  className="animate-ping"
+                  style={{ animationDuration: '2s' }}
+                />
               )}
               {venue.pulseScore > 0 && !isHighEnergy && (
                 <circle
@@ -397,7 +429,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
             return (meters / metersPerDegree) * scale
           }
           const accuracyRadius = metersToPixels(accuracyRadiusInMeters)
-          
+
           return (
             <g>
               {locationAccuracy && (
@@ -440,14 +472,14 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
         const showLabel = zoom >= 1.2 || venue.pulseScore >= 70 || hoveredVenue?.id === venue.id
         const isHovered = hoveredVenue?.id === venue.id
-        
+
         const distance = userLocation
           ? calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              venue.location.lat,
-              venue.location.lng
-            )
+            userLocation.lat,
+            userLocation.lng,
+            venue.location.lat,
+            venue.location.lng
+          )
           : undefined
 
         return (
@@ -478,10 +510,10 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                   className="absolute top-full mt-3 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10"
                 >
                   {isHovered && (
-                    <motion.div 
+                    <motion.div
                       initial={{ scaleY: 0 }}
                       animate={{ scaleY: 1 }}
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gradient-to-t from-border to-transparent mb-0.5 origin-bottom" 
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gradient-to-t from-border to-transparent mb-0.5 origin-bottom"
                     />
                   )}
                   <div className={cn(
@@ -522,11 +554,11 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
           const distance = userLocation
             ? calculateDistance(
-                userLocation.lat,
-                userLocation.lng,
-                hoveredVenue.location.lat,
-                hoveredVenue.location.lng
-              )
+              userLocation.lat,
+              userLocation.lng,
+              hoveredVenue.location.lat,
+              hoveredVenue.location.lng
+            )
             : undefined
 
           const tooltipWidth = 240
@@ -585,7 +617,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                     </div>
                     <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
                   </div>
-                  
+
                   {hoveredVenue.location.address && (
                     <p className="text-xs text-muted-foreground line-clamp-2">
                       {hoveredVenue.location.address}
@@ -661,6 +693,18 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         >
           <NavigationArrow size={20} weight="fill" />
         </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          className={cn(
+            "bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg transition-colors",
+            nearMeActive && "bg-accent text-accent-foreground hover:bg-accent/90"
+          )}
+          onClick={() => setNearMeActive(!nearMeActive)}
+        >
+          <MapPin size={16} weight="fill" className="mr-1" />
+          Near Me
+        </Button>
       </div>
 
       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
@@ -668,13 +712,13 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
           filters.maxDistance !== Infinity) && (
-          <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
-            <p className="text-xs text-muted-foreground">
-              Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}
-              {venues.length} venues
-            </p>
-          </Card>
-        )}
+            <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}
+                {venues.length} venues
+              </p>
+            </Card>
+          )}
         <Card className="bg-card/95 backdrop-blur-sm border-border p-3">
           <div className="space-y-2">
             <p className="text-xs font-bold text-foreground mb-2">Energy Levels</p>

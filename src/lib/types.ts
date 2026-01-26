@@ -47,6 +47,7 @@ export interface Venue {
   verifiedCheckInCount?: number
   firstRealCheckInAt?: string
   scoreVelocity?: number
+  lastActivity?: string
 }
 
 export interface Pulse {
