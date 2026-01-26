@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
@@ -30,6 +30,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [followUser, setFollowUser] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null) // Optimization: Reuse canvas
   const [filters, setFilters] = useState<MapFiltersState>({
     energyLevels: [],
     categories: [],
@@ -39,10 +40,24 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   const [showLegend, setShowLegend] = useState(false)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const { unitSystem } = useUnitPreference()
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    // If no location after 3s, default to first venue or SF
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!center && !userLocation && venues.length > 0) {
+        setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
+        setFollowUser(false)
+      }
+    }, 3000)
+
+    return () => clearTimeout(loadingTimeoutRef.current)
+  }, [center, userLocation, venues])
 
   useEffect(() => {
     if (userLocation && followUser) {
       setCenter(userLocation)
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
   }, [userLocation, followUser])
 
@@ -79,46 +94,48 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     return 'dead'
   }
 
-  const filteredVenues = venues.filter((venue) => {
-    if (filters.energyLevels.length > 0) {
-      const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-      if (!filters.energyLevels.includes(energyLevel as any)) {
-        return false
+  const filteredVenues = useMemo(() => {
+    return venues.filter((venue) => {
+      if (filters.energyLevels.length > 0) {
+        const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
+        if (!filters.energyLevels.includes(energyLevel as any)) {
+          return false
+        }
       }
-    }
 
-    if (filters.categories.length > 0 && venue.category) {
-      if (!filters.categories.includes(venue.category)) {
-        return false
+      if (filters.categories.length > 0 && venue.category) {
+        if (!filters.categories.includes(venue.category)) {
+          return false
+        }
       }
-    }
 
-    if (filters.maxDistance !== Infinity && userLocation) {
-      const distance = calculateDistance(
-        userLocation.lat,
-        userLocation.lng,
-        venue.location.lat,
-        venue.location.lng
-      )
-      if (distance > filters.maxDistance) {
-        return false
+      if (filters.maxDistance !== Infinity && userLocation) {
+        const distance = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng
+        )
+        if (distance > filters.maxDistance) {
+          return false
+        }
       }
-    }
-    // Near Me filter (0.5 mile radius)
-    if (nearMeActive && userLocation) {
-      const distance = calculateDistance(
-        userLocation.lat,
-        userLocation.lng,
-        venue.location.lat,
-        venue.location.lng
-      )
-      if (distance > 0.5) {
-        return false
+      // Near Me filter (0.5 mile radius)
+      if (nearMeActive && userLocation) {
+        const distance = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng
+        )
+        if (distance > 0.5) {
+          return false
+        }
       }
-    }
 
-    return true
-  })
+      return true
+    })
+  }, [venues, filters, userLocation, nearMeActive])
 
   const availableCategories = Array.from(
     new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
@@ -208,9 +225,21 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       }
     }
 
-    const heatmapCanvas = document.createElement('canvas')
-    heatmapCanvas.width = dims.width
-    heatmapCanvas.height = dims.height
+    if (!offscreenCanvasRef.current) {
+      offscreenCanvasRef.current = document.createElement('canvas')
+    }
+    const heatmapCanvas = offscreenCanvasRef.current
+
+    // Resize only if needed to avoid flicker/perf hit
+    if (heatmapCanvas.width !== dims.width || heatmapCanvas.height !== dims.height) {
+      heatmapCanvas.width = dims.width
+      heatmapCanvas.height = dims.height
+    } else {
+      // Clear previous draw
+      const offCtx = heatmapCanvas.getContext('2d')
+      offCtx?.clearRect(0, 0, dims.width, dims.height)
+    }
+
     const heatmapCtx = heatmapCanvas.getContext('2d')
     if (!heatmapCtx) return
 
