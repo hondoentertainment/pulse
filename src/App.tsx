@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Pulse, PulseWithUser, Venue, User, EnergyRating, Notification, GroupedNotification, Hashtag } from '@/lib/types'
+import {
+  Venue,
+  Pulse,
+  User,
+  EnergyRating,
+  Notification,
+  GroupedNotification,
+  Hashtag,
+  PulseWithUser,
+  PresenceData
+} from '@/lib/types'
+import { calculatePresence, PresenceContext } from '@/lib/presence-engine'
+import { WhoIsHereRow } from '@/components/WhoIsHereRow'
+import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
 import { PulseCard } from '@/components/PulseCard'
@@ -43,6 +56,16 @@ function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [activeTab, setActiveTab] = useState<'trending' | 'venues' | 'map' | 'notifications' | 'profile'>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
+  const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
+
+  // Mock users for presence simulation
+  const ALL_USERS: User[] = [
+    { id: 'user-2', username: 'sarah_j', profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
+    { id: 'user-3', username: 'mike_v', profilePhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
+    { id: 'user-4', username: 'alex_k', profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
+    { id: 'user-5', username: 'jess_m', profilePhoto: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop', friends: [], createdAt: new Date().toISOString() },
+    { id: 'user-6', username: 'tom_b', profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop', friends: [], createdAt: new Date().toISOString() },
+  ]
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [locationName, setLocationName] = useState<string>('')
@@ -57,14 +80,19 @@ function App() {
 
   const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
     id: 'user-1',
-    username: 'nightowl',
-    profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
-    friends: [],
+    username: 'kyle',
+    profilePhoto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
+    friends: ['user-2', 'user-3', 'user-4'],
     favoriteVenues: [],
     followedVenues: [],
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     venueCheckInHistory: {},
-    credibilityScore: 1.0
+    credibilityScore: 1.0,
+    presenceSettings: {
+      enabled: true,
+      visibility: 'everyone',
+      hideAtSensitiveVenues: true
+    }
   })
 
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
@@ -80,8 +108,8 @@ function App() {
     }
   }, [])
 
-  const userLocation = realtimeLocation 
-    ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } 
+  const userLocation = realtimeLocation
+    ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng }
     : simulatedLocation
 
   useVenueSurgeTracker(
@@ -149,7 +177,7 @@ function App() {
           const lastPulse = venuePulses.sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0]
-          
+
           return {
             ...venue,
             pulseScore: score,
@@ -158,7 +186,7 @@ function App() {
           }
         })
       })
-      
+
       setHashtags((currentHashtags) => {
         if (!currentHashtags) return []
         return applyHashtagDecay(currentHashtags)
@@ -215,10 +243,10 @@ function App() {
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       reactions: {
-        fire: 0,
-        eyes: 0,
-        skull: 0,
-        lightning: 0
+        fire: [],
+        eyes: [],
+        skull: [],
+        lightning: []
       },
       views: 0,
       isPending: true,
@@ -244,7 +272,7 @@ function App() {
 
     setVenues((currentVenues) => {
       if (!currentVenues) return []
-      return currentVenues.map(v => 
+      return currentVenues.map(v =>
         v.id === venueForPulse.id ? updateVenueWithCheckIn(v, newPulse) : v
       )
     })
@@ -333,19 +361,25 @@ function App() {
   }
 
   const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
+    if (!currentUser) return
     setPulses((current) => {
       if (!current) return []
-      return current.map((p) =>
-        p.id === pulseId
-          ? {
-              ...p,
-              reactions: {
-                ...p.reactions,
-                [type]: p.reactions[type] + 1
-              }
-            }
-          : p
-      )
+      return current.map((p) => {
+        if (p.id !== pulseId) return p
+
+        const currentReactions = p.reactions[type]
+        const hasReacted = currentReactions.includes(currentUser.id)
+
+        return {
+          ...p,
+          reactions: {
+            ...p.reactions,
+            [type]: hasReacted
+              ? currentReactions.filter(id => id !== currentUser.id)
+              : [...currentReactions, currentUser.id]
+          }
+        }
+      })
     })
   }
 
@@ -366,7 +400,7 @@ function App() {
 
   const handleGenerateDemoNotifications = () => {
     if (!currentUser || !venues) return
-    
+
     const venueIds = venues.map((v) => v.id)
     const { notifications: demoNotifications, pulses: updatedPulses } = generateDemoNotifications(
       currentUser,
@@ -414,7 +448,7 @@ function App() {
       }
       const favorites = user.favoriteVenues || []
       const isFavorite = favorites.includes(venueId)
-      
+
       if (isFavorite) {
         toast.success('Removed from favorites')
         return {
@@ -450,7 +484,7 @@ function App() {
       }
       const followed = user.followedVenues || []
       const isFollowing = followed.includes(venueId)
-      
+
       if (isFollowing) {
         toast.success('Unfollowed venue')
         return {
@@ -511,12 +545,24 @@ function App() {
     const venuePulses = getPulsesWithUsers().filter((p) => p.venueId === selectedVenue.id)
     const distance = userLocation
       ? calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          selectedVenue.location.lat,
-          selectedVenue.location.lng
-        )
+        userLocation.lat,
+        userLocation.lng,
+        selectedVenue.location.lat,
+        selectedVenue.location.lng
+      )
       : undefined
+
+    const presenceData = calculatePresence(selectedVenue.id, {
+      currentUser,
+      allUsers: ALL_USERS,
+      allPulses: pulses || [],
+      venueLocation: selectedVenue.location,
+      userLocations: {
+        'user-2': { lat: selectedVenue.location.lat + 0.00001, lng: selectedVenue.location.lng - 0.00001, lastUpdate: new Date().toISOString() },
+        'user-3': { lat: selectedVenue.location.lat - 0.00001, lng: selectedVenue.location.lng + 0.00001, lastUpdate: new Date().toISOString() },
+        'user-5': { lat: selectedVenue.location.lat + 0.00002, lng: selectedVenue.location.lng + 0.00002, lastUpdate: new Date().toISOString() }
+      }
+    })
 
     return (
       <>
@@ -531,10 +577,34 @@ function App() {
           isTracking={isTracking}
           hasRealtimeLocation={!!realtimeLocation}
           isFavorite={isFavorite(selectedVenue.id)}
+          currentUser={currentUser}
+          presenceData={presenceData}
+          onOpenPresence={() => setPresenceSheetOpen(true)}
           onBack={() => setSelectedVenue(null)}
           onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
           onReaction={handleReaction}
           onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
+        />
+        <PresenceSheet
+          open={presenceSheetOpen}
+          onClose={() => setPresenceSheetOpen(false)}
+          presence={presenceData}
+          currentUser={currentUser}
+          onUpdateSettings={(settings) => {
+            setCurrentUser(prev => {
+              if (!prev) return {
+                id: 'user-1',
+                username: 'nightowl',
+                profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+                friends: [],
+                favoriteVenues: [],
+                followedVenues: [],
+                createdAt: new Date().toISOString(),
+                presenceSettings: settings
+              }
+              return { ...prev, presenceSettings: settings }
+            })
+          }}
         />
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
         <CreatePulseDialog
@@ -654,11 +724,11 @@ function App() {
               {sortedVenues.map((venue) => {
                 const distance = userLocation
                   ? calculateDistance(
-                      userLocation.lat,
-                      userLocation.lng,
-                      venue.location.lat,
-                      venue.location.lng
-                    )
+                    userLocation.lat,
+                    userLocation.lng,
+                    venue.location.lat,
+                    venue.location.lng
+                  )
                   : undefined
                 return (
                   <VenueCard
@@ -754,7 +824,7 @@ function App() {
                       const latestPulse = venuePulses.sort(
                         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                       )[0]
-                      
+
                       return (
                         <button
                           key={venue.id}
@@ -823,7 +893,7 @@ function App() {
                 <Gear size={20} weight="fill" className="text-primary" />
                 <h3 className="text-lg font-bold">Settings</h3>
               </div>
-              <Settings 
+              <Settings
                 onGenerateDemoNotifications={handleGenerateDemoNotifications}
                 onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
               />

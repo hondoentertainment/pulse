@@ -1,4 +1,4 @@
-import { Venue, PulseWithUser } from '@/lib/types'
+import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { WhoIsHereRow } from './WhoIsHereRow'
 
 interface VenuePageProps {
   venue: Venue
@@ -21,10 +22,13 @@ interface VenuePageProps {
   isTracking: boolean
   hasRealtimeLocation: boolean
   isFavorite: boolean
+  currentUser?: User | null
   onBack: () => void
   onCreatePulse: () => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onToggleFavorite: () => void
+  presenceData?: PresenceData | null
+  onOpenPresence: () => void
 }
 
 export function VenuePage({
@@ -37,10 +41,13 @@ export function VenuePage({
   isTracking,
   hasRealtimeLocation,
   isFavorite,
+  currentUser,
   onBack,
   onCreatePulse,
   onReaction,
-  onToggleFavorite
+  onToggleFavorite,
+  presenceData,
+  onOpenPresence
 }: VenuePageProps) {
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -117,7 +124,7 @@ export function VenuePage({
           <>
             <Card className="p-4 space-y-4 bg-card border-border">
               <h3 className="text-lg font-bold">Venue Details</h3>
-              
+
               {venue.location.address && (
                 <div className="flex items-start gap-3">
                   <MapPin size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
@@ -133,8 +140,8 @@ export function VenuePage({
                   <Phone size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                    <a 
-                      href={`tel:${venue.phone}`} 
+                    <a
+                      href={`tel:${venue.phone}`}
                       className="text-sm text-primary hover:underline"
                     >
                       {venue.phone}
@@ -148,9 +155,9 @@ export function VenuePage({
                   <Globe size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Website</p>
-                    <a 
-                      href={venue.website} 
-                      target="_blank" 
+                    <a
+                      href={venue.website}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline"
                     >
@@ -170,8 +177,8 @@ export function VenuePage({
                         const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
                         const isToday = day === currentDay
                         return (
-                          <div 
-                            key={day} 
+                          <div
+                            key={day}
                             className={cn(
                               "flex justify-between text-sm",
                               isToday && "font-bold text-accent"
@@ -192,6 +199,13 @@ export function VenuePage({
 
             <Separator />
           </>
+        )}
+
+        {presenceData && (
+          <WhoIsHereRow
+            presence={presenceData}
+            onClick={onOpenPresence}
+          />
         )}
 
         <div className="flex items-center justify-between">
@@ -231,6 +245,7 @@ export function VenuePage({
                 pulse={pulse}
                 allPulses={venuePulses}
                 onReaction={(type) => onReaction(pulse.id, type)}
+                currentUserId={currentUser?.id}
               />
             ))}
           </div>

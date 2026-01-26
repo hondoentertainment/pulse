@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack, ChartLine } from '@phosphor-icons/react'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack, ChartLine, Users } from '@phosphor-icons/react'
 
 interface SettingsProps {
   onGenerateDemoNotifications?: () => void
@@ -145,6 +145,34 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
       <Card className="p-5 space-y-4">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
+            <Users size={20} weight="bold" className="text-primary" />
+          </div>
+          <div className="flex-1 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold">
+                Who's Here (Presence)
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Control your visibility to friends and familiar faces
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Show me in counts</Label>
+                <p className="text-xs text-muted-foreground">Allow friends to see you're nearby (aggregated)</p>
+              </div>
+              <Switch defaultChecked className="data-[state=checked]:bg-primary" />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Separator />
+
+      <Card className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
             <Stack size={20} weight="bold" className="text-primary" />
           </div>
           <div className="flex-1 space-y-3">
@@ -206,13 +234,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
                 />
               </div>
             </div>
-
-            <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
-              <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Grouping helps reduce clutter by combining similar notifications. You'll see a count when multiple are grouped.
-              </p>
-            </div>
           </div>
         </div>
       </Card>
@@ -254,14 +275,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
                   Metric (km, m)
                 </span>
               </div>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
-              <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                This setting affects distance displays on venue cards, maps, and filters. 
-                Your preference is saved automatically.
-              </p>
             </div>
           </div>
         </div>
@@ -307,12 +320,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
                   <Flask size={18} weight="bold" className="mr-2" />
                   Generate Seattle Demo Data
                 </Button>
-                <div className="flex items-start gap-2 p-3 bg-accent/10 rounded-lg">
-                  <Info size={16} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Creates sample pulses with realistic captions, photos, and reactions from venues across Seattle neighborhoods including Capitol Hill, Fremont, Georgetown, and South Lake Union.
-                  </p>
-                </div>
               </div>
             </div>
           </Card>
@@ -344,12 +351,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
                   <ChartLine size={18} weight="bold" className="mr-2" />
                   Open Admin Dashboard
                 </Button>
-                <div className="flex items-start gap-2 p-3 bg-primary/10 rounded-lg">
-                  <Info size={16} weight="fill" className="text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Monitor real-time social media activity, track hashtags, and analyze correlation between social buzz and venue check-ins.
-                  </p>
-                </div>
               </div>
             </div>
           </Card>

@@ -12,6 +12,11 @@ export interface User {
     [venueId: string]: number
   }
   credibilityScore?: number
+  presenceSettings?: {
+    enabled: boolean
+    visibility: 'everyone' | 'friends' | 'off'
+    hideAtSensitiveVenues: boolean
+  }
 }
 
 export interface Venue {
@@ -56,10 +61,10 @@ export interface Pulse {
   createdAt: string
   expiresAt: string
   reactions: {
-    fire: number
-    eyes: number
-    skull: number
-    lightning: number
+    fire: string[]
+    eyes: string[]
+    skull: string[]
+    lightning: string[]
   }
   views: number
   isPending?: boolean
@@ -240,4 +245,13 @@ export interface CorrelationInsight {
   hasSocialBuzz: boolean
   socialPulseScore: number
   venuePulseScore: number
+}
+export interface PresenceData {
+  venueId: string
+  friendsHereNowCount: number
+  friendsNearbyCount: number
+  familiarFacesCount: number
+  prioritizedAvatars: string[]
+  lastPresenceUpdateAt: string
+  isSuppressed: boolean
 }

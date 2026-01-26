@@ -22,9 +22,10 @@ interface PulseCardProps {
   allPulses?: PulseWithUser[]
   onReaction?: (type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onRetry?: () => void
+  currentUserId?: string
 }
 
-export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseCardProps) {
+export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
@@ -48,7 +49,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseC
             </Badge>
           </div>
         )}
-        
+
         {pulse.uploadError && (
           <div className="absolute top-2 right-2 flex items-center gap-2">
             <Badge className="bg-destructive/20 text-destructive border-destructive/30">
@@ -119,9 +120,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseC
             {pulse.photos.slice(0, 4).map((photo, idx) => (
               <div
                 key={idx}
-                className={`aspect-square bg-secondary ${
-                  pulse.photos.length === 1 ? 'col-span-2' : ''
-                } ${pulse.photos.length === 3 && idx === 0 ? 'col-span-2' : ''}`}
+                className={`aspect-square bg-secondary ${pulse.photos.length === 1 ? 'col-span-2' : ''
+                  } ${pulse.photos.length === 3 && idx === 0 ? 'col-span-2' : ''}`}
               >
                 <img
                   src={photo}
@@ -155,35 +155,55 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry }: PulseC
           <div className="flex items-center gap-4">
             <button
               onClick={() => onReaction?.('fire')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                currentUserId && pulse.reactions.fire.includes(currentUserId)
+                  ? "text-accent"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
               disabled={pulse.isPending || pulse.uploadError}
             >
-              <Fire size={18} weight="fill" />
-              <span className="text-sm font-mono">{pulse.reactions.fire || 0}</span>
+              <Fire size={18} weight={currentUserId && pulse.reactions.fire.includes(currentUserId) ? "fill" : "regular"} />
+              <span className="text-sm font-mono">{pulse.reactions.fire.length}</span>
             </button>
             <button
               onClick={() => onReaction?.('lightning')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                currentUserId && pulse.reactions.lightning.includes(currentUserId)
+                  ? "text-accent"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
               disabled={pulse.isPending || pulse.uploadError}
             >
-              <Lightning size={18} weight="fill" />
-              <span className="text-sm font-mono">{pulse.reactions.lightning || 0}</span>
+              <Lightning size={18} weight={currentUserId && pulse.reactions.lightning.includes(currentUserId) ? "fill" : "regular"} />
+              <span className="text-sm font-mono">{pulse.reactions.lightning.length}</span>
             </button>
             <button
               onClick={() => onReaction?.('eyes')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                currentUserId && pulse.reactions.eyes.includes(currentUserId)
+                  ? "text-accent"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
               disabled={pulse.isPending || pulse.uploadError}
             >
-              <Eye size={18} weight="fill" />
-              <span className="text-sm font-mono">{pulse.reactions.eyes || 0}</span>
+              <Eye size={18} weight={currentUserId && pulse.reactions.eyes.includes(currentUserId) ? "fill" : "regular"} />
+              <span className="text-sm font-mono">{pulse.reactions.eyes.length}</span>
             </button>
             <button
               onClick={() => onReaction?.('skull')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                currentUserId && pulse.reactions.skull.includes(currentUserId)
+                  ? "text-accent"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
               disabled={pulse.isPending || pulse.uploadError}
             >
-              <Skull size={18} weight="fill" />
-              <span className="text-sm font-mono">{pulse.reactions.skull || 0}</span>
+              <Skull size={18} weight={currentUserId && pulse.reactions.skull.includes(currentUserId) ? "fill" : "regular"} />
+              <span className="text-sm font-mono">{pulse.reactions.skull.length}</span>
             </button>
           </div>
 

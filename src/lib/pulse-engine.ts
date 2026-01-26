@@ -47,13 +47,13 @@ export function calculatePulseScore(pulses: Pulse[], useCredibilityWeighting: bo
     const recencyFactor = 1 - age / decayMs
     const energyValue = ENERGY_CONFIG[pulse.energyRating].value
     const engagementFactor =
-      1 + (pulse.reactions.fire * 0.5 + 
-           pulse.reactions.lightning * 0.5 + 
-           pulse.reactions.eyes * 0.2 +
-           pulse.views * 0.1) / 100
+      1 + (pulse.reactions.fire.length * 0.5 +
+        pulse.reactions.lightning.length * 0.5 +
+        pulse.reactions.eyes.length * 0.2 +
+        pulse.views * 0.1) / 100
 
-    const credibilityWeight = useCredibilityWeighting && pulse.credibilityWeight 
-      ? pulse.credibilityWeight 
+    const credibilityWeight = useCredibilityWeighting && pulse.credibilityWeight
+      ? pulse.credibilityWeight
       : 1.0
 
     totalScore += energyValue * recencyFactor * engagementFactor * credibilityWeight * 25
