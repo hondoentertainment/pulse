@@ -4,9 +4,14 @@ import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
-import { MapPin, NavigationArrow, Plus, Minus, Info, CaretDown, CaretUp } from '@phosphor-icons/react'
+import {
+  MapPin, NavigationArrow, Plus, Minus, Info, CaretDown, CaretUp,
+  BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
+  Users, Fire, Lightning
+} from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
@@ -44,7 +49,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
   useEffect(() => {
     // If no location after 3s, default to first venue or SF
-    loadingTimeoutRef.current = setTimeout(() => {
+    loadingTimeoutRef.current = window.setTimeout(() => {
       if (!center && !userLocation && venues.length > 0) {
         setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
         setFollowUser(false)
@@ -92,6 +97,20 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     if (score >= 60) return 'buzzing'
     if (score >= 30) return 'chill'
     return 'dead'
+  }
+
+  const getCategoryIcon = (category?: string) => {
+    switch (category?.toLowerCase()) {
+      case 'bar': return BeerBottle
+      case 'club': return MusicNotes
+      case 'nightclub': return MusicNotes
+      case 'restaurant': return ForkKnife
+      case 'food': return ForkKnife
+      case 'cafe': return Coffee
+      case 'lounge': return Martini
+      case 'event': return Confetti
+      default: return MapPin
+    }
   }
 
   const filteredVenues = useMemo(() => {
@@ -253,17 +272,17 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       const gradient = heatmapCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius)
 
       if (venue.pulseScore >= 80) {
-        gradient.addColorStop(0, `rgba(168, 85, 247, ${intensity * 0.8})`)
-        gradient.addColorStop(0.5, `rgba(168, 85, 247, ${intensity * 0.4})`)
+        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 0.9})`) // Neon Fuchsia
+        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.5})`)
       } else if (venue.pulseScore >= 60) {
-        gradient.addColorStop(0, `rgba(251, 146, 60, ${intensity * 0.7})`)
-        gradient.addColorStop(0.5, `rgba(251, 146, 60, ${intensity * 0.35})`)
+        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.8})`) // Neon Rose
+        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.4})`)
       } else if (venue.pulseScore >= 30) {
-        gradient.addColorStop(0, `rgba(34, 197, 94, ${intensity * 0.6})`)
-        gradient.addColorStop(0.5, `rgba(34, 197, 94, ${intensity * 0.3})`)
+        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.7})`) // Neon Sky
+        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.35})`)
       } else {
-        gradient.addColorStop(0, `rgba(100, 116, 139, ${intensity * 0.5})`)
-        gradient.addColorStop(0.5, `rgba(100, 116, 139, ${intensity * 0.25})`)
+        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.5})`) // Indigo
+        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.25})`)
       }
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
@@ -454,84 +473,94 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
             return null
 
           const getEnergyColor = (score: number) => {
-            if (score >= 80) return 'oklch(0.65 0.28 340)'
-            if (score >= 60) return 'oklch(0.70 0.22 60)'
-            if (score >= 30) return 'oklch(0.60 0.15 150)'
-            return 'oklch(0.35 0.05 240)'
+            if (score >= 80) return 'oklch(0.65 0.28 320)' // Hot Pink
+            if (score >= 60) return 'oklch(0.65 0.25 25)'  // Orange/Red
+            if (score >= 30) return 'oklch(0.65 0.18 240)' // Blue
+            return 'oklch(0.40 0.05 260)' // Muted
           }
 
-          const markerSize = venue.pulseScore > 0 ? 12 * zoom : 8 * zoom
+          const baseSize = 12
+          const scale = venue.pulseScore > 0 ? 1 + (venue.pulseScore / 100) : 1
+          const markerSize = baseSize * zoom * scale * 0.6
           const isHighlighted = hoveredVenue?.id === venue.id
-          const isHighEnergy = venue.pulseScore >= 60
+          const isHighEnergy = venue.pulseScore >= 80
 
           // Check for recent activity (within last 10 minutes)
           const hasRecentActivity = venue.lastActivity
             ? (Date.now() - new Date(venue.lastActivity).getTime()) < 10 * 60 * 1000
             : venue.pulseScore >= 50
 
+          const Icon = getCategoryIcon(venue.category)
+          const iconSize = markerSize * 1.2
+
           return (
-            <g key={venue.id}>
+            <g key={venue.id} className="pointer-events-none">
               {isHighEnergy && (
                 <>
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={markerSize * 3}
+                    r={markerSize * 2.5}
                     fill={getEnergyColor(venue.pulseScore)}
-                    opacity={0.1}
+                    opacity={0.15}
                     className="animate-pulse-glow"
+                    style={{ animationDuration: '3s' }}
                   />
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={markerSize * 2}
+                    r={markerSize * 1.8}
                     fill={getEnergyColor(venue.pulseScore)}
-                    opacity={0.2}
+                    opacity={0.25}
                     className="animate-pulse"
+                    style={{ animationDuration: '2s' }}
                   />
                 </>
               )}
-              {/* Live activity ring */}
-              {hasRecentActivity && !isHighEnergy && (
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={markerSize * 1.8}
-                  fill="none"
-                  stroke={getEnergyColor(venue.pulseScore)}
-                  strokeWidth={2}
-                  opacity={0.6}
-                  className="animate-ping"
-                  style={{ animationDuration: '2s' }}
-                />
-              )}
-              {venue.pulseScore > 0 && !isHighEnergy && (
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={markerSize * 2}
-                  fill={getEnergyColor(venue.pulseScore)}
-                  opacity={0.15}
-                />
-              )}
+
+              {/* Main Marker Background */}
               <circle
                 cx={pos.x}
                 cy={pos.y}
                 r={markerSize}
-                fill={getEnergyColor(venue.pulseScore)}
-                stroke="oklch(0.98 0 0)"
-                strokeWidth={isHighlighted ? 3 : 2}
-                className="transition-all"
-                opacity={venue.pulseScore === 0 ? 0.5 : 1}
-                filter={isHighEnergy ? "drop-shadow(0 0 4px rgba(168, 85, 247, 0.6))" : undefined}
+                fill={venue.pulseScore > 0 ? getEnergyColor(venue.pulseScore) : 'oklch(0.25 0.05 260)'}
+                stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
+                strokeWidth={isHighlighted ? 3 : 1.5}
+                className="transition-all duration-300"
+                filter={isHighEnergy ? "drop-shadow(0 0 6px rgba(217, 70, 239, 0.5))" : undefined}
               />
-              {venue.pulseScore > 0 && (
+
+              {/* Icon Overlay inside Marker */}
+              <foreignObject
+                x={pos.x - iconSize / 2}
+                y={pos.y - iconSize / 2}
+                width={iconSize}
+                height={iconSize}
+                className="pointer-events-none"
+              >
+                <div className="w-full h-full flex items-center justify-center text-white">
+                  <Icon
+                    weight="fill"
+                    className={cn(
+                      "w-full h-full drop-shadow-md",
+                      venue.pulseScore === 0 && "text-white/50"
+                    )}
+                  />
+                </div>
+              </foreignObject>
+
+              {/* Live Activity Ping */}
+              {hasRecentActivity && (
                 <circle
                   cx={pos.x}
                   cy={pos.y}
-                  r={markerSize * 0.4}
-                  fill="oklch(0.98 0 0)"
-                  opacity={0.9}
+                  r={markerSize * 1.5}
+                  fill="none"
+                  stroke={getEnergyColor(venue.pulseScore)}
+                  strokeWidth={2}
+                  opacity={0}
+                  className="animate-ping"
+                  style={{ animationDuration: '1.5s' }}
                 />
               )}
             </g>
@@ -710,26 +739,35 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                 transform: 'translateX(-50%)'
               }}
             >
-              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl relative">
-                <div className="p-4 space-y-3">
+              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl relative overflow-hidden">
+                {/* Header Decoration */}
+                <div
+                  className={cn(
+                    "absolute top-0 left-0 right-0 h-1",
+                    hoveredVenue.pulseScore >= 80 ? "bg-gradient-to-r from-fuchsia-500 to-cyan-500" :
+                      hoveredVenue.pulseScore >= 60 ? "bg-rose-500" :
+                        hoveredVenue.pulseScore >= 30 ? "bg-sky-500" : "bg-slate-700"
+                  )}
+                />
+
+                <div className="p-3 pt-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm truncate">{hoveredVenue.name}</h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {hoveredVenue.category && (
-                          <p className="text-xs text-muted-foreground uppercase font-mono">
-                            {hoveredVenue.category}
-                          </p>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <h3 className="font-bold text-sm truncate">{hoveredVenue.name}</h3>
+                        {hoveredVenue.pulseScore >= 80 && (
+                          <Fire size={14} weight="fill" className="text-orange-500 animate-pulse" />
                         )}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
+                          {hoveredVenue.category || 'Venue'}
+                        </Badge>
                         {distance !== undefined && (
-                          <>
-                            {hoveredVenue.category && (
-                              <span className="text-xs text-muted-foreground">•</span>
-                            )}
-                            <p className="text-xs text-accent font-mono font-bold">
-                              {formatDistance(distance, unitSystem)}
-                            </p>
-                          </>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {formatDistance(distance, unitSystem)}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -737,16 +775,27 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                   </div>
 
                   {hoveredVenue.location.address && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {hoveredVenue.location.address}
-                    </p>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin size={12} weight="fill" />
+                      <p className="text-[10px] line-clamp-1">
+                        {hoveredVenue.location.address}
+                      </p>
+                    </div>
                   )}
 
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Click to view details</span>
-                    {hoveredVenue.pulseScore > 0 && (
-                      <span className="text-accent font-bold">LIVE</span>
-                    )}
+                  {/* Social Signals / Stats simulated */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Users size={12} />
+                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
+                        <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
                   </div>
                 </div>
                 {/* Pointer arrow */}
