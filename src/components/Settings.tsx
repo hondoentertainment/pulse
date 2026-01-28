@@ -10,11 +10,11 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack, ChartLine, Users } from '@phosphor-icons/react'
 
 interface SettingsProps {
-  onGenerateDemoNotifications?: () => void
+
   onOpenSocialPulseDashboard?: () => void
 }
 
-export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboard }: SettingsProps) {
+export function Settings({ onOpenSocialPulseDashboard }: SettingsProps) {
   const { unitSystem, setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
 
@@ -295,36 +295,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
         </div>
       </Card>
 
-      {onGenerateDemoNotifications && (
-        <>
-          <Separator />
-          <Card className="p-5 space-y-4 border-accent/50">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <Flask size={20} weight="bold" className="text-accent" />
-              </div>
-              <div className="flex-1 space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-base font-semibold">
-                    Demo Mode
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Generate sample pulses and notifications from popular Seattle venues
-                  </p>
-                </div>
-                <Button
-                  onClick={onGenerateDemoNotifications}
-                  variant="outline"
-                  className="w-full border-accent text-accent hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Flask size={18} weight="bold" className="mr-2" />
-                  Generate Seattle Demo Data
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </>
-      )}
 
       {onOpenSocialPulseDashboard && (
         <>
@@ -357,14 +327,6 @@ export function Settings({ onGenerateDemoNotifications, onOpenSocialPulseDashboa
         </>
       )}
 
-      {onGenerateDemoNotifications && (
-        <>
-          <Separator />
-          <Card className="p-5">
-            <AnalyticsDashboard />
-          </Card>
-        </>
-      )}
     </div>
   )
 }

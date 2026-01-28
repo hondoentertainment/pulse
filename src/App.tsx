@@ -46,7 +46,7 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
-import { generateDemoNotifications } from '@/lib/demo-notifications'
+
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -400,29 +400,6 @@ function App() {
 
   const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
 
-  const handleGenerateDemoNotifications = () => {
-    if (!currentUser || !venues) return
-
-    const venueIds = venues.map((v) => v.id)
-    const { notifications: demoNotifications, pulses: updatedPulses } = generateDemoNotifications(
-      currentUser,
-      pulses || [],
-      venueIds
-    )
-
-    setNotifications((current) => {
-      if (!current) return demoNotifications
-      return [...demoNotifications, ...current]
-    })
-
-    setPulses(updatedPulses)
-
-    toast.success('Demo notifications generated!', {
-      description: `Added ${demoNotifications.length} sample notifications to your feed`
-    })
-
-    setActiveTab('notifications')
-  }
 
   const getPulsesWithUsers = (): PulseWithUser[] => {
     if (!pulses || !currentUser || !venues) return []
@@ -930,7 +907,6 @@ function App() {
                 <h3 className="text-lg font-bold">Settings</h3>
               </div>
               <Settings
-                onGenerateDemoNotifications={handleGenerateDemoNotifications}
                 onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
               />
             </div>
