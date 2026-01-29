@@ -272,17 +272,17 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       const gradient = heatmapCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius)
 
       if (venue.pulseScore >= 80) {
-        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 0.9})`) // Neon Fuchsia
-        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.5})`)
+        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 1.0})`) // Neon Fuchsia - boosted
+        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.6})`)
       } else if (venue.pulseScore >= 60) {
-        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.8})`) // Neon Rose
-        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.4})`)
+        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.9})`) // Neon Rose - boosted
+        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.5})`)
       } else if (venue.pulseScore >= 30) {
-        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.7})`) // Neon Sky
-        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.35})`)
+        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.8})`) // Neon Sky - boosted
+        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.4})`)
       } else {
-        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.5})`) // Indigo
-        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.25})`)
+        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.6})`) // Indigo - boosted
+        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.3})`)
       }
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
@@ -479,7 +479,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
             return 'oklch(0.40 0.05 260)' // Muted
           }
 
-          const baseSize = 12
+          const baseSize = 18
           const scale = venue.pulseScore > 0 ? 1 + (venue.pulseScore / 100) : 1
           const markerSize = baseSize * zoom * scale * 0.6
           const isHighlighted = hoveredVenue?.id === venue.id
@@ -527,7 +527,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
                 stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
                 strokeWidth={isHighlighted ? 3 : 1.5}
                 className="transition-all duration-300"
-                filter={isHighEnergy ? "drop-shadow(0 0 6px rgba(217, 70, 239, 0.5))" : undefined}
+                filter={venue.pulseScore >= 30 ? `drop-shadow(0 0 ${venue.pulseScore >= 80 ? '8px' : '4px'} ${venue.pulseScore >= 80 ? 'rgba(217, 70, 239, 0.6)' : venue.pulseScore >= 60 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(14, 165, 233, 0.4)'})` : undefined}
               />
 
               {/* Icon Overlay inside Marker */}
@@ -612,12 +612,41 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         })()}
       </svg>
 
+      {/* Empty State Message */}
+      {filteredVenues.filter(v => {
+        const pos = getVenuePixelPosition(v)
+        return pos && pos.x >= 0 && pos.x <= dimensions.width && pos.y >= 0 && pos.y <= dimensions.height
+      }).length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          >
+            <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
+              <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
+              <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Zoom out or pan to discover nearby spots
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="pointer-events-auto"
+                onClick={handleCenterOnUser}
+              >
+                <NavigationArrow size={14} weight="fill" className="mr-1.5" />
+                Center on Me
+              </Button>
+            </Card>
+          </motion.div>
+        )}
+
       {filteredVenues.map((venue) => {
         const pos = getVenuePixelPosition(venue)
         if (!pos || pos.x < -50 || pos.x > dimensions.width + 50 || pos.y < -50 || pos.y > dimensions.height + 50)
           return null
 
-        const showLabel = zoom >= 1.2 || venue.pulseScore >= 70 || hoveredVenue?.id === venue.id
+        const showLabel = zoom >= 0.8 || venue.pulseScore >= 60 || hoveredVenue?.id === venue.id
         const isHovered = hoveredVenue?.id === venue.id
 
         const distance = userLocation
@@ -809,13 +838,91 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-4 left-4 right-4 z-10 flex items-start gap-2">
-        <div className="flex-1 max-w-md">
-          <MapSearch
-            venues={venues}
-            onVenueSelect={handleVenueSelect}
-            userLocation={userLocation}
-          />
+      <div className="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 max-w-md">
+            <MapSearch
+              venues={venues}
+              onVenueSelect={handleVenueSelect}
+              userLocation={userLocation}
+            />
+          </div>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div className="flex gap-1.5 flex-wrap max-w-md">
+          <button
+            onClick={() => {
+              if (filters.categories.includes('bar')) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
+              }
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              filters.categories.includes('bar')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <BeerBottle size={14} weight="fill" className="inline mr-1" />
+            Bars
+          </button>
+          <button
+            onClick={() => {
+              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
+              if (hasClub) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
+              }
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              filters.categories.includes('club') || filters.categories.includes('nightclub')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MusicNotes size={14} weight="fill" className="inline mr-1" />
+            Clubs
+          </button>
+          <button
+            onClick={() => setNearMeActive(!nearMeActive)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              nearMeActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MapPin size={14} weight="fill" className="inline mr-1" />
+            Near Me
+          </button>
+          <button
+            onClick={() => {
+              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+              if (hasHot) {
+                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
+              } else {
+                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
+              }
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <Fire size={14} weight="fill" className="inline mr-1" />
+            Hot
+          </button>
         </div>
       </div>
 
