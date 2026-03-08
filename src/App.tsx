@@ -22,11 +22,11 @@ import { SplashScreen } from '@/components/SplashScreen'
 import { VenuePage } from '@/components/VenuePage'
 import { TrendingTab } from '@/components/TrendingTab'
 import { ProfileTab } from '@/components/ProfileTab'
+import { AppHeader } from '@/components/AppHeader'
 import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
 import { Input } from '@/components/ui/input'
-import { Plus, MapPin, Clock, MagnifyingGlass } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -602,51 +602,13 @@ function App() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
-      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Pulse
-            </span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Where the energy is — right now
-          </p>
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
-            {locationName && (
-              <div className="flex items-center gap-1.5">
-                <MapPin size={14} weight="fill" className={cn(
-                  "transition-colors",
-                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
-                )} />
-                <span>{locationName}</span>
-                {realtimeLocation && (
-                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
-                    LIVE
-                  </span>
-                )}
-              </div>
-            )}
-            {locationPermissionDenied && (
-              <button
-                onClick={() => {
-                  toast.info('Enable Location', {
-                    description: 'Please enable location in your browser settings and refresh the page'
-                  })
-                }}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
-              >
-                <MapPin size={14} weight="fill" />
-                <span>Enable Location</span>
-              </button>
-            )}
-            <div className="flex items-center gap-1.5">
-              <Clock size={14} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AppHeader
+        locationName={locationName}
+        isTracking={isTracking}
+        hasRealtimeLocation={!!realtimeLocation}
+        locationPermissionDenied={locationPermissionDenied}
+        currentTime={currentTime}
+      />
 
       <AnimatePresence mode="wait">
         {activeTab === 'trending' && (
