@@ -7,6 +7,7 @@ import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
+import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -24,6 +25,7 @@ interface VenueCardProps {
 export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
+  const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
   
   return (
     <motion.div
@@ -102,6 +104,9 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 <Clock size={14} weight="fill" />
                 <span>Last pulse {formatTimeAgo(venue.lastPulseAt)}</span>
               </div>
+            )}
+            {contextualLabel && (
+              <p className="text-xs text-accent font-medium italic">{contextualLabel}</p>
             )}
           </div>
 

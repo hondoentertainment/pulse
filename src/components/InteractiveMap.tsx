@@ -43,6 +43,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   })
   const [nearMeActive, setNearMeActive] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
+  const [showFullHeatmap, setShowFullHeatmap] = useState(false)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const { unitSystem } = useUnitPreference()
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
@@ -154,7 +155,20 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
 
       return true
     })
-  }, [venues, filters, userLocation, nearMeActive])
+
+    // Progressive disclosure: show top 5 surging venues by default
+    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
+      // Only nearby venues (within 50mi of center or user) sorted by pulseScore
+      const nearby = userLocation
+        ? filtered
+            .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
+            .sort((a, b) => b.pulseScore - a.pulseScore)
+        : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
+      return nearby.slice(0, 5)
+    }
+
+    return filtered
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap])
 
   const availableCategories = Array.from(
     new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
@@ -922,6 +936,18 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           >
             <Fire size={14} weight="fill" className="inline mr-1" />
             Hot
+          </button>
+          <button
+            onClick={() => setShowFullHeatmap(!showFullHeatmap)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              showFullHeatmap
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            {showFullHeatmap ? 'Top 5' : 'Full Map'}
           </button>
         </div>
       </div>

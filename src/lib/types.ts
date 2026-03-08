@@ -27,6 +27,8 @@ export interface Venue {
     lng: number
     address: string
   }
+  city?: string
+  state?: string
   pulseScore: number
   lastPulseAt?: string
   category?: string

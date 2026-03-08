@@ -627,7 +627,7 @@ function App() {
               followedVenues={followedVenues}
               userLocation={userLocation}
               unitSystem={unitSystem}
-              currentUserId={currentUser.id}
+              currentUser={currentUser}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
               onVenueClick={(venue) => setSelectedVenue(venue)}

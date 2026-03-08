@@ -1,11 +1,14 @@
-import { Venue, PulseWithUser } from '@/lib/types'
+import { Venue, PulseWithUser, User } from '@/lib/types'
 import { Favorites } from '@/components/Favorites'
 import { TrendingSections } from '@/components/TrendingSections'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
+import { RecommendationsSection } from '@/components/RecommendationsSection'
 import { Separator } from '@/components/ui/separator'
 import { Star } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
+import { getRecommendations } from '@/lib/venue-recommendations'
+import { getPeakCategories } from '@/lib/time-contextual-scoring'
 import type { Pulse } from '@/lib/types'
 
 interface TrendingTabProps {
@@ -16,7 +19,7 @@ interface TrendingTabProps {
   followedVenues: Venue[]
   userLocation: { lat: number; lng: number } | null
   unitSystem: 'imperial' | 'metric'
-  currentUserId: string
+  currentUser: User
   trendingSubTab: 'trending' | 'my-spots'
   onSubTabChange: (tab: 'trending' | 'my-spots') => void
   onVenueClick: (venue: Venue) => void
@@ -34,7 +37,7 @@ export function TrendingTab({
   followedVenues,
   userLocation,
   unitSystem,
-  currentUserId,
+  currentUser,
   trendingSubTab,
   onSubTabChange,
   onVenueClick,
@@ -98,6 +101,27 @@ export function TrendingTab({
             </div>
           )}
 
+          {/* Peak categories hint */}
+          {(() => {
+            const peakCats = getPeakCategories()
+            if (peakCats.length === 0) return null
+            return (
+              <div className="max-w-2xl mx-auto px-4 pt-4 pb-2">
+                <p className="text-xs text-muted-foreground">
+                  Peak right now: {peakCats.join(' · ')}
+                </p>
+              </div>
+            )
+          })()}
+
+          {/* Personalized recommendations */}
+          <div className="max-w-2xl mx-auto px-4 pt-4">
+            <RecommendationsSection
+              recommendations={getRecommendations(currentUser, venues, pulses, userLocation ?? undefined)}
+              onVenueClick={onVenueClick}
+            />
+          </div>
+
           <TrendingSections
             sections={getTrendingSections(venues, pulses)}
             userLocation={userLocation}
@@ -114,7 +138,7 @@ export function TrendingTab({
           pulses={pulsesWithUsers}
           userLocation={userLocation}
           unitSystem={unitSystem}
-          currentUserId={currentUserId}
+          currentUserId={currentUser.id}
           onVenueClick={onVenueClick}
           onToggleFollow={onToggleFollow}
           onReaction={onReaction}
