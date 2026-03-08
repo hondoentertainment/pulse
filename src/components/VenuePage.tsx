@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { cn } from '@/lib/utils'
@@ -22,11 +22,13 @@ interface VenuePageProps {
   isTracking: boolean
   hasRealtimeLocation: boolean
   isFavorite: boolean
+  isFollowed?: boolean
   currentUser?: User | null
   onBack: () => void
   onCreatePulse: () => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onToggleFavorite: () => void
+  onToggleFollow?: () => void
   presenceData?: PresenceData | null
   onOpenPresence: () => void
 }
@@ -41,11 +43,13 @@ export function VenuePage({
   isTracking,
   hasRealtimeLocation,
   isFavorite,
+  isFollowed,
   currentUser,
   onBack,
   onCreatePulse,
   onReaction,
   onToggleFavorite,
+  onToggleFollow,
   presenceData,
   onOpenPresence
 }: VenuePageProps) {
@@ -78,6 +82,18 @@ export function VenuePage({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {onToggleFollow && (
+                <button
+                  onClick={onToggleFollow}
+                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <HeartStraight
+                    size={24}
+                    weight={isFollowed ? 'fill' : 'regular'}
+                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+                  />
+                </button>
+              )}
               <button
                 onClick={onToggleFavorite}
                 className="p-2 rounded-lg hover:bg-secondary transition-colors"

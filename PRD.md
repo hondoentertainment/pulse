@@ -440,9 +440,95 @@ Key animation moments:
 - Internationalization (i18n) framework for multi-language support
 - Right-to-left (RTL) layout support
 
+### Phase 5 — Engagement & Retention
+*Goal: Deepen user engagement and build long-term retention loops.*
+
+#### 5.1 Pulse Stories & Highlights
+- Ephemeral 24-hour pulse stories at the top of trending feed
+- Venue highlights: curated best-of pulse collections by venue owners or top contributors
+- "Tonight's recap" auto-generated story from a user's evening activity
+- Story reactions with quick emoji responses
+
+#### 5.2 Crew Mode (Group Check-Ins)
+- Create a "crew" of 2-8 friends for a night out
+- Shared check-in: one person checks in, crew members confirm
+- Crew pulse: combined energy rating from all crew members (weighted average)
+- Crew activity feed showing where the group has been tonight
+- "Squad goals" badge when full crew checks in together
+
+#### 5.3 Venue Challenges & Achievements
+- Weekly venue challenges ("Check into 3 new coffee shops this week")
+- Achievement system: Explorer (10 unique venues), Night Owl (5 late-night pulses), Trendsetter (first pulse at 3 venues that later surged)
+- Seasonal achievements tied to local events or holidays
+- Achievement showcase on user profile (opt-in display)
+
+#### 5.4 Pulse Playlists & Mood Boards
+- Curated collections of pulses by mood or theme ("Best Rooftop Vibes", "Late Night Eats")
+- User-created mood boards from saved pulses
+- Venue-curated playlists highlighting their best moments
+- Shareable playlist cards for social media
+
+### Phase 6 — Data Intelligence & Monetization
+*Goal: Leverage data insights for user value and sustainable revenue.*
+
+#### 6.1 Predictive Surge Engine
+- Machine learning model trained on historical pulse data to predict venue surges
+- "Expected to peak at 10pm" predictions on venue pages
+- Smart notifications: "Based on patterns, Pike Brewing usually surges in 30 minutes"
+- Weather and event correlation for improved predictions
+
+#### 6.2 Personal Insights Dashboard
+- Weekly activity summary: venues visited, energy contributed, miles explored
+- "Your vibe type" analysis based on venue categories and energy ratings
+- Heatmap of user's own activity patterns (time of day, day of week)
+- Year-in-review: annual activity retrospective
+
+#### 6.3 Venue Analytics Pro (Revenue)
+- Premium analytics tier for venue owners (paid subscription)
+- Competitor benchmarking: compare energy scores with nearby venues
+- Customer flow analysis: where patrons go before/after visiting
+- Optimal event timing recommendations based on historical data
+- Integration with POS systems for revenue-to-energy correlation
+
+#### 6.4 Promoted Discoveries (Revenue)
+- Sponsored venue placements in "You Might Like" recommendations
+- Promoted events in the events feed (clearly labeled as sponsored)
+- Venue boost: pay to increase visibility during slow periods
+- Performance-based pricing: cost per check-in or cost per pulse
+
+#### 6.5 Neighborhood & City Scores
+- Aggregate energy scores for neighborhoods and districts
+- "Hottest neighborhood right now" leaderboard
+- City-wide energy index tracking overall nightlife activity
+- Multi-city expansion with city-level trending and comparisons
+
+### Phase 7 — Platform & Ecosystem
+*Goal: Build Pulse into a platform that others can build on.*
+
+#### 7.1 Public API & Developer Platform
+- RESTful API for venue energy data access
+- Webhook subscriptions for surge events
+- Developer portal with documentation and API keys
+- Rate-limited free tier, paid plans for commercial use
+- Use cases: ride-share surge pricing, event planning, restaurant apps
+
+#### 7.2 Integration Ecosystem
+- Uber/Lyft: "Get a ride to this venue" deep links with surge-aware timing
+- Spotify: "Now playing" at venues with collaborative playlists
+- OpenTable/Resy: reservation links on venue pages
+- Google Maps: Pulse energy layer as a Maps extension
+- Apple Shortcuts: "Where should I go tonight?" automation
+
+#### 7.3 White-Label Solution
+- Customizable Pulse-powered energy tracking for events and festivals
+- Branded venue discovery for hotel chains, entertainment districts
+- Campus edition for universities (dorm energy, library occupancy, dining halls)
+- Corporate edition for office campuses (cafeteria buzz, meeting room energy)
+
 ### Future Considerations
 - **Real Twitter/X API integration**: Replace simulated social ingestion with live API
-- **Machine learning scoring**: Train models on historical data to predict surge timing
-- **Gamification layer**: Badges, leaderboards, and challenges (carefully balanced to avoid inauthenticity)
+- **Augmented reality**: AR venue energy overlay through phone camera
+- **Wearable integration**: Apple Watch / WearOS companion app for quick pulse creation
+- **Audio energy detection**: Ambient sound level analysis to auto-suggest energy ratings
 - **Multi-city expansion**: City selector, region-specific trending, city-level analytics
 - **API for third parties**: Public API for venue energy data (bars, event planners, ride-share)

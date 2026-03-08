@@ -2,7 +2,7 @@ import { Venue } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock, Star } from '@phosphor-icons/react'
+import { MapPin, Clock, Star, HeartStraight } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
@@ -16,10 +16,12 @@ interface VenueCardProps {
   isJustPopped?: boolean
   isFavorite?: boolean
   onToggleFavorite?: (venueId: string) => void
+  isFollowed?: boolean
+  onToggleFollow?: (venueId: string) => void
   showPreTrendingLabel?: boolean
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, showPreTrendingLabel }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   
@@ -32,21 +34,38 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
         className="p-5 cursor-pointer border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 relative"
         onClick={onClick}
       >
-        {onToggleFavorite && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleFavorite(venue.id)
-            }}
-            className="absolute top-3 right-3 p-2 rounded-lg hover:bg-secondary transition-colors z-10"
-          >
-            <Star
-              size={18}
-              weight={isFavorite ? 'fill' : 'regular'}
-              className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
-            />
-          </button>
-        )}
+        <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+          {onToggleFollow && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleFollow(venue.id)
+              }}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <HeartStraight
+                size={18}
+                weight={isFollowed ? 'fill' : 'regular'}
+                className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+              />
+            </button>
+          )}
+          {onToggleFavorite && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleFavorite(venue.id)
+              }}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <Star
+                size={18}
+                weight={isFavorite ? 'fill' : 'regular'}
+                className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
+              />
+            </button>
+          )}
+        </div>
 
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-3 pr-8">
