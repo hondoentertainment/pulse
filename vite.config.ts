@@ -22,4 +22,8 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  test: {
+    globals: true,
+    environment: 'node',
+  },
 });

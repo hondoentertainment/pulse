@@ -11,36 +11,28 @@ import {
   PulseWithUser,
   PresenceData
 } from '@/lib/types'
-import { calculatePresence, PresenceContext } from '@/lib/presence-engine'
-import { WhoIsHereRow } from '@/components/WhoIsHereRow'
+import { calculatePresence } from '@/lib/presence-engine'
 import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
 import { VenueCard } from '@/components/VenueCard'
-import { PulseCard } from '@/components/PulseCard'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
-import { Settings } from '@/components/Settings'
 import { NotificationFeed } from '@/components/NotificationFeed'
 import { SplashScreen } from '@/components/SplashScreen'
-import { Favorites } from '@/components/Favorites'
 import { VenuePage } from '@/components/VenuePage'
-import { TrendingSections } from '@/components/TrendingSections'
+import { TrendingTab } from '@/components/TrendingTab'
+import { ProfileTab } from '@/components/ProfileTab'
+import { AppHeader } from '@/components/AppHeader'
 import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
-import { PulseScore } from '@/components/PulseScore'
-import { Plus, MapPin, Clock, Star, Gear, ChartLine, MagnifyingGlass } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
 import {
   calculatePulseScore,
   getVenuesByProximity,
   canPostPulse
 } from '@/lib/pulse-engine'
 import { calculateUserCredibility } from '@/lib/credibility'
-import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -51,7 +43,7 @@ import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
-import { getTrendingSections, updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
+import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
@@ -72,6 +64,7 @@ function App() {
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const [venueSearchQuery, setVenueSearchQuery] = useState('')
+  const [trendingSubTab, setTrendingSubTab] = useState<'trending' | 'my-spots'>('trending')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
@@ -516,6 +509,14 @@ function App() {
     .map((id) => venues.find((v) => v.id === id))
     .filter((v): v is Venue => v !== undefined)
 
+  const followedVenues = (currentUser?.followedVenues || [])
+    .map((id) => venues.find((v) => v.id === id))
+    .filter((v): v is Venue => v !== undefined)
+
+  const isFollowed = (venueId: string) => {
+    return currentUser?.followedVenues?.includes(venueId) || false
+  }
+
   const isFavorite = (venueId: string) => {
     return currentUser?.favoriteVenues?.includes(venueId) || false
   }
@@ -556,6 +557,7 @@ function App() {
           isTracking={isTracking}
           hasRealtimeLocation={!!realtimeLocation}
           isFavorite={isFavorite(selectedVenue.id)}
+          isFollowed={isFollowed(selectedVenue.id)}
           currentUser={currentUser}
           presenceData={presenceData}
           onOpenPresence={() => setPresenceSheetOpen(true)}
@@ -563,6 +565,7 @@ function App() {
           onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
           onReaction={handleReaction}
           onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
+          onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
         />
         <PresenceSheet
           open={presenceSheetOpen}
@@ -599,51 +602,13 @@ function App() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
-      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Pulse
-            </span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Where the energy is — right now
-          </p>
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
-            {locationName && (
-              <div className="flex items-center gap-1.5">
-                <MapPin size={14} weight="fill" className={cn(
-                  "transition-colors",
-                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
-                )} />
-                <span>{locationName}</span>
-                {realtimeLocation && (
-                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
-                    LIVE
-                  </span>
-                )}
-              </div>
-            )}
-            {locationPermissionDenied && (
-              <button
-                onClick={() => {
-                  toast.info('Enable Location', {
-                    description: 'Please enable location in your browser settings and refresh the page'
-                  })
-                }}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
-              >
-                <MapPin size={14} weight="fill" />
-                <span>Enable Location</span>
-              </button>
-            )}
-            <div className="flex items-center gap-1.5">
-              <Clock size={14} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AppHeader
+        locationName={locationName}
+        isTracking={isTracking}
+        hasRealtimeLocation={!!realtimeLocation}
+        locationPermissionDenied={locationPermissionDenied}
+        currentTime={currentTime}
+      />
 
       <AnimatePresence mode="wait">
         {activeTab === 'trending' && (
@@ -654,31 +619,22 @@ function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            {favoriteVenues.length > 0 && (
-              <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Star size={20} weight="fill" className="text-accent" />
-                    <h2 className="text-xl font-bold">Favorites</h2>
-                  </div>
-                  <Favorites
-                    favoriteVenues={favoriteVenues}
-                    userLocation={userLocation}
-                    unitSystem={unitSystem}
-                    onVenueClick={(venue) => setSelectedVenue(venue)}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                </div>
-                <Separator className="mt-6" />
-              </div>
-            )}
-
-            <TrendingSections
-              sections={getTrendingSections(venues || [], pulses || [])}
+            <TrendingTab
+              venues={venues}
+              pulses={pulses}
+              pulsesWithUsers={getPulsesWithUsers()}
+              favoriteVenues={favoriteVenues}
+              followedVenues={followedVenues}
               userLocation={userLocation}
+              unitSystem={unitSystem}
+              currentUser={currentUser}
+              trendingSubTab={trendingSubTab}
+              onSubTabChange={setTrendingSubTab}
               onVenueClick={(venue) => setSelectedVenue(venue)}
-              isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
+              onToggleFollow={handleToggleFollow}
+              onReaction={handleReaction}
+              isFavorite={isFavorite}
             />
           </motion.div>
         )}
@@ -740,6 +696,8 @@ function App() {
                         onClick={() => setSelectedVenue(venue)}
                         isFavorite={isFavorite(venue.id)}
                         onToggleFavorite={handleToggleFavorite}
+                        isFollowed={isFollowed(venue.id)}
+                        onToggleFollow={handleToggleFollow}
                       />
                     )
                   })}
@@ -803,113 +761,16 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6 space-y-6"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent p-1">
-                <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-                  <span className="text-2xl font-bold">{currentUser.username.slice(0, 2).toUpperCase()}</span>
-                </div>
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold">{currentUser.username}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {pulses.filter((p) => p.userId === currentUser.id).length} pulses
-                </p>
-                <p className="text-xs text-muted-foreground font-mono mt-1">
-                  Member since {new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                </p>
-              </div>
-            </div>
-
-            <Separator />
-
-            {favoriteVenues.length > 0 && (
-              <>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Star size={20} weight="fill" className="text-accent" />
-                    <h3 className="text-lg font-bold">Favorite Venues</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {favoriteVenues.map((venue) => {
-                      const venuePulses = pulses.filter((p) => p.venueId === venue.id)
-                      const latestPulse = venuePulses.sort(
-                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                      )[0]
-
-                      return (
-                        <button
-                          key={venue.id}
-                          onClick={() => setSelectedVenue(venue)}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-all group"
-                        >
-                          {latestPulse?.photos?.[0] ? (
-                            <img
-                              src={latestPulse.photos[0]}
-                              alt={venue.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-muted to-secondary flex items-center justify-center">
-                              <MapPin size={24} weight="fill" className="text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                            <p className="text-xs font-bold text-white truncate">{venue.name}</p>
-                          </div>
-                          <div className="absolute top-1 right-1">
-                            <PulseScore score={venue.pulseScore} size="xs" showLabel={false} />
-                          </div>
-                        </button>
-                      )
-                    })}
-                    {Array.from({ length: Math.max(0, 4 - favoriteVenues.length) }).map((_, i) => (
-                      <div
-                        key={`empty-${i}`}
-                        className="aspect-square rounded-lg border border-dashed border-border bg-muted/30 flex items-center justify-center"
-                      >
-                        <Star size={20} className="text-muted-foreground/50" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-              </>
-            )}
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-bold">Your Pulses</h3>
-              {getPulsesWithUsers()
-                .filter((p) => p.userId === currentUser.id)
-                .map((pulse) => (
-                  <PulseCard
-                    key={pulse.id}
-                    pulse={pulse}
-                    allPulses={getPulsesWithUsers()}
-                    onReaction={(type) => handleReaction(pulse.id, type)}
-                  />
-                ))}
-              {pulses.filter((p) => p.userId === currentUser.id).length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  No pulses yet. Check into a venue to get started!
-                </p>
-              )}
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Gear size={20} weight="fill" className="text-primary" />
-                <h3 className="text-lg font-bold">Settings</h3>
-              </div>
-              <Settings
-                onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
-              />
-            </div>
+            <ProfileTab
+              currentUser={currentUser}
+              pulses={pulses}
+              pulsesWithUsers={getPulsesWithUsers()}
+              favoriteVenues={favoriteVenues}
+              onVenueClick={(venue) => setSelectedVenue(venue)}
+              onReaction={handleReaction}
+              onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,6 +1,7 @@
 import { Venue } from './types'
+import { US_EXPANSION_VENUES } from './us-venues'
 
-export const MOCK_VENUES: Venue[] = [
+const SEATTLE_VENUES: Venue[] = [
   {
     id: 'venue-1',
     name: 'Neumos',
@@ -1100,6 +1101,19 @@ export const MOCK_VENUES: Venue[] = [
     category: 'Restaurant'
   }
 ]
+
+// Add city/state to Seattle venues for consistency
+const seattleWithCity = SEATTLE_VENUES.map(v => ({
+  ...v,
+  city: v.city ?? 'Seattle',
+  state: v.state ?? 'WA',
+}))
+
+/** All venues across the US — Seattle + 18 other major cities */
+export const MOCK_VENUES: Venue[] = [...seattleWithCity, ...US_EXPANSION_VENUES]
+
+/** Seattle-only venues (backward compatible) */
+export const SEATTLE_ONLY_VENUES = SEATTLE_VENUES
 
 export const SIMULATED_USER_LOCATION = {
   lat: 47.6145,
