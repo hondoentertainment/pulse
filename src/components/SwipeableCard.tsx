@@ -21,7 +21,7 @@ export function SwipeableCard({
     disabled = false
 }: SwipeableCardProps) {
     const x = useMotionValue(0)
-    const [isDragging, setIsDragging] = useState(false)
+    const [_isDragging, setIsDragging] = useState(false)
     const { triggerLight, triggerMedium } = useHaptics()
 
     const leftOpacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0])

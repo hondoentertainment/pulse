@@ -1,7 +1,6 @@
 import { UnitSystem } from '@/hooks/use-unit-preference'
 
 const MILES_TO_KM = 1.60934
-const _FEET_TO_METERS = 0.3048
 
 export function formatDistance(distanceMiles: number, unitSystem: UnitSystem): string {
   if (unitSystem === 'imperial') {

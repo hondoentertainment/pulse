@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Users, MapPin, Clock, ShieldCheck } from '@phosphor-icons/react'
+import { Users, ShieldCheck } from '@phosphor-icons/react'
 import { applyJitter } from '@/lib/presence-engine'
 
 interface PresenceSheetProps {

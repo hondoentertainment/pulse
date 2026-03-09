@@ -178,6 +178,7 @@ describe('getAchievementById', () => {
   })
 
   it('returns undefined for unknown', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(getAchievementById('nonexistent' as any)).toBeUndefined()
   })
 })

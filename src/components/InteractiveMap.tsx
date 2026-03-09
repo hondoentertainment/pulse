@@ -118,7 +118,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     return venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
         const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as any)) {
+        if (!filters.energyLevels.includes(energyLevel as string)) {
           return false
         }
       }
@@ -199,6 +199,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
 
     drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredVenues, center, zoom, dimensions])
 
   const latLngToPixel = (

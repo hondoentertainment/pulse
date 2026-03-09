@@ -4,7 +4,6 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Stack, ChartLine, Users } from '@phosphor-icons/react'
@@ -15,7 +14,7 @@ interface SettingsProps {
 }
 
 export function Settings({ onOpenSocialPulseDashboard }: SettingsProps) {
-  const { unitSystem, setUnitSystem, isImperial } = useUnitPreference()
+  const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
 
   const handleToggleUnits = (checked: boolean) => {

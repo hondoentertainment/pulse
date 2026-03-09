@@ -46,7 +46,7 @@ describe('checkUserRateLimit', () => {
   })
 
   it('allows unknown actions', () => {
-    const result = checkUserRateLimit('u1', 'unknown_action' as any)
+    const result = checkUserRateLimit('u1', 'unknown_action' as keyof typeof RATE_LIMITS)
     expect(result.allowed).toBe(true)
   })
 })

@@ -5,6 +5,11 @@
  * push notification helpers, and camera/media picker integration.
  */
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export interface InstallPromptState {
   canInstall: boolean
   isInstalled: boolean
