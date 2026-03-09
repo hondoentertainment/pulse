@@ -1,4 +1,4 @@
-import { User, Pulse, PresenceData, User as PulseUser } from './types'
+import { User, Pulse, PresenceData } from './types'
 import { calculateDistance } from './pulse-engine'
 
 const NEARBY_RADIUS_FEET = 250

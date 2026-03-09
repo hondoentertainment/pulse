@@ -4,12 +4,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Faders, X, Lightning, Fire, Coffee, MapPin, Microphone, MicrophoneSlash } from '@phosphor-icons/react'
+import { Faders, X, Lightning, Fire, MapPin, Microphone, MicrophoneSlash } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useVoiceFilter } from '@/hooks/use-voice-filter'
-import { convertMilesToKm } from '@/lib/units'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
 export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity

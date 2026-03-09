@@ -15,7 +15,7 @@ import {
   getUserMoodBoards,
   suggestMood,
 } from '../playlists'
-import type { Pulse, Venue } from '../types'
+import type { Pulse } from '../types'
 
 function makePulse(overrides: Partial<Pulse> = {}): Pulse {
   return {

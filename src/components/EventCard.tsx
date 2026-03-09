@@ -16,7 +16,7 @@ interface EventCardProps {
   onShare?: (eventId: string) => void
 }
 
-export function EventCard({ event, venueName, currentUserId, prediction, onRSVP, onShare }: EventCardProps) {
+export function EventCard({ event, venueName, currentUserId, prediction, onRSVP, onShare: _onShare }: EventCardProps) {
   const counts = getRSVPCounts(event)
   const userStatus = getUserRSVP(event, currentUserId)
   const catInfo = EVENT_CATEGORIES.find(c => c.value === event.category)

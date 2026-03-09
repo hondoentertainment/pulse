@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Notification, GroupedNotification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
 import { NotificationCard } from '@/components/NotificationCard'
 import { groupNotifications } from '@/lib/notification-grouping'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { CheckCircle, Bell } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
 
 interface NotificationFeedProps {
   currentUser: User

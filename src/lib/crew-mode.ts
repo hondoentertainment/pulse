@@ -1,4 +1,4 @@
-import type { Pulse, User, EnergyRating } from './types'
+import type { EnergyRating } from './types'
 
 /**
  * Crew Mode — Group Check-Ins

@@ -183,7 +183,7 @@ export function getHighContrastMode(): HighContrastMode {
 export function setHighContrastMode(mode: HighContrastMode): void {
   try {
     localStorage.setItem(HIGH_CONTRAST_KEY, mode)
-  } catch {}
+  } catch { /* localStorage may not be available */ }
 
   const root = document.documentElement
   root.classList.remove('high-contrast', 'increased-contrast')

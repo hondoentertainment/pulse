@@ -26,7 +26,7 @@ export function ScoreBreakdown({ venue, pulses }: ScoreBreakdownProps) {
   const oldScore = venue.pulseScore - (veryRecentPulses.length * 8)
   const scoreChange = venue.pulseScore - oldScore
 
-  const energyRatingCounts = recentPulses.reduce((acc, p) => {
+  const _energyRatingCounts = recentPulses.reduce((acc, p) => {
     acc[p.energyRating] = (acc[p.energyRating] || 0) + 1
     return acc
   }, {} as Record<string, number>)

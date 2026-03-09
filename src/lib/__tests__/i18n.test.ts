@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   t,
   setLocale,
-  getLocale,
   getDirection,
   isRTL,
   getAvailableLocales,

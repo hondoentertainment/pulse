@@ -1,6 +1,5 @@
-import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { Achievement, UserAchievement } from '@/lib/achievements'
+import type { UserAchievement } from '@/lib/achievements'
 import { getAchievementById } from '@/lib/achievements'
 import { motion } from 'framer-motion'
 

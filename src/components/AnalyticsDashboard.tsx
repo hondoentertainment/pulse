@@ -4,7 +4,7 @@ import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
 import { calculateVenueAnalytics } from '@/lib/venue-trending'
-import { ChartBar, TrendUp, Clock, Hash } from '@phosphor-icons/react'
+import { ChartBar, Clock } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 
 export function AnalyticsDashboard() {

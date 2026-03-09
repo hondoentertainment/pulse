@@ -2,13 +2,11 @@ import { PulseCorrelation, Venue, CorrelationInsight } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { 
-  TrendUp, 
-  TrendDown, 
-  ArrowRight, 
-  ArrowLeft, 
+import {
+  ArrowRight,
+  ArrowLeft,
   Lightning,
-  Clock
+  Clock,
 } from '@phosphor-icons/react'
 
 interface CorrelationInsightsProps {

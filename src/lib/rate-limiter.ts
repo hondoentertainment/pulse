@@ -112,7 +112,7 @@ export interface AbuseSignal {
 
 export function detectAbuse(
   userId: string,
-  recentActions: { action: string; timestamp: number; metadata?: Record<string, any> }[]
+  recentActions: { action: string; timestamp: number; metadata?: Record<string, unknown> }[]
 ): AbuseSignal[] {
   const signals: AbuseSignal[] = []
   const now = Date.now()

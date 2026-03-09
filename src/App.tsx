@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   Venue,
@@ -9,7 +9,6 @@ import {
   GroupedNotification,
   Hashtag,
   PulseWithUser,
-  PresenceData
 } from '@/lib/types'
 import { calculatePresence } from '@/lib/presence-engine'
 import { PresenceSheet } from '@/components/PresenceSheet'
@@ -101,11 +100,15 @@ function App() {
     if (!hashtags || hashtags.length === 0) {
       setHashtags(initializeSeededHashtags())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const userLocation = realtimeLocation
-    ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng }
-    : simulatedLocation
+  const userLocation = useMemo(
+    () => realtimeLocation
+      ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng }
+      : simulatedLocation,
+    [realtimeLocation, simulatedLocation]
+  )
 
   useVenueSurgeTracker(
     venues || [],
@@ -502,8 +505,6 @@ function App() {
   const sortedVenues = userLocation
     ? getVenuesByProximity(venues, userLocation.lat, userLocation.lng)
     : [...venues].sort((a, b) => b.pulseScore - a.pulseScore)
-
-  const trendingVenues = [...venues].sort((a, b) => b.pulseScore - a.pulseScore)
 
   const favoriteVenues = (currentUser?.favoriteVenues || [])
     .map((id) => venues.find((v) => v.id === id))

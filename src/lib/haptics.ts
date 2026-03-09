@@ -13,14 +13,14 @@ export function triggerHapticFeedback(intensity: HapticIntensity = 'medium') {
     navigator.vibrate(duration)
   }
 
-  if ((navigator as any).hapticEngine) {
+  if ((navigator as unknown as { hapticEngine?: { impact: (type: string) => void } }).hapticEngine) {
     const type = {
       light: 'light',
       medium: 'medium',
       heavy: 'heavy'
     }[intensity]
     
-    ;(navigator as any).hapticEngine.impact(type)
+    ;(navigator as unknown as { hapticEngine: { impact: (type: string) => void } }).hapticEngine.impact(type)
   }
 }
 

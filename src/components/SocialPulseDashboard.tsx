@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { TrackedHashtag, Venue, Pulse, SocialPost } from '@/lib/types'
+import { TrackedHashtag, Venue, Pulse } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HashtagManager } from './HashtagManager'
 import { SocialPulseGraph } from './SocialPulseGraph'
@@ -18,15 +16,12 @@ import {
   usePulseCorrelations
 } from '@/hooks/use-social-pulse'
 import { 
-  ChartLine, 
-  ArrowLeft, 
-  Hash, 
+  ChartLine,
+  ArrowLeft,
+  Hash,
   Lightning,
-  Clock,
-  Check,
-  X as XIcon
+  Clock
 } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
 
 interface SocialPulseDashboardProps {
   venues: Venue[]

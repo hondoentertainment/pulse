@@ -1,4 +1,4 @@
-import type { Venue, Pulse, EnergyRating } from './types'
+import type { Venue } from './types'
 
 /**
  * Time-Contextual Scoring Engine

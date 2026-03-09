@@ -67,6 +67,7 @@ export function useSocialPulseIngestion(
     const interval = setInterval(poll, pollingIntervalMs)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackedHashtags, venues, pollingIntervalMs])
 
   return { socialPosts, setSocialPosts }
@@ -123,6 +124,7 @@ export function useSocialPulseWindows(
     const interval = setInterval(calculateWindows, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socialPosts, trackedHashtags])
 
   return windows
@@ -175,6 +177,7 @@ export function useVenuePulseWindows(
     const interval = setInterval(calculateWindows, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pulses, venues])
 
   return windows
@@ -254,6 +257,7 @@ export function usePulseCorrelations(
     const interval = setInterval(calculateCorrelations, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socialWindows, venueWindows, trackedHashtags])
 
   return correlations

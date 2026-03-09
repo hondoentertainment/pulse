@@ -1,7 +1,6 @@
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Star, MapPin } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
