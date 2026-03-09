@@ -1,5 +1,5 @@
 import { useState, ReactNode } from 'react'
-import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion'
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion'
 import { Fire, Lightning, Eye, Skull } from '@phosphor-icons/react'
 import { useHaptics } from '@/hooks/use-haptics'
 

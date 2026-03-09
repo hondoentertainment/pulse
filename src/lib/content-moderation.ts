@@ -1,4 +1,4 @@
-import type { Pulse, User } from './types'
+import type { Pulse } from './types'
 
 /**
  * Content Moderation Engine

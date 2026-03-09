@@ -160,7 +160,7 @@ export function setLocale(locale: Locale): void {
   }
   try {
     localStorage.setItem('pulse_locale', locale)
-  } catch {}
+  } catch { /* localStorage may be unavailable */ }
 }
 
 /**
@@ -180,7 +180,7 @@ export function initLocale(): Locale {
       setLocale(stored)
       return stored
     }
-  } catch {}
+  } catch { /* localStorage may be unavailable */ }
   const detected = detectLocale()
   setLocale(detected)
   return detected

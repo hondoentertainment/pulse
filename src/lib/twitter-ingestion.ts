@@ -195,8 +195,6 @@ export function deduplicatePosts(
 }
 
 export function filterEnglishPosts(posts: SocialPost[]): SocialPost[] {
-  const englishPattern = /^[a-zA-Z0-9\s\.,!?@#$%&*()_+=\-[\]{};:'"|<>\/\\`~]+$/
-  
   return posts.filter(post => {
     const textSample = post.text.slice(0, 100)
     const englishChars = (textSample.match(/[a-zA-Z]/g) || []).length

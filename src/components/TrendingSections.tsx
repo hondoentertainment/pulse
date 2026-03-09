@@ -3,7 +3,6 @@ import { VenueCard } from './VenueCard'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
 import { TrendUp, Lightning, Flame, Users, Clock } from '@phosphor-icons/react'
-import { formatDistance } from '@/lib/units'
 import { motion } from 'framer-motion'
 
 export interface TrendingSection {

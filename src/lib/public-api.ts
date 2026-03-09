@@ -18,7 +18,7 @@ export interface WebhookSubscription {
   lastTriggeredAt?: string; failureCount: number
 }
 
-export interface WebhookPayload { event: string; timestamp: number; data: Record<string, any>; signature: string }
+export interface WebhookPayload { event: string; timestamp: number; data: Record<string, unknown>; signature: string }
 
 export interface APIEndpoint { method: string; path: string; description: string; tier: string; rateLimit: number }
 
@@ -79,7 +79,7 @@ export function createWebhookSubscription(apiKeyId: string, url: string, events:
   }
 }
 
-export function generateWebhookPayload(event: string, data: Record<string, any>, secret: string): WebhookPayload {
+export function generateWebhookPayload(event: string, data: Record<string, unknown>, secret: string): WebhookPayload {
   const timestamp = Date.now()
   const body = JSON.stringify({ event, timestamp, data })
   const signature = createHmac('sha256', secret).update(body).digest('hex')
@@ -97,8 +97,8 @@ export function getEndpointsForTier(tier: APIKey['tier']): APIEndpoint[] {
   return API_ENDPOINTS.filter(ep => TIER_ORDER.indexOf(ep.tier) <= tierIdx)
 }
 
-export function formatVenueResponse(venue: Venue, pulses?: Pulse[]): Record<string, any> {
-  const resp: Record<string, any> = {
+export function formatVenueResponse(venue: Venue, pulses?: Pulse[]): Record<string, unknown> {
+  const resp: Record<string, unknown> = {
     id: venue.id, name: venue.name, category: venue.category ?? null,
     city: venue.city ?? null, state: venue.state ?? null,
     location: { lat: venue.location.lat, lng: venue.location.lng },

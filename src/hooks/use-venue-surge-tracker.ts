@@ -21,7 +21,7 @@ export function useVenueSurgeTracker(
   userLocation: { lat: number; lng: number } | null,
   enabled: boolean
 ) {
-  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
+  const [_notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const surgeStateRef = useRef<VenueSurgeState>({})
 
   useEffect(() => {

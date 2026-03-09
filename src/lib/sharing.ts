@@ -1,4 +1,4 @@
-import type { Venue, Pulse, EnergyRating } from './types'
+import type { Venue, Pulse } from './types'
 import { getEnergyLabel } from './pulse-engine'
 
 /**

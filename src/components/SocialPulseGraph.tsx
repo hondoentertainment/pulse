@@ -1,7 +1,7 @@
 import { SocialPulseWindow } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { TrendUp, TrendDown, Hash, ChatCircle, Heart, Repeat } from '@phosphor-icons/react'
+import { TrendUp, TrendDown, Hash, ChatCircle, Heart } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface SocialPulseGraphProps {

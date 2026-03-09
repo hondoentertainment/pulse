@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Plus, Trash, Hash, X } from '@phosphor-icons/react'
+import { Plus, Trash, Hash } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface HashtagManagerProps {
@@ -26,7 +26,7 @@ export function HashtagManager({
   onAdd,
   onRemove,
   onToggleActive,
-  onUpdateVenueMapping
+  onUpdateVenueMapping: _onUpdateVenueMapping
 }: HashtagManagerProps) {
   const [newHashtag, setNewHashtag] = useState('')
   const [selectedVenue, setSelectedVenue] = useState<string>('')

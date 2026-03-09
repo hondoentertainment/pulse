@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import {
-  ShareNetwork, Link, Copy, ChatCircle, InstagramLogo, Check
+  ShareNetwork, Link, ChatCircle, InstagramLogo, Check
 } from '@phosphor-icons/react'
 import type { ShareCard } from '@/lib/sharing'
 import { buildNativeShareData, buildClipboardShareText } from '@/lib/sharing'

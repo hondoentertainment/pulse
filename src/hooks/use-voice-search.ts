@@ -108,7 +108,7 @@ export function useVoiceSearch() {
       setError(null)
       try {
         recognitionRef.current.start()
-      } catch (err) {
+      } catch (_err) {
         setError('Could not start voice recognition')
         setIsListening(false)
       }

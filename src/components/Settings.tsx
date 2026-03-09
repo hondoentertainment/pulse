@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Flask, Stack, ChartLine, Users } from '@phosphor-icons/react'
+import { Ruler, Info, Bell, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Stack, ChartLine, Users } from '@phosphor-icons/react'
 
 interface SettingsProps {
 

@@ -2,7 +2,6 @@ import { GroupedNotification, ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar } from '@/components/ui/avatar'
 import { Lightning, Fire, Eye, Skull, MapPin, TrendUp } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
@@ -14,7 +13,7 @@ interface NotificationCardProps {
 export function NotificationCard({ notification, onClick }: NotificationCardProps) {
   const getNotificationContent = () => {
     switch (notification.type) {
-      case 'friend_pulse':
+      case 'friend_pulse': {
         if (!notification.pulse || !notification.user || !notification.venue) return null
         const energyConfig = ENERGY_CONFIG[notification.pulse.energyRating]
         const isGroupedPulse = notification.count && notification.count > 1
@@ -109,7 +108,9 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           </>
         )
 
-      case 'pulse_reaction':
+      }
+
+      case 'pulse_reaction': {
         if (!notification.pulse || !notification.venue) return null
         const reactionIcons = {
           fire: Fire,
@@ -197,6 +198,8 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           </div>
         )
 
+      }
+
       case 'friend_nearby':
         if (!notification.user || !notification.venue) return null
         return (
@@ -217,7 +220,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           </div>
         )
 
-      case 'trending_venue':
+      case 'trending_venue': {
         if (!notification.venue) return null
         const isGroupedTrending = notification.count && notification.count > 1
         
@@ -244,12 +247,14 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           </div>
         )
 
-      case 'impact':
+      }
+
+      case 'impact': {
         if (!notification.venue || !notification.energyThreshold) return null
         const thresholdEmoji = notification.energyThreshold === 'electric' ? '⚡' : '🔥'
         const thresholdLabel = notification.energyThreshold === 'electric' ? 'Electric' : 'Buzzing'
-        const thresholdColor = notification.energyThreshold === 'electric' 
-          ? 'from-energy-electric to-primary' 
+        const thresholdColor = notification.energyThreshold === 'electric'
+          ? 'from-energy-electric to-primary'
           : 'from-energy-buzzing to-accent'
         
         return (
@@ -277,6 +282,8 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             </div>
           </div>
         )
+
+      }
 
       default:
         return null

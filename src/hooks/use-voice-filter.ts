@@ -77,7 +77,7 @@ export function useVoiceFilter(
     return result
   }, [availableCategories])
 
-  const applyVoiceFilters = useCallback((result: VoiceFilterResult, currentFilters: MapFiltersState) => {
+  const applyVoiceFilters = useCallback((result: VoiceFilterResult, _currentFilters: MapFiltersState) => {
     if (result.action === 'clear') {
       onFiltersChange({
         energyLevels: [],

@@ -1,4 +1,4 @@
-import type { Pulse, EnergyRating } from './types'
+import type { EnergyRating } from './types'
 
 /**
  * Offline-First Pulse Queue with Background Sync
@@ -119,7 +119,7 @@ export function isOnline(): boolean {
 export function requestBackgroundSync(): void {
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     navigator.serviceWorker.ready.then(reg => {
-      (reg as any).sync?.register('sync-pulses').catch(() => {
+      (reg as unknown as { sync?: { register: (tag: string) => Promise<void> } }).sync?.register('sync-pulses').catch(() => {
         // Background sync not available, will sync on next online event
       })
     })

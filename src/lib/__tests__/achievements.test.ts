@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateAchievementProgress,
   calculateCheckInStreak,
-  getUnlockedAchievements,
-  getShowcasedAchievements,
   toggleShowcase,
   createWeeklyChallenge,
   calculateChallengeProgress,

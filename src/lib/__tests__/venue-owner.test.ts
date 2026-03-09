@@ -10,7 +10,7 @@ import {
   isPromotedActive,
   getPromotedVenues,
 } from '../venue-owner'
-import type { Venue, Pulse, EnergyRating } from '../types'
+import type { Venue, Pulse } from '../types'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {

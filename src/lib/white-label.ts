@@ -1,4 +1,4 @@
-import type { Venue, EnergyRating } from './types'
+import type { EnergyRating } from './types'
 
 /** Phase 7.3 — White-Label Solution */
 

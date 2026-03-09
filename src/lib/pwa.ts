@@ -11,7 +11,7 @@ export interface InstallPromptState {
   platform: 'ios' | 'android' | 'desktop' | 'unknown'
 }
 
-let deferredPrompt: any = null
+let deferredPrompt: BeforeInstallPromptEvent | null = null
 
 /**
  * Register the service worker.
@@ -60,7 +60,7 @@ export async function showInstallPrompt(): Promise<boolean> {
 export function getInstallState(): InstallPromptState {
   const isInstalled =
     window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as any).standalone === true
+    (navigator as unknown as { standalone?: boolean }).standalone === true
 
   const ua = navigator.userAgent.toLowerCase()
   let platform: InstallPromptState['platform'] = 'unknown'

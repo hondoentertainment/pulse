@@ -5,7 +5,7 @@ import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import {
-  MapPin, NavigationArrow, Plus, Minus, Info, CaretDown, CaretUp,
+  MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
   Users, Fire, Lightning
 } from '@phosphor-icons/react'
@@ -212,19 +212,6 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
     const x = dims.width / 2 + (lng - mapCenter.lng) * scale
     const y = dims.height / 2 - (lat - mapCenter.lat) * scale
     return { x, y }
-  }
-
-  const pixelToLatLng = (
-    x: number,
-    y: number,
-    mapCenter: { lat: number; lng: number },
-    mapZoom: number,
-    dims: { width: number; height: number }
-  ) => {
-    const scale = 500000 * mapZoom
-    const lng = mapCenter.lng + (x - dims.width / 2) / scale
-    const lat = mapCenter.lat - (y - dims.height / 2) / scale
-    return { lat, lng }
   }
 
   const drawHeatmap = (
