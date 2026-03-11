@@ -6,10 +6,15 @@ import { Button } from '@/components/ui/button'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { getUserTrustBadges, TrustBadge } from '@/lib/credibility'
-import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning } from '@phosphor-icons/react'
+import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning, Flag, ShareNetwork } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { ReportDialog } from '@/components/ReportDialog'
+import { ShareSheet } from '@/components/ShareSheet'
+import type { ContentReport } from '@/lib/content-moderation'
+import { getPulseDeepLink } from '@/lib/sharing'
+import type { ShareCard } from '@/lib/sharing'
 import {
   Tooltip,
   TooltipContent,
@@ -23,11 +28,16 @@ interface PulseCardProps {
   onReaction?: (type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onRetry?: () => void
   currentUserId?: string
+  onReport?: (report: ContentReport) => void
+  venueName?: string
 }
 
-export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId }: PulseCardProps) {
+export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareCard, setShareCard] = useState<ShareCard | null>(null)
 
   const trustBadges = getUserTrustBadges(pulse.user, pulse.venueId, allPulses)
 
@@ -223,8 +233,55 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
               <Eye size={14} />
               <span>{pulse.views}</span>
             </div>
+            <button
+              onClick={() => {
+                const card: ShareCard = {
+                  title: `${pulse.user.username} at ${venueName ?? 'a venue'}`,
+                  description: pulse.caption ?? `${energyConfig.label} energy right now`,
+                  imageText: `${venueName ?? 'Venue'}\n${pulse.energyRating.toUpperCase()}`,
+                  energyLabel: energyConfig.label,
+                  energyColor: energyConfig.color,
+                  score: 0,
+                  url: getPulseDeepLink(pulse.id),
+                }
+                setShareCard(card)
+                setShareOpen(true)
+              }}
+              className="text-muted-foreground hover:text-accent transition-colors"
+              title="Share"
+            >
+              <ShareNetwork size={16} />
+            </button>
+            {currentUserId && currentUserId !== pulse.user.id && (
+              <button
+                onClick={() => setShowReport(true)}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+                title="Report"
+              >
+                <Flag size={16} />
+              </button>
+            )}
           </div>
         </div>
+
+        {currentUserId && (
+          <ReportDialog
+            open={showReport}
+            onOpenChange={setShowReport}
+            targetType="pulse"
+            targetId={pulse.id}
+            reporterId={currentUserId}
+            onReport={(report) => {
+              onReport?.(report)
+            }}
+          />
+        )}
+
+        <ShareSheet
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          card={shareCard}
+        />
       </Card>
     </motion.div>
   )

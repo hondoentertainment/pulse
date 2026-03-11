@@ -11,6 +11,7 @@ export interface User {
   venueCheckInHistory?: {
     [venueId: string]: number
   }
+  favoriteCategories?: string[]
   credibilityScore?: number
   presenceSettings?: {
     enabled: boolean

@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Plus, Trash, Hash } from '@phosphor-icons/react'
+import { Plus, Trash, Hash, Sparkle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { DEMO_HASHTAGS } from '@/lib/demo-hashtags'
 
 interface HashtagManagerProps {
   trackedHashtags: TrackedHashtag[]
@@ -108,6 +109,33 @@ export function HashtagManager({
               </SelectContent>
             </Select>
           </div>
+
+          {DEMO_HASHTAGS.filter(
+            dh => !trackedHashtags.some(th => th.hashtag.toLowerCase() === dh.hashtag.toLowerCase())
+          ).length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-muted-foreground">
+                <Sparkle size={14} weight="fill" />
+                Suggestions
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {DEMO_HASHTAGS.filter(
+                  dh => !trackedHashtags.some(th => th.hashtag.toLowerCase() === dh.hashtag.toLowerCase())
+                ).map((dh) => (
+                  <Badge
+                    key={dh.hashtag}
+                    variant="outline"
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => {
+                      setNewHashtag(dh.hashtag)
+                    }}
+                  >
+                    #{dh.hashtag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Button onClick={handleAdd} className="w-full">
             <Plus size={16} weight="bold" className="mr-2" />

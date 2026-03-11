@@ -36,12 +36,15 @@ import { SettingsPage } from '@/components/SettingsPage'
 import { IntegrationHub } from '@/components/IntegrationHub'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
+import { US_EXPANSION_VENUES } from '@/lib/us-venues'
 import {
   calculatePulseScore,
   getVenuesByProximity,
   canPostPulse
 } from '@/lib/pulse-engine'
 import { calculateUserCredibility } from '@/lib/credibility'
+import { checkUserRateLimit } from '@/lib/rate-limiter'
+import { announce, initHighContrast } from '@/lib/accessibility'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -52,6 +55,7 @@ import { VenueEvent, createEvent } from '@/lib/events'
 import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
+import { trackEvent } from '@/lib/analytics'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -109,7 +113,7 @@ function App() {
   })
 
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
-  const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
+  const [venues, setVenues] = useKV<Venue[]>('venues', [...MOCK_VENUES, ...US_EXPANSION_VENUES])
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [stories, setStories] = useKV<PulseStory[]>('stories', [])
@@ -127,6 +131,10 @@ function App() {
       setHashtags(initializeSeededHashtags())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    initHighContrast()
   }, [])
 
   // Seed demo events if empty
@@ -230,6 +238,12 @@ function App() {
   }, [locationError])
 
   useEffect(() => {
+    if (selectedVenue) {
+      trackEvent({ type: 'venue_view', timestamp: Date.now(), venueId: selectedVenue.id, source: 'trending' })
+    }
+  }, [selectedVenue])
+
+  useEffect(() => {
     const interval = setInterval(() => {
       setVenues((currentVenues) => {
         if (!currentVenues || !pulses) return currentVenues || []
@@ -286,6 +300,12 @@ function App() {
     hashtags?: string[]
   }) => {
     if (!venueForPulse || !currentUser || !venues) return
+
+    const rateCheck = checkUserRateLimit(currentUser.id, 'pulse_create')
+    if (!rateCheck.allowed) {
+      toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` })
+      return
+    }
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000)
@@ -375,6 +395,9 @@ function App() {
     toast.success('Pulse posted!', {
       description: `Your vibe at ${venueForPulse.name} is live`
     })
+    announce(`Pulse posted at ${venueForPulse.name}`)
+
+    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 
     setTimeout(() => {
       setPulses((current) => {
@@ -432,6 +455,9 @@ function App() {
 
   const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
     if (!currentUser) return
+    const reactionRate = checkUserRateLimit(currentUser.id, 'reaction')
+    if (!reactionRate.allowed) return
+    trackEvent({ type: 'pulse_reaction', timestamp: Date.now(), pulseId, reactionType: type })
     setPulses((current) => {
       if (!current) return []
       return current.map((p) => {
@@ -468,6 +494,7 @@ function App() {
 
   const handleAddFriend = (userId: string) => {
     if (!currentUser) return
+    trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
     setCurrentUser(prev => {
       if (!prev) return prev!
       if (prev.friends.includes(userId)) return prev
@@ -478,6 +505,18 @@ function App() {
 
   const handleStoryReact = (storyId: string, emoji: string) => {
     toast.success(`Reacted ${emoji}`)
+  }
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab)
+    const tabLabels: Record<TabId, string> = {
+      trending: 'Trending',
+      discover: 'Discover',
+      map: 'Map',
+      notifications: 'Notifications',
+      profile: 'Profile',
+    }
+    announce(`Switched to ${tabLabels[tab]} tab`)
   }
 
   const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
@@ -602,7 +641,7 @@ function App() {
           venues={venues}
           onBack={() => setSubPage(null)}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -618,7 +657,7 @@ function App() {
           onEventUpdate={(updated) => setEvents(updated)}
           onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -636,7 +675,7 @@ function App() {
           onCrewsUpdate={(updated) => setCrews(updated)}
           onCheckInsUpdate={(updated) => setCrewCheckIns(updated)}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -650,7 +689,7 @@ function App() {
           venues={venues}
           onBack={() => setSubPage(null)}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -664,7 +703,7 @@ function App() {
           onBack={() => setSubPage(null)}
           onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -680,7 +719,7 @@ function App() {
           onBack={() => setSubPage(null)}
           onPlaylistsUpdate={(updated) => setPlaylists(updated)}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -692,8 +731,12 @@ function App() {
           currentUser={currentUser}
           onBack={() => setSubPage(null)}
           onUpdateUser={(user) => setCurrentUser(user)}
+          onCityChange={(loc) => {
+            setSimulatedLocation(loc)
+            toast.success('Location updated')
+          }}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -708,7 +751,7 @@ function App() {
           onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
           onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
         />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -805,7 +848,7 @@ function App() {
             })
           }}
         />
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
+        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
         <CreatePulseDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -845,6 +888,7 @@ function App() {
               userLocation={userLocation}
               unitSystem={unitSystem}
               currentUser={currentUser}
+              allUsers={ALL_USERS}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
               onVenueClick={(venue) => setSelectedVenue(venue)}
@@ -939,6 +983,7 @@ function App() {
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
               onOpenSettings={() => setSubPage('settings')}
+              onOpenOwnerDashboard={() => setShowAdminDashboard(true)}
             />
           </motion.div>
         )}
@@ -956,7 +1001,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} unreadNotifications={unreadNotificationCount} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
       <CreatePulseDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
