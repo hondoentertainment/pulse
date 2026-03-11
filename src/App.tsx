@@ -17,7 +17,7 @@ import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { NotificationFeed } from '@/components/NotificationFeed'
-import { SplashScreen } from '@/components/SplashScreen'
+// SplashScreen replaced by OnboardingFlow
 import { VenuePage } from '@/components/VenuePage'
 import { TrendingTab } from '@/components/TrendingTab'
 import { ProfileTab } from '@/components/ProfileTab'
@@ -30,6 +30,12 @@ import { EventsPage } from '@/components/EventsPage'
 import { CrewPage } from '@/components/CrewPage'
 import { InsightsPage } from '@/components/InsightsPage'
 import { NeighborhoodView } from '@/components/NeighborhoodView'
+import { PlaylistsPage } from '@/components/PlaylistsPage'
+import { OnboardingFlow } from '@/components/OnboardingFlow'
+import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { SettingsPage } from '@/components/SettingsPage'
+import { PromotedVenueCard, PromotedDashboard } from '@/components/PromotedVenueCard'
+import { IntegrationHub } from '@/components/IntegrationHub'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import {
@@ -46,6 +52,8 @@ import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
 import { PulseStory, createStory } from '@/lib/stories'
 import { VenueEvent, createEvent } from '@/lib/events'
 import { Crew, CrewCheckIn } from '@/lib/crew-mode'
+import { PulsePlaylist } from '@/lib/playlists'
+import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -53,7 +61,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 
-type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | null
+type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | null
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
@@ -110,6 +118,9 @@ function App() {
   const [events, setEvents] = useKV<VenueEvent[]>('events', [])
   const [crews, setCrews] = useKV<Crew[]>('crews', [])
   const [crewCheckIns, setCrewCheckIns] = useKV<CrewCheckIn[]>('crewCheckIns', [])
+  const [playlists, setPlaylists] = useKV<PulsePlaylist[]>('playlists', [])
+  const [promotions, setPromotions] = useKV<PromotedVenue[]>('promotions', [])
+  const [integrationVenue, setIntegrationVenue] = useState<Venue | null>(null)
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
 
@@ -146,6 +157,14 @@ function App() {
           ),
         ]
         setEvents(demoEvents)
+      }
+    }
+    if (!promotions || promotions.length === 0) {
+      if (venues && venues.length > 2) {
+        setPromotions([
+          createPromotedVenue(venues[0].id, 'Weekend Spotlight', 200, 'cpc', 0.5, 7),
+          createPromotedVenue(venues[2]?.id || venues[0].id, 'Happy Hour Boost', 100, 'cpm', 2, 14),
+        ])
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -474,10 +493,6 @@ function App() {
     })).filter(p => p.venue)
   }
 
-  const handleSplashComplete = () => {
-    setHasCompletedOnboarding(true)
-  }
-
   const handleToggleFavorite = (venueId: string) => {
     setCurrentUser((user) => {
       if (!user) return {
@@ -551,7 +566,13 @@ function App() {
   }
 
   if (hasCompletedOnboarding === false) {
-    return <SplashScreen onComplete={handleSplashComplete} />
+    return (
+      <OnboardingFlow
+        onComplete={(_prefs: OnboardingPreferences) => {
+          setHasCompletedOnboarding(true)
+        }}
+      />
+    )
   }
 
   if (!venues || !currentUser || !pulses) {
@@ -643,6 +664,50 @@ function App() {
           onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
         />
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'playlists') {
+    return (
+      <>
+        <PlaylistsPage
+          currentUser={currentUser}
+          playlists={playlists || []}
+          pulses={pulses}
+          venues={venues}
+          onBack={() => setSubPage(null)}
+          onPlaylistsUpdate={(updated) => setPlaylists(updated)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'settings') {
+    return (
+      <>
+        <SettingsPage
+          currentUser={currentUser}
+          onBack={() => setSubPage(null)}
+          onUpdateUser={(user) => setCurrentUser(user)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'integrations' && integrationVenue) {
+    return (
+      <>
+        <IntegrationHub
+          venue={integrationVenue}
+          userLocation={userLocation}
+          venues={venues}
+          onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
+          onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
   }
@@ -866,6 +931,7 @@ function App() {
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
+              onOpenSettings={() => setSubPage('settings')}
             />
           </motion.div>
         )}
