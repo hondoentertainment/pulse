@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   Venue,
@@ -17,23 +17,24 @@ import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { NotificationFeed } from '@/components/NotificationFeed'
-import { VenuePage } from '@/components/VenuePage'
 import { TrendingTab } from '@/components/TrendingTab'
 import { ProfileTab } from '@/components/ProfileTab'
 import { AppHeader } from '@/components/AppHeader'
-import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
 import { DiscoverTab } from '@/components/DiscoverTab'
-import { StoryViewer } from '@/components/StoryViewer'
-import { AchievementsPage } from '@/components/AchievementsPage'
-import { EventsPage } from '@/components/EventsPage'
-import { CrewPage } from '@/components/CrewPage'
-import { InsightsPage } from '@/components/InsightsPage'
-import { NeighborhoodView } from '@/components/NeighborhoodView'
-import { PlaylistsPage } from '@/components/PlaylistsPage'
-import { OnboardingFlow } from '@/components/OnboardingFlow'
+
+const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
+const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
+const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboard').then(m => ({ default: m.SocialPulseDashboard })))
+const AchievementsPage = lazy(() => import('@/components/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
+const EventsPage = lazy(() => import('@/components/EventsPage').then(m => ({ default: m.EventsPage })))
+const CrewPage = lazy(() => import('@/components/CrewPage').then(m => ({ default: m.CrewPage })))
+const InsightsPage = lazy(() => import('@/components/InsightsPage').then(m => ({ default: m.InsightsPage })))
+const NeighborhoodView = lazy(() => import('@/components/NeighborhoodView').then(m => ({ default: m.NeighborhoodView })))
+const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => ({ default: m.PlaylistsPage })))
+const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
+const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
-import { SettingsPage } from '@/components/SettingsPage'
-import { IntegrationHub } from '@/components/IntegrationHub'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { US_EXPANSION_VENUES } from '@/lib/us-venues'
@@ -604,7 +605,8 @@ function App() {
 
   if (hasCompletedOnboarding === false) {
     return (
-      <OnboardingFlow
+      <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+        <OnboardingFlow
         onComplete={(prefs: OnboardingPreferences) => {
           if (prefs.favoriteCategories.length > 0) {
             setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
@@ -612,6 +614,7 @@ function App() {
           setHasCompletedOnboarding(true)
         }}
       />
+      </Suspense>
     )
   }
 
@@ -623,24 +626,30 @@ function App() {
 
   if (showAdminDashboard) {
     return (
-      <SocialPulseDashboard
+      <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+        <SocialPulseDashboard
         venues={venues}
         pulses={pulses}
         onBack={() => setShowAdminDashboard(false)}
       />
+      </Suspense>
     )
   }
+
+  const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
   // Sub-pages (full-screen overlays from Discover tab)
   if (subPage === 'achievements') {
     return (
       <>
-        <AchievementsPage
+        <Suspense fallback={pageFallback}>
+          <AchievementsPage
           currentUser={currentUser}
           pulses={pulses}
           venues={venues}
           onBack={() => setSubPage(null)}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -649,7 +658,8 @@ function App() {
   if (subPage === 'events') {
     return (
       <>
-        <EventsPage
+        <Suspense fallback={pageFallback}>
+          <EventsPage
           venues={venues}
           events={events || []}
           currentUserId={currentUser.id}
@@ -657,6 +667,7 @@ function App() {
           onEventUpdate={(updated) => setEvents(updated)}
           onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -665,7 +676,8 @@ function App() {
   if (subPage === 'crews') {
     return (
       <>
-        <CrewPage
+        <Suspense fallback={pageFallback}>
+          <CrewPage
           currentUser={currentUser}
           allUsers={ALL_USERS}
           crews={crews || []}
@@ -675,6 +687,7 @@ function App() {
           onCrewsUpdate={(updated) => setCrews(updated)}
           onCheckInsUpdate={(updated) => setCrewCheckIns(updated)}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -683,12 +696,14 @@ function App() {
   if (subPage === 'insights') {
     return (
       <>
-        <InsightsPage
+        <Suspense fallback={pageFallback}>
+          <InsightsPage
           currentUser={currentUser}
           pulses={pulses}
           venues={venues}
           onBack={() => setSubPage(null)}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -697,12 +712,14 @@ function App() {
   if (subPage === 'neighborhoods') {
     return (
       <>
-        <NeighborhoodView
+        <Suspense fallback={pageFallback}>
+          <NeighborhoodView
           venues={venues}
           pulses={pulses}
           onBack={() => setSubPage(null)}
           onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -711,7 +728,8 @@ function App() {
   if (subPage === 'playlists') {
     return (
       <>
-        <PlaylistsPage
+        <Suspense fallback={pageFallback}>
+          <PlaylistsPage
           currentUser={currentUser}
           playlists={playlists || []}
           pulses={pulses}
@@ -719,6 +737,7 @@ function App() {
           onBack={() => setSubPage(null)}
           onPlaylistsUpdate={(updated) => setPlaylists(updated)}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -727,7 +746,8 @@ function App() {
   if (subPage === 'settings') {
     return (
       <>
-        <SettingsPage
+        <Suspense fallback={pageFallback}>
+          <SettingsPage
           currentUser={currentUser}
           onBack={() => setSubPage(null)}
           onUpdateUser={(user) => setCurrentUser(user)}
@@ -736,6 +756,7 @@ function App() {
             toast.success('Location updated')
           }}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -744,13 +765,15 @@ function App() {
   if (subPage === 'integrations' && integrationVenue) {
     return (
       <>
-        <IntegrationHub
+        <Suspense fallback={pageFallback}>
+          <IntegrationHub
           venue={integrationVenue}
           userLocation={userLocation}
           venues={venues}
           onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
           onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
         />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
     )
@@ -802,7 +825,8 @@ function App() {
     return (
       <>
         <Toaster position="top-center" theme="dark" />
-        <VenuePage
+        <Suspense fallback={pageFallback}>
+          <VenuePage
           venue={selectedVenue}
           venuePulses={venuePulses}
           distance={distance}
@@ -827,6 +851,7 @@ function App() {
             setSubPage('integrations')
           }}
         />
+        </Suspense>
         <PresenceSheet
           open={presenceSheetOpen}
           onClose={() => setPresenceSheetOpen(false)}
@@ -992,12 +1017,14 @@ function App() {
       {/* Story Viewer Overlay */}
       <AnimatePresence>
         {storyViewerOpen && storyViewerStories.length > 0 && (
-          <StoryViewer
+          <Suspense fallback={null}>
+            <StoryViewer
             stories={storyViewerStories}
             currentUserId={currentUser.id}
             onClose={() => setStoryViewerOpen(false)}
             onReact={handleStoryReact}
           />
+          </Suspense>
         )}
       </AnimatePresence>
 
