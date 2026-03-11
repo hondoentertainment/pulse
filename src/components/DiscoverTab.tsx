@@ -7,7 +7,7 @@ import { FriendSuggestions } from '@/components/FriendSuggestions'
 import { EventCard } from '@/components/EventCard'
 import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
 import { Separator } from '@/components/ui/separator'
-import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes } from '@phosphor-icons/react'
+import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface DiscoverTabProps {
@@ -21,7 +21,7 @@ interface DiscoverTabProps {
   onVenueClick: (venue: Venue) => void
   onStoryClick: (stories: PulseStory[], index: number) => void
   onAddFriend: (userId: string) => void
-  onNavigate: (page: 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists') => void
+  onNavigate: (page: 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations') => void
 }
 
 export function DiscoverTab({
@@ -111,6 +111,14 @@ export function DiscoverTab({
           color="from-rose-500/20 to-red-500/20"
           borderColor="border-rose-500/20"
           onClick={() => onNavigate('playlists')}
+        />
+        <QuickAction
+          icon={<GearSix size={24} weight="fill" />}
+          label="Settings"
+          sublabel="Language, privacy & more"
+          color="from-gray-500/20 to-slate-500/20"
+          borderColor="border-gray-500/20"
+          onClick={() => onNavigate('settings')}
         />
       </div>
 
