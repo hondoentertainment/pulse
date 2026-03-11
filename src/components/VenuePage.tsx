@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -5,9 +6,11 @@ import { Card } from '@/components/ui/card'
 import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck } from '@phosphor-icons/react'
+import { ShareSheet } from '@/components/ShareSheet'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
+import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { WhoIsHereRow } from './WhoIsHereRow'
@@ -55,6 +58,15 @@ export function VenuePage({
   onOpenPresence,
   onOpenIntegrations,
 }: VenuePageProps) {
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareCard, setShareCard] = useState<ShareCard | null>(null)
+
+  const handleShare = () => {
+    const card = generateVenueShareCard(venue)
+    setShareCard(card)
+    setShareOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
@@ -84,6 +96,12 @@ export function VenuePage({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              >
+                <ShareNetwork size={24} className="text-muted-foreground" />
+              </button>
               {onToggleFollow && (
                 <button
                   onClick={onToggleFollow}
@@ -289,6 +307,12 @@ export function VenuePage({
           </div>
         )}
       </motion.div>
+
+      <ShareSheet
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        card={shareCard}
+      />
     </div>
   )
 }
