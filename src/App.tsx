@@ -64,6 +64,7 @@ import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { trackEvent } from '@/lib/analytics'
+import { VenuePlatformDashboard } from '@/components/VenuePlatformDashboard'
 import { CreatorDashboard } from '@/components/CreatorDashboard'
 import { ChallengeFeed } from '@/components/ChallengeFeed'
 import { TipSheet } from '@/components/TipSheet'
@@ -91,7 +92,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 
-type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'creator-dashboard' | 'challenges' | 'night-planner' | 'my-tickets' | null
+type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'creator-dashboard' | 'challenges' | 'night-planner' | 'my-tickets' | 'venue-platform' | null
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
@@ -103,6 +104,7 @@ function App() {
   const [storyViewerStories, setStoryViewerStories] = useState<PulseStory[]>([])
   const [compareVenueIds, setCompareVenueIds] = useState<string[]>([])
   const [compareSheetOpen, setCompareSheetOpen] = useState(false)
+  const [platformVenue, setPlatformVenue] = useState<Venue | null>(null)
 
   // Mock users for presence simulation
   const ALL_USERS: User[] = [
@@ -896,6 +898,22 @@ function App() {
     )
   }
 
+  if (subPage === 'venue-platform') {
+    const venueForPlatform = platformVenue || venues[0]
+    return (
+      <>
+        <VenuePlatformDashboard
+          venue={venueForPlatform}
+          venues={venues}
+          pulses={pulses}
+          currentUserId={currentUser.id}
+          onBack={() => { setSubPage(null); setPlatformVenue(null) }}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setPlatformVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
   if (subPage === 'settings') {
     return (
       <>
@@ -1207,7 +1225,7 @@ function App() {
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
               onOpenSettings={() => setSubPage('settings')}
-              onOpenOwnerDashboard={() => setShowAdminDashboard(true)}
+              onOpenOwnerDashboard={() => setSubPage('venue-platform')}
               onOpenCreatorDashboard={() => setSubPage('creator-dashboard')}
             />
           </motion.div>
