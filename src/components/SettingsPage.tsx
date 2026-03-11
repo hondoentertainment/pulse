@@ -9,10 +9,14 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import {
   ArrowLeft, Bell, Eye, EyeSlash, Ruler, Shield, Palette,
-  Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash
+  Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash,
+  Translate, DownloadSimple,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { getPendingCount, clearQueue } from '@/lib/offline-queue'
+import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
+import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
 interface SettingsPageProps {
@@ -25,6 +29,13 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser }: SettingsPage
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
   const offlineCount = getPendingCount()
+  const [currentLocale, setCurrentLocale] = useState<Locale>(getLocale())
+  const [canInstallPwa, setCanInstallPwa] = useState(false)
+  const installState = getInstallState()
+
+  useEffect(() => {
+    return listenForInstallPrompt(() => setCanInstallPwa(true))
+  }, [])
 
   const presenceSettings = currentUser.presenceSettings ?? {
     enabled: true,
@@ -250,6 +261,81 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser }: SettingsPage
             </div>
           </Card>
         </motion.div>
+
+        {/* Language */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Translate size={18} weight="fill" className="text-primary" />
+              <Label className="font-bold">Language</Label>
+              <Badge variant="outline" className="text-xs">
+                {getAvailableLocales().find(l => l.code === currentLocale)?.name || 'English'}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {getAvailableLocales().map(locale => (
+                <button
+                  key={locale.code}
+                  onClick={() => {
+                    setLocale(locale.code)
+                    setCurrentLocale(locale.code)
+                    toast.success(`Language set to ${locale.name}`)
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    currentLocale === locale.code
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {locale.name}
+                </button>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Install App */}
+        {(canInstallPwa || !installState.isInstalled) && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+            <Card className="p-4 space-y-3 border-primary/20">
+              <div className="flex items-center gap-2">
+                <DownloadSimple size={18} weight="fill" className="text-primary" />
+                <Label className="font-bold">Install App</Label>
+              </div>
+              {canInstallPwa ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Install Pulse for a faster, native-like experience with offline support.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const accepted = await showInstallPrompt()
+                      if (accepted) {
+                        toast.success('App installed!')
+                        setCanInstallPwa(false)
+                      }
+                    }}
+                  >
+                    <DownloadSimple size={14} className="mr-1" />
+                    Install Pulse
+                  </Button>
+                </>
+              ) : installState.isInstalled ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">Installed</Badge>
+                  Running as installed app
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {installState.platform === 'ios'
+                    ? 'Tap the share button, then "Add to Home Screen" to install.'
+                    : 'Use your browser menu to install this app.'}
+                </p>
+              )}
+            </Card>
+          </motion.div>
+        )}
 
         {/* Offline Queue */}
         {offlineCount > 0 && (

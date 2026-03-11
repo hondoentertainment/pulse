@@ -17,7 +17,6 @@ import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { NotificationFeed } from '@/components/NotificationFeed'
-// SplashScreen replaced by OnboardingFlow
 import { VenuePage } from '@/components/VenuePage'
 import { TrendingTab } from '@/components/TrendingTab'
 import { ProfileTab } from '@/components/ProfileTab'
@@ -34,7 +33,6 @@ import { PlaylistsPage } from '@/components/PlaylistsPage'
 import { OnboardingFlow } from '@/components/OnboardingFlow'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { SettingsPage } from '@/components/SettingsPage'
-import { PromotedVenueCard, PromotedDashboard } from '@/components/PromotedVenueCard'
 import { IntegrationHub } from '@/components/IntegrationHub'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
@@ -568,7 +566,10 @@ function App() {
   if (hasCompletedOnboarding === false) {
     return (
       <OnboardingFlow
-        onComplete={(_prefs: OnboardingPreferences) => {
+        onComplete={(prefs: OnboardingPreferences) => {
+          if (prefs.favoriteCategories.length > 0) {
+            setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
+          }
           setHasCompletedOnboarding(true)
         }}
       />
@@ -777,6 +778,11 @@ function App() {
           onReaction={handleReaction}
           onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
           onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
+          onOpenIntegrations={() => {
+            setIntegrationVenue(selectedVenue)
+            setSelectedVenue(null)
+            setSubPage('integrations')
+          }}
         />
         <PresenceSheet
           open={presenceSheetOpen}
@@ -846,6 +852,7 @@ function App() {
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
               isFavorite={isFavorite}
+              promotions={promotions || []}
             />
           </motion.div>
         )}

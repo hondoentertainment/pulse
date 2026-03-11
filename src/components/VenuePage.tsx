@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ interface VenuePageProps {
   onToggleFollow?: () => void
   presenceData?: PresenceData | null
   onOpenPresence: () => void
+  onOpenIntegrations?: () => void
 }
 
 export function VenuePage({
@@ -51,7 +52,8 @@ export function VenuePage({
   onToggleFavorite,
   onToggleFollow,
   presenceData,
-  onOpenPresence
+  onOpenPresence,
+  onOpenIntegrations,
 }: VenuePageProps) {
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -241,6 +243,26 @@ export function VenuePage({
             Create Pulse
           </Button>
         </div>
+
+        {/* Quick Actions: Rideshare & Reservations */}
+        {onOpenIntegrations && (
+          <div className="flex gap-2">
+            <button
+              onClick={onOpenIntegrations}
+              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <Car size={18} weight="fill" className="text-primary" />
+              <span className="text-sm font-medium">Get a Ride</span>
+            </button>
+            <button
+              onClick={onOpenIntegrations}
+              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <CalendarCheck size={18} weight="fill" className="text-blue-500" />
+              <span className="text-sm font-medium">Reserve</span>
+            </button>
+          </div>
+        )}
 
         <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
 
