@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Settings } from '@/components/Settings'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Gear, Storefront } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check } from '@phosphor-icons/react'
+import { createFriendInviteLink } from '@/lib/social-graph'
+import { createReferralInvite } from '@/lib/sharing'
+import { toast } from 'sonner'
 
 interface ProfileTabProps {
   currentUser: User
@@ -29,6 +33,21 @@ export function ProfileTab({
   onOpenOwnerDashboard,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
+  const [inviteCopied, setInviteCopied] = useState(false)
+
+  const handleInviteFriends = async () => {
+    const invite = createReferralInvite(currentUser.id)
+    const link = createFriendInviteLink(currentUser.id)
+    const text = `Join me on Pulse! Use code ${invite.inviteCode}: ${link.url}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setInviteCopied(true)
+      toast.success('Invite link copied!')
+      setTimeout(() => setInviteCopied(false), 2000)
+    } catch {
+      toast.error('Failed to copy invite link')
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -122,6 +141,29 @@ export function ProfileTab({
             No pulses yet. Check into a venue to get started!
           </p>
         )}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <UserPlus size={20} weight="fill" className="text-accent" />
+          <h3 className="text-lg font-bold">Invite Friends</h3>
+        </div>
+        <button
+          onClick={handleInviteFriends}
+          className="w-full p-4 bg-card rounded-xl border border-border hover:border-accent/30 transition-colors text-left flex items-center gap-3"
+        >
+          {inviteCopied ? (
+            <Check size={20} weight="bold" className="text-accent" />
+          ) : (
+            <Link size={20} className="text-accent" />
+          )}
+          <div className="flex-1">
+            <p className="text-sm font-medium">{inviteCopied ? 'Link Copied!' : 'Copy Invite Link'}</p>
+            <p className="text-xs text-muted-foreground">Share with friends to join Pulse</p>
+          </div>
+        </button>
       </div>
 
       <Separator />
