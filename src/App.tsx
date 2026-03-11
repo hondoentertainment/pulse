@@ -13,18 +13,28 @@ import {
 import { calculatePresence } from '@/lib/presence-engine'
 import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
-import { VenueCard } from '@/components/VenueCard'
+import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { NotificationFeed } from '@/components/NotificationFeed'
-import { SplashScreen } from '@/components/SplashScreen'
 import { VenuePage } from '@/components/VenuePage'
 import { TrendingTab } from '@/components/TrendingTab'
 import { ProfileTab } from '@/components/ProfileTab'
 import { AppHeader } from '@/components/AppHeader'
 import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
-import { Input } from '@/components/ui/input'
-import { Plus, MagnifyingGlass } from '@phosphor-icons/react'
+import { DiscoverTab } from '@/components/DiscoverTab'
+import { StoryViewer } from '@/components/StoryViewer'
+import { AchievementsPage } from '@/components/AchievementsPage'
+import { EventsPage } from '@/components/EventsPage'
+import { CrewPage } from '@/components/CrewPage'
+import { InsightsPage } from '@/components/InsightsPage'
+import { NeighborhoodView } from '@/components/NeighborhoodView'
+import { PlaylistsPage } from '@/components/PlaylistsPage'
+import { OnboardingFlow } from '@/components/OnboardingFlow'
+import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { SettingsPage } from '@/components/SettingsPage'
+import { IntegrationHub } from '@/components/IntegrationHub'
+import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import {
   calculatePulseScore,
@@ -37,6 +47,11 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useCurrentTime } from '@/hooks/use-current-time'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
+import { PulseStory, createStory } from '@/lib/stories'
+import { VenueEvent, createEvent } from '@/lib/events'
+import { Crew, CrewCheckIn } from '@/lib/crew-mode'
+import { PulsePlaylist } from '@/lib/playlists'
+import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -44,11 +59,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 
+type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | null
+
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [activeTab, setActiveTab] = useState<'trending' | 'venues' | 'map' | 'notifications' | 'profile'>('map')
+  const [activeTab, setActiveTab] = useState<TabId>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
+  const [subPage, setSubPage] = useState<SubPage>(null)
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false)
+  const [storyViewerStories, setStoryViewerStories] = useState<PulseStory[]>([])
 
   // Mock users for presence simulation
   const ALL_USERS: User[] = [
@@ -62,7 +82,6 @@ function App() {
   const [venueForPulse, setVenueForPulse] = useState<Venue | null>(null)
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
-  const [venueSearchQuery, setVenueSearchQuery] = useState('')
   const [trendingSubTab, setTrendingSubTab] = useState<'trending' | 'my-spots'>('trending')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
@@ -93,6 +112,13 @@ function App() {
   const [venues, setVenues] = useKV<Venue[]>('venues', MOCK_VENUES)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
+  const [stories, setStories] = useKV<PulseStory[]>('stories', [])
+  const [events, setEvents] = useKV<VenueEvent[]>('events', [])
+  const [crews, setCrews] = useKV<Crew[]>('crews', [])
+  const [crewCheckIns, setCrewCheckIns] = useKV<CrewCheckIn[]>('crewCheckIns', [])
+  const [playlists, setPlaylists] = useKV<PulsePlaylist[]>('playlists', [])
+  const [promotions, setPromotions] = useKV<PromotedVenue[]>('promotions', [])
+  const [integrationVenue, setIntegrationVenue] = useState<Venue | null>(null)
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
 
@@ -102,6 +128,45 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Seed demo events if empty
+  useEffect(() => {
+    if (!events || events.length === 0) {
+      if (venues && venues.length > 0) {
+        const now = new Date()
+        const demoEvents: VenueEvent[] = [
+          createEvent(
+            venues[0].id, 'user-2', 'Friday Night DJ Set',
+            'Live DJ spinning house & techno all night', 'dj_set',
+            new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(),
+            new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString(),
+          ),
+          createEvent(
+            venues[1]?.id || venues[0].id, 'user-3', 'Trivia Tuesday',
+            'Test your knowledge — prizes for top 3 teams!', 'trivia',
+            new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+            new Date(now.getTime() + 27 * 60 * 60 * 1000).toISOString(),
+          ),
+          createEvent(
+            venues[2]?.id || venues[0].id, 'user-4', 'Happy Hour Special',
+            '$5 cocktails and half-price apps', 'happy_hour',
+            new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+            new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString(),
+          ),
+        ]
+        setEvents(demoEvents)
+      }
+    }
+    if (!promotions || promotions.length === 0) {
+      if (venues && venues.length > 2) {
+        setPromotions([
+          createPromotedVenue(venues[0].id, 'Weekend Spotlight', 200, 'cpc', 0.5, 7),
+          createPromotedVenue(venues[2]?.id || venues[0].id, 'Happy Hour Boost', 100, 'cpm', 2, 14),
+        ])
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venues])
 
   const userLocation = useMemo(
     () => realtimeLocation
@@ -256,6 +321,13 @@ function App() {
       return [newPulse, ...current]
     })
 
+    // Auto-create story from pulse
+    const story = createStory(newPulse, currentUser, venueForPulse.name)
+    setStories((current) => {
+      if (!current) return [story]
+      return [story, ...current]
+    })
+
     if (data.hashtags && data.hashtags.length > 0) {
       setHashtags((currentHashtags) => {
         if (!currentHashtags) return []
@@ -394,8 +466,21 @@ function App() {
     setActiveTab('trending')
   }
 
-  const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
+  const handleAddFriend = (userId: string) => {
+    if (!currentUser) return
+    setCurrentUser(prev => {
+      if (!prev) return prev!
+      if (prev.friends.includes(userId)) return prev
+      return { ...prev, friends: [...prev.friends, userId] }
+    })
+    toast.success('Friend added!')
+  }
 
+  const handleStoryReact = (storyId: string, emoji: string) => {
+    toast.success(`Reacted ${emoji}`)
+  }
+
+  const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
 
   const getPulsesWithUsers = (): PulseWithUser[] => {
     if (!pulses || !currentUser || !venues) return []
@@ -404,10 +489,6 @@ function App() {
       user: currentUser,
       venue: venues.find((v) => v.id === pulse.venueId)!
     })).filter(p => p.venue)
-  }
-
-  const handleSplashComplete = () => {
-    setHasCompletedOnboarding(true)
   }
 
   const handleToggleFavorite = (venueId: string) => {
@@ -422,9 +503,9 @@ function App() {
         createdAt: new Date().toISOString()
       }
       const favorites = user.favoriteVenues || []
-      const isFavorite = favorites.includes(venueId)
+      const isFav = favorites.includes(venueId)
 
-      if (isFavorite) {
+      if (isFav) {
         toast.success('Removed from favorites')
         return {
           ...user,
@@ -483,7 +564,16 @@ function App() {
   }
 
   if (hasCompletedOnboarding === false) {
-    return <SplashScreen onComplete={handleSplashComplete} />
+    return (
+      <OnboardingFlow
+        onComplete={(prefs: OnboardingPreferences) => {
+          if (prefs.favoriteCategories.length > 0) {
+            setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
+          }
+          setHasCompletedOnboarding(true)
+        }}
+      />
+    )
   }
 
   if (!venues || !currentUser || !pulses) {
@@ -499,6 +589,127 @@ function App() {
         pulses={pulses}
         onBack={() => setShowAdminDashboard(false)}
       />
+    )
+  }
+
+  // Sub-pages (full-screen overlays from Discover tab)
+  if (subPage === 'achievements') {
+    return (
+      <>
+        <AchievementsPage
+          currentUser={currentUser}
+          pulses={pulses}
+          venues={venues}
+          onBack={() => setSubPage(null)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'events') {
+    return (
+      <>
+        <EventsPage
+          venues={venues}
+          events={events || []}
+          currentUserId={currentUser.id}
+          onBack={() => setSubPage(null)}
+          onEventUpdate={(updated) => setEvents(updated)}
+          onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'crews') {
+    return (
+      <>
+        <CrewPage
+          currentUser={currentUser}
+          allUsers={ALL_USERS}
+          crews={crews || []}
+          crewCheckIns={crewCheckIns || []}
+          venues={venues}
+          onBack={() => setSubPage(null)}
+          onCrewsUpdate={(updated) => setCrews(updated)}
+          onCheckInsUpdate={(updated) => setCrewCheckIns(updated)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'insights') {
+    return (
+      <>
+        <InsightsPage
+          currentUser={currentUser}
+          pulses={pulses}
+          venues={venues}
+          onBack={() => setSubPage(null)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'neighborhoods') {
+    return (
+      <>
+        <NeighborhoodView
+          venues={venues}
+          pulses={pulses}
+          onBack={() => setSubPage(null)}
+          onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'playlists') {
+    return (
+      <>
+        <PlaylistsPage
+          currentUser={currentUser}
+          playlists={playlists || []}
+          pulses={pulses}
+          venues={venues}
+          onBack={() => setSubPage(null)}
+          onPlaylistsUpdate={(updated) => setPlaylists(updated)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'settings') {
+    return (
+      <>
+        <SettingsPage
+          currentUser={currentUser}
+          onBack={() => setSubPage(null)}
+          onUpdateUser={(user) => setCurrentUser(user)}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'integrations' && integrationVenue) {
+    return (
+      <>
+        <IntegrationHub
+          venue={integrationVenue}
+          userLocation={userLocation}
+          venues={venues}
+          onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
+          onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
+        />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); setActiveTab(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
     )
   }
 
@@ -567,6 +778,11 @@ function App() {
           onReaction={handleReaction}
           onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
           onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
+          onOpenIntegrations={() => {
+            setIntegrationVenue(selectedVenue)
+            setSelectedVenue(null)
+            setSubPage('integrations')
+          }}
         />
         <PresenceSheet
           open={presenceSheetOpen}
@@ -636,84 +852,35 @@ function App() {
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
               isFavorite={isFavorite}
+              promotions={promotions || []}
             />
           </motion.div>
         )}
 
-        {activeTab === 'venues' && (
+        {activeTab === 'discover' && (
           <motion.div
-            key="venues"
+            key="discover"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6 space-y-6"
           >
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold">All Venues</h2>
-              <p className="text-sm text-muted-foreground">
-                Browse all venues sorted by distance
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative">
-                <MagnifyingGlass
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                  size={16}
-                />
-                <Input
-                  placeholder="Search venues by name or category..."
-                  value={venueSearchQuery}
-                  onChange={(e) => setVenueSearchQuery(e.target.value)}
-                  className="pl-9 bg-card/50 backdrop-blur-sm"
-                />
-              </div>
-
-              <div className="space-y-3">
-                {sortedVenues
-                  .filter(venue => {
-                    if (!venueSearchQuery) return true
-                    const query = venueSearchQuery.toLowerCase()
-                    return (
-                      venue.name.toLowerCase().includes(query) ||
-                      venue.category?.toLowerCase().includes(query)
-                    )
-                  })
-                  .map((venue) => {
-                    const distance = userLocation
-                      ? calculateDistance(
-                        userLocation.lat,
-                        userLocation.lng,
-                        venue.location.lat,
-                        venue.location.lng
-                      )
-                      : undefined
-                    return (
-                      <VenueCard
-                        key={venue.id}
-                        venue={venue}
-                        distance={distance}
-                        onClick={() => setSelectedVenue(venue)}
-                        isFavorite={isFavorite(venue.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                        isFollowed={isFollowed(venue.id)}
-                        onToggleFollow={handleToggleFollow}
-                      />
-                    )
-                  })}
-
-                {sortedVenues.filter(venue =>
-                  venue.name.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
-                  venue.category?.toLowerCase().includes(venueSearchQuery.toLowerCase())
-                ).length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MagnifyingGlass size={32} className="mx-auto mb-2 opacity-50" />
-                      <p>No venues found matching "{venueSearchQuery}"</p>
-                    </div>
-                  )}
-              </div>
-            </div>
+            <DiscoverTab
+              venues={venues}
+              pulses={pulses}
+              pulsesWithUsers={getPulsesWithUsers()}
+              currentUser={currentUser}
+              allUsers={ALL_USERS}
+              stories={stories || []}
+              events={events || []}
+              onVenueClick={(venue) => setSelectedVenue(venue)}
+              onStoryClick={(storyList, index) => {
+                setStoryViewerStories(storyList)
+                setStoryViewerOpen(true)
+              }}
+              onAddFriend={handleAddFriend}
+              onNavigate={(page) => setSubPage(page)}
+            />
           </motion.div>
         )}
 
@@ -771,8 +938,21 @@ function App() {
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
+              onOpenSettings={() => setSubPage('settings')}
             />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Story Viewer Overlay */}
+      <AnimatePresence>
+        {storyViewerOpen && storyViewerStories.length > 0 && (
+          <StoryViewer
+            stories={storyViewerStories}
+            currentUserId={currentUser.id}
+            onClose={() => setStoryViewerOpen(false)}
+            onReact={handleStoryReact}
+          />
         )}
       </AnimatePresence>
 

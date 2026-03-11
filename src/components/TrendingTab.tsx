@@ -4,11 +4,14 @@ import { TrendingSections } from '@/components/TrendingSections'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
 import { RecommendationsSection } from '@/components/RecommendationsSection'
 import { Separator } from '@/components/ui/separator'
-import { Star } from '@phosphor-icons/react'
+import { Badge } from '@/components/ui/badge'
+import { Star, Megaphone } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
 import { getPeakCategories } from '@/lib/time-contextual-scoring'
+import { PromotedVenue, isPromotionActive } from '@/lib/promoted-discoveries'
+import { PulseScore } from '@/components/PulseScore'
 import type { Pulse } from '@/lib/types'
 
 interface TrendingTabProps {
@@ -21,6 +24,7 @@ interface TrendingTabProps {
   unitSystem: 'imperial' | 'metric'
   currentUser: User
   trendingSubTab: 'trending' | 'my-spots'
+  promotions?: PromotedVenue[]
   onSubTabChange: (tab: 'trending' | 'my-spots') => void
   onVenueClick: (venue: Venue) => void
   onToggleFavorite: (venueId: string) => void
@@ -44,8 +48,11 @@ export function TrendingTab({
   onToggleFavorite,
   onToggleFollow,
   onReaction,
-  isFavorite
+  isFavorite,
+  promotions,
 }: TrendingTabProps) {
+  const activePromotions = (promotions || []).filter(isPromotionActive)
+
   return (
     <>
       <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -121,6 +128,35 @@ export function TrendingTab({
               onVenueClick={onVenueClick}
             />
           </div>
+
+          {/* Promoted Venues */}
+          {activePromotions.length > 0 && (
+            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
+              {activePromotions.slice(0, 2).map(promo => {
+                const venue = venues.find(v => v.id === promo.venueId)
+                if (!venue) return null
+                return (
+                  <button
+                    key={promo.id}
+                    onClick={() => onVenueClick(venue)}
+                    className="w-full p-3 bg-card rounded-xl border border-yellow-500/20 flex items-center gap-3 hover:border-yellow-500/40 transition-colors text-left"
+                  >
+                    <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold truncate">{venue.name}</p>
+                        <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500 flex-shrink-0">
+                          <Megaphone size={8} className="mr-0.5" />
+                          Sponsored
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{venue.category}{venue.city ? ` · ${venue.city}` : ''}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           <TrendingSections
             sections={getTrendingSections(venues, pulses)}

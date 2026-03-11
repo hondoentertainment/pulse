@@ -13,6 +13,7 @@ interface ProfileTabProps {
   onVenueClick: (venue: Venue) => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onOpenSocialPulseDashboard: () => void
+  onOpenSettings?: () => void
 }
 
 export function ProfileTab({
@@ -22,7 +23,8 @@ export function ProfileTab({
   favoriteVenues,
   onVenueClick,
   onReaction,
-  onOpenSocialPulseDashboard
+  onOpenSocialPulseDashboard,
+  onOpenSettings,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
 
@@ -127,9 +129,22 @@ export function ProfileTab({
           <Gear size={20} weight="fill" className="text-primary" />
           <h3 className="text-lg font-bold">Settings</h3>
         </div>
-        <Settings
-          onOpenSocialPulseDashboard={onOpenSocialPulseDashboard}
-        />
+        {onOpenSettings ? (
+          <button
+            onClick={onOpenSettings}
+            className="w-full p-4 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors text-left flex items-center gap-3"
+          >
+            <Gear size={20} className="text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">App Settings</p>
+              <p className="text-xs text-muted-foreground">Notifications, privacy, display</p>
+            </div>
+          </button>
+        ) : (
+          <Settings
+            onOpenSocialPulseDashboard={onOpenSocialPulseDashboard}
+          />
+        )}
       </div>
     </div>
   )
