@@ -6,7 +6,8 @@ import { RecommendationsSection } from '@/components/RecommendationsSection'
 import { LiveActivityFeed } from '@/components/LiveActivityFeed'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Star, Megaphone } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { Star, Megaphone, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
@@ -33,6 +34,7 @@ interface TrendingTabProps {
   onToggleFollow: (venueId: string) => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   isFavorite: (venueId: string) => boolean
+  onCompareVenues?: (venueIds: string[]) => void
 }
 
 export function TrendingTab({
@@ -53,6 +55,7 @@ export function TrendingTab({
   onReaction,
   isFavorite,
   promotions,
+  onCompareVenues,
 }: TrendingTabProps) {
   const activePromotions = (promotions || []).filter(isPromotionActive)
 
@@ -89,6 +92,27 @@ export function TrendingTab({
           </button>
         </div>
       </div>
+
+      {/* Compare button */}
+      {onCompareVenues && trendingSubTab === 'trending' && (
+        <div className="max-w-2xl mx-auto px-4 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-primary/20 text-primary hover:bg-primary/10"
+            onClick={() => {
+              const topVenues = [...venues]
+                .sort((a, b) => b.pulseScore - a.pulseScore)
+                .slice(0, 3)
+                .map(v => v.id)
+              onCompareVenues(topVenues)
+            }}
+          >
+            <Scales size={16} className="mr-2" />
+            Compare Top Venues
+          </Button>
+        </div>
+      )}
 
       {trendingSubTab === 'trending' && (
         <>

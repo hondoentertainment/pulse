@@ -4,9 +4,11 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Settings } from '@/components/Settings'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
+import { getCreatorTierProgress } from '@/lib/creator-economy'
+import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
 import { toast } from 'sonner'
 
 interface ProfileTabProps {
@@ -19,6 +21,7 @@ interface ProfileTabProps {
   onOpenSocialPulseDashboard: () => void
   onOpenSettings?: () => void
   onOpenOwnerDashboard?: () => void
+  onOpenCreatorDashboard?: () => void
 }
 
 export function ProfileTab({
@@ -31,9 +34,21 @@ export function ProfileTab({
   onOpenSocialPulseDashboard,
   onOpenSettings,
   onOpenOwnerDashboard,
+  onOpenCreatorDashboard,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
+
+  const totalReactions = pulses
+    .filter(p => p.userId === currentUser.id)
+    .reduce((sum, p) =>
+      sum + p.reactions.fire.length + p.reactions.eyes.length +
+      p.reactions.skull.length + p.reactions.lightning.length, 0)
+  const tierProgress = getCreatorTierProgress(
+    pulses.filter(p => p.userId === currentUser.id).length,
+    totalReactions,
+    currentUser.friends.length
+  )
 
   const handleInviteFriends = async () => {
     const invite = createReferralInvite(currentUser.id)
@@ -58,7 +73,12 @@ export function ProfileTab({
           </div>
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold">{currentUser.username}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">{currentUser.username}</h2>
+            {tierProgress.currentTier && (
+              <CreatorProfileBadge tier={tierProgress.currentTier} size="sm" />
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {pulses.filter((p) => p.userId === currentUser.id).length} pulses
           </p>
@@ -165,6 +185,27 @@ export function ProfileTab({
           </div>
         </button>
       </div>
+
+      <Separator />
+
+      {onOpenCreatorDashboard && (
+        <div className="space-y-3">
+          <button
+            onClick={onOpenCreatorDashboard}
+            className="w-full bg-gradient-to-r from-purple-500/10 to-yellow-500/10 rounded-xl p-4 border border-purple-500/20 flex items-center gap-3 hover:border-purple-500/40 transition-colors"
+          >
+            <Lightning size={24} weight="fill" className="text-purple-400" />
+            <div className="flex-1 text-left">
+              <p className="font-medium text-sm">Creator Dashboard</p>
+              <p className="text-xs text-muted-foreground">
+                {tierProgress.currentTier
+                  ? `${tierProgress.currentTier.charAt(0).toUpperCase() + tierProgress.currentTier.slice(1)} Creator — View analytics & earnings`
+                  : `${tierProgress.progress}% to Rising Creator`}
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
 
       <Separator />
 

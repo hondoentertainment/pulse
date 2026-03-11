@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
-import { MapFilters, MapFiltersState } from '@/components/MapFilters'
+import { MapFilters, MapFiltersState, EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
+import { CityHeatmap } from '@/components/CityHeatmap'
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire, Lightning
+  Users, Fire, Lightning, ThermometerHot
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -44,9 +45,10 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   const [nearMeActive, setNearMeActive] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [showFullHeatmap, setShowFullHeatmap] = useState(false)
+  const [showCityHeatmap, setShowCityHeatmap] = useState(false)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const { unitSystem } = useUnitPreference()
-  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     // If no location after 3s, default to first venue or SF
@@ -57,7 +59,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       }
     }, 3000)
 
-    return () => clearTimeout(loadingTimeoutRef.current)
+    return () => { if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current) }
   }, [center, userLocation, venues])
 
   useEffect(() => {
@@ -115,10 +117,10 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
   }
 
   const filteredVenues = useMemo(() => {
-    return venues.filter((venue) => {
+    const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
         const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as string)) {
+        if (!filters.energyLevels.includes(energyLevel as EnergyFilter)) {
           return false
         }
       }
@@ -161,7 +163,7 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
       // Only nearby venues (within 50mi of center or user) sorted by pulseScore
       const nearby = userLocation
         ? filtered
-            .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
+            .filter(v => calculateDistance(userLocation!.lat, userLocation!.lng, v.location.lat, v.location.lng) < 50)
             .sort((a, b) => b.pulseScore - a.pulseScore)
         : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
       return nearby.slice(0, 5)
@@ -937,6 +939,17 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           >
             {showFullHeatmap ? 'Top 5' : 'Full Map'}
           </button>
+          <button
+            onClick={() => setShowCityHeatmap(true)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              "border backdrop-blur-sm shadow-sm",
+              "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <ThermometerHot size={14} weight="fill" className="inline mr-1" />
+            Heatmap
+          </button>
         </div>
       </div>
 
@@ -1080,6 +1093,15 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           </AnimatePresence>
         </Card>
       </div>
+
+      {/* City Heatmap Overlay */}
+      <CityHeatmap
+        venues={venues}
+        userLocation={userLocation}
+        onVenueClick={onVenueClick}
+        visible={showCityHeatmap}
+        onClose={() => setShowCityHeatmap(false)}
+      />
     </div>
   )
 }
