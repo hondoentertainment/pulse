@@ -3,6 +3,7 @@ import { Favorites } from '@/components/Favorites'
 import { TrendingSections } from '@/components/TrendingSections'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
 import { RecommendationsSection } from '@/components/RecommendationsSection'
+import { LiveActivityFeed } from '@/components/LiveActivityFeed'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Star, Megaphone } from '@phosphor-icons/react'
@@ -23,6 +24,7 @@ interface TrendingTabProps {
   userLocation: { lat: number; lng: number } | null
   unitSystem: 'imperial' | 'metric'
   currentUser: User
+  allUsers: User[]
   trendingSubTab: 'trending' | 'my-spots'
   promotions?: PromotedVenue[]
   onSubTabChange: (tab: 'trending' | 'my-spots') => void
@@ -42,6 +44,7 @@ export function TrendingTab({
   userLocation,
   unitSystem,
   currentUser,
+  allUsers,
   trendingSubTab,
   onSubTabChange,
   onVenueClick,
@@ -125,6 +128,17 @@ export function TrendingTab({
           <div className="max-w-2xl mx-auto px-4 pt-4">
             <RecommendationsSection
               recommendations={getRecommendations(currentUser, venues, pulses, userLocation ?? undefined)}
+              onVenueClick={onVenueClick}
+            />
+          </div>
+
+          {/* Friend Activity Feed */}
+          <div className="max-w-2xl mx-auto px-4 pt-4">
+            <LiveActivityFeed
+              currentUser={currentUser}
+              allUsers={allUsers}
+              venues={venues}
+              pulses={pulses}
               onVenueClick={onVenueClick}
             />
           </div>

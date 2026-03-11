@@ -10,11 +10,13 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import {
   ArrowLeft, Bell, Eye, EyeSlash, Ruler, Shield, Palette,
   Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash,
-  Translate, DownloadSimple,
+  Translate, DownloadSimple, Eyeglasses, MapPin,
 } from '@phosphor-icons/react'
+import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
 import { getPendingCount, clearQueue } from '@/lib/offline-queue'
 import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
+import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefersReducedMotion } from '@/lib/accessibility'
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
@@ -23,13 +25,15 @@ interface SettingsPageProps {
   currentUser: User
   onBack: () => void
   onUpdateUser: (user: User) => void
+  onCityChange?: (location: { lat: number; lng: number }) => void
 }
 
-export function SettingsPage({ currentUser, onBack, onUpdateUser }: SettingsPageProps) {
+export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }: SettingsPageProps) {
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
   const offlineCount = getPendingCount()
   const [currentLocale, setCurrentLocale] = useState<Locale>(getLocale())
+  const [contrastMode, setContrastMode] = useState<HighContrastMode>(getHighContrastMode())
   const [canInstallPwa, setCanInstallPwa] = useState(false)
   const installState = getInstallState()
 
@@ -262,6 +266,35 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser }: SettingsPage
           </Card>
         </motion.div>
 
+        {/* City */}
+        {onCityChange && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}>
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <MapPin size={18} weight="fill" className="text-accent" />
+                <Label className="font-bold">City</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">Simulate being in a different city to explore venues nationwide.</p>
+              <div className="flex flex-wrap gap-2">
+                {(['nyc', 'la', 'miami', 'chicago', 'austin', 'nashville', 'sf', 'vegas'] as const).map(key => {
+                  const city = US_CITY_LOCATIONS[key]
+                  if (!city) return null
+                  const label = city.name.split(',')[0]
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => onCityChange({ lat: city.lat, lng: city.lng })}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium bg-secondary text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Language */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
           <Card className="p-4 space-y-3">
@@ -290,6 +323,63 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser }: SettingsPage
                   {locale.name}
                 </button>
               ))}
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Accessibility */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Eyeglasses size={18} weight="fill" className="text-primary" />
+              <Label className="font-bold">Accessibility</Label>
+              {contrastMode !== 'off' && (
+                <Badge variant="outline" className="text-xs">
+                  {contrastMode === 'high' ? 'High contrast' : 'Increased contrast'}
+                </Badge>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Contrast mode</p>
+              <div className="flex gap-2">
+                {([
+                  { value: 'off' as HighContrastMode, label: 'Off' },
+                  { value: 'increased' as HighContrastMode, label: 'Increased' },
+                  { value: 'high' as HighContrastMode, label: 'High' },
+                ]).map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setHighContrastMode(option.value)
+                      setContrastMode(option.value)
+                      toast.success(`Contrast set to ${option.label}`)
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      contrastMode === option.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Eye size={16} weight="fill" className="text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Reduced Motion</p>
+                  <p className="text-xs text-muted-foreground">
+                    {prefersReducedMotion() ? 'Enabled (system setting)' : 'Disabled (system setting)'}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                System
+              </Badge>
             </div>
           </Card>
         </motion.div>

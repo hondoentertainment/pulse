@@ -15,6 +15,7 @@ import { X, VideoCamera, CheckCircle, Hash } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
+import { screenContent } from '@/lib/content-moderation'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
 
@@ -93,8 +94,14 @@ export function CreatePulseDialog({
     
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
     
+    const contentIssues = screenContent(caption)
+    if (contentIssues.length > 0) {
+      toast.error(contentIssues[0])
+      return
+    }
+
     setIsSubmitting(true)
-    await onSubmit({ 
+    await onSubmit({
       energyRating, 
       caption, 
       photos, 

@@ -3,7 +3,7 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Settings } from '@/components/Settings'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Gear } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront } from '@phosphor-icons/react'
 
 interface ProfileTabProps {
   currentUser: User
@@ -14,6 +14,7 @@ interface ProfileTabProps {
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onOpenSocialPulseDashboard: () => void
   onOpenSettings?: () => void
+  onOpenOwnerDashboard?: () => void
 }
 
 export function ProfileTab({
@@ -25,6 +26,7 @@ export function ProfileTab({
   onReaction,
   onOpenSocialPulseDashboard,
   onOpenSettings,
+  onOpenOwnerDashboard,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
 
@@ -129,6 +131,12 @@ export function ProfileTab({
           <Gear size={20} weight="fill" className="text-primary" />
           <h3 className="text-lg font-bold">Settings</h3>
         </div>
+        {onOpenOwnerDashboard && (
+          <button onClick={onOpenOwnerDashboard} className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors w-full">
+            <Storefront size={18} weight="fill" className="text-primary" />
+            <span className="text-sm font-medium">Venue Owner Dashboard</span>
+          </button>
+        )}
         {onOpenSettings ? (
           <button
             onClick={onOpenSettings}
