@@ -36,8 +36,6 @@ const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m =
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
-import { SettingsPage } from '@/components/SettingsPage'
-import { IntegrationHub } from '@/components/IntegrationHub'
 import { NightPlannerPage } from '@/components/NightPlannerPage'
 import { VenueCompareSheet } from '@/components/VenueCompareSheet'
 import { seedDemoReports } from '@/lib/live-intelligence'
