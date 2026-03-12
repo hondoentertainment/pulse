@@ -1,4 +1,4 @@
-import { MapPin, Clock } from '@phosphor-icons/react'
+import { MapPin, Clock, MagnifyingGlass } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -8,6 +8,7 @@ interface AppHeaderProps {
   hasRealtimeLocation: boolean
   locationPermissionDenied: boolean
   currentTime: Date
+  onSearchClick?: () => void
 }
 
 export function AppHeader({
@@ -15,19 +16,33 @@ export function AppHeader({
   isTracking,
   hasRealtimeLocation,
   locationPermissionDenied,
-  currentTime
+  currentTime,
+  onSearchClick,
 }: AppHeaderProps) {
   return (
     <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <h1 className="text-3xl font-bold tracking-tight">
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Pulse
-          </span>
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Where the energy is — right now
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Pulse
+              </span>
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Where the energy is — right now
+            </p>
+          </div>
+          {onSearchClick && (
+            <button
+              onClick={onSearchClick}
+              className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
+              aria-label="Search venues and cities"
+            >
+              <MagnifyingGlass size={22} weight="bold" className="text-muted-foreground" />
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
           {locationName && (
             <div className="flex items-center gap-1.5">

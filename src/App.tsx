@@ -91,6 +91,11 @@ import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
+import { GlobalSearch } from '@/components/GlobalSearch'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { TabTransition } from '@/components/PageTransition'
+import { GLOBAL_CITY_LOCATIONS } from '@/lib/global-venues'
+import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 
 type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'creator-dashboard' | 'challenges' | 'night-planner' | 'my-tickets' | 'venue-platform' | null
 
@@ -105,6 +110,7 @@ function App() {
   const [compareVenueIds, setCompareVenueIds] = useState<string[]>([])
   const [compareSheetOpen, setCompareSheetOpen] = useState(false)
   const [platformVenue, setPlatformVenue] = useState<Venue | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // Mock users for presence simulation
   const ALL_USERS: User[] = [
@@ -1100,12 +1106,14 @@ function App() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
+      <OfflineBanner />
       <AppHeader
         locationName={locationName}
         isTracking={isTracking}
         hasRealtimeLocation={!!realtimeLocation}
         locationPermissionDenied={locationPermissionDenied}
         currentTime={currentTime}
+        onSearchClick={() => setSearchOpen(true)}
       />
 
       <AnimatePresence mode="wait">
@@ -1286,6 +1294,29 @@ function App() {
         onVenueClick={(venue) => {
           setCompareSheetOpen(false)
           setSelectedVenue(venue)
+        }}
+      />
+
+      {/* Global Search */}
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        venues={venues}
+        onSelectVenue={(venueId) => {
+          const venue = venues.find(v => v.id === venueId)
+          if (venue) {
+            setSelectedVenue(venue)
+            setSearchOpen(false)
+          }
+        }}
+        onSelectCity={(cityKey) => {
+          const allCities = { ...US_CITY_LOCATIONS, ...GLOBAL_CITY_LOCATIONS }
+          const city = allCities[cityKey]
+          if (city) {
+            toast.info(`Showing venues in ${city.name}`)
+            setSearchOpen(false)
+            setActiveTab('map')
+          }
         }}
       />
     </div>
