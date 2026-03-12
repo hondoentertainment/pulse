@@ -7,7 +7,7 @@ import { FriendSuggestions } from '@/components/FriendSuggestions'
 import { EventCard } from '@/components/EventCard'
 import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
 import { Separator } from '@/components/ui/separator'
-import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix } from '@phosphor-icons/react'
+import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix, Lightning, Ticket, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 interface DiscoverTabProps {
@@ -21,7 +21,7 @@ interface DiscoverTabProps {
   onVenueClick: (venue: Venue) => void
   onStoryClick: (stories: PulseStory[], index: number) => void
   onAddFriend: (userId: string) => void
-  onNavigate: (page: 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations') => void
+  onNavigate: (page: 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'challenges' | 'my-tickets' | 'night-planner') => void
 }
 
 export function DiscoverTab({
@@ -70,6 +70,18 @@ export function DiscoverTab({
         onVenueClick={onVenueClick}
       />
 
+      {/* Night Planner CTA */}
+      <button
+        onClick={() => onNavigate('night-planner')}
+        className="w-full bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-xl p-4 border border-primary/20 flex items-center gap-3 hover:border-primary/40 transition-colors"
+      >
+        <Sparkle size={24} weight="fill" className="text-primary" />
+        <div className="flex-1 text-left">
+          <p className="font-medium text-sm">Plan Your Night</p>
+          <p className="text-xs text-muted-foreground">AI-powered multi-stop itinerary</p>
+        </div>
+      </button>
+
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-2 gap-3">
         <QuickAction
@@ -111,6 +123,22 @@ export function DiscoverTab({
           color="from-rose-500/20 to-red-500/20"
           borderColor="border-rose-500/20"
           onClick={() => onNavigate('playlists')}
+        />
+        <QuickAction
+          icon={<Lightning size={24} weight="fill" />}
+          label="Challenges"
+          sublabel="Earn rewards"
+          color="from-amber-500/20 to-yellow-500/20"
+          borderColor="border-amber-500/20"
+          onClick={() => onNavigate('challenges')}
+        />
+        <QuickAction
+          icon={<Ticket size={24} weight="fill" />}
+          label="My Tickets"
+          sublabel="Tickets & reservations"
+          color="from-indigo-500/20 to-violet-500/20"
+          borderColor="border-indigo-500/20"
+          onClick={() => onNavigate('my-tickets')}
         />
         <QuickAction
           icon={<GearSix size={24} weight="fill" />}

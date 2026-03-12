@@ -36,7 +36,7 @@ export function calculateUserCredibility(
   }
 
   const avgEngagement = userPulses.reduce((acc, p) => {
-    return acc + p.reactions.fire + p.reactions.lightning + p.reactions.eyes + p.reactions.skull
+    return acc + p.reactions.fire.length + p.reactions.lightning.length + p.reactions.eyes.length + p.reactions.skull.length
   }, 0) / Math.max(totalPulses, 1)
 
   if (avgEngagement >= 10) {
@@ -115,7 +115,7 @@ export function getUserTrustBadges(
   }
 
   const avgEngagement = userPulses.reduce((acc, p) => {
-    return acc + p.reactions.fire + p.reactions.lightning + p.reactions.eyes + p.reactions.skull
+    return acc + p.reactions.fire.length + p.reactions.lightning.length + p.reactions.eyes.length + p.reactions.skull.length
   }, 0) / Math.max(userPulses.length, 1)
 
   if (avgEngagement >= 10 && userPulses.length >= 10) {
