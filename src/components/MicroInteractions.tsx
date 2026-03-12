@@ -4,7 +4,6 @@ import {
   useState,
   useCallback,
   type ReactNode,
-  type ButtonHTMLAttributes,
 } from 'react'
 import { motion, useInView, type Transition } from 'framer-motion'
 import { cn } from '@/lib/utils'
