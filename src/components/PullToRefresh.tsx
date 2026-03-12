@@ -1,58 +1,199 @@
-import { useState, useRef, useCallback, ReactNode } from 'react'
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion'
-import { ArrowClockwise } from '@phosphor-icons/react'
+import { type ReactNode, useRef, useState, useCallback } from 'react'
+import { motion, useSpring, useTransform } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 interface PullToRefreshProps {
-    children: ReactNode
-    onRefresh: () => Promise<void>
-    threshold?: number
+  onRefresh: () => Promise<void>
+  children: ReactNode
+  threshold?: number
+  maxPull?: number
+  className?: string
 }
 
-export function PullToRefresh({ children, onRefresh, threshold = 80 }: PullToRefreshProps) {
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const containerRef = useRef<HTMLDivElement>(null)
-    const y = useMotionValue(0)
-    const pullProgress = useTransform(y, [0, threshold], [0, 1])
-    const rotate = useTransform(y, [0, threshold], [0, 180])
+type RefreshState = 'idle' | 'pulling' | 'threshold-reached' | 'refreshing'
 
-    const handleDragEnd = useCallback(async (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        if (info.offset.y >= threshold && !isRefreshing) {
-            setIsRefreshing(true)
-            try {
-                await onRefresh()
-            } finally {
-                setIsRefreshing(false)
-            }
-        }
-    }, [threshold, isRefreshing, onRefresh])
+export function PullToRefresh({
+  onRefresh,
+  children,
+  threshold = 80,
+  maxPull = 130,
+  className,
+}: PullToRefreshProps) {
+  const [refreshState, setRefreshState] = useState<RefreshState>('idle')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const startY = useRef(0)
+  const currentPull = useRef(0)
+  const isTracking = useRef(false)
 
-    return (
-        <div ref={containerRef} className="relative overflow-hidden">
-            <motion.div
-                className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center z-10"
+  const pullDistance = useSpring(0, {
+    stiffness: 300,
+    damping: 30,
+  })
+
+  const indicatorOpacity = useTransform(pullDistance, [0, 30, threshold], [0, 0.5, 1])
+  const indicatorScale = useTransform(pullDistance, [0, threshold], [0.5, 1])
+  const fillProgress = useTransform(pullDistance, [0, threshold], [0, 1])
+  const strokeOffset = useTransform(
+    fillProgress,
+    (v: number) => Math.PI * 34 * (1 - v)
+  )
+
+  const isScrolledToTop = useCallback((): boolean => {
+    if (!containerRef.current) return true
+    const scrollableParent = containerRef.current.closest('[data-scroll-container]')
+    if (scrollableParent) {
+      return scrollableParent.scrollTop <= 0
+    }
+    return window.scrollY <= 0
+  }, [])
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (refreshState === 'refreshing') return
+      if (!isScrolledToTop()) return
+
+      startY.current = e.touches[0].clientY
+      currentPull.current = 0
+      isTracking.current = true
+    },
+    [refreshState, isScrolledToTop]
+  )
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!isTracking.current || refreshState === 'refreshing') return
+
+      const deltaY = e.touches[0].clientY - startY.current
+
+      if (deltaY < 0) {
+        isTracking.current = false
+        pullDistance.set(0)
+        setRefreshState('idle')
+        return
+      }
+
+      // Apply resistance curve for natural feel
+      const resistance = 0.5
+      const pull = Math.min(deltaY * resistance, maxPull)
+      currentPull.current = pull
+      pullDistance.set(pull)
+
+      if (pull >= threshold) {
+        setRefreshState('threshold-reached')
+      } else if (pull > 0) {
+        setRefreshState('pulling')
+      }
+    },
+    [refreshState, threshold, maxPull, pullDistance]
+  )
+
+  const handleTouchEnd = useCallback(async () => {
+    if (!isTracking.current) return
+    isTracking.current = false
+
+    if (currentPull.current >= threshold) {
+      setRefreshState('refreshing')
+      pullDistance.set(threshold * 0.6)
+
+      try {
+        await onRefresh()
+      } finally {
+        pullDistance.set(0)
+        setRefreshState('idle')
+      }
+    } else {
+      pullDistance.set(0)
+      setRefreshState('idle')
+    }
+  }, [threshold, onRefresh, pullDistance])
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn('relative', className)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull indicator */}
+      <motion.div
+        className="absolute left-0 right-0 flex items-center justify-center overflow-hidden pointer-events-none z-10"
+        style={{
+          height: pullDistance,
+          top: 0,
+        }}
+      >
+        <motion.div
+          className="relative flex items-center justify-center"
+          style={{
+            opacity: indicatorOpacity,
+            scale: indicatorScale,
+          }}
+        >
+          {/* Outer ring */}
+          <div className="w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center">
+            {/* Fill circle */}
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 40 40"
+              className="absolute"
+            >
+              <motion.circle
+                cx="20"
+                cy="20"
+                r="17"
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={Math.PI * 34}
                 style={{
-                    y: useTransform(y, [0, threshold], [-40, 20]),
-                    opacity: pullProgress
+                  strokeDashoffset: strokeOffset,
                 }}
-            >
-                <motion.div
-                    className={`w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}
-                    style={{ rotate: isRefreshing ? undefined : rotate }}
-                >
-                    <ArrowClockwise size={20} className="text-accent" weight="bold" />
-                </motion.div>
-            </motion.div>
+                transform="rotate(-90 20 20)"
+              />
+            </svg>
 
-            <motion.div
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={{ top: 0.5, bottom: 0 }}
-                onDragEnd={handleDragEnd}
-                style={{ y }}
-                className="touch-pan-y"
-            >
-                {children}
-            </motion.div>
-        </div>
-    )
+            {/* Inner pulse / spinner */}
+            {refreshState === 'refreshing' ? (
+              <motion.div
+                className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent"
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 0.8,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+            ) : (
+              <motion.div
+                className="w-3 h-3 rounded-full bg-primary"
+                animate={
+                  refreshState === 'threshold-reached'
+                    ? {
+                        scale: [1, 1.3, 1],
+                        opacity: [1, 0.7, 1],
+                      }
+                    : {}
+                }
+                transition={
+                  refreshState === 'threshold-reached'
+                    ? {
+                        duration: 0.6,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }
+                    : {}
+                }
+              />
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Content pushed down by pull */}
+      <motion.div style={{ y: pullDistance }}>{children}</motion.div>
+    </div>
+  )
 }
