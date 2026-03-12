@@ -1,5 +1,6 @@
 import { Venue } from './types'
 import { US_EXPANSION_VENUES } from './us-venues'
+import { GLOBAL_EXPANSION_VENUES } from './global-venues'
 
 const SEATTLE_VENUES: Venue[] = [
   {
@@ -1109,8 +1110,8 @@ const seattleWithCity = SEATTLE_VENUES.map(v => ({
   state: v.state ?? 'WA',
 }))
 
-/** All venues across the US — Seattle + 18 other major cities */
-export const MOCK_VENUES: Venue[] = [...seattleWithCity, ...US_EXPANSION_VENUES]
+/** All venues across the US and internationally — Seattle + 30 US cities + 12 international cities */
+export const MOCK_VENUES: Venue[] = [...seattleWithCity, ...US_EXPANSION_VENUES, ...GLOBAL_EXPANSION_VENUES]
 
 /** Seattle-only venues (backward compatible) */
 export const SEATTLE_ONLY_VENUES = SEATTLE_VENUES

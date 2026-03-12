@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import {
   MagnifyingGlass,
   X,
@@ -187,7 +187,7 @@ function HighlightedText({
 // Motion variants
 // ---------------------------------------------------------------------------
 
-const overlayVariants = {
+const overlayVariants: Variants = {
   hidden: { opacity: 0, y: '-8%' },
   visible: {
     opacity: 1,
@@ -201,7 +201,7 @@ const overlayVariants = {
   },
 }
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, x: -24 },
   visible: (i: number) => ({
     opacity: 1,
@@ -210,7 +210,7 @@ const sectionVariants = {
   }),
 }
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 6 },
   visible: (i: number) => ({
     opacity: 1,
