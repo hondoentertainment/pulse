@@ -1200,21 +1200,19 @@ function App() {
         {activeTab === 'map' && (
           <motion.div
             key="map"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bottom-16 z-0"
           >
-            <div className="h-full">
-              <InteractiveMap
-                venues={venues}
-                userLocation={userLocation}
-                onVenueClick={(venue) => setSelectedVenue(venue)}
-                isTracking={isTracking}
-                locationAccuracy={realtimeLocation?.accuracy}
-              />
-            </div>
+            <InteractiveMap
+              venues={venues}
+              userLocation={userLocation}
+              onVenueClick={(venue) => setSelectedVenue(venue)}
+              isTracking={isTracking}
+              locationAccuracy={realtimeLocation?.accuracy}
+            />
           </motion.div>
         )}
 
