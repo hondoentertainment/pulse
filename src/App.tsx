@@ -13,6 +13,7 @@ import {
 import { calculatePresence } from '@/lib/presence-engine'
 import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
+import { EnhancedBottomNav } from '@/components/EnhancedBottomNav'
 import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
@@ -99,6 +100,18 @@ import { GlobalSearch } from '@/components/GlobalSearch'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { GLOBAL_CITY_LOCATIONS } from '@/lib/global-venues'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
+// Phase 1: Navigation & Transitions
+import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
+import { useScrollAware } from '@/hooks/use-scroll-aware'
+// Phase 3: Social & Real-time
+import HappeningNowBanner from '@/components/HappeningNowBanner'
+import FloatingReactions from '@/components/FloatingReactions'
+import LiveActivityToast from '@/components/LiveActivityToast'
+import { useSimulatedActivity } from '@/hooks/use-simulated-activity'
+// Phase 4: Personalization
+import PredictiveSuggestion from '@/components/PredictiveSuggestion'
+// Phase 5: Premium Polish
+import { ShareableVenueCard } from '@/components/ShareableVenueCard'
 
 type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'creator-dashboard' | 'challenges' | 'night-planner' | 'my-tickets' | 'venue-platform' | null
 
@@ -114,6 +127,8 @@ function App() {
   const [compareSheetOpen, setCompareSheetOpen] = useState(false)
   const [platformVenue, setPlatformVenue] = useState<Venue | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [shareVenue, setShareVenue] = useState<Venue | null>(null)
+  const [floatingReactions, setFloatingReactions] = useState<Array<{ id: string; emoji: string; timestamp: number }>>([])
 
   // Mock users for presence simulation
   const ALL_USERS: User[] = [
@@ -305,6 +320,12 @@ function App() {
     userLocation,
     notificationSettings?.trendingVenues ?? true
   )
+
+  // Phase 1: Scroll-aware header
+  const { isScrolled, scrollDirection } = useScrollAware()
+
+  // Phase 3: Simulated activity
+  const { activities, clearActivity } = useSimulatedActivity({ venues: venues || [] })
 
   useEffect(() => {
     if (!realtimeLocation && !simulatedLocation && !locationPermissionDenied) {
@@ -1153,14 +1174,37 @@ function App() {
     <div className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
       <OfflineBanner />
-      <AppHeader
-        locationName={locationName}
-        isTracking={isTracking}
-        hasRealtimeLocation={!!realtimeLocation}
-        locationPermissionDenied={locationPermissionDenied}
-        currentTime={currentTime}
-        onSearchClick={() => setSearchOpen(true)}
-      />
+      <ScrollAwareHeader isScrolled={isScrolled} scrollDirection={scrollDirection}>
+        <AppHeader
+          locationName={locationName}
+          isTracking={isTracking}
+          hasRealtimeLocation={!!realtimeLocation}
+          locationPermissionDenied={locationPermissionDenied}
+          currentTime={currentTime}
+          onSearchClick={() => setSearchOpen(true)}
+        />
+      </ScrollAwareHeader>
+
+      {/* Phase 3: Happening Now Banner */}
+      {activeTab !== 'map' && (
+        <HappeningNowBanner
+          venues={venues}
+          userLocation={userLocation}
+          onVenueClick={(venue) => setSelectedVenue(venue)}
+        />
+      )}
+
+      {/* Phase 4: Predictive Suggestion */}
+      {activeTab === 'trending' && currentUser && (
+        <div className="max-w-2xl mx-auto px-4 pt-2">
+          <PredictiveSuggestion
+            venues={venues}
+            user={currentUser}
+            currentTime={currentTime}
+            onVenueClick={(venue) => setSelectedVenue(venue)}
+          />
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {activeTab === 'trending' && (
@@ -1213,6 +1257,7 @@ function App() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
+              userLocation={userLocation}
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onStoryClick={(storyList, index) => {
                 setStoryViewerStories(storyList)
@@ -1298,7 +1343,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
+      <EnhancedBottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
       <CreatePulseDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
@@ -1365,6 +1410,36 @@ function App() {
           }
         }}
       />
+
+      {/* Phase 3: Floating Reactions */}
+      <FloatingReactions
+        reactions={floatingReactions}
+        onComplete={(id) => setFloatingReactions(prev => prev.filter(r => r.id !== id))}
+      />
+
+      {/* Phase 3: Live Activity Toasts */}
+      <LiveActivityToast
+        activities={activities}
+        onActivityClick={(activity) => {
+          if (activity.venueId) {
+            const venue = venues.find(v => v.id === activity.venueId)
+            if (venue) setSelectedVenue(venue)
+          }
+          clearActivity(activity.id)
+        }}
+      />
+
+      {/* Phase 5: Shareable Venue Card */}
+      {shareVenue && (
+        <ShareableVenueCard
+          venue={shareVenue}
+          onShare={() => {
+            toast.success('Shared!')
+            setShareVenue(null)
+          }}
+          onClose={() => setShareVenue(null)}
+        />
+      )}
     </div>
   )
 }

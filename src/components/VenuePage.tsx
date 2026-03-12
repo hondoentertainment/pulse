@@ -15,8 +15,16 @@ import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
 import { ParallaxVenueHero } from './ParallaxVenueHero'
+// Phase 2: Venue star moment
+import { LiveCrowdIndicator } from './LiveCrowdIndicator'
+import { VenueEnergyTimeline } from './VenueEnergyTimeline'
+import { VenueQuickActions } from './VenueQuickActions'
+import { VenueActivityStream } from './VenueActivityStream'
+// Phase 4: Personalization
+import VenueMemoryCard from './VenueMemoryCard'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -273,12 +281,34 @@ export function VenuePage({
           </>
         )}
 
+        {/* Phase 2: Live Crowd Indicator */}
+        <LiveCrowdIndicator
+          count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
+          trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
+          friendCount={presenceData?.friendsNearbyCount ?? 0}
+        />
+
+        {/* Phase 4: Venue Memory Card */}
+        {currentUser && (
+          <VenueMemoryCard
+            venue={venue}
+            user={currentUser}
+            pulses={venuePulses}
+          />
+        )}
+
         {presenceData && (
           <WhoIsHereRow
             presence={presenceData}
             onClick={onOpenPresence}
           />
         )}
+
+        {/* Phase 2: Energy Timeline */}
+        <VenueEnergyTimeline
+          venueId={venue.id}
+          currentScore={venue.pulseScore}
+        />
 
         <div className="flex items-center justify-between">
           <div>
@@ -351,17 +381,36 @@ export function VenuePage({
           />
         )}
 
+        {/* Phase 2: Quick Actions Bar */}
+        <VenueQuickActions
+          venue={venue}
+          onCheckIn={onCreatePulse}
+          onShare={handleShare}
+          onDirections={() => {
+            if (venue.location.address) {
+              window.open(`https://maps.google.com/?q=${encodeURIComponent(venue.location.address)}`, '_blank')
+            }
+          }}
+          onSave={onToggleFavorite}
+          isSaved={isFavorite}
+        />
+
         <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
+
+        {/* Phase 2: Activity Stream */}
+        <VenueActivityStream
+          venueId={venue.id}
+          venueName={venue.name}
+        />
 
         <Separator />
 
         {venuePulses.length === 0 ? (
-          <div className="text-center py-12 space-y-3">
-            <p className="text-lg text-muted-foreground">No pulses yet</p>
-            <p className="text-sm text-muted-foreground">
-              Be the first to capture the vibe here
-            </p>
-          </div>
+          <AnimatedEmptyState
+            variant="no-pulses"
+            onAction={onCreatePulse}
+            actionLabel="Create Pulse"
+          />
         ) : (
           <div className="space-y-4">
             {venuePulses.map((pulse) => (

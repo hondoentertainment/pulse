@@ -9,6 +9,10 @@ import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
 import { Separator } from '@/components/ui/separator'
 import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix, Lightning, Ticket, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import ForYouFeed from '@/components/ForYouFeed'
+import MoodSelector from '@/components/MoodSelector'
+import type { MoodType } from '@/lib/personalization-engine'
+import { useState } from 'react'
 
 interface DiscoverTabProps {
   venues: Venue[]
@@ -18,6 +22,7 @@ interface DiscoverTabProps {
   allUsers: User[]
   stories: PulseStory[]
   events: VenueEvent[]
+  userLocation?: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
   onStoryClick: (stories: PulseStory[], index: number) => void
   onAddFriend: (userId: string) => void
@@ -34,9 +39,11 @@ export function DiscoverTab({
   events,
   onVenueClick,
   onStoryClick,
+  userLocation,
   onAddFriend,
   onNavigate
 }: DiscoverTabProps) {
+  const [selectedMood, setSelectedMood] = useState<MoodType | null>(null)
   const activeStories = getActiveStories(stories)
   const upcomingEvents = getEventsSoon(events, 12).slice(0, 3)
   const suggestions = getPeopleYouMayKnow(currentUser, allUsers, pulses).slice(0, 5)
@@ -69,6 +76,23 @@ export function DiscoverTab({
         pulses={pulses}
         onVenueClick={onVenueClick}
       />
+
+      {/* Phase 4: Mood Selector */}
+      <MoodSelector
+        onMoodSelect={setSelectedMood}
+        selectedMood={selectedMood}
+      />
+
+      {/* Phase 4: For You Feed */}
+      <ForYouFeed
+        venues={venues}
+        user={currentUser}
+        pulses={pulses}
+        userLocation={userLocation ?? null}
+        onVenueClick={onVenueClick}
+      />
+
+      <Separator />
 
       {/* Night Planner CTA */}
       <button

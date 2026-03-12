@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { calculateDistance } from '@/lib/pulse-engine'
+import FriendMapDots from '@/components/FriendMapDots'
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -706,6 +707,26 @@ export function InteractiveMap({ venues, userLocation, onVenueClick, isTracking 
           )
         })}
       </svg>
+
+      {/* Phase 3: Friend location dots */}
+      <FriendMapDots
+        friends={useMemo(() => {
+          // Generate demo friend dots near top venues
+          const topVenues = [...venues].sort((a, b) => b.pulseScore - a.pulseScore).slice(0, 4)
+          return topVenues.map((v, i) => ({
+            id: `friend-${i}`,
+            username: ['Alex', 'Sam', 'Jordan', 'Taylor'][i] || `Friend ${i}`,
+            avatar: '',
+            lat: v.location.lat + (Math.random() - 0.5) * 0.002,
+            lng: v.location.lng + (Math.random() - 0.5) * 0.002,
+            venueId: v.id,
+            venueName: v.name,
+            visibility: 'everyone' as const,
+          }))
+        }, [venues])}
+        latLngToPixel={(lat, lng) => latLngToPixel(lat, lng, center, zoom, dimensions)}
+        zoom={zoom}
+      />
 
       {/* Interactive hit targets & labels (HTML overlay) */}
       {clusters.map((cluster) => {
