@@ -16,6 +16,7 @@ import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { WhoIsHereRow } from './WhoIsHereRow'
+import { ParallaxVenueHero } from './ParallaxVenueHero'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -178,6 +179,12 @@ export function VenuePage({
           </div>
         </div>
       </div>
+
+      <ParallaxVenueHero
+        venue={venue}
+        pulseScore={venue.pulseScore}
+        category={venue.category}
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

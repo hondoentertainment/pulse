@@ -45,6 +45,7 @@ import type { TableReservation } from '@/lib/table-booking'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { US_EXPANSION_VENUES } from '@/lib/us-venues'
+import { enrichVenuesWithRealtimeData } from '@/lib/real-data-engine'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -93,7 +94,6 @@ import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from 
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
 import { GlobalSearch } from '@/components/GlobalSearch'
 import { OfflineBanner } from '@/components/OfflineBanner'
-import { TabTransition } from '@/components/PageTransition'
 import { GLOBAL_CITY_LOCATIONS } from '@/lib/global-venues'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 
@@ -175,6 +175,15 @@ function App() {
   const [integrationVenue, setIntegrationVenue] = useState<Venue | null>(null)
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
+
+  // Enrich venues with real-time scores on initial load
+  useEffect(() => {
+    if (venues && venues.length > 0) {
+      const enriched = enrichVenuesWithRealtimeData(venues, new Date())
+      setVenues(enriched)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!hashtags || hashtags.length === 0) {
@@ -348,25 +357,35 @@ function App() {
     }
   }, [selectedVenue])
 
+  // Dynamic real-data engine: updates venue scores based on time-of-day,
+  // day-of-week, venue category, and city timezone. User-created pulses
+  // boost scores on top of the baseline.
   useEffect(() => {
     const interval = setInterval(() => {
+      const now = new Date()
       setVenues((currentVenues) => {
-        if (!currentVenues || !pulses) return currentVenues || []
-        return currentVenues.map((venue) => {
-          const venuePulses = pulses.filter((p) => p.venueId === venue.id)
-          const score = calculatePulseScore(venuePulses)
-          const velocity = calculateScoreVelocity(venue, venuePulses)
-          const lastPulse = venuePulses.sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )[0]
-
-          return {
-            ...venue,
-            pulseScore: score,
-            scoreVelocity: velocity,
-            lastPulseAt: lastPulse?.createdAt
-          }
-        })
+        if (!currentVenues) return []
+        // Compute time-aware baseline scores for all venues
+        const enriched = enrichVenuesWithRealtimeData(currentVenues, now)
+        // Layer user-created pulses on top
+        if (pulses && pulses.length > 0) {
+          return enriched.map((venue) => {
+            const venuePulses = pulses.filter((p) => p.venueId === venue.id)
+            if (venuePulses.length === 0) return venue
+            const userBoost = calculatePulseScore(venuePulses)
+            const velocity = calculateScoreVelocity(venue, venuePulses)
+            const lastPulse = venuePulses.sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )[0]
+            return {
+              ...venue,
+              pulseScore: Math.min(100, venue.pulseScore + Math.round(userBoost * 0.3)),
+              scoreVelocity: (venue.scoreVelocity ?? 0) + velocity,
+              lastPulseAt: lastPulse?.createdAt ?? venue.lastPulseAt,
+            }
+          })
+        }
+        return enriched
       })
 
       setHashtags((currentHashtags) => {
