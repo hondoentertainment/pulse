@@ -35,3 +35,5 @@ pids
 .spark-workbench-id
 .vercel
 .claude/
+playwright-report/
+test-results/

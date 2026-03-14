@@ -57,6 +57,7 @@ import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { trackEvent } from '@/lib/analytics'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
@@ -88,6 +89,8 @@ function App() {
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const [trendingSubTab, setTrendingSubTab] = useState<'trending' | 'my-spots'>('trending')
+  const integrationsEnabled = isFeatureEnabled('integrations')
+  const socialDashboardEnabled = isFeatureEnabled('socialDashboard')
   const { unitSystem } = useUnitPreference()
   const { settings: notificationSettings } = useNotificationSettings()
   const currentTime = useCurrentTime()
@@ -240,9 +243,16 @@ function App() {
 
   useEffect(() => {
     if (selectedVenue) {
-      trackEvent({ type: 'venue_view', timestamp: Date.now(), venueId: selectedVenue.id, source: 'trending' })
+      const source = activeTab === 'map'
+        ? 'map'
+        : activeTab === 'discover'
+          ? 'search'
+          : activeTab === 'notifications'
+            ? 'notification'
+            : 'trending'
+      trackEvent({ type: 'venue_view', timestamp: Date.now(), venueId: selectedVenue.id, source })
     }
-  }, [selectedVenue])
+  }, [selectedVenue, activeTab])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -624,7 +634,7 @@ function App() {
     </div>
   }
 
-  if (showAdminDashboard) {
+  if (showAdminDashboard && socialDashboardEnabled) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
         <SocialPulseDashboard
@@ -762,7 +772,7 @@ function App() {
     )
   }
 
-  if (subPage === 'integrations' && integrationVenue) {
+  if (subPage === 'integrations' && integrationVenue && integrationsEnabled) {
     return (
       <>
         <Suspense fallback={pageFallback}>
@@ -848,6 +858,10 @@ function App() {
           onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
           onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
           onOpenIntegrations={() => {
+            if (!integrationsEnabled) {
+              toast.error('Integrations are currently unavailable')
+              return
+            }
             setIntegrationVenue(selectedVenue)
             setSelectedVenue(null)
             setSubPage('integrations')
@@ -1009,9 +1023,21 @@ function App() {
               favoriteVenues={favoriteVenues}
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onReaction={handleReaction}
-              onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
+              onOpenSocialPulseDashboard={() => {
+                if (!socialDashboardEnabled) {
+                  toast.error('Admin dashboard is currently unavailable')
+                  return
+                }
+                setShowAdminDashboard(true)
+              }}
               onOpenSettings={() => setSubPage('settings')}
-              onOpenOwnerDashboard={() => setShowAdminDashboard(true)}
+              onOpenOwnerDashboard={() => {
+                if (!socialDashboardEnabled) {
+                  toast.error('Owner dashboard is currently unavailable')
+                  return
+                }
+                setShowAdminDashboard(true)
+              }}
             />
           </motion.div>
         )}

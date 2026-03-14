@@ -57,6 +57,12 @@ Run the test suite:
 npm run test
 ```
 
+Run browser smoke tests:
+
+```bash
+npm run test:smoke
+```
+
 Run linting:
 
 ```bash
@@ -75,7 +81,10 @@ npm run preview
 - `npm run build`: type-check build inputs and create a production bundle
 - `npm run test`: run the Vitest suite once
 - `npm run test:watch`: run tests in watch mode
+- `npm run test:smoke`: run Playwright smoke tests against a local preview build
 - `npm run lint`: run ESLint
+- `npm run audit`: fail on high/critical dependency vulnerabilities
+- `npm run release-check`: lint + unit tests + build + audit
 - `npm run preview`: serve the built app locally
 
 ## Project Structure
@@ -105,8 +114,8 @@ Current baseline:
 The test suite currently covers a broad set of pure logic modules in [src/lib](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib), including the extracted interactive map helpers in [src/lib/interactive-map.ts](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib/interactive-map.ts).
 
 Remaining quality gaps:
-- No end-to-end browser coverage yet
-- No CI pipeline documented in this repository
+- Smoke-level browser coverage exists, but critical flow depth is still limited
+- CI exists with lint, unit tests, build, smoke checks, and dependency audit
 - Existing lint warnings remain in some older components and shared UI files
 
 ## Production Readiness Gaps
