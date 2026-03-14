@@ -16,6 +16,7 @@ export type AnalyticsEvent =
   | { type: 'venue_discovery'; timestamp: number; venueId: string; method: 'trending' | 'map' | 'search' | 'friend_activity' }
   | { type: 'share'; timestamp: number; contentType: 'venue' | 'pulse' | 'invite'; method: 'native' | 'clipboard' | 'story' }
   | { type: 'friend_add'; timestamp: number; method: 'qr' | 'search' | 'suggestion' | 'invite' }
+  | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
@@ -56,6 +57,16 @@ export interface SeededContentMetrics {
   seededHashtagConversionRate: number
 }
 
+export interface IntegrationActionSummary {
+  totalActions: number
+  successCount: number
+  unavailableCount: number
+  failureCount: number
+  actionsByType: Record<'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts', number>
+  topProviders: { provider: string; count: number }[]
+  recentFailures: Extract<AnalyticsEvent, { type: 'integration_action' }>[]
+}
+
 const eventLog: AnalyticsEvent[] = []
 const MAX_EVENTS = 10000
 
@@ -82,6 +93,45 @@ export function getEvents(type?: AnalyticsEvent['type']): AnalyticsEvent[] {
  */
 export function clearEvents(): void {
   eventLog.length = 0
+}
+
+export function getIntegrationActionSummary(events: AnalyticsEvent[]): IntegrationActionSummary {
+  const integrationEvents = events.filter(
+    (event): event is Extract<AnalyticsEvent, { type: 'integration_action' }> => event.type === 'integration_action'
+  )
+
+  const actionsByType: IntegrationActionSummary['actionsByType'] = {
+    rideshare: 0,
+    music: 0,
+    reservation: 0,
+    maps: 0,
+    shortcuts: 0,
+  }
+
+  const providerCounts: Record<string, number> = {}
+
+  for (const event of integrationEvents) {
+    actionsByType[event.integrationType] += 1
+    if (event.provider) {
+      providerCounts[event.provider] = (providerCounts[event.provider] ?? 0) + 1
+    }
+  }
+
+  return {
+    totalActions: integrationEvents.length,
+    successCount: integrationEvents.filter(event => event.outcome === 'success').length,
+    unavailableCount: integrationEvents.filter(event => event.outcome === 'unavailable').length,
+    failureCount: integrationEvents.filter(event => event.outcome === 'failed').length,
+    actionsByType,
+    topProviders: Object.entries(providerCounts)
+      .sort(([, left], [, right]) => right - left)
+      .slice(0, 5)
+      .map(([provider, count]) => ({ provider, count })),
+    recentFailures: integrationEvents
+      .filter(event => event.outcome !== 'success')
+      .sort((left, right) => right.timestamp - left.timestamp)
+      .slice(0, 5),
+  }
 }
 
 /**

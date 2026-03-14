@@ -8,6 +8,7 @@ import {
   analyzeSeededContent,
   calculateRetention,
   getErrorSummary,
+  getIntegrationActionSummary,
   type AnalyticsEvent,
 } from '../analytics'
 
@@ -141,5 +142,26 @@ describe('getErrorSummary', () => {
     expect(summary.uniqueErrors).toBe(2)
     expect(summary.topErrors[0].message).toBe('Network error')
     expect(summary.topErrors[0].count).toBe(2)
+  })
+})
+
+describe('getIntegrationActionSummary', () => {
+  it('summarizes integration outcomes by type and provider', () => {
+    const events: AnalyticsEvent[] = [
+      { type: 'integration_action', timestamp: 1, venueId: 'v1', integrationType: 'music', actionId: 'open_music', provider: 'spotify', outcome: 'success' },
+      { type: 'integration_action', timestamp: 2, venueId: 'v1', integrationType: 'rideshare', actionId: 'open_uber', provider: 'uber', outcome: 'failed', reason: 'popup-blocked' },
+      { type: 'integration_action', timestamp: 3, venueId: 'v2', integrationType: 'shortcuts', actionId: 'friends', outcome: 'unavailable', reason: 'No recent friend activity yet.' },
+      { type: 'app_open', timestamp: 4 },
+    ]
+
+    const summary = getIntegrationActionSummary(events)
+    expect(summary.totalActions).toBe(3)
+    expect(summary.successCount).toBe(1)
+    expect(summary.failureCount).toBe(1)
+    expect(summary.unavailableCount).toBe(1)
+    expect(summary.actionsByType.music).toBe(1)
+    expect(summary.actionsByType.rideshare).toBe(1)
+    expect(summary.topProviders[0].provider).toBe('spotify')
+    expect(summary.recentFailures[0].timestamp).toBe(3)
   })
 })

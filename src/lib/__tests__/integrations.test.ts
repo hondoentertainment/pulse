@@ -5,13 +5,18 @@ import {
   createSpotifyNowPlaying,
   formatSpotifyDisplay,
   createReservationLink,
+  getVenueReservationLinks,
   getAvailableReservations,
   generateMapsEnergyLayer,
   getShortcutActions,
   executeShortcut,
   getIntegrationStatus,
+  getVenueIntegrationAvailability,
+  launchIntegrationUrl,
+  getVenueMusicUrl,
+  getVenueNowPlaying,
 } from '../integrations'
-import type { Venue } from '../types'
+import type { Pulse, Venue } from '../types'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return { id: 'v1', name: 'Bar A', location: { lat: 40.7, lng: -74.0, address: '' }, pulseScore: 70, ...overrides }
@@ -58,6 +63,39 @@ describe('createSpotifyNowPlaying', () => {
   })
 })
 
+describe('getVenueMusicUrl', () => {
+  it('uses a venue spotify url when configured', () => {
+    const url = getVenueMusicUrl(makeVenue({
+      integrations: {
+        music: {
+          spotifyUrl: 'https://open.spotify.com/playlist/test',
+        },
+      },
+    }))
+
+    expect(url).toBe('https://open.spotify.com/playlist/test')
+  })
+})
+
+describe('getVenueNowPlaying', () => {
+  it('creates venue-specific now playing data', () => {
+    const nowPlaying = getVenueNowPlaying(makeVenue({
+      id: 'venue-3',
+      name: 'Q Nightclub',
+      category: 'Nightclub',
+      integrations: {
+        music: {
+          playlistName: 'Late Night Pulse',
+        },
+      },
+    }), new Date('2026-03-14T22:00:00.000Z'))
+
+    expect(nowPlaying.playlistName).toBe('Late Night Pulse')
+    expect(nowPlaying.trackName).not.toBe('Midnight City')
+    expect(nowPlaying.albumArt).toContain('data:image/svg+xml')
+  })
+})
+
 describe('formatSpotifyDisplay', () => {
   it('formats without playlist', () => {
     const np = createSpotifyNowPlaying('v1', 'Song', 'Artist')
@@ -95,6 +133,27 @@ describe('getAvailableReservations', () => {
   })
 })
 
+describe('getVenueReservationLinks', () => {
+  it('builds search fallbacks when direct ids are missing', () => {
+    const links = getVenueReservationLinks(makeVenue({ city: 'Seattle', state: 'WA' }))
+    expect(links).toHaveLength(2)
+    expect(links.every(link => link.kind === 'search')).toBe(true)
+  })
+
+  it('uses configured reservation urls before fallback search links', () => {
+    const links = getVenueReservationLinks(makeVenue({
+      integrations: {
+        reservations: {
+          opentableUrl: 'https://www.opentable.com/s?term=Bar%20A',
+        },
+      },
+    }))
+
+    expect(links[0].deepLink).toContain('opentable.com/s?term=')
+    expect(links[0].kind).toBe('direct')
+  })
+})
+
 describe('generateMapsEnergyLayer', () => {
   it('generates energy layer from venues', () => {
     const venues = [
@@ -126,6 +185,59 @@ describe('executeShortcut', () => {
     const result = executeShortcut(action, venues, 5)
     expect(result[0].pulseScore).toBeGreaterThanOrEqual(result[1].pulseScore)
   })
+
+  it('does not mutate the original venue array', () => {
+    const venues = [
+      makeVenue({ id: 'v1', pulseScore: 10 }),
+      makeVenue({ id: 'v2', pulseScore: 90 }),
+    ]
+
+    const originalIds = venues.map(venue => venue.id)
+    executeShortcut({ id: 'tonight', name: 'Tonight', description: '', type: 'tonight', parameters: {} }, venues, 5)
+
+    expect(venues.map(venue => venue.id)).toEqual(originalIds)
+  })
+
+  it('uses user location for nearby results', () => {
+    const venues = [
+      makeVenue({ id: 'far', location: { lat: 40.9, lng: -74.0, address: '' } }),
+      makeVenue({ id: 'near', location: { lat: 40.7001, lng: -74.0, address: '' } }),
+    ]
+
+    const result = executeShortcut(
+      { id: 'nearby', name: 'Nearby', description: '', type: 'nearby', parameters: {} },
+      venues,
+      5,
+      { userLocation: { lat: 40.7, lng: -74.0 } }
+    )
+
+    expect(result[0].id).toBe('near')
+  })
+
+  it('uses recent friend activity for friend shortcuts', () => {
+    const venues = [
+      makeVenue({ id: 'friend-venue', pulseScore: 40 }),
+      makeVenue({ id: 'other-venue', pulseScore: 95 }),
+    ]
+    const pulses: Pick<Pulse, 'venueId' | 'userId' | 'createdAt'>[] = [
+      { venueId: 'friend-venue', userId: 'friend-1', createdAt: '2025-01-01T05:00:00.000Z' },
+      { venueId: 'other-venue', userId: 'stranger', createdAt: '2025-01-01T05:00:00.000Z' },
+    ]
+
+    const result = executeShortcut(
+      { id: 'friends', name: 'Friends', description: '', type: 'friends', parameters: {} },
+      venues,
+      5,
+      {
+        currentUser: { id: 'me', friends: ['friend-1'] },
+        pulses,
+        now: new Date('2025-01-01T06:00:00.000Z'),
+      }
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('friend-venue')
+  })
 })
 
 describe('getIntegrationStatus', () => {
@@ -139,5 +251,54 @@ describe('getIntegrationStatus', () => {
     const status = getIntegrationStatus('rideshare')
     expect(status.available).toBe(false)
     expect(status.configRequired.length).toBeGreaterThan(0)
+  })
+
+  it('reports configured integrations as available', () => {
+    const status = getIntegrationStatus('music', { configured: true })
+    expect(status.available).toBe(true)
+  })
+})
+
+describe('getVenueIntegrationAvailability', () => {
+  it('requires location for rideshare', () => {
+    const availability = getVenueIntegrationAvailability(makeVenue(), null)
+    expect(availability.rideshare.available).toBe(false)
+    expect(availability.rideshare.reason).toContain('Enable location')
+  })
+})
+
+describe('launchIntegrationUrl', () => {
+  it('opens web urls in a new tab', () => {
+    let opened = ''
+    const result = launchIntegrationUrl('https://example.com', {
+      opener: (url) => {
+        opened = url ?? ''
+        return {} as Window
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(opened).toBe('https://example.com')
+  })
+
+  it('uses location assignment for custom schemes', () => {
+    let assigned = ''
+    const result = launchIntegrationUrl('uber://ride', {
+      locationAssign: (url) => {
+        assigned = url
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(assigned).toBe('uber://ride')
+  })
+
+  it('reports blocked popups', () => {
+    const result = launchIntegrationUrl('https://example.com', {
+      opener: () => null,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.reason).toBe('popup-blocked')
   })
 })

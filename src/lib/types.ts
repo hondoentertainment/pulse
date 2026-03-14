@@ -51,6 +51,23 @@ export interface Venue {
   firstRealCheckInAt?: string
   scoreVelocity?: number
   lastActivity?: string
+  integrations?: {
+    music?: {
+      spotifyUrl?: string
+      playlistName?: string
+      searchTerm?: string
+    }
+    reservations?: {
+      opentableId?: string
+      opentableUrl?: string
+      resyId?: string
+      resyUrl?: string
+    }
+    maps?: {
+      googleMapsUrl?: string
+      appleMapsUrl?: string
+    }
+  }
 }
 
 export interface Pulse {

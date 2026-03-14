@@ -13,7 +13,6 @@ import {
 import { calculatePresence } from '@/lib/presence-engine'
 import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
-import { EnhancedBottomNav } from '@/components/EnhancedBottomNav'
 import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { InteractiveMap } from '@/components/InteractiveMap'
@@ -36,18 +35,9 @@ const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m =
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
-import { NightPlannerPage } from '@/components/NightPlannerPage'
-import { VenueCompareSheet } from '@/components/VenueCompareSheet'
-import { seedDemoReports } from '@/lib/live-intelligence'
-import { MyTicketsPage } from '@/components/MyTicketsPage'
-import { TicketPurchaseSheet } from '@/components/TicketPurchaseSheet'
-import { TableBookingSheet } from '@/components/TableBookingSheet'
-import type { Ticket } from '@/lib/ticketing'
-import type { TableReservation } from '@/lib/table-booking'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { US_EXPANSION_VENUES } from '@/lib/us-venues'
-import { enrichVenuesWithRealtimeData } from '@/lib/real-data-engine'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -67,51 +57,14 @@ import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { trackEvent } from '@/lib/analytics'
-import { VenuePlatformDashboard } from '@/components/VenuePlatformDashboard'
-import { CreatorDashboard } from '@/components/CreatorDashboard'
-import { ChallengeFeed } from '@/components/ChallengeFeed'
-import { TipSheet } from '@/components/TipSheet'
-import {
-  Attribution,
-  TipJar,
-  sendTip,
-  updateTipJar,
-} from '@/lib/creator-economy'
-import {
-  VenueChallenge,
-  createDemoChallenges,
-  joinChallenge,
-} from '@/lib/venue-challenges'
-import {
-  Partnership,
-  acceptPartnership,
-  cancelPartnership,
-  createDemoPartnerships,
-} from '@/lib/brand-partnerships'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
-import { GlobalSearch } from '@/components/GlobalSearch'
-import { OfflineBanner } from '@/components/OfflineBanner'
-import { GLOBAL_CITY_LOCATIONS } from '@/lib/global-venues'
-import { US_CITY_LOCATIONS } from '@/lib/us-venues'
-// Phase 1: Navigation & Transitions
-import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
-import { useScrollAware } from '@/hooks/use-scroll-aware'
-// Phase 3: Social & Real-time
-import HappeningNowBanner from '@/components/HappeningNowBanner'
-import FloatingReactions from '@/components/FloatingReactions'
-import LiveActivityToast from '@/components/LiveActivityToast'
-import { useSimulatedActivity } from '@/hooks/use-simulated-activity'
-// Phase 4: Personalization
-import PredictiveSuggestion from '@/components/PredictiveSuggestion'
-// Phase 5: Premium Polish
-import { ShareableVenueCard } from '@/components/ShareableVenueCard'
 
-type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'creator-dashboard' | 'challenges' | 'night-planner' | 'my-tickets' | 'venue-platform' | null
+type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | null
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
@@ -121,12 +74,6 @@ function App() {
   const [subPage, setSubPage] = useState<SubPage>(null)
   const [storyViewerOpen, setStoryViewerOpen] = useState(false)
   const [storyViewerStories, setStoryViewerStories] = useState<PulseStory[]>([])
-  const [compareVenueIds, setCompareVenueIds] = useState<string[]>([])
-  const [compareSheetOpen, setCompareSheetOpen] = useState(false)
-  const [platformVenue, setPlatformVenue] = useState<Venue | null>(null)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [shareVenue, setShareVenue] = useState<Venue | null>(null)
-  const [floatingReactions, setFloatingReactions] = useState<Array<{ id: string; emoji: string; timestamp: number }>>([])
 
   // Mock users for presence simulation
   const ALL_USERS: User[] = [
@@ -176,30 +123,9 @@ function App() {
   const [crewCheckIns, setCrewCheckIns] = useKV<CrewCheckIn[]>('crewCheckIns', [])
   const [playlists, setPlaylists] = useKV<PulsePlaylist[]>('playlists', [])
   const [promotions, setPromotions] = useKV<PromotedVenue[]>('promotions', [])
-  const [venueChallenges, setVenueChallenges] = useKV<VenueChallenge[]>('venueChallenges', [])
-  const [creatorAttributions, setCreatorAttributions] = useKV<Attribution[]>('creatorAttributions', [])
-  const [creatorTipJar, setCreatorTipJar] = useKV<TipJar | null>('creatorTipJar', null)
-  const [creatorPartnerships, setCreatorPartnerships] = useKV<Partnership[]>('creatorPartnerships', [])
-  const [userTickets, setUserTickets] = useKV<Ticket[]>('userTickets', [])
-  const [tableReservations, setTableReservations] = useKV<TableReservation[]>('tableReservations', [])
-  const [ticketSheetOpen, setTicketSheetOpen] = useState(false)
-  const [ticketSheetEvent, setTicketSheetEvent] = useState<VenueEvent | null>(null)
-  const [tableBookingSheetOpen, setTableBookingSheetOpen] = useState(false)
-  const [tableBookingVenue, setTableBookingVenue] = useState<Venue | null>(null)
-  const [tipSheetOpen, setTipSheetOpen] = useState(false)
-  const [tipTargetCreator, setTipTargetCreator] = useState<{ userId: string; username: string } | null>(null)
   const [integrationVenue, setIntegrationVenue] = useState<Venue | null>(null)
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
-
-  // Enrich venues with real-time scores on initial load
-  useEffect(() => {
-    if (venues && venues.length > 0) {
-      const enriched = enrichVenuesWithRealtimeData(venues, new Date())
-      setVenues(enriched)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   useEffect(() => {
     if (!hashtags || hashtags.length === 0) {
@@ -211,14 +137,6 @@ function App() {
   useEffect(() => {
     initHighContrast()
   }, [])
-
-  // Seed demo live intelligence reports
-  useEffect(() => {
-    if (venues && venues.length > 0) {
-      const topVenueIds = venues.slice(0, 10).map(v => v.id)
-      seedDemoReports(topVenueIds)
-    }
-  }, [venues])
 
   // Seed demo events if empty
   useEffect(() => {
@@ -256,55 +174,8 @@ function App() {
         ])
       }
     }
-    if (!venueChallenges || venueChallenges.length === 0) {
-      if (venues && venues.length > 2) {
-        setVenueChallenges(createDemoChallenges(venues))
-      }
-    }
-    if (!creatorPartnerships || creatorPartnerships.length === 0) {
-      if (venues && venues.length > 1 && currentUser) {
-        setCreatorPartnerships(createDemoPartnerships(venues, currentUser.id))
-      }
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues])
-
-  const handleSendTip = (amount: number, message?: string) => {
-    if (!tipTargetCreator || !currentUser) return
-    const tip = sendTip(currentUser.id, tipTargetCreator.userId, amount, undefined, message)
-    setCreatorTipJar(current => updateTipJar(current ?? null, tip))
-  }
-
-  const handleAcceptPartnership = (partnershipId: string) => {
-    setCreatorPartnerships(current => {
-      if (!current) return []
-      return current.map(p => {
-        if (p.id !== partnershipId) return p
-        return acceptPartnership(p) ?? p
-      })
-    })
-  }
-
-  const handleDeclinePartnership = (partnershipId: string) => {
-    setCreatorPartnerships(current => {
-      if (!current) return []
-      return current.map(p => {
-        if (p.id !== partnershipId) return p
-        return cancelPartnership(p)
-      })
-    })
-  }
-
-  const handleJoinChallenge = (challengeId: string) => {
-    if (!currentUser) return
-    setVenueChallenges(current => {
-      if (!current) return []
-      return current.map(c => {
-        if (c.id !== challengeId) return c
-        return joinChallenge(c, currentUser.id) ?? c
-      })
-    })
-  }
 
   const userLocation = useMemo(
     () => realtimeLocation
@@ -318,12 +189,6 @@ function App() {
     userLocation,
     notificationSettings?.trendingVenues ?? true
   )
-
-  // Phase 1: Scroll-aware header
-  const { isScrolled, scrollDirection } = useScrollAware()
-
-  // Phase 3: Simulated activity
-  const { activities, clearActivity } = useSimulatedActivity({ venues: venues || [] })
 
   useEffect(() => {
     if (!realtimeLocation && !simulatedLocation && !locationPermissionDenied) {
@@ -379,35 +244,25 @@ function App() {
     }
   }, [selectedVenue])
 
-  // Dynamic real-data engine: updates venue scores based on time-of-day,
-  // day-of-week, venue category, and city timezone. User-created pulses
-  // boost scores on top of the baseline.
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date()
       setVenues((currentVenues) => {
-        if (!currentVenues) return []
-        // Compute time-aware baseline scores for all venues
-        const enriched = enrichVenuesWithRealtimeData(currentVenues, now)
-        // Layer user-created pulses on top
-        if (pulses && pulses.length > 0) {
-          return enriched.map((venue) => {
-            const venuePulses = pulses.filter((p) => p.venueId === venue.id)
-            if (venuePulses.length === 0) return venue
-            const userBoost = calculatePulseScore(venuePulses)
-            const velocity = calculateScoreVelocity(venue, venuePulses)
-            const lastPulse = venuePulses.sort(
-              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            )[0]
-            return {
-              ...venue,
-              pulseScore: Math.min(100, venue.pulseScore + Math.round(userBoost * 0.3)),
-              scoreVelocity: (venue.scoreVelocity ?? 0) + velocity,
-              lastPulseAt: lastPulse?.createdAt ?? venue.lastPulseAt,
-            }
-          })
-        }
-        return enriched
+        if (!currentVenues || !pulses) return currentVenues || []
+        return currentVenues.map((venue) => {
+          const venuePulses = pulses.filter((p) => p.venueId === venue.id)
+          const score = calculatePulseScore(venuePulses)
+          const velocity = calculateScoreVelocity(venue, venuePulses)
+          const lastPulse = venuePulses.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0]
+
+          return {
+            ...venue,
+            pulseScore: score,
+            scoreVelocity: velocity,
+            lastPulseAt: lastPulse?.createdAt
+          }
+        })
       })
 
       setHashtags((currentHashtags) => {
@@ -888,97 +743,6 @@ function App() {
     )
   }
 
-  if (subPage === 'creator-dashboard') {
-    return (
-      <>
-        <CreatorDashboard
-          currentUser={currentUser}
-          pulses={pulses}
-          venues={venues}
-          attributions={creatorAttributions || []}
-          tipJar={creatorTipJar ?? null}
-          challenges={venueChallenges || []}
-          partnerships={creatorPartnerships || []}
-          onBack={() => setSubPage(null)}
-          onAcceptPartnership={handleAcceptPartnership}
-          onDeclinePartnership={handleDeclinePartnership}
-          onWithdrawTips={() => {
-            setCreatorTipJar(current => current ? { ...current, withdrawable: 0 } : null)
-            toast.success('Withdrawal initiated!')
-          }}
-        />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
-      </>
-    )
-  }
-
-  if (subPage === 'challenges') {
-    return (
-      <>
-        <ChallengeFeed
-          challenges={venueChallenges || []}
-          venues={venues}
-          currentUserId={currentUser.id}
-          onBack={() => setSubPage(null)}
-          onJoinChallenge={handleJoinChallenge}
-        />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
-      </>
-    )
-  }
-
-  if (subPage === 'night-planner') {
-    return (
-      <>
-        <NightPlannerPage
-          currentUser={currentUser}
-          allUsers={ALL_USERS}
-          venues={venues}
-          pulses={pulses}
-          crews={crews || []}
-          userLocation={userLocation}
-          onBack={() => setSubPage(null)}
-          onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
-        />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
-      </>
-    )
-  }
-
-  if (subPage === 'my-tickets') {
-    return (
-      <>
-        <MyTicketsPage
-          currentUserId={currentUser.id}
-          tickets={userTickets || []}
-          reservations={tableReservations || []}
-          events={events || []}
-          venues={venues}
-          onBack={() => setSubPage(null)}
-          onTicketsUpdate={(updated) => setUserTickets(updated)}
-          onReservationsUpdate={(updated) => setTableReservations(updated)}
-        />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
-      </>
-    )
-  }
-
-  if (subPage === 'venue-platform') {
-    const venueForPlatform = platformVenue || venues[0]
-    return (
-      <>
-        <VenuePlatformDashboard
-          venue={venueForPlatform}
-          venues={venues}
-          pulses={pulses}
-          currentUserId={currentUser.id}
-          onBack={() => { setSubPage(null); setPlatformVenue(null) }}
-        />
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setPlatformVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
-      </>
-    )
-  }
-
   if (subPage === 'settings') {
     return (
       <>
@@ -1006,6 +770,8 @@ function App() {
           venue={integrationVenue}
           userLocation={userLocation}
           venues={venues}
+          currentUser={currentUser}
+          pulses={pulses}
           onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
           onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
         />
@@ -1086,54 +852,6 @@ function App() {
             setSelectedVenue(null)
             setSubPage('integrations')
           }}
-          onGetTickets={() => {
-            const venueEvents = (events || []).filter(e =>
-              e.venueId === selectedVenue.id && new Date(e.endTime).getTime() > Date.now()
-            )
-            if (venueEvents.length > 0) {
-              setTicketSheetEvent(venueEvents[0])
-            } else {
-              setTicketSheetEvent({
-                id: `gen-${selectedVenue.id}`,
-                venueId: selectedVenue.id,
-                createdByUserId: '',
-                title: `Entry to ${selectedVenue.name}`,
-                description: 'General admission',
-                category: 'other',
-                startTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-                endTime: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-                rsvps: {},
-                createdAt: new Date().toISOString(),
-              })
-            }
-            setTicketSheetOpen(true)
-          }}
-          onReserveTable={() => {
-            setTableBookingVenue(selectedVenue)
-            setTableBookingSheetOpen(true)
-          }}
-        />
-        <TicketPurchaseSheet
-          open={ticketSheetOpen}
-          onOpenChange={setTicketSheetOpen}
-          event={ticketSheetEvent}
-          currentUser={currentUser}
-          allUsers={ALL_USERS}
-          onPurchase={(tickets) => {
-            setUserTickets(prev => [...(prev || []), ...tickets])
-            toast.success('Tickets purchased!', { description: `${tickets.length} ticket(s) confirmed` })
-          }}
-        />
-        <TableBookingSheet
-          open={tableBookingSheetOpen}
-          onOpenChange={setTableBookingSheetOpen}
-          venue={tableBookingVenue}
-          userId={currentUser.id}
-          existingReservations={tableReservations || []}
-          onBook={(reservation) => {
-            setTableReservations(prev => [...(prev || []), reservation])
-            toast.success('Table reserved!', { description: `Table ${reservation.tableNumber} confirmed` })
-          }}
         />
         </Suspense>
         <PresenceSheet
@@ -1171,38 +889,13 @@ function App() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
-      <OfflineBanner />
-      <ScrollAwareHeader isScrolled={isScrolled} scrollDirection={scrollDirection}>
-        <AppHeader
-          locationName={locationName}
-          isTracking={isTracking}
-          hasRealtimeLocation={!!realtimeLocation}
-          locationPermissionDenied={locationPermissionDenied}
-          currentTime={currentTime}
-          onSearchClick={() => setSearchOpen(true)}
-        />
-      </ScrollAwareHeader>
-
-      {/* Phase 3: Happening Now Banner */}
-      {activeTab !== 'map' && (
-        <HappeningNowBanner
-          venues={venues}
-          userLocation={userLocation}
-          onVenueClick={(venue) => setSelectedVenue(venue)}
-        />
-      )}
-
-      {/* Phase 4: Predictive Suggestion */}
-      {activeTab === 'trending' && currentUser && (
-        <div className="max-w-2xl mx-auto px-4 pt-2">
-          <PredictiveSuggestion
-            venues={venues}
-            user={currentUser}
-            currentTime={currentTime}
-            onVenueClick={(venue) => setSelectedVenue(venue)}
-          />
-        </div>
-      )}
+      <AppHeader
+        locationName={locationName}
+        isTracking={isTracking}
+        hasRealtimeLocation={!!realtimeLocation}
+        locationPermissionDenied={locationPermissionDenied}
+        currentTime={currentTime}
+      />
 
       <AnimatePresence mode="wait">
         {activeTab === 'trending' && (
@@ -1231,10 +924,6 @@ function App() {
               onReaction={handleReaction}
               isFavorite={isFavorite}
               promotions={promotions || []}
-              onCompareVenues={(venueIds) => {
-                setCompareVenueIds(venueIds)
-                setCompareSheetOpen(true)
-              }}
             />
           </motion.div>
         )}
@@ -1255,9 +944,8 @@ function App() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
-              userLocation={userLocation}
               onVenueClick={(venue) => setSelectedVenue(venue)}
-              onStoryClick={(storyList, index) => {
+              onStoryClick={(storyList) => {
                 setStoryViewerStories(storyList)
                 setStoryViewerOpen(true)
               }}
@@ -1270,19 +958,22 @@ function App() {
         {activeTab === 'map' && (
           <motion.div
             key="map"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 bottom-16 z-0"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
           >
-            <InteractiveMap
-              venues={venues}
-              userLocation={userLocation}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              isTracking={isTracking}
-              locationAccuracy={realtimeLocation?.accuracy}
-            />
+            <div className="h-full">
+              <InteractiveMap
+                venues={venues}
+                userLocation={userLocation}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                isTracking={isTracking}
+                locationAccuracy={realtimeLocation?.accuracy}
+                locationHeading={realtimeLocation?.heading}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -1320,8 +1011,7 @@ function App() {
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => setShowAdminDashboard(true)}
               onOpenSettings={() => setSubPage('settings')}
-              onOpenOwnerDashboard={() => setSubPage('venue-platform')}
-              onOpenCreatorDashboard={() => setSubPage('creator-dashboard')}
+              onOpenOwnerDashboard={() => setShowAdminDashboard(true)}
             />
           </motion.div>
         )}
@@ -1341,19 +1031,12 @@ function App() {
         )}
       </AnimatePresence>
 
-      <EnhancedBottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
       <CreatePulseDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         venue={venueForPulse}
         onSubmit={handleSubmitPulse}
-      />
-
-      <TipSheet
-        open={tipSheetOpen}
-        onClose={() => { setTipSheetOpen(false); setTipTargetCreator(null) }}
-        creatorUsername={tipTargetCreator?.username ?? ''}
-        onSendTip={handleSendTip}
       />
 
       <motion.button
@@ -1371,73 +1054,6 @@ function App() {
       >
         <Plus size={28} weight="bold" />
       </motion.button>
-
-      {/* Venue Compare Sheet */}
-      <VenueCompareSheet
-        open={compareSheetOpen}
-        onClose={() => setCompareSheetOpen(false)}
-        venues={venues}
-        compareVenueIds={compareVenueIds}
-        userLocation={userLocation}
-        unitSystem={unitSystem}
-        onVenueClick={(venue) => {
-          setCompareSheetOpen(false)
-          setSelectedVenue(venue)
-        }}
-      />
-
-      {/* Global Search */}
-      <GlobalSearch
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        venues={venues}
-        onSelectVenue={(venueId) => {
-          const venue = venues.find(v => v.id === venueId)
-          if (venue) {
-            setSelectedVenue(venue)
-            setSearchOpen(false)
-          }
-        }}
-        onSelectCity={(cityKey) => {
-          const allCities = { ...US_CITY_LOCATIONS, ...GLOBAL_CITY_LOCATIONS }
-          const city = allCities[cityKey]
-          if (city) {
-            toast.info(`Showing venues in ${city.name}`)
-            setSearchOpen(false)
-            setActiveTab('map')
-          }
-        }}
-      />
-
-      {/* Phase 3: Floating Reactions */}
-      <FloatingReactions
-        reactions={floatingReactions}
-        onComplete={(id) => setFloatingReactions(prev => prev.filter(r => r.id !== id))}
-      />
-
-      {/* Phase 3: Live Activity Toasts */}
-      <LiveActivityToast
-        activities={activities}
-        onActivityClick={(activity) => {
-          if (activity.venueId) {
-            const venue = venues.find(v => v.id === activity.venueId)
-            if (venue) setSelectedVenue(venue)
-          }
-          clearActivity(activity.id)
-        }}
-      />
-
-      {/* Phase 5: Shareable Venue Card */}
-      {shareVenue && (
-        <ShareableVenueCard
-          venue={shareVenue}
-          onShare={() => {
-            toast.success('Shared!')
-            setShareVenue(null)
-          }}
-          onClose={() => setShareVenue(null)}
-        />
-      )}
     </div>
   )
 }

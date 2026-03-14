@@ -1,15 +1,20 @@
-import { Venue } from '@/lib/types'
+import { Venue, Pulse, User } from '@/lib/types'
 import {
   generateRideshareLink,
-  createSpotifyNowPlaying,
+  getVenueNowPlaying,
   formatSpotifyDisplay,
-  createReservationLink,
   getShortcutActions,
   executeShortcut,
+  getVenueReservationLinks,
+  getVenueMapsUrl,
+  getVenueIntegrationAvailability,
+  getIntegrationStatus,
+  launchIntegrationUrl,
   SpotifyNowPlaying,
   ReservationLink,
   RideshareLink,
 } from '@/lib/integrations'
+import { trackEvent } from '@/lib/analytics'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +30,8 @@ interface IntegrationHubProps {
   venue: Venue
   userLocation: { lat: number; lng: number } | null
   venues: Venue[]
+  currentUser: User
+  pulses: Pulse[]
   onBack: () => void
   onVenueClick: (venue: Venue) => void
 }
@@ -33,10 +40,15 @@ export function IntegrationHub({
   venue,
   userLocation,
   venues,
+  currentUser,
+  pulses,
   onBack,
   onVenueClick,
 }: IntegrationHubProps) {
-  // Build rideshare links
+  const availability = getVenueIntegrationAvailability(venue, userLocation)
+  const musicStatus = getIntegrationStatus('music', { configured: availability.music.available })
+  const reservationStatus = getIntegrationStatus('reservation', { configured: availability.reservation.available })
+
   const rideshareLinks: RideshareLink[] = userLocation
     ? [
         generateRideshareLink('uber', venue, userLocation.lat, userLocation.lng),
@@ -44,22 +56,75 @@ export function IntegrationHub({
       ]
     : []
 
-  // Demo now playing
-  const nowPlaying: SpotifyNowPlaying = createSpotifyNowPlaying(
-    venue.id,
-    'Midnight City',
-    'M83',
-    { playlistName: `${venue.name} Vibes`, albumArt: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200' }
-  )
+  const nowPlaying: SpotifyNowPlaying = getVenueNowPlaying(venue)
 
-  // Demo reservation links
-  const reservations: ReservationLink[] = [
-    createReservationLink('opentable', venue.id, venue.name.toLowerCase().replace(/\s/g, '-'), true, '8:00 PM'),
-    createReservationLink('resy', venue.id, venue.name.toLowerCase().replace(/\s/g, '-'), true, '9:30 PM'),
-  ]
-
-  // Shortcut actions
+  const reservations: ReservationLink[] = getVenueReservationLinks(venue)
   const shortcuts = getShortcutActions()
+  const mapsUrl = getVenueMapsUrl(venue)
+
+  const launch = (
+    url: string,
+    meta: {
+      integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'
+      actionId: string
+      provider?: string
+      successMessage: string
+      unavailableReason?: string
+    }
+  ) => {
+    if (meta.unavailableReason) {
+      trackEvent({
+        type: 'integration_action',
+        timestamp: Date.now(),
+        venueId: venue.id,
+        integrationType: meta.integrationType,
+        actionId: meta.actionId,
+        provider: meta.provider,
+        outcome: 'unavailable',
+        reason: meta.unavailableReason,
+      })
+      toast.error(meta.unavailableReason)
+      return
+    }
+
+    const result = launchIntegrationUrl(url, {
+      opener: (...args) => window.open(...args),
+      locationAssign: (nextUrl) => window.location.assign(nextUrl),
+    })
+
+    if (!result.ok) {
+      trackEvent({
+        type: 'integration_action',
+        timestamp: Date.now(),
+        venueId: venue.id,
+        integrationType: meta.integrationType,
+        actionId: meta.actionId,
+        provider: meta.provider,
+        outcome: result.reason === 'unavailable' ? 'unavailable' : 'failed',
+        reason: result.reason,
+      })
+
+      const description = result.reason === 'popup-blocked'
+        ? 'Allow pop-ups for Pulse to open partner links.'
+        : 'Check your browser settings and try again.'
+
+      toast.error('Launch failed', {
+        description,
+      })
+      return
+    }
+
+    trackEvent({
+      type: 'integration_action',
+      timestamp: Date.now(),
+      venueId: venue.id,
+      integrationType: meta.integrationType,
+      actionId: meta.actionId,
+      provider: meta.provider,
+      outcome: 'success',
+    })
+    toast.success(meta.successMessage)
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -76,7 +141,6 @@ export function IntegrationHub({
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-5">
-        {/* Now Playing */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="overflow-hidden">
             <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4">
@@ -84,7 +148,7 @@ export function IntegrationHub({
                 <MusicNote size={18} weight="fill" className="text-green-500" />
                 <h3 className="font-bold text-sm">Now Playing</h3>
                 <Badge variant="outline" className="text-xs border-green-500/30 text-green-500">
-                  Live
+                  {musicStatus.available ? 'Ready' : 'Setup needed'}
                 </Badge>
               </div>
               <div className="flex items-center gap-3">
@@ -106,28 +170,48 @@ export function IntegrationHub({
                   size="sm"
                   variant="outline"
                   className="border-green-500/30 text-green-500 hover:bg-green-500/10"
-                  onClick={() => toast.success(`Now playing: ${formatSpotifyDisplay(nowPlaying)}`)}
+                  onClick={() => launch(nowPlaying.launchUrl ?? '', {
+                    integrationType: 'music',
+                    actionId: 'open_music',
+                    provider: 'spotify',
+                    successMessage: `Opening ${formatSpotifyDisplay(nowPlaying)}`,
+                    unavailableReason: availability.music.available ? undefined : availability.music.reason,
+                  })}
                 >
                   <ArrowSquareOut size={14} />
                 </Button>
               </div>
+              {!musicStatus.available && musicStatus.configRequired.length > 0 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Configure: {musicStatus.configRequired.join(', ')}
+                </p>
+              )}
             </div>
           </Card>
         </motion.div>
 
-        {/* Get There */}
-        {rideshareLinks.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Car size={18} weight="fill" className="text-primary" />
-                <h3 className="font-bold text-sm">Get There</h3>
-              </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Car size={18} weight="fill" className="text-primary" />
+              <h3 className="font-bold text-sm">Get There</h3>
+              {!availability.rideshare.available && (
+                <Badge variant="outline" className="text-[10px]">
+                  Location required
+                </Badge>
+              )}
+            </div>
+            {rideshareLinks.length > 0 ? (
               <div className="space-y-2">
                 {rideshareLinks.map(link => (
                   <button
                     key={link.provider}
-                    onClick={() => toast.success(`Opening ${link.provider === 'uber' ? 'Uber' : 'Lyft'}...`)}
+                    onClick={() => launch(link.deepLink, {
+                      integrationType: 'rideshare',
+                      actionId: `open_${link.provider}`,
+                      provider: link.provider,
+                      successMessage: `Opening ${link.provider === 'uber' ? 'Uber' : 'Lyft'}...`,
+                    })}
                     className="w-full flex items-center gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors"
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -153,22 +237,32 @@ export function IntegrationHub({
                   </button>
                 ))}
               </div>
-            </Card>
-          </motion.div>
-        )}
+            ) : (
+              <p className="text-sm text-muted-foreground">{availability.rideshare.reason}</p>
+            )}
+          </Card>
+        </motion.div>
 
-        {/* Reservations */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Calendar size={18} weight="fill" className="text-blue-500" />
               <h3 className="font-bold text-sm">Reserve a Table</h3>
+              <Badge variant="outline" className="text-[10px]">
+                {reservations.some(link => link.kind === 'direct') ? 'Direct links' : 'Search fallback'}
+              </Badge>
             </div>
             <div className="space-y-2">
               {reservations.map(res => (
                 <button
                   key={res.provider}
-                  onClick={() => toast.success(`Opening ${res.provider === 'opentable' ? 'OpenTable' : 'Resy'}...`)}
+                  onClick={() => launch(res.deepLink, {
+                    integrationType: 'reservation',
+                    actionId: `open_${res.provider}`,
+                    provider: res.provider,
+                    successMessage: `Opening ${res.provider === 'opentable' ? 'OpenTable' : 'Resy'}...`,
+                    unavailableReason: availability.reservation.available ? undefined : availability.reservation.reason,
+                  })}
                   className="w-full flex items-center gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -178,22 +272,59 @@ export function IntegrationHub({
                     <p className="text-sm font-medium">
                       {res.provider === 'opentable' ? 'OpenTable' : 'Resy'}
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      {res.kind === 'direct' ? 'Linked venue page' : 'Search results for this venue'}
+                    </p>
                     {res.nextSlot && (
                       <p className="text-xs text-muted-foreground">Next available: {res.nextSlot}</p>
                     )}
                   </div>
                   <Badge variant={res.available ? 'default' : 'outline'} className="text-xs">
-                    {res.available ? 'Available' : 'Full'}
+                    {res.kind === 'direct' ? 'Direct' : 'Search'}
                   </Badge>
                 </button>
               ))}
             </div>
+            {!reservationStatus.available && reservationStatus.configRequired.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Configure: {reservationStatus.configRequired.join(', ')}
+              </p>
+            )}
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin size={18} weight="fill" className="text-orange-500" />
+              <h3 className="font-bold text-sm">Map It</h3>
+            </div>
+            <button
+              onClick={() => launch(mapsUrl, {
+                integrationType: 'maps',
+                actionId: 'open_maps',
+                provider: 'google_maps',
+                successMessage: 'Opening maps...',
+                unavailableReason: availability.maps.available ? undefined : availability.maps.reason,
+              })}
+              className="w-full flex items-center gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                <MapPin size={16} weight="fill" className="text-orange-500" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium">Open in Maps</p>
+                <p className="text-xs text-muted-foreground">
+                  {venue.location.address || 'Use live coordinates for directions'}
+                </p>
+              </div>
+              <ArrowSquareOut size={14} className="text-muted-foreground" />
+            </button>
           </Card>
         </motion.div>
 
         <Separator />
 
-        {/* Quick Shortcuts */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -205,11 +336,41 @@ export function IntegrationHub({
                 <button
                   key={action.id}
                   onClick={() => {
-                    const results = executeShortcut(action, venues, 5)
+                    const results = executeShortcut(action, venues, 5, {
+                      userLocation,
+                      currentUser,
+                      pulses,
+                    })
+
                     if (results.length > 0) {
+                      trackEvent({
+                        type: 'integration_action',
+                        timestamp: Date.now(),
+                        venueId: venue.id,
+                        integrationType: 'shortcuts',
+                        actionId: action.id,
+                        outcome: 'success',
+                      })
                       onVenueClick(results[0])
+                      toast.success(action.name)
+                      return
                     }
-                    toast.success(action.name)
+
+                    trackEvent({
+                      type: 'integration_action',
+                      timestamp: Date.now(),
+                      venueId: venue.id,
+                      integrationType: 'shortcuts',
+                      actionId: action.id,
+                      outcome: 'unavailable',
+                      reason: action.type === 'friends'
+                        ? 'No recent friend activity yet.'
+                        : 'No matching venues available.',
+                    })
+
+                    toast.info(action.type === 'friends'
+                      ? 'No recent friend activity yet'
+                      : 'No matching venues available')
                   }}
                   className="p-3 bg-secondary/50 rounded-lg text-left hover:bg-secondary transition-colors"
                 >

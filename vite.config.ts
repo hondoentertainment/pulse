@@ -7,6 +7,7 @@ import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
+const isVitest = process.env.VITEST === 'true'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -31,12 +32,12 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
   },
   plugins: [
-    react(),
+    !isVitest && react(),
     tailwindcss(),
     // DO NOT REMOVE
     createIconImportProxy() as PluginOption,
     sparkPlugin() as PluginOption,
-  ],
+  ].filter(Boolean) as PluginOption[],
   resolve: {
     alias: {
       '@': resolve(projectRoot, 'src')
