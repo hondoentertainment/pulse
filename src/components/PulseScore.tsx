@@ -6,9 +6,11 @@ interface PulseScoreProps {
   score: number
   size?: 'xs' | 'sm' | 'md' | 'lg'
   showLabel?: boolean
+  /** Optional time-contextual label (e.g. "Electric for this time of day") */
+  contextualLabel?: string
 }
 
-export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreProps) {
+export function PulseScore({ score, size = 'md', showLabel = true, contextualLabel }: PulseScoreProps) {
   const springScore = useSpring(0, { stiffness: 100, damping: 20 })
   const displayScore = useTransform(springScore, (value) => Math.round(value))
 
@@ -81,6 +83,17 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
           className="text-sm font-mono uppercase tracking-wider text-muted-foreground"
         >
           {label}
+        </motion.div>
+      )}
+
+      {contextualLabel && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-[11px] text-accent italic font-medium text-center max-w-[160px] leading-tight"
+        >
+          {contextualLabel}
         </motion.div>
       )}
     </div>

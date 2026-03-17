@@ -40,6 +40,7 @@ import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { US_EXPANSION_VENUES } from '@/lib/us-venues'
 import {
   calculatePulseScore,
+  calculateContextualPulseScore,
   getVenuesByProximity,
   canPostPulse
 } from '@/lib/pulse-engine'
@@ -260,15 +261,23 @@ function App() {
         if (!currentVenues || !pulses) return currentVenues || []
         return currentVenues.map((venue) => {
           const venuePulses = pulses.filter((p) => p.venueId === venue.id)
-          const score = calculatePulseScore(venuePulses)
+          const rawScore = calculatePulseScore(venuePulses)
           const velocity = calculateScoreVelocity(venue, venuePulses)
           const lastPulse = venuePulses.sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0]
 
+          // Build a temporary venue with raw score to feed into contextual scoring
+          const venueWithRaw = { ...venue, pulseScore: rawScore }
+          const contextualScore = calculateContextualPulseScore(venueWithRaw)
+
+          // Blend: 70% raw, 30% contextual to maintain data fidelity while
+          // surfacing time-appropriate venues
+          const blendedScore = Math.min(100, Math.round(rawScore * 0.7 + contextualScore * 0.3))
+
           return {
             ...venue,
-            pulseScore: score,
+            pulseScore: blendedScore,
             scoreVelocity: velocity,
             lastPulseAt: lastPulse?.createdAt
           }

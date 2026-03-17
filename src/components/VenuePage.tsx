@@ -11,7 +11,7 @@ import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
-import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatTimeAgo, getContextualEnergyLabel } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -162,7 +162,7 @@ export function VenuePage({
                   className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
                 />
               </button>
-              <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
+              <PulseScore score={venue.pulseScore} size="sm" showLabel={false} contextualLabel={getContextualEnergyLabel(venue)} />
             </div>
           </div>
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">

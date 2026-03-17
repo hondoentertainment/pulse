@@ -1,4 +1,5 @@
 import { Pulse, Venue, ENERGY_CONFIG, PULSE_DECAY_MINUTES } from './types'
+import { calculateContextualScore, getContextualLabel as getTimeContextualLabel, getPeakConfig } from './time-contextual-scoring'
 
 export function calculateDistance(
   lat1: number,
@@ -71,6 +72,49 @@ export function getEnergyLabel(score: number): string {
   if (score >= 50) return 'Buzzing'
   if (score >= 25) return 'Chill'
   return 'Dead'
+}
+
+/**
+ * Calculate a time-contextual pulse score for a venue.
+ * Normalizes the raw score relative to expected activity for the venue's
+ * category and current time of day (e.g., cafes peak mornings, bars peak evenings).
+ */
+export function calculateContextualPulseScore(venue: Venue, date?: Date): number {
+  return calculateContextualScore(venue, date)
+}
+
+/**
+ * Get a human-readable contextual energy label for a venue.
+ * Examples: "Electric for a Tuesday afternoon", "Quiet — but it's still early",
+ *           "Buzzing for a Tuesday"
+ */
+export function getContextualEnergyLabel(venue: Venue, date: Date = new Date()): string {
+  const config = getPeakConfig(venue.category, date)
+  const raw = venue.pulseScore
+
+  // Use the built-in label from time-contextual-scoring if available
+  const baseLabel = getTimeContextualLabel(venue, date)
+  if (baseLabel) return baseLabel
+
+  // Additional labels not covered by the base module
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
+
+  // Quiet but early — venue hasn't hit its peak time yet
+  if (raw < 25 && config.multiplier < 1.0) {
+    return "Quiet — but it's still early"
+  }
+
+  // Buzzing for a specific day (mid-range score, mid-range time)
+  if (raw >= 40 && raw < 75 && config.multiplier >= 1.0 && config.multiplier < 1.5) {
+    return `Buzzing for a ${dayName}`
+  }
+
+  // Electric for this time of day — high score during any period
+  if (raw >= 65 && config.multiplier >= 1.0) {
+    return 'Electric for this time of day'
+  }
+
+  return ''
 }
 
 export function getEnergyColor(score: number): string {

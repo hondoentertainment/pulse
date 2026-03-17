@@ -4,11 +4,13 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Faders, X, Lightning, Fire, MapPin, Microphone, MicrophoneSlash } from '@phosphor-icons/react'
+import { Faders, X, Lightning, Fire, MapPin, Microphone, MicrophoneSlash, Info } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useVoiceFilter } from '@/hooks/use-voice-filter'
+import { VOICE_COMMAND_EXAMPLES, VOICE_FALLBACK_MESSAGE } from '@/hooks/use-voice-search'
+import { toast } from 'sonner'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
 export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
@@ -42,6 +44,7 @@ const DISTANCE_OPTIONS_MILES = [
 
 export function MapFilters({ filters, onChange, availableCategories }: MapFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [voiceParseFailure, setVoiceParseFailure] = useState(false)
   const { unitSystem } = useUnitPreference()
   const {
     isListening,
@@ -51,7 +54,9 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
     resetTranscript,
     isSupported,
     parseVoiceCommand,
-    applyVoiceFilters
+    applyVoiceFilters,
+    showFirstUseTooltip,
+    dismissFirstUseTooltip,
   } = useVoiceFilter(availableCategories, onChange)
 
   const toggleEnergyLevel = (level: EnergyFilter) => {
@@ -102,6 +107,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
     (filters.maxDistance !== Infinity ? 1 : 0)
 
   const handleVoiceToggle = () => {
+    setVoiceParseFailure(false)
     if (isListening) {
       stopListening()
     } else {
@@ -114,7 +120,15 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
     if (!isListening && transcript) {
       const result = parseVoiceCommand(transcript)
       if (result) {
+        setVoiceParseFailure(false)
         applyVoiceFilters(result, filters)
+      } else {
+        // Show fallback message when input cannot be parsed
+        setVoiceParseFailure(true)
+        toast.error('Command not recognized', {
+          description: VOICE_FALLBACK_MESSAGE,
+          duration: 4000,
+        })
       }
       resetTranscript()
     }
@@ -184,7 +198,40 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                       <div className="flex items-center gap-2">
                         <Microphone size={16} weight="fill" className="text-accent" />
                         <h4 className="font-semibold text-sm">Voice Filter</h4>
+                        <span className="text-[10px] text-muted-foreground ml-auto">10s max</span>
                       </div>
+
+                      {/* First-use opt-in tooltip */}
+                      <AnimatePresence>
+                        {showFirstUseTooltip && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            className="bg-accent/10 border border-accent/20 rounded-lg p-3 space-y-1.5"
+                          >
+                            <div className="flex items-start gap-2">
+                              <Info size={14} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-accent">Voice Commands</p>
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                  You can search venues by name, filter by category, or navigate to a view.
+                                  Voice input is limited to 10 seconds.
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={dismissFirstUseTooltip}
+                                  className="text-[10px] h-6 px-2 text-accent hover:text-accent-foreground"
+                                >
+                                  Got it
+                                </Button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       <Button
                         variant={isListening ? 'default' : 'outline'}
                         size="sm"
@@ -206,18 +253,42 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                           </>
                         )}
                       </Button>
+
+                      {/* Live transcript */}
                       {transcript && (
                         <div className="text-xs text-muted-foreground bg-muted rounded-lg p-2">
-                          "{transcript}"
+                          &ldquo;{transcript}&rdquo;
                         </div>
                       )}
+
+                      {/* Fallback message when command not recognized */}
+                      <AnimatePresence>
+                        {voiceParseFailure && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2"
+                          >
+                            {VOICE_FALLBACK_MESSAGE}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Inline example commands */}
                       <div className="text-xs text-muted-foreground space-y-1">
-                        <p className="font-semibold">Try saying:</p>
-                        <ul className="list-disc list-inside space-y-0.5 ml-2">
-                          <li>"Show electric venues"</li>
-                          <li>"Filter buzzing or chill"</li>
-                          <li>"Find bars"</li>
-                          <li>"Clear filters"</li>
+                        <p className="font-semibold">Supported commands:</p>
+                        <ul className="space-y-0.5 ml-1">
+                          {VOICE_COMMAND_EXAMPLES.map((example) => (
+                            <li key={example.text} className="flex items-center gap-1.5">
+                              <span className="text-accent text-[10px]">Try:</span>
+                              <span>&ldquo;{example.text}&rdquo;</span>
+                            </li>
+                          ))}
+                          <li className="flex items-center gap-1.5">
+                            <span className="text-accent text-[10px]">Try:</span>
+                            <span>&ldquo;Clear filters&rdquo;</span>
+                          </li>
                         </ul>
                       </div>
                     </div>
