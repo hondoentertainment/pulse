@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import { useVoiceSearch } from './use-voice-search'
+import { useVoiceSearch, parseVoiceInput, VOICE_FALLBACK_MESSAGE } from './use-voice-search'
 import { MapFiltersState, EnergyFilter } from '@/components/MapFilters'
 import { toast } from 'sonner'
 
@@ -13,11 +13,54 @@ export function useVoiceFilter(
   availableCategories: string[],
   onFiltersChange: (filters: Partial<MapFiltersState>) => void
 ) {
-  const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported, error } = useVoiceSearch()
+  const {
+    isListening,
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+    isSupported,
+    error,
+    showFirstUseTooltip,
+    dismissFirstUseTooltip,
+  } = useVoiceSearch()
 
   const parseVoiceCommand = useCallback((text: string): VoiceFilterResult | null => {
     const lowerText = text.toLowerCase().trim()
-    
+
+    // First try structured command parsing (guardrailed to 3 types)
+    const parsed = parseVoiceInput(text)
+
+    if (parsed) {
+      switch (parsed.type) {
+        case 'filter': {
+          // Map parsed value to available categories
+          const matchedCategories = availableCategories.filter(cat =>
+            cat.toLowerCase().includes(parsed.value) ||
+            parsed.value.includes(cat.toLowerCase())
+          )
+          if (matchedCategories.length > 0) {
+            return { categories: matchedCategories, action: 'show' }
+          }
+          // Also check for energy level keywords in the value
+          const energyMap: Record<string, EnergyFilter> = {
+            electric: 'electric', buzzing: 'buzzing', chill: 'chill', dead: 'dead',
+          }
+          for (const [keyword, level] of Object.entries(energyMap)) {
+            if (parsed.value.includes(keyword)) {
+              return { energyLevels: [level], action: 'show' }
+            }
+          }
+          return { action: 'show' }
+        }
+        case 'search':
+        case 'navigate':
+          // These are handled by the consumer (MapSearch or App), not the filter
+          return null
+      }
+    }
+
+    // Legacy: handle clear/reset commands
     if (lowerText.includes('clear') || lowerText.includes('reset') || lowerText.includes('remove all')) {
       return { action: 'clear' }
     }
@@ -48,7 +91,7 @@ export function useVoiceFilter(
       if (lowerText.includes(categoryLower)) {
         detectedCategories.push(category)
       }
-      
+
       const categoryWords = categoryLower.split(' ')
       if (categoryWords.some(word => lowerText.includes(word))) {
         if (!detectedCategories.includes(category)) {
@@ -61,8 +104,8 @@ export function useVoiceFilter(
       result.categories = detectedCategories
     }
 
-    const hasShowCommand = lowerText.includes('show') || 
-                          lowerText.includes('filter') || 
+    const hasShowCommand = lowerText.includes('show') ||
+                          lowerText.includes('filter') ||
                           lowerText.includes('find') ||
                           lowerText.includes('display')
 
@@ -102,7 +145,7 @@ export function useVoiceFilter(
 
     if (Object.keys(updates).length > 0) {
       onFiltersChange(updates)
-      
+
       const parts: string[] = []
       if (updates.energyLevels && updates.energyLevels.length > 0) {
         parts.push(updates.energyLevels.join(', '))
@@ -110,7 +153,7 @@ export function useVoiceFilter(
       if (updates.categories && updates.categories.length > 0) {
         parts.push(updates.categories.join(', '))
       }
-      
+
       toast.success('Filters applied', {
         description: parts.join(' • ')
       })
@@ -133,6 +176,8 @@ export function useVoiceFilter(
     resetTranscript,
     isSupported,
     parseVoiceCommand,
-    applyVoiceFilters
+    applyVoiceFilters,
+    showFirstUseTooltip,
+    dismissFirstUseTooltip,
   }
 }

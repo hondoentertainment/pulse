@@ -11,7 +11,7 @@ import {
 import type { TabId } from '@/components/BottomNav'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
 import { US_EXPANSION_VENUES } from '@/lib/us-venues'
-import { calculatePulseScore } from '@/lib/pulse-engine'
+import { calculatePulseScore, calculateContextualPulseScore } from '@/lib/pulse-engine'
 import { initHighContrast } from '@/lib/accessibility'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
@@ -236,7 +236,9 @@ export function useAppState() {
         if (!currentVenues || !pulses) return currentVenues || []
         return currentVenues.map((venue) => {
           const venuePulses = pulses.filter((p) => p.venueId === venue.id)
-          const score = calculatePulseScore(venuePulses)
+          const rawScore = calculatePulseScore(venuePulses)
+          const contextualScore = calculateContextualPulseScore(venuePulses, venue.category)
+          const score = Math.round(rawScore * 0.7 + contextualScore * 0.3)
           const velocity = calculateScoreVelocity(venue, venuePulses)
           const lastPulse = venuePulses.sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

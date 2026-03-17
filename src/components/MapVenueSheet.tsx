@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
-import { getEnergyLabel } from '@/lib/pulse-engine'
+import { getEnergyLabel, getContextualEnergyLabel } from '@/lib/pulse-engine'
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
 import { useState, useRef } from 'react'
 import {
@@ -49,6 +49,7 @@ function VenuePreviewCard({
 }) {
   const Icon = getCategoryIcon(venue.category)
   const energyLabel = getEnergyLabel(venue.pulseScore)
+  const contextualLabel = getContextualEnergyLabel(venue)
   const isHot = venue.pulseScore >= 70
 
   return (
@@ -108,6 +109,11 @@ function VenuePreviewCard({
             <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
           </div>
         </div>
+
+        {/* Contextual label */}
+        {contextualLabel && (
+          <p className="text-[11px] text-accent italic font-medium mt-2">{contextualLabel}</p>
+        )}
 
         {/* Stats row */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/30">
