@@ -30,7 +30,7 @@ vi.mock('@phosphor-icons/react', () => ({
   ForkKnife: IconStub,
   Fire: IconStub,
   Star: IconStub,
-  Beer: IconStub,
+  Question: IconStub,
 }))
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {

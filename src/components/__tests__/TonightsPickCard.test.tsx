@@ -24,12 +24,11 @@ vi.mock('@phosphor-icons/react', () => ({
   ArrowRight: MockIcon,
   CaretDown: MockIcon,
   CaretUp: MockIcon,
-  MartiniGlass: MockIcon,
   MusicNote: MockIcon,
   ForkKnife: MockIcon,
   Coffee: MockIcon,
-  Beer: MockIcon,
   Star: MockIcon,
+  Question: MockIcon,
 }))
 
 vi.mock('framer-motion', () => ({
