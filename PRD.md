@@ -787,6 +787,114 @@ Before any deployment, the full release check runs all CI jobs locally via `npm 
 - Venue-curated playlists highlighting their best moments
 - Shareable playlist cards for social media
 
+### Phase 5B — Next-Generation Engagement Features (Implemented)
+*Goal: Maximize user engagement, social coordination, and revenue pathways through 10 production-grade features.*
+
+*Status: All 10 features implemented with full test suites (420+ tests across 20 test files). All features work with client-side state and are backend-ready for Phase 1 migration.*
+
+#### 5B.1 Live Activity Feed
+- Real-time scrolling feed of anonymized venue activity on the Discover tab
+- Event types: check-ins, surges, events starting, trending alerts, happy hours
+- Events arrive every 5-15 seconds with Framer Motion slide-in animations
+- Intelligent deduplication (same venue/type within time window), grouping ("3 people checked in"), and 30-min decay
+- Priority-based sorting blending recency and event importance
+- Rolling window capped at 50 events with scroll-lock detection (auto-scrolls unless user scrolled up)
+- Compact and expanded display modes, pulsing green "Live" indicator
+- **Files**: `lib/live-activity-feed.ts`, `hooks/use-live-activity-feed.ts`, `components/LiveActivityFeed.tsx`
+
+#### 5B.2 Venue Comparison Mode
+- Side-by-side comparison of two venues across energy, distance, crowd, friends, price, and wait time
+- Visual comparison bars with trophy icons showing which venue "wins" each metric
+- Natural language verdict: "Neon Lounge is hotter right now but The Rooftop has more friends"
+- "Pick for me" by preference (energy, proximity, social, price) with match scoring (0-100)
+- Framer Motion cards slide in from sides with animated comparison rows
+- Mobile responsive: stacked on very small screens, side-by-side on standard mobile
+- **Files**: `lib/venue-comparison.ts`, `hooks/use-venue-comparison.ts`, `components/VenueComparison.tsx`
+
+#### 5B.3 "Going Tonight" RSVP & Friends Coordination
+- One-tap "I'm going tonight" button on venue pages broadcasting intent to friends
+- Three RSVP states: going, maybe, cancelled — with optional arrival time estimate
+- Friend activity feed showing who's going where tonight with "Join" buttons
+- "Popular Tonight" ranking of venues by RSVP count with animated progress bars
+- Tonight window: 6 PM today to 4 AM tomorrow (handles midnight crossing)
+- Confetti particle animation on "going" tap, friend avatar stack (max 3 + overflow)
+- Seeded mock friend RSVPs for demo; notification generation for friend broadcasts
+- **Files**: `lib/going-tonight.ts`, `hooks/use-going-tonight.ts`, `components/GoingTonightButton.tsx`, `components/GoingTonightFeed.tsx`
+
+#### 5B.4 Personalized "Tonight's Pick" Card
+- Hero card recommending ONE venue for tonight based on weighted scoring:
+  - Pulse score & trending (30%), user preferences (20%), friend presence (20%), distance (15%), time-appropriateness (10%), novelty bonus (5%)
+- Natural language explanation: "Your favorite cocktail bar is surging — 4 friends nearby"
+- 2-3 runner-up alternates in horizontal scroll, confidence score
+- Gated to 5 PM – 2 AM display window; dismissible per-night via Spark KV persistence
+- Animated pulse score ring (SVG + Framer Motion), gradient background, skeleton loading state
+- Auto-refreshes every 5 minutes with significance threshold (>10% margin change)
+- **Files**: `lib/tonights-pick.ts`, `hooks/use-tonights-pick.ts`, `components/TonightsPickCard.tsx`
+
+#### 5B.5 Venue Energy History Timeline
+- 24-hour energy timeline chart on venue detail pages using Recharts AreaChart
+- Category-specific curves: nightclub peaks 11PM-1AM, restaurant 7-9PM, cafe 8-10AM, bar 9PM-midnight
+- Current time "Now" marker (vertical dashed line), peak hour marker with "Best time to visit"
+- Trend badge: Rising, Peaking, Winding down, Quiet — with directional icons
+- "Compared to last week" percentage badge ("+15% busier than last Friday")
+- Energy forecast for upcoming hours; smooth data curves via averaging
+- Compact mode for venue cards (minimal chart) and full mode for detail pages
+- **Files**: `lib/venue-energy-history.ts`, `hooks/use-venue-energy-history.ts`, `components/VenueEnergyTimeline.tsx`
+
+#### 5B.6 Quick Pulse Reactions (Emoji Burst)
+- TikTok/Instagram-style floating emoji reactions with physics-based animations
+- 8 reaction types: 🔥 Fire, 🎶 Music, 💃 Dancing, 🍸 Drinks, ⚡ Electric, ❤️ Love, 😎 Chill, 👑 VIP
+- Particles float upward with randomized drift, rotation, scale animation, and gravity
+- Rapid tap detection: tapping faster within 300ms increases particle count (3 → 8)
+- 60fps requestAnimationFrame loop with 30-particle performance cap
+- Aggregated reaction counts with "1.5K" formatting; top-3 display
+- Reaction bar with bounce-on-tap buttons, long-press tooltips, active glow states
+- `pointer-events: none` overlay so particles don't block interaction
+- **Files**: `lib/emoji-reactions.ts`, `hooks/use-emoji-burst.ts`, `components/EmojiReactionBar.tsx`, `components/EmojiBurstOverlay.tsx`
+
+#### 5B.7 Neighborhood Heatmap Walkthrough
+- Guided "explore mode" generating real-time bar crawl routes through hot neighborhoods
+- 6 themes: hottest, cocktail-crawl, dive-bars, live-music, foodie, best-of
+- Route optimization: nearest-neighbor weighted by energy score (not just proximity)
+- Walk time estimates via haversine distance at 3 mph; arrival energy predictions
+- Stop list with numbered circles, dotted connector lines, venue names, walk times
+- In-progress tracking: "Stop 2 of 4 — 12 min walk to next" with pulse-animated current stop
+- Route customization: reorder from different start point, add/remove stops with time recalculation
+- Difficulty levels: easy (2-3 stops), moderate (4-5), ambitious (6+)
+- **Files**: `lib/neighborhood-walkthrough.ts`, `hooks/use-neighborhood-walkthrough.ts`, `components/NeighborhoodWalkthrough.tsx`
+
+#### 5B.8 Streak-Powered Check-In Rewards
+- 7 streak types: weekly check-in, weekend warrior, explorer, social butterfly, early bird, night owl, venue loyal
+- Milestone progression at 3, 5, 10, 25, 50, 100 with XP bonuses at each tier
+- Circular progress ring with color progression: gray → blue → purple → gold
+- Flame icon animation for streaks of 5+; "At risk!" countdown badge when expiring within 24 hours
+- Friend leaderboard ranked by streak count with rank shuffle animations
+- XP multiplier system: 1x base, scaling up to 3x with multiple active streaks
+- Full dashboard: stats grid, at-risk section, active/inactive streak grids, milestone timeline
+- **Files**: `lib/streak-rewards.ts`, `hooks/use-streak-rewards.ts`, `components/StreakCounter.tsx`, `components/StreakDashboard.tsx`
+
+#### 5B.9 Venue Owner Quick Boost
+- Streamlined 3-tap promotion flow: select type → pick duration → confirm
+- 6 boost types: Happy Hour, Live Music, Special Event, Last Call, Grand Opening, Featured
+- Duration options: 30 min, 1 hr, 2 hr, 4 hr — with estimated reach per duration
+- Boost score multipliers: 1.2x–2.0x visibility increase based on type
+- Time/day-aware recommendations (e.g., suggests Happy Hour at 4 PM, Live Music on weekends)
+- Max 2 concurrent boosts per venue; simulated analytics (impressions, taps, conversions, ROI)
+- Inline BoostStatusBadge with pulsing glow, countdown timer, and tap-to-view analytics
+- 3-step wizard with Framer Motion slide transitions and confetti success animation
+- **Files**: `lib/venue-quick-boost.ts`, `hooks/use-venue-boost.ts`, `components/QuickBoostFlow.tsx`, `components/BoostStatusBadge.tsx`
+
+#### 5B.10 Offline Mode with Smart Prefetch
+- LRU cache engine with priority-based eviction (critical > high > normal > low), 10MB default limit
+- Smart prefetch prioritization: favorites > followed > nearby > trending venues
+- Prefetch plan skips already-cached items; neighborhood-radius-based bulk caching
+- Stale detection with configurable refresh intervals; localStorage serialization/deserialization
+- Offline banner: "You're offline — showing cached data from 5 min ago" with amber slide-down
+- Per-venue "Cached Xm ago" badges; queued action sync when connectivity restored
+- Sync progress indicator with animated bar; cache manager settings panel (stats, refresh, clear)
+- Integrates with existing `use-offline-mode.ts` connectivity detection
+- **Files**: `lib/offline-cache.ts`, `lib/smart-prefetch.ts`, `hooks/use-offline-cache.ts`, `components/OfflineIndicator.tsx`
+
 ### Phase 6 — Data Intelligence & Monetization
 *Goal: Leverage data insights for user value and sustainable revenue.*
 
