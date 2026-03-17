@@ -89,6 +89,46 @@ jobs:
       - name: Audit dependencies
         run: npm run audit
 
+  bundle-size:
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+
+      - name: Check bundle size budget (500KB gzipped per JS chunk)
+        run: |
+          max_bytes=$((500 * 1024))
+          echo "Bundle size budget: 500KB (${max_bytes} bytes) gzipped per JS chunk"
+          echo ""
+          failed=0
+          for file in dist/assets/*.js; do
+            if [ ! -f "$file" ]; then
+              echo "No JS files found in dist/assets/"
+              exit 1
+            fi
+            gzip_size=$(gzip -c "$file" | wc -c)
+            name=$(basename "$file")
+            kb_size=$(awk "BEGIN {printf \"%.1f\", ${gzip_size}/1024}")
+            if [ "$gzip_size" -gt "$max_bytes" ]; then
+              echo "FAIL: ${name} — ${kb_size}KB gzipped (exceeds 500KB budget)"
+              failed=1
+            else
+              echo "OK:   ${name} — ${kb_size}KB gzipped"
+            fi
+          done
+          echo ""
+          if [ "$failed" -eq 1 ]; then
+            echo "Bundle size budget exceeded. Optimize your chunks or raise the limit."
+            exit 1
+          fi
+          echo "All JS chunks are within the 500KB gzipped budget."
+
   e2e_smoke:
     runs-on: ubuntu-latest
     needs: [build]

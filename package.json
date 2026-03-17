@@ -14,7 +14,8 @@
         "audit": "npm audit --audit-level=high",
         "release-check": "npm run lint && npm run test && npm run build && npm run audit",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "analyze": "ANALYZE=true tsc -b --noCheck && ANALYZE=true vite build"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",
@@ -93,6 +94,7 @@
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
         "jsdom": "^28.1.0",
+        "rollup-plugin-visualizer": "^7.0.1",
         "tailwindcss": "^4.1.11",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.38.0",

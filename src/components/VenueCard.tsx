@@ -8,6 +8,7 @@ import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
+import { getContextualEnergyLabel } from '@/lib/pulse-engine'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -25,7 +26,10 @@ interface VenueCardProps {
 export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
-  const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
+  // Try the enhanced contextual energy label first, fall back to the original
+  const contextualLabel = venue.pulseScore >= 25
+    ? (getContextualEnergyLabel(venue) || getContextualLabel(venue))
+    : ''
   
   return (
     <motion.div

@@ -79,6 +79,82 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 - **Progression**: Venue page opened → User taps star icon → Venue added to followed list → New tab "My Spots" appears in navigation → Feed shows chronological pulses from all followed venues → User can unfollow to remove
 - **Success criteria**: Users can follow/unfollow venues easily, followed venue feed updates in real-time, limit of 10 venues prevents list bloat, provides engagement path for solo users
 
+### My Spots Feed
+- **Functionality**: Dedicated feed experience for followed venues with a "My Spots" tab in the social feed, follow/unfollow controls throughout the app, filtered pulse feed, and map integration showing followed-venue indicators
+- **Purpose**: Creates a personalized, low-effort discovery surface that keeps users engaged even without an active friend network by surfacing activity at the places they care about most
+- **Trigger**: User taps the "My Spots" toggle in the social feed, or stars/unstars a venue from venue pages, venue cards, or the trending list
+- **Progression**: User discovers a venue they like → taps star icon to follow → venue added to My Spots list (max 10) → "My Spots" tab in social feed shows chronological pulses from all followed venues → map pins for followed venues display a subtle star indicator → user can unfollow by tapping star again → removing last followed venue shows empty state with discovery CTA
+- **Requirements**:
+  - Follow/unfollow star button on venue detail pages, venue cards in trending list, and search results
+  - "My Spots" toggle tab alongside "Friends" in the social feed
+  - Chronological pulse feed filtered to only followed venues
+  - Followed-venue badge/star overlay on map pins for followed venues
+  - Hard limit of 10 followed venues; attempting to follow an 11th shows a friendly error with option to manage existing follows
+  - Real-time feed updates when new pulses are posted at followed venues
+  - Empty state when no venues are followed with illustration and "Discover venues to follow" CTA
+  - Persist followed venues across sessions
+- **Success criteria**: Users can follow/unfollow from multiple surfaces, My Spots feed loads only relevant pulses, map pins visually distinguish followed venues, 10-venue cap is enforced with clear messaging, empty state guides new users toward discovery
+
+### Map Progressive Disclosure
+- **Functionality**: Simplified default map view showing only the top 5 nearby surging venues instead of all venues, with a "Show all venues" CTA to reveal the full heatmap and all venue pins
+- **Purpose**: Reduces cognitive overload for new and returning users by focusing attention on what matters most — the highest-energy nearby spots — while preserving full exploration for power users
+- **Trigger**: User opens the Map tab or navigates to the map view
+- **Progression**: Map loads → displays only the top 5 highest-scoring venues within range as pins → heatmap shows only these focal venues → "Show all venues" CTA button visible at bottom of map → user taps CTA → animated reveal transitions in remaining venue pins and full heatmap overlay → CTA changes to "Show top spots" to toggle back → first-time users see a brief tooltip explaining the focused view
+- **Requirements**:
+  - Default view: only top 5 nearby venues by pulse score, rendered as pins with energy-level coloring
+  - Heatmap in default mode reflects only the top 5 venues, not the full dataset
+  - "Show all venues" CTA anchored at the bottom of the map canvas, styled as a secondary button
+  - Tapping the CTA triggers an animated reveal: new pins scale in with staggered timing and the heatmap gradient expands smoothly
+  - Toggle is reversible — user can switch back to the focused top-5 view
+  - First-time user experience: tooltip or coach mark on first map visit explaining "We're showing you the hottest spots nearby. Tap below to see everything."
+  - Pin clustering still applies at lower zoom levels in the "show all" mode
+  - If fewer than 5 venues are nearby, show all available venues without the CTA
+- **Success criteria**: New users see a clean, focused map on first visit; "Show all venues" reveals the complete map with smooth animation; first-session tooltip appears once and is dismissible; toggle state does not persist across sessions (always defaults to top 5)
+
+### Time-Contextual Scoring
+- **Functionality**: Enhanced scoring engine that normalizes venue energy scores relative to expected activity for the venue's category and current time of day, with contextual labels communicating score meaning
+- **Purpose**: Prevents scoring unfairness where venues active at off-peak times (e.g., a busy cafe at 7 AM) are penalized compared to nightlife venues, and gives users meaningful context about what a score means right now
+- **Trigger**: Score calculation runs on every new pulse, score refresh, or venue page load
+- **Progression**: Pulse created or score refreshed → scoring engine looks up venue category → retrieves category-specific peak hour definition → calculates expected activity baseline for current time → normalizes raw score against baseline → applies contextual label → UI displays normalized score with label (e.g., "Electric for this time of day") → score transparency panel shows time-context explanation
+- **Requirements**:
+  - Category-specific peak hour definitions:
+    - Cafes/Coffee: peak 6 AM-10 AM, secondary peak 2 PM-4 PM
+    - Restaurants/Food: peak 11:30 AM-1:30 PM (lunch), 6 PM-9 PM (dinner)
+    - Bars/Pubs: peak 5 PM-8 PM (happy hour), 9 PM-1 AM (evening)
+    - Nightclubs: peak 10 PM-2 AM
+    - Parks/Outdoor: peak 10 AM-4 PM on weekends, 5 PM-7 PM on weekdays
+    - General/Other: flat baseline (no time weighting)
+  - Score normalization: raw score is adjusted by a multiplier based on how the current time relates to the venue category's peak hours (a cafe scoring 40 at 7 AM may display as "Buzzing" since that is high relative to expected morning cafe activity)
+  - Contextual labels displayed on venue cards and venue detail pages:
+    - "Electric for this time of day" — score significantly above time-adjusted baseline
+    - "Heating up early" — rising score before typical peak hours
+    - "Busy for a [day of week]" — above-average for this day
+    - "Winding down" — score dropping during typical peak hours
+    - "Quiet right now" — below baseline, neutral framing (not negative)
+  - Score transparency panel updated to show time-context: "This score accounts for typical [category] activity at [time period]"
+  - Normalized scores never inflate a truly inactive venue — if raw pulse count is zero, normalized score remains zero regardless of time context
+  - Labels are informational only and do not affect the underlying score calculation used for ranking
+- **Success criteria**: Cafes and restaurants can surface as trending during their natural peak hours without competing against nightlife raw scores; users understand what a score means in context; score transparency panel explains time normalization; midnight scoring works correctly (nightclub baseline is high, cafe baseline is near zero)
+
+### Voice Search Guardrails
+- **Functionality**: Constrained voice search experience limited to 3 supported command types with inline examples, fallback messaging, first-use opt-in tooltip, and a 10-second recording limit
+- **Purpose**: Prevents user frustration from open-ended voice input that cannot be reliably parsed, and sets clear expectations about what voice commands the app supports
+- **Trigger**: User taps the microphone icon in the search bar or filter panel
+- **Progression**: User taps microphone → first-time users see opt-in tooltip with example commands → user grants microphone permission (if not already granted) → recording begins with visual indicator and 10-second countdown → user speaks command → transcript is parsed against supported command types → if matched: action is executed with success feedback → if not matched: fallback message displayed with example commands → recording stops automatically at 10 seconds if no speech end detected
+- **Requirements**:
+  - Three supported command types:
+    1. **Search venue**: "Find [venue name]" or "[venue name]" — searches venues by name
+    2. **Filter by category**: "Show [category]" or "Filter [category]" — applies category filter (bars, cafes, restaurants, clubs, etc.)
+    3. **Filter by energy**: "Show [energy level] venues" — filters by energy level (dead, chill, buzzing, electric)
+  - Inline examples shown below the search bar when microphone is active: "Try: 'Find Pike Brewing', 'Show bars', or 'Show electric venues'"
+  - First-use opt-in tooltip: appears once on first microphone tap explaining supported commands and how voice search works; dismissible; does not reappear after dismissal
+  - 10-second recording limit: visual countdown timer shown during recording; recording auto-stops at 10 seconds; partial transcript is processed if available
+  - Fallback message when input cannot be parsed: "I didn't catch that. Try saying a venue name, category, or energy level." with clickable example commands below
+  - Success feedback: toast notification confirming the action taken (e.g., "Searching for Pike Brewing" or "Showing electric venues")
+  - Voice search button is hidden (not just disabled) on browsers that do not support the Web Speech API
+  - Microphone permission denial shows a clear error with link to browser settings
+- **Success criteria**: Users understand supported commands before speaking; unrecognized input gets a helpful fallback rather than silence; 10-second limit prevents indefinite recording; first-time tooltip appears only once; voice search degrades gracefully on unsupported browsers
+
 ### Settings & Preferences
 - **Functionality**: Configure app preferences including imperial/metric unit system toggle and notification preferences
 - **Purpose**: Personalize the app experience to match user's location and preferences
@@ -181,6 +257,36 @@ This loop creates a self-reinforcing network effect where each pulse contributes
 - **Zero Check-In History**: Users without venue history don't get badges; functionality remains unchanged
 - **Badge Overflow**: Maximum 2 badges displayed per pulse to prevent visual clutter; prioritize most relevant badges (Regular, Frequent, Veteran, Active Tonight, Return Visit, Trusted Source)
 - **Pre-Trending Contextual Labels**: Venues in Pre-Trending state show smart labels like "Usually busy mornings" (Cafes), "Peak dining hours" (Food), or "Likely trending tonight" (Nightlife) based on category and time
+
+### My Spots Edge Cases
+- **My Spots Empty State**: When user has no followed venues, My Spots tab shows an illustration with "You haven't followed any spots yet" message and a "Discover venues" CTA that navigates to the Map or Trending view
+- **Follow Limit Reached**: When user attempts to follow an 11th venue, show a friendly dialog: "You're following 10 spots (the max). Unfollow one to add a new favorite." with a list of current follows for easy removal
+- **Unfollowing Last Venue**: When user unfollows their only followed venue, My Spots tab transitions to empty state; no confirmation dialog needed for unfollow
+- **Followed Venue Deleted or Closed**: If a followed venue is removed from the system, silently remove it from the user's followed list and decrement the count; no notification needed
+- **My Spots Feed No Recent Activity**: When followed venues exist but none have recent pulses, show "Your spots are quiet right now" with the most recent pulse timestamp for each venue
+
+### Map Progressive Disclosure Edge Cases
+- **Map With No Nearby Venues**: When no venues are within the default radius, expand the search radius automatically up to 10 miles; if still no results, show "No venues found nearby" with a prompt to explore a different area or add a venue
+- **Fewer Than 5 Nearby Venues**: When fewer than 5 venues are in range, show all available venues without the "Show all venues" CTA since there is nothing additional to reveal
+- **All Venues Have Zero Score**: When all nearby venues have a score of 0, show pins with "Dead" energy styling and a message "Things are quiet nearby. Be the first to post a pulse!"
+- **Map Toggle State on Tab Switch**: When user switches away from the Map tab and returns, the progressive disclosure toggle resets to the default top-5 view (toggle state does not persist)
+- **Show All With Large Venue Count**: When "Show all" reveals more than 50 venues, clustering is enforced at the current zoom level to prevent rendering overload
+
+### Time-Contextual Scoring Edge Cases
+- **Midnight Boundary**: At midnight, the scoring engine transitions from the current day's late-night peak definitions to the next day's early-morning baselines; nightclub scores remain contextually high until 2 AM, while cafe baseline resets to near-zero
+- **Venue With No Category**: Venues without a category assignment use the "General/Other" flat baseline (no time weighting applied)
+- **Zero Pulses With Time Context**: If a venue has zero pulses, the normalized score is always zero regardless of time context — time normalization cannot inflate an inactive venue
+- **Category Change**: If a venue's category is updated, the scoring engine immediately applies the new category's peak hours on the next score calculation; no retroactive recalculation of historical scores
+- **Score Label Transition**: When a venue's contextual label changes (e.g., from "Heating up early" to "Electric for this time of day"), the label updates on the next score refresh without animation to avoid visual noise
+- **Off-Peak Low Activity**: A venue with 1-2 pulses during off-peak hours should show a moderately positive contextual label ("Showing signs of life") rather than an artificially inflated "Electric" label; normalization multipliers are capped to prevent misleading scores
+
+### Voice Search Guardrails Edge Cases
+- **Voice Search Recording Timeout**: When the 10-second limit is reached with no speech detected, display "No speech detected. Tap to try again." and stop the recording gracefully
+- **Voice Search Partial Speech at Timeout**: When the 10-second limit is reached mid-sentence, process the partial transcript and attempt to match it to a supported command; if no match, show fallback with what was heard
+- **Voice Search Background Noise**: When speech recognition returns a transcript but confidence is very low, treat as unrecognized and show fallback message rather than executing a potentially wrong command
+- **Voice Search Rapid Activation**: When user taps the microphone button multiple times quickly, debounce to prevent multiple simultaneous recording sessions
+- **Voice Search During Active Recording**: When microphone is already recording and user taps again, stop the current recording and process whatever has been captured so far
+- **Voice Search With Empty Results**: When a valid voice command is recognized but produces no matching results (e.g., "Show Italian restaurants" but none exist nearby), display "No results for '[command]'. Try a different search." with the recognized command shown
 
 ## Design Direction
 
@@ -291,6 +397,172 @@ Key animation moments:
 
 ---
 
+## Architecture & Infrastructure
+
+### Backend Architecture (Target)
+Pulse is transitioning from a client-only prototype (Spark `useKV` hooks with mock data) to a production backend. The target architecture:
+
+- **Database**: PostgreSQL with PostGIS extension for geospatial venue queries (nearby venues, radius filtering, geo-fence verification)
+- **API Layer**: RESTful API with versioned endpoints (`/api/v1/`) for all client-server communication
+- **Real-Time**: WebSocket connections for live pulse feed updates, venue score broadcasts, and presence signals; replaces current polling intervals with server-pushed events
+- **Caching**: Redis for session storage, rate limiting counters, and hot venue score caching
+- **Media**: CDN-backed media storage for pulse photos and compressed video uploads
+
+### Authentication Strategy
+- **OAuth 2.0**: Google and Apple sign-in as primary authentication providers
+- **JWT Tokens**: Short-lived access tokens (15 min) with refresh token rotation
+- **Role-Based Access Control (RBAC)**: Three roles — `user`, `venue-owner`, `admin` — each with scoped permissions
+  - `user`: create pulses, follow venues, manage profile, react to content
+  - `venue-owner`: all user permissions plus venue dashboard, analytics, boost controls, announcements
+  - `admin`: all permissions plus moderation queue, seeded content analytics, social correlation dashboard, user management
+- **Session Management**: Server-side session validation; tokens revocable on password change or suspicious activity
+
+### Server-Side Proxy Layer
+Operations that currently run in the browser must move behind server routes before production:
+- **Reverse geocoding**: Proxy calls to OpenStreetMap Nominatim (or a commercial provider) to hide API usage patterns and enable caching
+- **Webhook signing**: Move HMAC signing logic from `public-api.ts` library code to a server endpoint that holds signing secrets
+- **API key issuance**: Developer platform API key generation and validation must be server-controlled
+- **Rate limiting**: Server-side rate limits on all public endpoints (pulse creation, search, score reads) to prevent abuse
+
+### Observability Stack
+Production deployment requires four pillars of observability:
+- **Error Tracking**: Sentry (or equivalent) integrated with React error boundaries; captures unhandled exceptions, network failures, and component render errors with source maps
+- **Structured Logging**: Server-side request logs with correlation IDs linking frontend actions to backend processing; log levels (debug, info, warn, error) with JSON formatting
+- **Performance Monitoring**: Core Web Vitals tracking (LCP, FID, CLS); API response time percentiles (p50, p95, p99); database query performance
+- **Product Analytics**: Event tracking for core loop completion (app open, check-in, pulse creation, venue discovery); funnel analysis for onboarding completion, first pulse, and 7-day retention; activation metric: first pulse created within 24 hours of signup
+
+### Bundle Size & Performance Budgets
+- **Main bundle**: 500 KB gzipped maximum for the primary JavaScript chunk
+- **Initial load**: Under 3 seconds on 4G mobile connection (Lighthouse performance score target: 90+)
+- **Map interaction**: 60 FPS for pan/zoom; pin rendering under 100ms for up to 200 visible venues
+- **Pulse creation**: Under 2 seconds from tap to feed appearance (optimistic UI)
+- **Bundle tracking**: `rollup-plugin-visualizer` or `source-map-explorer` integrated into CI; regressions beyond budget fail the build
+
+---
+
+## Component Architecture
+
+Large components have been identified for decomposition into focused, testable sub-components. The target architecture:
+
+### InteractiveMap Decomposition
+The `InteractiveMap.tsx` component (~1,849 lines) splits into:
+| Sub-Component | Responsibility |
+|---------------|----------------|
+| `MapCanvas` | Core canvas rendering, pan/zoom controls, coordinate transforms |
+| `MapCluster` | Pin clustering logic at lower zoom levels, cluster expansion on tap |
+| `MapHeatmap` | Energy heatmap gradient overlay, color interpolation, opacity by zoom level |
+| `MapVenuePin` | Individual venue pin rendering, energy-level coloring, pulse animation, followed-venue star indicator |
+| `MapControls` | Zoom buttons, re-center button, "Show all venues" CTA, GPS tracking toggle |
+| `MapVenueSheet` | Bottom sheet venue preview on pin tap, quick actions (check-in, follow, navigate) |
+| `MapSmartRoute` | Route-oriented venue previews, fit-to-view calculations, smart preview ranking |
+
+### GlobalSearch Decomposition
+The `GlobalSearch.tsx` component (~853 lines) splits into:
+| Sub-Component | Responsibility |
+|---------------|----------------|
+| `SearchInput` | Text input field, voice search microphone button, clear button, focus management |
+| `SearchFilters` | Category filter chips, energy level filter, distance radius, active filter badges |
+| `SearchResults` | Venue result cards, "no results" empty state, result ranking and highlighting |
+| `SearchSuggestions` | Recent searches, trending venues, autocomplete suggestions |
+
+### VenuePlatformDashboard Decomposition
+The `VenuePlatformDashboard.tsx` component (~894 lines) splits into:
+| Sub-Component | Responsibility |
+|---------------|----------------|
+| `DashboardAnalytics` | Pulse volume charts, peak hour analysis, energy trend graphs, visitor demographics |
+| `DashboardBoostControls` | Venue boost activation, budget allocation, boost scheduling, performance metrics |
+| `DashboardSettings` | Venue profile editing, category selection, operating hours, notification preferences |
+| `DashboardHeader` | Venue name and score display, quick stats summary, navigation tabs |
+
+### App.tsx Decomposition
+The `App.tsx` file (~1,102 lines) splits into:
+| Sub-Component / Hook | Responsibility |
+|-----------------------|----------------|
+| `AppProviders` | Context providers wrapping (theme, auth, location, notifications, toast) |
+| `AppShell` | Layout chrome: bottom tab bar, top header, floating action button |
+| `AppRoutes` | Route definitions and tab-based navigation logic |
+| `useAppState` | Consolidated app-level state management (user, venues, pulses, notifications) |
+| `useAppHandlers` | Event handler functions extracted from App.tsx (handleSubmitPulse, handleToggleFollow, handleReaction, etc.) |
+
+---
+
+## Quality & Testing
+
+### Unit Testing Baseline
+- **Current state**: 20+ test files covering core scoring logic, recommendation engines, analytics helpers, sharing utilities, moderation rules, and interactive map helpers
+- **Framework**: Vitest with TypeScript support
+- **Coverage targets**: All files in `src/lib/` must have corresponding test files; new features must include unit tests for pure logic modules
+- **Test location**: Test files co-located in `src/lib/` alongside implementation files
+
+### End-to-End / Smoke Testing
+- **Framework**: Playwright for browser-based smoke tests
+- **Current state**: `e2e/smoke.spec.ts` with 4 test cases covering map controls and basic navigation
+- **Target**: 10-15 smoke test cases covering all critical user flows:
+  - Onboarding and splash screen completion
+  - Map load and venue pin interaction
+  - Venue page open from map pin tap
+  - Pulse creation (open dialog, fill fields, submit, verify appearance)
+  - Check-in flow with success feedback
+  - Notification list rendering and item interaction
+  - Global search (type query, verify results)
+  - Settings page (toggle preference, verify persistence)
+  - Social feed toggle between Friends and My Spots
+  - Voice search activation and fallback behavior
+- **Execution**: `npm run test:smoke` runs against a local preview build
+
+### CI Pipeline
+The GitHub Actions CI pipeline runs on every push and pull request with the following jobs:
+1. **Lint**: `npm run lint` — ESLint v9 flat config; must pass (warnings allowed, errors block)
+2. **Unit Tests**: `npm run test` — Vitest suite; all tests must pass
+3. **Build**: `npm run build` — TypeScript type-check and Vite production build; must succeed
+4. **Dependency Audit**: `npm run audit` — fails on high/critical severity CVEs
+5. **E2E Smoke Tests**: `npm run test:smoke` — Playwright smoke tests against preview build
+6. **Bundle Size Check**: Validates that the main JavaScript chunk does not exceed 500 KB gzipped; fails the build on regression
+
+### Release Check Process
+Before any deployment, the full release check runs all CI jobs locally via `npm run release-check` (lint + unit tests + build + audit). Smoke tests and bundle size validation are run as additional manual or CI-triggered steps.
+
+---
+
+## Security Requirements
+
+### Server-Side Secret Management
+- All API keys, signing secrets, and third-party credentials must be stored in server-side environment variables, never in client-side code or bundles
+- Webhook HMAC signing keys are generated and stored server-side; the client never sees signing material
+- Developer platform API keys are issued through server-controlled endpoints with proper authentication
+
+### API Key Proxying
+- Reverse geocoding calls are proxied through a server route to prevent client-side exposure of usage patterns and potential API key leakage
+- All third-party service integrations (maps, analytics, payment processors) are mediated by server-side proxy routes
+- Client requests to proxied services include only the user's auth token; the server attaches third-party credentials
+
+### Rate Limiting
+- All public API endpoints enforce rate limits to prevent abuse:
+  - Pulse creation: max 10 per user per hour
+  - Score reads: max 60 per user per minute
+  - Search queries: max 30 per user per minute
+  - Webhook deliveries: max 100 per developer key per minute
+- Rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) included in all API responses
+- Exceeded limits return HTTP 429 with `Retry-After` header
+
+### Dependency Vulnerability Management
+- `npm audit` runs in CI on every build; high and critical severity vulnerabilities fail the pipeline
+- Dependencies are reviewed and updated on a regular cadence (at minimum before each release candidate)
+- Known vulnerabilities that cannot be auto-fixed are triaged with documented risk acceptance or manual patching
+
+### OWASP Top 10 Mitigations
+- **Injection**: Parameterized database queries (no raw SQL concatenation); input validation on all API endpoints
+- **Broken Authentication**: OAuth 2.0 with short-lived JWTs; refresh token rotation; session revocation on suspicious activity
+- **Sensitive Data Exposure**: HTTPS-only transport; no secrets in client bundles; server-side encryption for sensitive user data at rest
+- **Broken Access Control**: Role-based access control enforced at the API layer; venue-owner and admin endpoints require role verification
+- **Security Misconfiguration**: Environment-specific configuration (dev/staging/prod); security headers (CSP, HSTS, X-Frame-Options) on all responses
+- **XSS**: React's built-in output encoding; Content Security Policy headers; no `dangerouslySetInnerHTML` without sanitization
+- **Insecure Deserialization**: JSON schema validation on all API request bodies
+- **Using Components with Known Vulnerabilities**: Automated dependency auditing in CI (see above)
+- **Insufficient Logging & Monitoring**: Structured logging with correlation IDs; error tracking via Sentry; alerting on auth failures and rate limit spikes
+
+---
+
 ## Current Status
 
 ### Completed Features
@@ -318,67 +590,114 @@ Key animation moments:
 
 ### Known Gaps
 - **No backend**: All data is client-side via Spark `useKV`; no database, no auth, no multi-device sync
-- **No test coverage**: Zero test files; no testing framework installed
-- **ESLint broken**: Missing `eslint.config.js` for ESLint v9 flat config format
-- **No CI/CD**: No GitHub Actions workflows for automated testing or builds
-- **Large components**: `App.tsx` (959 lines) and `InteractiveMap.tsx` (40KB) need decomposition
+- **Large components**: `App.tsx` (~1,102 lines), `InteractiveMap.tsx` (~1,849 lines), `VenuePlatformDashboard.tsx` (~894 lines), and `GlobalSearch.tsx` (~853 lines) need decomposition (see Component Architecture section)
 - **Mock data only**: Twitter/X API is simulated; all venue/user data is seeded
+- **Client-side third-party calls**: Reverse geocoding calls OpenStreetMap Nominatim directly from the browser
+- **No production observability**: Error tracking, structured logging, and performance monitoring not yet implemented
+- **My Spots UI incomplete**: Backend logic wired but feed UI, follow buttons, and map indicators not yet built
+- **Time-contextual scoring not integrated**: Utility code exists at `src/lib/time-contextual-scoring.ts` but is not wired into the main scoring path
+- **Voice search lacks guardrails**: Accepts open-ended input; no command type constraints or fallback messaging yet
+
+### Resolved Gaps (Previously Known)
+- ~~No test coverage~~: 20+ unit test files now cover core scoring, recommendations, analytics, sharing, moderation, and map helpers (Vitest)
+- ~~ESLint broken~~: ESLint v9 flat config (`eslint.config.js`) now configured and passing
+- ~~No CI/CD~~: GitHub Actions pipeline runs lint, unit tests, build, dependency audit, and smoke tests on every push/PR
 
 ---
 
 ## Feature Roadmap
 
+### Phase 0 — Stabilize The Prototype (Largely Complete)
+*Goal: Make the existing app consistent, testable, and easier to evolve without changing the product scope.*
+
+**Completed**:
+- ESLint v9 flat config configured and passing
+- Vitest unit test suite with 20+ test files covering core logic modules
+- GitHub Actions CI pipeline with lint, test, build, audit, and smoke test jobs
+- Playwright smoke test framework (`e2e/smoke.spec.ts`) with initial test cases
+- Release check process documented (`npm run release-check`)
+- Release gates documentation and CI refinement
+
+**Remaining**:
+- Expand Playwright smoke tests from 4 to 10-15 cases covering all critical flows
+- Add bundle size tracking with 500 KB gzipped budget enforcement in CI
+- Remove remaining low-value lint warnings and dead code
+
 ### Phase 1 — Complete the Core Experience
 *Goal: Ship a fully functional MVP that a small group of users can actually use together.*
+
+**Status**: Backend architecture designed; proxy stubs and server-side boundary planning in progress.
 
 #### 1.1 My Spots Feed UI
 - Add follow/unfollow star button on venue pages and venue cards
 - Add "My Spots" toggle tab alongside "Friends" in social feed
 - Display chronological pulse feed filtered to followed venues
-- Show followed status badge on venue cards throughout the app
+- Show followed status badge and star indicator on map pins for followed venues
+- Enforce 10-venue follow limit with friendly messaging
 
 #### 1.2 Backend & Authentication
-- Stand up a backend API (Node.js/Express or serverless functions)
-- User authentication (OAuth via Google/Apple or magic link)
+- Stand up a backend API (Node.js/Express or serverless functions) with PostgreSQL + PostGIS
+- User authentication (OAuth 2.0 via Google/Apple with JWT tokens)
 - PostgreSQL or Supabase database for persistent storage
 - Migrate from `useKV` to real API calls with React Query
 - Multi-device support with synced user state
 
 #### 1.3 Real-Time Infrastructure
-- WebSocket or SSE connections for live pulse feed updates
+- WebSocket connections for live pulse feed updates and venue score broadcasts
 - Push notifications (Firebase Cloud Messaging / APNs)
 - Real-time venue score broadcast to all connected clients
 - Replace polling intervals with server-pushed events
+- Presence channel for "Who's Here" feature
 
-#### 1.4 Code Quality Foundation
-- Configure ESLint v9 flat config
-- Add Vitest with unit tests for core engines (`pulse-engine`, `credibility`, `venue-trending`)
-- Component tests for critical flows (Create Pulse, Check-In)
-- Decompose `App.tsx` into route-level components with proper state management
-- Set up GitHub Actions CI pipeline (lint, type-check, test, build)
+#### 1.4 Server-Side Proxy & API Boundaries
+- Move reverse geocoding behind a server proxy route (currently calls Nominatim from browser)
+- Move webhook HMAC signing from `public-api.ts` library code to server endpoints
+- Move API key issuance and validation to server-controlled endpoints
+- Implement rate limiting on all public-facing API routes (see Security Requirements)
+- Define environment configuration for dev, staging, and production
+
+#### 1.5 Component Decomposition
+- Decompose `InteractiveMap.tsx` into MapCanvas, MapCluster, MapHeatmap, MapVenuePin, MapControls, MapVenueSheet, MapSmartRoute
+- Decompose `App.tsx` into AppProviders, AppShell, AppRoutes, useAppState, useAppHandlers
+- Decompose `GlobalSearch.tsx` into SearchInput, SearchFilters, SearchResults, SearchSuggestions
+- Decompose `VenuePlatformDashboard.tsx` into DashboardAnalytics, DashboardBoostControls, DashboardSettings, DashboardHeader
 
 ### Phase 2 — Intelligence & Trust
 *Goal: Make the scoring smarter, the content more trustworthy, and the discovery more personalized.*
 
+**Deliverables**: Time-contextual scoring integration, map progressive disclosure, voice search guardrails, venue recommendations, and content moderation.
+
 #### 2.1 Time-Contextual Scoring
-- Define category-specific peak hours (e.g., cafes peak mornings, bars peak evenings)
-- Normalize scores relative to expected activity for time of day
-- Add contextual labels: "Electric for a Tuesday afternoon" or "Heating up early"
-- Prevent cafes from always losing to nightlife venues in raw score
+- Integrate existing `src/lib/time-contextual-scoring.ts` utility into the main scoring path in `pulse-engine.ts`
+- Define category-specific peak hours (cafes: morning, restaurants: lunch/dinner, bars: happy hour/evening, nightclubs: late night, parks: daytime)
+- Normalize scores relative to expected activity for time of day and venue category
+- Add contextual labels on venue cards and detail pages: "Electric for this time of day", "Heating up early", "Busy for a Tuesday"
+- Update score transparency panel to explain time-context normalization
+- Prevent cafes from always losing to nightlife venues in raw score comparisons
 
 #### 2.2 Map Progressive Disclosure
-- Default map view shows top 5 nearby surging venues (not all venues)
-- "Show full heatmap" CTA reveals complete overlay
-- First-session guided discovery to prevent information overload
-- Cluster pins at lower zoom levels to reduce visual noise
+- Default map view shows only top 5 nearby surging venues (not all venues at once)
+- "Show all venues" CTA at bottom of map reveals complete overlay with animated reveal
+- First-session guided tooltip explaining the focused default view
+- Toggle is reversible (switch back to top-5 focused view)
+- Cluster pins at lower zoom levels to reduce visual noise in "show all" mode
+- If fewer than 5 venues nearby, show all available without the CTA
 
-#### 2.3 Venue Recommendations
+#### 2.3 Voice Search Guardrails
+- Constrain voice input to 3 supported command types: search venue, filter by category, filter by energy level
+- Show inline examples when microphone is active ("Try: 'Find Pike Brewing', 'Show bars', 'Show electric venues'")
+- Add first-use opt-in tooltip explaining supported voice commands; shown once, then dismissed permanently
+- Implement 10-second recording limit with visual countdown; auto-stop and process partial transcript
+- Add fallback message for unrecognized input with clickable example commands
+- Hide voice search button entirely on browsers without Web Speech API support
+
+#### 2.4 Venue Recommendations
 - "You might like" suggestions based on venue categories user frequents
 - Time-aware recommendations (brunch spots in morning, bars at night)
 - Friend activity signals ("3 friends pulsed here tonight")
 - Personalized trending: weight trending list by user preferences
 
-#### 2.4 Content Moderation
+#### 2.5 Content Moderation
 - Flag/report flow for inappropriate pulses
 - Automated content screening for uploaded photos/videos
 - Admin moderation queue for flagged content
@@ -467,6 +786,114 @@ Key animation moments:
 - User-created mood boards from saved pulses
 - Venue-curated playlists highlighting their best moments
 - Shareable playlist cards for social media
+
+### Phase 5B — Next-Generation Engagement Features (Implemented)
+*Goal: Maximize user engagement, social coordination, and revenue pathways through 10 production-grade features.*
+
+*Status: All 10 features implemented with full test suites (420+ tests across 20 test files). All features work with client-side state and are backend-ready for Phase 1 migration.*
+
+#### 5B.1 Live Activity Feed
+- Real-time scrolling feed of anonymized venue activity on the Discover tab
+- Event types: check-ins, surges, events starting, trending alerts, happy hours
+- Events arrive every 5-15 seconds with Framer Motion slide-in animations
+- Intelligent deduplication (same venue/type within time window), grouping ("3 people checked in"), and 30-min decay
+- Priority-based sorting blending recency and event importance
+- Rolling window capped at 50 events with scroll-lock detection (auto-scrolls unless user scrolled up)
+- Compact and expanded display modes, pulsing green "Live" indicator
+- **Files**: `lib/live-activity-feed.ts`, `hooks/use-live-activity-feed.ts`, `components/LiveActivityFeed.tsx`
+
+#### 5B.2 Venue Comparison Mode
+- Side-by-side comparison of two venues across energy, distance, crowd, friends, price, and wait time
+- Visual comparison bars with trophy icons showing which venue "wins" each metric
+- Natural language verdict: "Neon Lounge is hotter right now but The Rooftop has more friends"
+- "Pick for me" by preference (energy, proximity, social, price) with match scoring (0-100)
+- Framer Motion cards slide in from sides with animated comparison rows
+- Mobile responsive: stacked on very small screens, side-by-side on standard mobile
+- **Files**: `lib/venue-comparison.ts`, `hooks/use-venue-comparison.ts`, `components/VenueComparison.tsx`
+
+#### 5B.3 "Going Tonight" RSVP & Friends Coordination
+- One-tap "I'm going tonight" button on venue pages broadcasting intent to friends
+- Three RSVP states: going, maybe, cancelled — with optional arrival time estimate
+- Friend activity feed showing who's going where tonight with "Join" buttons
+- "Popular Tonight" ranking of venues by RSVP count with animated progress bars
+- Tonight window: 6 PM today to 4 AM tomorrow (handles midnight crossing)
+- Confetti particle animation on "going" tap, friend avatar stack (max 3 + overflow)
+- Seeded mock friend RSVPs for demo; notification generation for friend broadcasts
+- **Files**: `lib/going-tonight.ts`, `hooks/use-going-tonight.ts`, `components/GoingTonightButton.tsx`, `components/GoingTonightFeed.tsx`
+
+#### 5B.4 Personalized "Tonight's Pick" Card
+- Hero card recommending ONE venue for tonight based on weighted scoring:
+  - Pulse score & trending (30%), user preferences (20%), friend presence (20%), distance (15%), time-appropriateness (10%), novelty bonus (5%)
+- Natural language explanation: "Your favorite cocktail bar is surging — 4 friends nearby"
+- 2-3 runner-up alternates in horizontal scroll, confidence score
+- Gated to 5 PM – 2 AM display window; dismissible per-night via Spark KV persistence
+- Animated pulse score ring (SVG + Framer Motion), gradient background, skeleton loading state
+- Auto-refreshes every 5 minutes with significance threshold (>10% margin change)
+- **Files**: `lib/tonights-pick.ts`, `hooks/use-tonights-pick.ts`, `components/TonightsPickCard.tsx`
+
+#### 5B.5 Venue Energy History Timeline
+- 24-hour energy timeline chart on venue detail pages using Recharts AreaChart
+- Category-specific curves: nightclub peaks 11PM-1AM, restaurant 7-9PM, cafe 8-10AM, bar 9PM-midnight
+- Current time "Now" marker (vertical dashed line), peak hour marker with "Best time to visit"
+- Trend badge: Rising, Peaking, Winding down, Quiet — with directional icons
+- "Compared to last week" percentage badge ("+15% busier than last Friday")
+- Energy forecast for upcoming hours; smooth data curves via averaging
+- Compact mode for venue cards (minimal chart) and full mode for detail pages
+- **Files**: `lib/venue-energy-history.ts`, `hooks/use-venue-energy-history.ts`, `components/VenueEnergyTimeline.tsx`
+
+#### 5B.6 Quick Pulse Reactions (Emoji Burst)
+- TikTok/Instagram-style floating emoji reactions with physics-based animations
+- 8 reaction types: 🔥 Fire, 🎶 Music, 💃 Dancing, 🍸 Drinks, ⚡ Electric, ❤️ Love, 😎 Chill, 👑 VIP
+- Particles float upward with randomized drift, rotation, scale animation, and gravity
+- Rapid tap detection: tapping faster within 300ms increases particle count (3 → 8)
+- 60fps requestAnimationFrame loop with 30-particle performance cap
+- Aggregated reaction counts with "1.5K" formatting; top-3 display
+- Reaction bar with bounce-on-tap buttons, long-press tooltips, active glow states
+- `pointer-events: none` overlay so particles don't block interaction
+- **Files**: `lib/emoji-reactions.ts`, `hooks/use-emoji-burst.ts`, `components/EmojiReactionBar.tsx`, `components/EmojiBurstOverlay.tsx`
+
+#### 5B.7 Neighborhood Heatmap Walkthrough
+- Guided "explore mode" generating real-time bar crawl routes through hot neighborhoods
+- 6 themes: hottest, cocktail-crawl, dive-bars, live-music, foodie, best-of
+- Route optimization: nearest-neighbor weighted by energy score (not just proximity)
+- Walk time estimates via haversine distance at 3 mph; arrival energy predictions
+- Stop list with numbered circles, dotted connector lines, venue names, walk times
+- In-progress tracking: "Stop 2 of 4 — 12 min walk to next" with pulse-animated current stop
+- Route customization: reorder from different start point, add/remove stops with time recalculation
+- Difficulty levels: easy (2-3 stops), moderate (4-5), ambitious (6+)
+- **Files**: `lib/neighborhood-walkthrough.ts`, `hooks/use-neighborhood-walkthrough.ts`, `components/NeighborhoodWalkthrough.tsx`
+
+#### 5B.8 Streak-Powered Check-In Rewards
+- 7 streak types: weekly check-in, weekend warrior, explorer, social butterfly, early bird, night owl, venue loyal
+- Milestone progression at 3, 5, 10, 25, 50, 100 with XP bonuses at each tier
+- Circular progress ring with color progression: gray → blue → purple → gold
+- Flame icon animation for streaks of 5+; "At risk!" countdown badge when expiring within 24 hours
+- Friend leaderboard ranked by streak count with rank shuffle animations
+- XP multiplier system: 1x base, scaling up to 3x with multiple active streaks
+- Full dashboard: stats grid, at-risk section, active/inactive streak grids, milestone timeline
+- **Files**: `lib/streak-rewards.ts`, `hooks/use-streak-rewards.ts`, `components/StreakCounter.tsx`, `components/StreakDashboard.tsx`
+
+#### 5B.9 Venue Owner Quick Boost
+- Streamlined 3-tap promotion flow: select type → pick duration → confirm
+- 6 boost types: Happy Hour, Live Music, Special Event, Last Call, Grand Opening, Featured
+- Duration options: 30 min, 1 hr, 2 hr, 4 hr — with estimated reach per duration
+- Boost score multipliers: 1.2x–2.0x visibility increase based on type
+- Time/day-aware recommendations (e.g., suggests Happy Hour at 4 PM, Live Music on weekends)
+- Max 2 concurrent boosts per venue; simulated analytics (impressions, taps, conversions, ROI)
+- Inline BoostStatusBadge with pulsing glow, countdown timer, and tap-to-view analytics
+- 3-step wizard with Framer Motion slide transitions and confetti success animation
+- **Files**: `lib/venue-quick-boost.ts`, `hooks/use-venue-boost.ts`, `components/QuickBoostFlow.tsx`, `components/BoostStatusBadge.tsx`
+
+#### 5B.10 Offline Mode with Smart Prefetch
+- LRU cache engine with priority-based eviction (critical > high > normal > low), 10MB default limit
+- Smart prefetch prioritization: favorites > followed > nearby > trending venues
+- Prefetch plan skips already-cached items; neighborhood-radius-based bulk caching
+- Stale detection with configurable refresh intervals; localStorage serialization/deserialization
+- Offline banner: "You're offline — showing cached data from 5 min ago" with amber slide-down
+- Per-venue "Cached Xm ago" badges; queued action sync when connectivity restored
+- Sync progress indicator with animated bar; cache manager settings panel (stats, refresh, clear)
+- Integrates with existing `use-offline-mode.ts` connectivity detection
+- **Files**: `lib/offline-cache.ts`, `lib/smart-prefetch.ts`, `hooks/use-offline-cache.ts`, `components/OfflineIndicator.tsx`
 
 ### Phase 6 — Data Intelligence & Monetization
 *Goal: Leverage data insights for user value and sustainable revenue.*

@@ -1,36 +1,46 @@
 import { createRoot } from 'react-dom/client'
-import { ErrorBoundary } from "react-error-boundary";
 import "@github/spark/spark"
-import { trackError } from "./lib/analytics"
 
 import App from './App.tsx'
-import { ErrorFallback } from './ErrorFallback.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
+import { initErrorTracking } from './lib/error-tracking.ts'
+import { initPerformanceMonitoring } from './lib/performance-monitor.ts'
+import { logger, setCorrelationId, generateCorrelationId } from './lib/logger.ts'
+import { startSession, trackFunnelStep } from './lib/analytics.ts'
 
 import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-if (typeof window !== "undefined") {
-  window.addEventListener("error", (event) => {
-    if (event.error instanceof Error) {
-      trackError(event.error, "window.onerror")
-      return
-    }
-    trackError(String(event.message || "Unknown runtime error"), "window.onerror")
-  })
+// ---------------------------------------------------------------------------
+// Bootstrap observability
+// ---------------------------------------------------------------------------
 
-  window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason
-    if (reason instanceof Error) {
-      trackError(reason, "window.unhandledrejection")
-      return
-    }
-    trackError(String(reason || "Unknown promise rejection"), "window.unhandledrejection")
-  })
-}
+// Assign a correlation ID for this page load
+setCorrelationId(generateCorrelationId())
+
+// Initialize error tracking (console-based by default; swap for Sentry later)
+initErrorTracking({
+  environment: import.meta.env.MODE ?? 'development',
+  release: import.meta.env.VITE_APP_VERSION as string | undefined,
+  sampleRate: 1.0,
+})
+
+// Start web-vitals collection
+initPerformanceMonitoring()
+
+// Begin an analytics session and record the app-open funnel step
+startSession()
+trackFunnelStep('app_open')
+
+logger.info('Application starting', 'main')
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
 
 createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary FallbackComponent={ErrorFallback}>
+  <ErrorBoundary>
     <App />
-   </ErrorBoundary>
+  </ErrorBoundary>
 )
