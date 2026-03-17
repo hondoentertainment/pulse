@@ -54,6 +54,7 @@ export function useAppState() {
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const [trendingSubTab, setTrendingSubTab] = useState<'trending' | 'my-spots'>('trending')
+  const [discoverSubTab, setDiscoverSubTab] = useState<'for-you' | 'my-spots'>('for-you')
   const integrationsEnabled = isFeatureEnabled('integrations')
   const socialDashboardEnabled = isFeatureEnabled('socialDashboard')
   const { unitSystem } = useUnitPreference()
@@ -304,6 +305,8 @@ export function useAppState() {
     setShowAdminDashboard,
     trendingSubTab,
     setTrendingSubTab,
+    discoverSubTab,
+    setDiscoverSubTab,
 
     // Feature flags
     integrationsEnabled,

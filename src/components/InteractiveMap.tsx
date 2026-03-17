@@ -35,6 +35,7 @@ interface InteractiveMapProps {
   isTracking?: boolean
   locationAccuracy?: number
   locationHeading?: number | null
+  followedVenueIds?: string[]
 }
 
 const ZOOM_STEP = 1.35
@@ -46,7 +47,8 @@ export function InteractiveMap({
   onVenueClick,
   isTracking = false,
   locationAccuracy,
-  locationHeading
+  locationHeading,
+  followedVenueIds = []
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -1026,6 +1028,30 @@ export function InteractiveMap({
                   className="animate-ping"
                   style={{ animationDuration: '1.5s' }}
                 />
+              )}
+
+              {followedVenueIds.includes(venue.id) && (
+                <g>
+                  <circle
+                    cx={x + markerSize * 0.7}
+                    cy={y - markerSize * 0.7}
+                    r={Math.max(5, markerSize * 0.45)}
+                    fill="oklch(0.65 0.28 320)"
+                    stroke="oklch(0.15 0 0)"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={x + markerSize * 0.7}
+                    y={y - markerSize * 0.7}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={Math.max(6, markerSize * 0.4)}
+                    fill="white"
+                    className="pointer-events-none select-none"
+                  >
+                    &#9829;
+                  </text>
+                </g>
               )}
             </g>
           )

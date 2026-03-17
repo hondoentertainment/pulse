@@ -83,6 +83,8 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
     showAdminDashboard,
     trendingSubTab,
     setTrendingSubTab,
+    discoverSubTab,
+    setDiscoverSubTab,
     integrationsEnabled,
     socialDashboardEnabled,
     unitSystem,
@@ -431,9 +433,16 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
+              followedVenues={followedVenues}
+              userLocation={userLocation}
+              unitSystem={unitSystem}
+              discoverSubTab={discoverSubTab}
+              onSubTabChange={setDiscoverSubTab}
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onStoryClick={handleStoryClick}
               onAddFriend={handleAddFriend}
+              onToggleFollow={handleToggleFollow}
+              onReaction={handleReaction}
               onNavigate={(page) => setSubPage(page)}
             />
           </motion.div>
@@ -456,6 +465,7 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
+                followedVenueIds={currentUser?.followedVenues || []}
               />
             </div>
           </motion.div>
