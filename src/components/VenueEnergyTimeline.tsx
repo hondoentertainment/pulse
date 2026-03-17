@@ -1,260 +1,284 @@
-import { useMemo, useId } from 'react'
-import { cn } from '@/lib/utils'
+import { useMemo } from 'react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  TrendUp,
+  TrendDown,
+  Star,
+  Lightning,
+  Clock,
+  Minus,
+} from '@phosphor-icons/react'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts'
 import { motion } from 'framer-motion'
+import type { Venue } from '@/lib/types'
+import { useVenueEnergyHistory } from '@/hooks/use-venue-energy-history'
+import type { EnergyDataPoint, EnergyTrend } from '@/lib/venue-energy-history'
 
 interface VenueEnergyTimelineProps {
-  venueId: string
-  currentScore: number
+  venue: Venue
+  compact?: boolean
 }
 
-function getEnergyColor(score: number): { line: string; fill: string; glow: string } {
-  if (score >= 80) return { line: '#ef4444', fill: '#ef4444', glow: 'rgba(239,68,68,0.3)' }
-  if (score >= 60) return { line: '#f97316', fill: '#f97316', glow: 'rgba(249,115,22,0.3)' }
-  if (score >= 40) return { line: '#eab308', fill: '#eab308', glow: 'rgba(234,179,8,0.3)' }
-  if (score >= 20) return { line: '#22c55e', fill: '#22c55e', glow: 'rgba(34,197,94,0.3)' }
-  return { line: '#3b82f6', fill: '#3b82f6', glow: 'rgba(59,130,246,0.3)' }
+function formatHourLabel(hour: number): string {
+  if (hour === 0 || hour === 24) return '12AM'
+  if (hour === 12) return '12PM'
+  if (hour < 12) return `${hour}AM`
+  return `${hour - 12}PM`
 }
 
-function generateHistoricalData(venueId: string, currentScore: number): number[] {
-  // Seeded random based on venueId for consistency
-  let seed = 0
-  for (let i = 0; i < venueId.length; i++) {
-    seed = ((seed << 5) - seed + venueId.charCodeAt(i)) | 0
-  }
-  const seededRandom = () => {
-    seed = (seed * 16807 + 0) % 2147483647
-    return (seed & 0x7fffffff) / 2147483647
-  }
-
-  const points = 12
-  const data: number[] = []
-
-  // Start low, build up to current score to simulate buildup
-  const baseStart = Math.max(5, currentScore * 0.15)
-
-  for (let i = 0; i < points; i++) {
-    const progress = i / (points - 1)
-    // Exponential buildup curve with random noise
-    const base = baseStart + (currentScore - baseStart) * Math.pow(progress, 1.5)
-    const noise = (seededRandom() - 0.5) * currentScore * 0.2
-    data.push(Math.max(0, Math.min(100, Math.round(base + noise))))
-  }
-
-  // Ensure last point is exactly the current score
-  data[data.length - 1] = currentScore
-
-  return data
+function getScoreColor(score: number): string {
+  if (score >= 75) return 'oklch(0.65 0.28 340)' // electric pink
+  if (score >= 50) return 'oklch(0.70 0.22 60)' // buzzing orange
+  if (score >= 25) return 'oklch(0.75 0.18 90)' // yellow-green
+  return 'oklch(0.60 0.15 150)' // chill green
 }
 
-function buildSmoothPath(
-  data: number[],
-  width: number,
-  height: number,
-  padding: { top: number; bottom: number; left: number; right: number }
-): string {
-  const chartW = width - padding.left - padding.right
-  const chartH = height - padding.top - padding.bottom
-  const maxVal = 100
-  const minVal = 0
-
-  const points = data.map((val, i) => ({
-    x: padding.left + (i / (data.length - 1)) * chartW,
-    y: padding.top + chartH - ((val - minVal) / (maxVal - minVal)) * chartH,
-  }))
-
-  if (points.length < 2) return ''
-
-  let d = `M ${points[0].x},${points[0].y}`
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)]
-    const p1 = points[i]
-    const p2 = points[i + 1]
-    const p3 = points[Math.min(points.length - 1, i + 2)]
-
-    const tension = 0.3
-    const cp1x = p1.x + (p2.x - p0.x) * tension
-    const cp1y = p1.y + (p2.y - p0.y) * tension
-    const cp2x = p2.x - (p3.x - p1.x) * tension
-    const cp2y = p2.y - (p3.y - p1.y) * tension
-
-    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+function getTrendIcon(trend: EnergyTrend) {
+  switch (trend) {
+    case 'rising':
+      return <TrendUp size={14} weight="bold" className="text-green-400" />
+    case 'falling':
+      return <TrendDown size={14} weight="bold" className="text-orange-400" />
+    case 'peaking':
+      return <Lightning size={14} weight="fill" className="text-yellow-400" />
+    case 'quiet':
+      return <Minus size={14} weight="bold" className="text-muted-foreground" />
   }
-
-  return d
 }
 
-export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimelineProps) {
-  const uniqueId = useId()
-  const gradientId = `energy-gradient-${uniqueId}`
-  const glowFilterId = `glow-${uniqueId}`
+function getTrendLabel(trend: EnergyTrend): string {
+  switch (trend) {
+    case 'rising':
+      return 'Rising'
+    case 'falling':
+      return 'Winding down'
+    case 'peaking':
+      return 'Peaking'
+    case 'quiet':
+      return 'Quiet'
+  }
+}
 
-  const data = useMemo(() => generateHistoricalData(venueId, currentScore), [venueId, currentScore])
-  const colors = getEnergyColor(currentScore)
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: Array<{ payload: EnergyDataPoint }>
+}
 
-  const width = 360
-  const height = 80
-  const padding = { top: 8, bottom: 20, left: 30, right: 10 }
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload?.[0]) return null
+  const dp = payload[0].payload
+  return (
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg text-xs">
+      <p className="font-bold text-foreground">{formatHourLabel(dp.timestamp)}</p>
+      <p className="text-muted-foreground">
+        Energy: <span className="text-foreground font-semibold" style={{ color: getScoreColor(dp.score) }}>{dp.score}</span>
+      </p>
+      <p className="text-muted-foreground">
+        Check-ins: <span className="text-foreground font-semibold">{dp.checkinCount}</span>
+      </p>
+      {dp.label && (
+        <p className="text-accent font-medium mt-0.5">{dp.label}</p>
+      )}
+    </div>
+  )
+}
 
-  const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data])
+export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimelineProps) {
+  const { history, isLoading } = useVenueEnergyHistory(venue)
 
-  // Build fill path (line + close at bottom)
-  const fillPath = useMemo(() => {
-    if (!linePath) return ''
-    const chartBottom = height - padding.bottom
-    const firstX = padding.left
-    const lastX = width - padding.right
-    return `${linePath} L ${lastX},${chartBottom} L ${firstX},${chartBottom} Z`
-  }, [linePath])
+  const chartData = useMemo(() => {
+    if (!history) return []
+    return history.dataPoints.map(dp => ({
+      ...dp,
+      hourLabel: formatHourLabel(dp.timestamp),
+    }))
+  }, [history])
 
-  // Find peak point
-  const peakIndex = useMemo(() => {
-    let maxI = 0
-    for (let i = 1; i < data.length; i++) {
-      if (data[i] > data[maxI]) maxI = i
-    }
-    return maxI
-  }, [data])
+  const currentHour = useMemo(() => new Date().getHours(), [])
 
-  const chartW = width - padding.left - padding.right
-  const chartH = height - padding.top - padding.bottom
+  if (isLoading || !history) {
+    return (
+      <Card className="p-4 bg-card/80 border-border" data-testid="energy-timeline-loading">
+        <div className="flex items-center gap-2 animate-pulse">
+          <div className="w-4 h-4 rounded bg-muted" />
+          <div className="h-3 w-32 rounded bg-muted" />
+        </div>
+        <div className="h-32 mt-3 rounded bg-muted/50 animate-pulse" />
+      </Card>
+    )
+  }
 
-  const getX = (i: number) => padding.left + (i / (data.length - 1)) * chartW
-  const getY = (val: number) => padding.top + chartH - (val / 100) * chartH
-
-  const currentX = getX(data.length - 1)
-  const currentY = getY(currentScore)
-  const peakX = getX(peakIndex)
-  const peakY = getY(data[peakIndex])
-
-  // Calculate approximate path length for animation
-  const pathLength = useMemo(() => {
-    let len = 0
-    for (let i = 1; i < data.length; i++) {
-      const dx = getX(i) - getX(i - 1)
-      const dy = getY(data[i]) - getY(data[i - 1])
-      len += Math.sqrt(dx * dx + dy * dy)
-    }
-    return Math.ceil(len)
-  }, [data])
-
-  const timeLabels = [
-    { label: '6h ago', x: padding.left },
-    { label: '3h ago', x: padding.left + chartW / 2 },
-    { label: 'Now', x: width - padding.right },
-  ]
+  if (compact) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        data-testid="energy-timeline-compact"
+      >
+        <div className="h-16">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 2, right: 2, bottom: 0, left: 2 }}>
+              <defs>
+                <linearGradient id={`energyGradientCompact-${venue.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.65 0.28 340)" stopOpacity={0.6} />
+                  <stop offset="50%" stopColor="oklch(0.70 0.22 60)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="oklch(0.60 0.15 150)" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="score"
+                stroke="oklch(0.70 0.22 60)"
+                strokeWidth={1.5}
+                fill={`url(#energyGradientCompact-${venue.id})`}
+                isAnimationActive={true}
+                animationDuration={1000}
+              />
+              <ReferenceLine x={currentHour} stroke="hsl(var(--primary))" strokeDasharray="3 3" strokeWidth={1} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
-    <div className="w-full">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full"
-        style={{ height: 80 }}
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={colors.fill} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={colors.fill} stopOpacity={0.02} />
-          </linearGradient>
-          <filter id={glowFilterId}>
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      data-testid="energy-timeline-full"
+    >
+      <Card className="p-4 bg-card/80 border-border">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Clock size={16} weight="fill" className="text-accent" />
+            <h3 className="text-sm font-bold text-foreground">Energy Timeline</h3>
+          </div>
 
-        {/* Fill under curve */}
-        <motion.path
-          d={fillPath}
-          fill={`url(#${gradientId})`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-        />
-
-        {/* Animated line */}
-        <motion.path
-          d={linePath}
-          fill="none"
-          stroke={colors.line}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          filter={`url(#${glowFilterId})`}
-          initial={{ strokeDasharray: pathLength, strokeDashoffset: pathLength }}
-          animate={{ strokeDashoffset: 0 }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-        />
-
-        {/* Peak label */}
-        {peakIndex !== data.length - 1 && (
-          <motion.g
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.0, duration: 0.4 }}
-          >
-            <text
-              x={peakX}
-              y={peakY - 8}
-              textAnchor="middle"
-              fill={colors.line}
-              fontSize={8}
-              fontWeight="600"
-              fontFamily="monospace"
+          <div className="flex items-center gap-2">
+            {/* Trend badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
             >
-              Peak
-            </text>
-            <circle cx={peakX} cy={peakY} r={2.5} fill={colors.line} opacity={0.7} />
-          </motion.g>
-        )}
+              <Badge variant="outline" className="flex items-center gap-1 text-[10px]" data-testid="trend-badge">
+                {getTrendIcon(history.trend)}
+                <span>{getTrendLabel(history.trend)}</span>
+              </Badge>
+            </motion.div>
 
-        {/* Current point - pulsing */}
-        <motion.circle
-          cx={currentX}
-          cy={currentY}
-          r={4}
-          fill={colors.line}
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.2, type: 'spring', stiffness: 200 }}
-        />
-        <motion.circle
-          cx={currentX}
-          cy={currentY}
-          r={4}
-          fill="none"
-          stroke={colors.line}
-          strokeWidth={1.5}
-          initial={{ opacity: 0 }}
-          animate={{
-            opacity: [0.6, 0, 0.6],
-            r: [4, 10, 4],
-          }}
-          transition={{
-            delay: 1.4,
-            repeat: Infinity,
-            duration: 2,
-            ease: 'easeInOut',
-          }}
-        />
+            {/* Compared to last week */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Badge
+                variant="secondary"
+                className="text-[10px]"
+                data-testid="week-comparison"
+              >
+                {history.comparedToLastWeek}
+              </Badge>
+            </motion.div>
+          </div>
+        </div>
 
-        {/* Time labels */}
-        {timeLabels.map(({ label, x }) => (
-          <text
-            key={label}
-            x={x}
-            y={height - 4}
-            textAnchor={label === 'Now' ? 'end' : label === '6h ago' ? 'start' : 'middle'}
-            fill="currentColor"
-            className="text-muted-foreground"
-            fontSize={8}
-            fontFamily="monospace"
-            opacity={0.5}
-          >
-            {label}
-          </text>
-        ))}
-      </svg>
-    </div>
+        {/* Chart */}
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 5, bottom: 5, left: -15 }}>
+              <defs>
+                <linearGradient id={`energyGradient-${venue.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.65 0.28 340)" stopOpacity={0.5} />
+                  <stop offset="40%" stopColor="oklch(0.70 0.22 60)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="oklch(0.60 0.15 150)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="timestamp"
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                tickFormatter={(hour: number) => {
+                  // Show fewer labels to avoid crowding
+                  if (hour % 3 === 0) return formatHourLabel(hour)
+                  return ''
+                }}
+                interval={0}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                tickCount={5}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="score"
+                stroke="oklch(0.70 0.22 60)"
+                strokeWidth={2}
+                fill={`url(#energyGradient-${venue.id})`}
+                isAnimationActive={true}
+                animationDuration={1200}
+                animationEasing="ease-out"
+              />
+              {/* Current time marker */}
+              <ReferenceLine
+                x={currentHour}
+                stroke="hsl(var(--primary))"
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                label={{
+                  value: 'Now',
+                  position: 'top',
+                  fill: 'hsl(var(--primary))',
+                  fontSize: 10,
+                  fontWeight: 'bold',
+                }}
+              />
+              {/* Peak hour marker */}
+              <ReferenceLine
+                x={history.peakHour}
+                stroke="oklch(0.70 0.22 60)"
+                strokeDasharray="2 2"
+                strokeWidth={1}
+                label={{
+                  value: 'Peak',
+                  position: 'top',
+                  fill: 'oklch(0.70 0.22 60)',
+                  fontSize: 9,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Footer info */}
+        <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Star size={12} weight="fill" className="text-yellow-400" />
+            <span>Best time: <span className="text-foreground font-semibold">{formatHourLabel(history.bestTimeToVisit)}</span></span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Lightning size={12} weight="fill" className="text-accent" />
+            <span>Current: <span className="text-foreground font-semibold">{history.currentScore}</span></span>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
   )
 }
