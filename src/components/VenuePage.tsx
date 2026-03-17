@@ -326,10 +326,7 @@ export function VenuePage({
         )}
 
         {/* Phase 2: Energy Timeline */}
-        <VenueEnergyTimeline
-          venueId={venue.id}
-          currentScore={venue.pulseScore}
-        />
+        <VenueEnergyTimeline venue={venue} />
 
         <div className="flex items-center justify-between">
           <div>
