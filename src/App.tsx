@@ -89,6 +89,7 @@ function App() {
   const [locationName, setLocationName] = useState<string>('')
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const [trendingSubTab, setTrendingSubTab] = useState<'trending' | 'my-spots'>('trending')
+  const [discoverSubTab, setDiscoverSubTab] = useState<'for-you' | 'my-spots'>('for-you')
   const integrationsEnabled = isFeatureEnabled('integrations')
   const socialDashboardEnabled = isFeatureEnabled('socialDashboard')
   const { unitSystem } = useUnitPreference()
@@ -958,12 +959,19 @@ function App() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
+              followedVenues={followedVenues}
+              userLocation={userLocation}
+              unitSystem={unitSystem}
+              discoverSubTab={discoverSubTab}
+              onSubTabChange={setDiscoverSubTab}
               onVenueClick={(venue) => setSelectedVenue(venue)}
               onStoryClick={(storyList) => {
                 setStoryViewerStories(storyList)
                 setStoryViewerOpen(true)
               }}
               onAddFriend={handleAddFriend}
+              onToggleFollow={handleToggleFollow}
+              onReaction={handleReaction}
               onNavigate={(page) => setSubPage(page)}
             />
           </motion.div>
@@ -986,6 +994,7 @@ function App() {
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
+                followedVenueIds={currentUser?.followedVenues || []}
               />
             </div>
           </motion.div>

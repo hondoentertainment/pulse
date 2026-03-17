@@ -14,7 +14,7 @@ import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
 import { ParallaxVenueHero } from './ParallaxVenueHero'
@@ -141,16 +141,37 @@ export function VenuePage({
                 <ShareNetwork size={24} className="text-muted-foreground" />
               </button>
               {onToggleFollow && (
-                <button
+                <motion.button
                   onClick={onToggleFollow}
-                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                  className="p-2 rounded-lg hover:bg-secondary transition-colors relative"
+                  whileTap={{ scale: 0.85 }}
                 >
-                  <HeartStraight
-                    size={24}
-                    weight={isFollowed ? 'fill' : 'regular'}
-                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
-                  />
-                </button>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={isFollowed ? 'followed' : 'unfollowed'}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 1.4, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                    >
+                      <HeartStraight
+                        size={24}
+                        weight={isFollowed ? 'fill' : 'regular'}
+                        className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                  {isFollowed && (
+                    <motion.span
+                      initial={{ scale: 0, opacity: 1 }}
+                      animate={{ scale: 2.5, opacity: 0 }}
+                      transition={{ duration: 0.6, ease: 'easeOut' }}
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    >
+                      <HeartStraight size={24} weight="fill" className="text-primary" />
+                    </motion.span>
+                  )}
+                </motion.button>
               )}
               <button
                 onClick={onToggleFavorite}
