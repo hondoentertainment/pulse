@@ -1,5 +1,5 @@
 import { useState, memo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Fire, Warning } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { Streak } from '@/lib/streak-rewards'
@@ -43,6 +43,7 @@ const SIZE_CONFIG = {
 
 export const StreakCounter = memo(function StreakCounter({ streak, onExpand, size = 'medium' }: StreakCounterProps) {
   const [isHovered, setIsHovered] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
   const progress = getProgressToNextMilestone(streak)
   const nextMilestone = getNextMilestone(streak)
   const colors = getStreakColor(streak.currentCount)
