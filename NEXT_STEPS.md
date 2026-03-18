@@ -1,116 +1,137 @@
 # Recommended Next Steps
 
-Generated: March 16, 2026
+Updated: March 18, 2026
 
 This document provides prioritized, actionable next steps for Pulse based on the current state of the codebase. Items are grouped into immediate wins, near-term work, and strategic milestones.
+
+## What's Been Completed Since Last Review
+
+The following items from the previous next-steps list have been fully shipped:
+
+- **Dependency vulnerabilities**: `npm audit` reports 0 vulnerabilities
+- **Playwright smoke tests**: Expanded from 4 to 14 test cases covering critical flows
+- **Bundle size tracking**: CI job enforces a 500KB gzipped-per-chunk budget
+- **My Spots Feed UI**: `MySpotsFeed.tsx` implemented, wired into DiscoverTab and TrendingTab
+- **Component decomposition**: InteractiveMap split into 9 sub-modules (map/), GlobalSearch split into 5 (search/), App.tsx reduced from 1,100 to 115 lines, VenuePlatformDashboard decomposed
+- **Time-contextual scoring**: `time-contextual-scoring.ts` integrated
+- **Voice search guardrails**: Implemented in `use-voice-search.ts`
+- **Map progressive disclosure**: Implemented in decomposed map components
+- **Backend architecture doc**: Written with API proxy started (`api-proxy.ts`)
+- **10 new engagement features**: TonightsPickCard, LiveActivityFeed, GoingTonightButton, EmojiReactions, BoostBadge, EnergyTimeline, VenueComparison, StreakDashboard, NeighborhoodWalkthrough, OfflineIndicator
+- **Accessibility**: Comprehensive a11y improvements across all new features
+- **Performance**: React.memo, memoization, lazy loading added with perf tests
+- **CI pipeline**: Lint, test, build, audit, bundle-size, and e2e smoke as separate jobs
 
 ---
 
 ## Immediate Wins (This Week)
 
-These require no architectural changes and directly improve quality.
+### 1. Clean Up 175 Lint Warnings
 
-### 1. Fix Dependency Vulnerabilities
+The build passes with 0 errors but carries 175 warnings, almost all `@typescript-eslint/no-unused-vars`. A single sweep to prefix unused imports with `_` or remove dead exports would:
 
-```bash
-npm audit fix
-```
+- Make CI output readable (real issues won't be lost in noise)
+- Reduce bundle size slightly by removing dead code
+- Prevent the warning count from creeping higher
 
-There are 8+ high/moderate severity CVEs (flatted, minimatch, rollup, lodash, qs). Run `npm audit fix` and pin any packages that cannot be auto-fixed. This is the single lowest-effort, highest-impact security action available.
+### 2. Fix the 2 Oversized Chunks
 
-### 2. Expand Playwright Smoke Tests
+The build reports chunks exceeding 600KB pre-minification:
 
-The current `e2e/smoke.spec.ts` has only 4 test cases covering map controls and navigation. Add smoke tests for the critical user flows:
+| Chunk | Size (gzip) |
+|-------|-------------|
+| `react-vendor` | 187KB |
+| `index` | 107KB |
+| `charts` | 101KB |
 
-- **Venue page open** — tap a venue pin, verify venue detail loads
-- **Pulse creation** — open create dialog, fill fields, submit, verify pulse appears
-- **Check-in flow** — trigger check-in, confirm success feedback
-- **Notifications** — verify notification list renders and items are tappable
-- **Search** — open global search, type a query, verify results appear
-- **Settings** — open settings page, toggle a preference, confirm persistence
+Actions:
+- Lazy-load the charts library (recharts/visx) so it only loads on dashboard pages
+- Split `react-vendor` by separating framer-motion (39KB gzip) into its own chunk via `manualChunks`
+- Move Radix UI primitives into a shared UI chunk
 
-Target: 10-15 total smoke tests covering every primary navigation path.
+Target: no chunk above 150KB gzipped.
 
-### 3. Add Bundle Size Tracking
+### 3. Add Error Boundaries Around New Features
 
-Add `rollup-plugin-visualizer` or `source-map-explorer` to the build and record the output in CI. Set a budget (e.g., 500 KB gzipped for the main chunk) so regressions are caught early. This is called out in Phase 0 of `PRODUCTION_ROLLOUT.md` but not yet started.
+The 10 new engagement features are wired into pages but lack isolated error boundaries. A crash in EmojiReactions or LiveActivityFeed will take down the entire page. Wrap each lazy-loaded feature in a `<Suspense>` + `<ErrorBoundary>` so failures degrade gracefully.
 
 ---
 
 ## Near-Term Work (Next 2-4 Weeks)
 
-### 4. Ship the My Spots Feed UI
+### 4. End-to-End Tests for New Engagement Features
 
-The venue-following backend logic is already wired (`handleToggleFollow` in App.tsx, `followedVenues` on the User type). What remains:
+The 14 smoke tests cover navigation and core flows, but none of the 10 new engagement features have Playwright coverage. Add E2E tests for:
 
-- Follow/unfollow button on `VenuePage.tsx`
-- "My Spots" tab in the bottom navigation or discovery view
-- Filtered feed showing only followed venues
-- Badge or indicator showing followed status on map pins
+- Tonight's Pick card renders on Discover tab
+- Going Tonight RSVP button toggles state
+- Emoji reactions appear and animate
+- Venue comparison mode loads two venues side-by-side
+- Streak dashboard shows on profile page
+- Offline indicator appears when network is disconnected
 
-This is the highest-impact engagement feature not yet shipped.
+### 5. Real-Time Data Layer
 
-### 5. Decompose Large Components
+All data still lives in client-side Spark KV storage. The backend architecture doc exists but no real backend has been built. The minimum viable backend needs:
 
-Several components are well past the point where they should be split:
+- **Auth**: OAuth with at least one provider (Google or Apple)
+- **Persistence**: Postgres for users, venues, pulses, reactions
+- **Real-time**: WebSocket or SSE for live score updates
+- **API**: REST endpoints for the core CRUD operations the client already performs
 
-| Component | Lines | Suggested Splits |
-|-----------|-------|------------------|
-| `InteractiveMap.tsx` | 1,849 | Extract clustering logic, heatmap overlay, venue sheet, and map controls into separate files |
-| `App.tsx` | 1,102 | Extract route definitions, global state providers, and handler functions |
-| `VenuePlatformDashboard.tsx` | 894 | Split analytics charts, boost controls, and settings into sub-components |
-| `GlobalSearch.tsx` | 853 | Separate search input, filter panel, and results list |
+This is the single biggest blocker to any kind of beta.
 
-Start with `InteractiveMap.tsx` since it is the largest and most complex.
+### 6. Move Sensitive Operations Server-Side
 
-### 6. Add Time-Contextual Scoring
+Before any public deployment, these must move behind server routes:
 
-The scoring engine (`pulse-engine.ts`) does not account for venue category or time of day. A coffee shop at 7 AM and a nightclub at 7 AM should not be scored on the same curve. Add:
+- Reverse geocoding (currently calls Nominatim from the browser)
+- Webhook signing logic (exists as library code in `public-api.ts`)
+- Any API key management
 
-- Category-specific peak hour definitions
-- Score normalization relative to expected activity
-- Labels like "Electric for this time of day"
+The `api-proxy.ts` stub exists — it needs to become a real server endpoint.
 
-Utility code already exists at `src/lib/time-contextual-scoring.ts` — it needs integration into the main scoring path and UI surfaces.
+### 7. Observability Foundation
 
-### 7. Voice Search Guardrails
+Before beta users touch the app:
 
-The voice search hook (`use-voice-search.ts`) accepts open-ended input. Limit to 3 supported command types (search venue, filter by category, navigate), show inline examples on first use, and add a fallback message when input cannot be parsed.
+- **Error tracking**: Sentry or equivalent, wired into React error boundaries
+- **Structured logging**: Server-side request logs with correlation IDs
+- **Product analytics**: Track activation (first pulse created), retention (weekly active), and engagement (pulses per session)
+- **Uptime monitoring**: Health check endpoint with external ping
 
 ---
 
 ## Strategic Milestones (Next Quarter)
 
-### 8. Design the Backend Architecture
+### 8. Performance Audit on Real Devices
 
-This is the single biggest blocker to production. All data lives in client-side Spark KV storage with no multi-device sync, no real auth, and no server-side validation. Before writing backend code, produce an architecture document covering:
+The app has grown significantly with 10 new features. Run Lighthouse and real-device profiling (especially mid-range Android) to identify:
 
-- **Data models**: users, venues, pulses, reactions, stories, events, notifications, crews
-- **Auth strategy**: OAuth provider selection, session management, role-based access (user / venue-owner / admin)
-- **API surface**: which endpoints are needed, REST vs GraphQL, rate limiting
-- **Persistence**: database selection (Postgres is a safe default), migration strategy
-- **Real-time**: WebSocket or SSE for live score updates and presence
+- Time to interactive on the map view
+- Memory usage with all engagement features loaded
+- Animation jank from framer-motion on lower-end GPUs
 
-### 9. Move Secrets Server-Side
+### 9. Moderation & Abuse Prevention
 
-These client-exposed operations must move behind server routes before any public beta:
+Before public beta, implement:
 
-- Reverse geocoding (currently calls OpenStreetMap Nominatim from the browser)
-- Webhook signing logic (exists as library code in `public-api.ts`)
-- Any future payment or ticketing API keys
+- Content reporting workflow for pulses
+- Rate limiting on pulse creation (prevent spam)
+- Review queue for flagged content
+- Automatic detection of suspicious patterns (same user, rapid-fire pulses)
 
-### 10. Add Observability
+### 10. Feature Flags & Staged Rollout
 
-Before beta users touch the app:
+With 10+ engagement features shipping at once, add a feature flag system so individual features can be:
 
-- **Error tracking**: Sentry or equivalent, wired into React error boundaries
-- **Structured logging**: server-side request logs with correlation IDs
-- **Uptime monitoring**: health check endpoint with external ping
-- **Product analytics**: track activation (first pulse created), retention (weekly active), and engagement (pulses per session)
+- Toggled off if they cause issues in production
+- A/B tested against control groups
+- Gradually rolled out to percentages of users
 
-### 11. Map Progressive Disclosure
+### 11. User Onboarding for New Features
 
-The map currently renders all venues at once, which overwhelms new users. Default to showing the top 5 nearby surging venues, with a "Show full heatmap" button to reveal everything. This reduces cognitive load and improves first-session experience.
+Users landing in the app now see Tonight's Pick, Live Activity, Emoji Reactions, Going Tonight, Streaks, Neighborhood Walkthrough, and more — all at once. Design a progressive disclosure onboarding that introduces features over the first few sessions rather than overwhelming on day one.
 
 ---
 
@@ -118,26 +139,26 @@ The map currently renders all venues at once, which overwhelms new users. Defaul
 
 | Priority | Item | Effort | Impact |
 |----------|------|--------|--------|
-| P0 | Fix dependency vulnerabilities | 1 hour | High (security) |
-| P0 | Expand smoke tests to 10-15 cases | 2-3 days | High (quality gate) |
-| P1 | Bundle size tracking | 1 day | Medium (prevents regression) |
-| P1 | My Spots Feed UI | 3-5 days | High (engagement) |
-| P1 | Decompose InteractiveMap | 2-3 days | Medium (maintainability) |
-| P2 | Time-contextual scoring | 3-5 days | Medium (fairness) |
-| P2 | Voice search guardrails | 1-2 days | Low-Medium (polish) |
-| P3 | Backend architecture design | 1-2 weeks | Critical (production blocker) |
-| P3 | Server-side secrets | 1 week | High (security) |
-| P3 | Observability | 1 week | High (operability) |
-| P3 | Map progressive disclosure | 2-3 days | Medium (UX) |
+| P0 | Clean up 175 lint warnings | 1-2 hours | Medium (code health) |
+| P0 | Fix oversized chunks | 1 day | High (load performance) |
+| P0 | Error boundaries for new features | Half day | High (resilience) |
+| P1 | E2E tests for engagement features | 2-3 days | High (quality gate) |
+| P1 | Real-time data layer / backend | 2-3 weeks | Critical (production blocker) |
+| P1 | Server-side sensitive operations | 1 week | High (security) |
+| P2 | Observability foundation | 1 week | High (operability) |
+| P2 | Real-device performance audit | 2-3 days | Medium (UX quality) |
+| P3 | Moderation & abuse prevention | 1-2 weeks | High (trust & safety) |
+| P3 | Feature flags & staged rollout | 1 week | Medium (operational safety) |
+| P3 | User onboarding for new features | 1 week | Medium (activation) |
 
 ---
 
 ## Relationship to Existing Plans
 
-This document aligns with and refines the phased plan in `PRODUCTION_ROLLOUT.md`:
+This document reflects the current state after significant Phase 0 completion:
 
-- **Immediate wins** correspond to remaining Phase 0 work
-- **Near-term work** bridges Phase 0 completion and Phase 1 preparation
-- **Strategic milestones** map to Phase 1 (backend/auth) and Phase 2 (observability/hardening)
+- **Phase 0 (Stabilize)**: ~90% complete. Remaining: lint warning cleanup, chunk optimization, error boundaries
+- **Phase 1 (Production Foundations)**: Backend architecture is documented. Implementation has not started. This is the critical path.
+- **Phase 2 (Harden for Beta)**: Observability, moderation, and feature flags are next after the backend exists
 
-The feature priorities (My Spots, time-contextual scoring, voice guardrails, map disclosure) align with the order recommended in `IMPLEMENTATION_SUMMARY.md`.
+The engagement feature sprint (10 features) was not in the original rollout plan but significantly enriches the product surface. The priority now shifts from feature breadth to production depth — backend, auth, observability, and resilience.
