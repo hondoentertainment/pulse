@@ -265,3 +265,29 @@ describe('Performance: Emoji burst caps at 30 particles', () => {
     expect(getReactionVelocity(4)).toBe(8)
   })
 })
+
+describe('Performance: Lazy-loadable components have default exports', () => {
+  it('StreakDashboard has a default export', async () => {
+    const mod = await import('../components/StreakDashboard')
+    expect(mod.default).toBeDefined()
+    expect(typeof mod.default).toBe('function')
+  })
+
+  it('VenueComparison has a default export', async () => {
+    const mod = await import('../components/VenueComparison')
+    expect(mod.default).toBeDefined()
+    expect(typeof mod.default).toBe('function')
+  })
+
+  it('NeighborhoodWalkthrough has a default export', async () => {
+    const mod = await import('../components/NeighborhoodWalkthrough')
+    expect(mod.default).toBeDefined()
+    expect(typeof mod.default).toBe('function')
+  })
+
+  it('QuickBoostFlow has a default export', async () => {
+    const mod = await import('../components/QuickBoostFlow')
+    expect(mod.default).toBeDefined()
+    expect(typeof mod.default).toBe('function')
+  })
+})

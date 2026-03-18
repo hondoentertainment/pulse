@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   MapPin,
   NavigationArrow,
@@ -52,6 +52,7 @@ export function NeighborhoodWalkthrough({
   neighborhood,
 }: NeighborhoodWalkthroughProps) {
   const [selectedTheme, setSelectedTheme] = useState<WalkthroughTheme>('hottest')
+  const prefersReducedMotion = useReducedMotion()
 
   const handleThemeSelect = (theme: WalkthroughTheme) => {
     setSelectedTheme(theme)
@@ -118,8 +119,9 @@ export function NeighborhoodWalkthrough({
             <button
               onClick={onEnd}
               className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/60 hover:bg-white/20 transition-colors"
+              aria-label="End walkthrough"
             >
-              <X size={14} />
+              <X size={14} aria-hidden="true" />
               End
             </button>
           </div>
@@ -143,9 +145,25 @@ export function NeighborhoodWalkthrough({
             </p>
           )}
 
+          {/* Progress */}
+          <div
+            role="progressbar"
+            aria-valuenow={currentStopIndex + 1}
+            aria-valuemin={1}
+            aria-valuemax={route.stops.length}
+            aria-label={`Stop ${currentStopIndex + 1} of ${route.stops.length}`}
+            className="h-1.5 bg-white/10 rounded-full overflow-hidden mb-3"
+          >
+            <div
+              className="h-full bg-purple-400 rounded-full transition-all duration-300"
+              style={{ width: `${((currentStopIndex + 1) / route.stops.length) * 100}%` }}
+            />
+          </div>
+
           <button
             onClick={onAdvance}
             className="w-full rounded-xl bg-purple-500 py-2.5 text-sm font-semibold text-white hover:bg-purple-400 transition-colors"
+            aria-label={isLastStop ? 'Finish the crawl' : `Go to next stop: ${nextStop?.venue.name ?? 'finish'}`}
           >
             {isLastStop ? 'Finish Crawl' : 'Next Stop'}
           </button>
@@ -306,8 +324,9 @@ export function NeighborhoodWalkthrough({
             <button
               onClick={onStart}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-500 py-3 text-sm font-semibold text-white hover:bg-purple-400 transition-colors"
+              aria-label={`Start ${THEME_CONFIG[route.theme as WalkthroughTheme]?.label ?? route.theme} route with ${route.venueCount} stops`}
             >
-              <Play size={18} weight="fill" />
+              <Play size={18} weight="fill" aria-hidden="true" />
               Start Route
             </button>
           </motion.div>
@@ -330,3 +349,5 @@ export function NeighborhoodWalkthrough({
     </div>
   )
 }
+
+export default NeighborhoodWalkthrough

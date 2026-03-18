@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   X,
   ArrowsLeftRight,
@@ -51,10 +51,10 @@ function CategoryIcon({ category }: { category: string }) {
 
 function TrendingArrow({ direction }: { direction: TrendDirection }) {
   if (direction === 'up')
-    return <TrendUp size={14} weight="bold" className="text-green-400" />
+    return <TrendUp size={14} weight="bold" className="text-green-400" aria-hidden="true" />
   if (direction === 'down')
-    return <TrendDown size={14} weight="bold" className="text-red-400" />
-  return <Minus size={12} className="text-muted-foreground" />
+    return <TrendDown size={14} weight="bold" className="text-red-400" aria-hidden="true" />
+  return <Minus size={12} className="text-muted-foreground" aria-hidden="true" />
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -63,6 +63,8 @@ function ScoreBadge({ score }: { score: number }) {
     <div
       className="inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-sm font-bold text-white"
       style={{ backgroundColor: color }}
+      role="img"
+      aria-label={`Pulse score: ${score}`}
     >
       {score}
     </div>
@@ -84,12 +86,16 @@ function ComparisonBar({
   icon: React.ReactNode
   index: number
 }) {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 + index * 0.08 }}
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      transition={{ delay: prefersReducedMotion ? 0 : 0.3 + index * 0.08, duration: prefersReducedMotion ? 0 : undefined }}
       className="grid grid-cols-[1fr_auto_1fr] items-center gap-2"
+      role="row"
+      aria-label={`${label}: ${valueA} versus ${valueB}${winner !== 'tie' ? `, ${winner === 'a' ? 'first venue' : 'second venue'} wins` : ', tied'}`}
     >
       {/* Value A */}
       <div
@@ -157,12 +163,14 @@ function VenueCard({
   isWinner: boolean
   onRemove: () => void
 }) {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: side === 'left' ? -40 : 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: side === 'left' ? -40 : 40 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: side === 'left' ? -40 : 40 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: side === 'left' ? -40 : 40 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 25 }}
     >
       <Card
         className={cn(
@@ -179,7 +187,7 @@ function VenueCard({
         </button>
 
         <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-          <CategoryIcon category={category} />
+          <span aria-hidden="true"><CategoryIcon category={category} /></span>
           <span className="text-[10px] uppercase tracking-wider font-mono">
             {category}
           </span>
@@ -231,6 +239,7 @@ export function VenueComparison({
 }: VenueComparisonProps) {
   const [pickForMe, setPickForMe] = useState<ComparisonPreference | null>(null)
   const [venueA, venueB] = selectedVenues
+  const prefersReducedMotion = useReducedMotion()
 
   // Empty state
   if (!venueA && !venueB) {
@@ -345,7 +354,7 @@ export function VenueComparison({
         <>
           <Separator />
 
-          <div className="space-y-2">
+          <div className="space-y-2" role="table" aria-label="Venue comparison metrics">
             <ComparisonBar
               winner={comparisonResult.metrics.energy.winner}
               label="Energy"
@@ -417,12 +426,13 @@ export function VenueComparison({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.6 }}
             className="text-center"
           >
             <p
               data-testid="comparison-verdict"
               className="text-sm text-muted-foreground italic"
+              aria-live="polite"
             >
               {getComparisonVerdict(comparisonResult)}
             </p>
@@ -432,7 +442,7 @@ export function VenueComparison({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.7, duration: prefersReducedMotion ? 0 : undefined }}
             className="space-y-2"
           >
             <p className="text-xs text-muted-foreground text-center uppercase tracking-wider">
@@ -457,6 +467,8 @@ export function VenueComparison({
                       prev === key ? null : key
                     )
                   }
+                  aria-pressed={pickForMe === key}
+                  aria-label={`Pick by ${label}`}
                   data-testid={`pick-${key}`}
                 >
                   {icon}
@@ -471,6 +483,7 @@ export function VenueComparison({
                 animate={{ opacity: 1 }}
                 data-testid="pick-result"
                 className="text-center text-sm font-bold text-primary"
+                aria-live="assertive"
               >
                 Go to{' '}
                 {pickedWinner === 'a'
@@ -495,3 +508,5 @@ export function VenueComparison({
     </div>
   )
 }
+
+export default VenueComparison

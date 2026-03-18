@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   ArrowLeft, BeerStein, MusicNotes, Confetti, Clock,
   Sparkle, Star, Rocket, Check,
@@ -69,6 +69,7 @@ export function QuickBoostFlow({
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null)
   const [createdBoost, setCreatedBoost] = useState<ActiveBoost | null>(null)
   const [liveImpressions, setLiveImpressions] = useState(0)
+  const prefersReducedMotion = useReducedMotion()
 
   // Auto-increment impressions in success state
   useEffect(() => {
@@ -129,8 +130,8 @@ export function QuickBoostFlow({
       <div className="min-h-screen bg-background flex flex-col">
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
           <div className="flex items-center gap-3 max-w-2xl mx-auto">
-            <button onClick={onBack} className="p-1 hover:bg-muted/50 rounded-md transition-colors">
-              <ArrowLeft size={20} className="text-foreground" />
+            <button onClick={onBack} className="p-1 hover:bg-muted/50 rounded-md transition-colors" aria-label="Go back to dashboard">
+              <ArrowLeft size={20} className="text-foreground" aria-hidden="true" />
             </button>
             <h1 className="text-sm font-bold text-foreground">Boost Active</h1>
           </div>
@@ -174,7 +175,7 @@ export function QuickBoostFlow({
           >
             <Card className="p-6 bg-card/80 border-border text-center mb-4 w-full">
               <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Live Impressions</p>
-              <p className="text-3xl font-bold text-foreground tabular-nums">
+              <p className="text-3xl font-bold text-foreground tabular-nums" aria-live="polite" aria-atomic="true">
                 {liveImpressions.toLocaleString()}
               </p>
               <div className="flex items-center justify-center gap-1 mt-1">
@@ -219,7 +220,7 @@ export function QuickBoostFlow({
           </motion.div>
 
           {/* Confetti particles */}
-          {Array.from({ length: 12 }).map((_, i) => (
+          {!prefersReducedMotion && Array.from({ length: 12 }).map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-2 h-2 rounded-full"
@@ -251,8 +252,8 @@ export function QuickBoostFlow({
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
-          <button onClick={goBack} className="p-1 hover:bg-muted/50 rounded-md transition-colors">
-            <ArrowLeft size={20} className="text-foreground" />
+          <button onClick={goBack} className="p-1 hover:bg-muted/50 rounded-md transition-colors" aria-label={step === 1 ? 'Go back' : 'Go to previous step'}>
+            <ArrowLeft size={20} className="text-foreground" aria-hidden="true" />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-foreground">Quick Boost</h1>
@@ -262,7 +263,14 @@ export function QuickBoostFlow({
       </div>
 
       {/* Progress Dots */}
-      <div className="flex items-center justify-center gap-2 py-4">
+      <div
+        className="flex items-center justify-center gap-2 py-4"
+        role="progressbar"
+        aria-valuenow={step}
+        aria-valuemin={1}
+        aria-valuemax={3}
+        aria-label={`Step ${step} of 3`}
+      >
         {[1, 2, 3].map(s => (
           <div
             key={s}
@@ -273,6 +281,7 @@ export function QuickBoostFlow({
                   ? 'bg-primary/60'
                   : 'bg-muted'
             }`}
+            aria-hidden="true"
           />
         ))}
       </div>
@@ -444,3 +453,5 @@ export function QuickBoostFlow({
     </div>
   )
 }
+
+export default QuickBoostFlow

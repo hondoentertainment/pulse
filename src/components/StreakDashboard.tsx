@@ -63,9 +63,11 @@ function AtRiskSection({ streaks }: { streaks: Streak[] }) {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-3"
+      role="alert"
+      aria-label={`${streaks.length} streak${streaks.length > 1 ? 's' : ''} at risk of expiring`}
     >
       <div className="flex items-center gap-2">
-        <Warning size={18} weight="fill" className="text-red-400" />
+        <Warning size={18} weight="fill" className="text-red-400" aria-hidden="true" />
         <h3 className="text-sm font-bold text-red-400">At Risk!</h3>
       </div>
       <div className="space-y-2">
@@ -222,8 +224,8 @@ export function StreakDashboard({
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
-          <button onClick={onBack} className="p-2 -ml-2 hover:bg-muted rounded-lg">
-            <CaretLeft size={24} />
+          <button onClick={onBack} className="p-2 -ml-2 hover:bg-muted rounded-lg" aria-label="Go back">
+            <CaretLeft size={24} aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
             <Fire size={24} weight="fill" className="text-orange-500" />
@@ -320,6 +322,8 @@ export function StreakDashboard({
               <button
                 key={def.type}
                 onClick={() => setSelectedStreakType(def.type)}
+                aria-pressed={selectedStreakType === def.type}
+                aria-label={`Show ${def.label} leaderboard`}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
                   selectedStreakType === def.type
@@ -345,3 +349,5 @@ export function StreakDashboard({
     </div>
   )
 }
+
+export default StreakDashboard
