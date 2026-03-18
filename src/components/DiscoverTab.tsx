@@ -12,6 +12,9 @@ import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, Music
 import { motion, AnimatePresence } from 'framer-motion'
 import ForYouFeed from '@/components/ForYouFeed'
 import MoodSelector from '@/components/MoodSelector'
+import { TonightsPickCard } from '@/components/TonightsPickCard'
+import { LiveActivityFeed } from '@/components/LiveActivityFeed'
+import { useTonightsPick } from '@/hooks/use-tonights-pick'
 import { cn } from '@/lib/utils'
 import type { MoodType } from '@/lib/personalization-engine'
 import { useState } from 'react'
@@ -58,6 +61,13 @@ export function DiscoverTab({
   onNavigate
 }: DiscoverTabProps) {
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null)
+  const {
+    pick,
+    isLoading: pickLoading,
+    showAlternates,
+    dismiss: dismissPick,
+    toggleAlternates,
+  } = useTonightsPick(venues, currentUser, pulses, userLocation ?? null)
   const activeStories = getActiveStories(stories)
   const upcomingEvents = getEventsSoon(events, 12).slice(0, 3)
   const suggestions = getPeopleYouMayKnow(currentUser, allUsers, pulses).slice(0, 5)
@@ -115,6 +125,30 @@ export function DiscoverTab({
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
+            {/* Tonight's Pick Hero Card */}
+            <TonightsPickCard
+              pick={pick}
+              isLoading={pickLoading}
+              showAlternates={showAlternates}
+              onLetsGo={onVenueClick}
+              onDismiss={dismissPick}
+              onToggleAlternates={toggleAlternates}
+              onAlternateClick={onVenueClick}
+            />
+
+            {/* Live Activity Feed */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Live Activity</h3>
+              <LiveActivityFeed
+                venues={venues}
+                pulses={pulses}
+                onVenueTap={(venueId) => {
+                  const venue = venues.find(v => v.id === venueId)
+                  if (venue) onVenueClick(venue)
+                }}
+              />
+            </div>
+
             {/* Stories */}
             {activeStories.length > 0 && (
               <>
