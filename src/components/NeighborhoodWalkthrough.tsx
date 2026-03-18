@@ -69,15 +69,17 @@ export function NeighborhoodWalkthrough({
 
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+        transition={prefersReducedMotion ? { duration: 0 } : undefined}
         className="rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30 p-6 text-center"
       >
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring' }}
+          initial={prefersReducedMotion ? false : { scale: 0 }}
+          animate={prefersReducedMotion ? false : { scale: 1 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.2, type: 'spring' }}
           className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20"
+          aria-hidden="true"
         >
           <Check size={32} weight="bold" className="text-green-400" />
         </motion.div>
@@ -105,8 +107,9 @@ export function NeighborhoodWalkthrough({
       <div className="space-y-4">
         {/* Progress bar */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          transition={prefersReducedMotion ? { duration: 0 } : undefined}
           className="rounded-2xl bg-gradient-to-r from-purple-500/20 to-pink-500/10 border border-purple-500/30 p-4"
         >
           <div className="flex items-center justify-between mb-3">
@@ -178,9 +181,9 @@ export function NeighborhoodWalkthrough({
             return (
               <motion.div
                 key={stop.venue.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
+                initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+                animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { delay: idx * 0.05 }}
                 className="flex items-center gap-3"
               >
                 {/* Number circle + connecting line */}
@@ -255,9 +258,10 @@ export function NeighborhoodWalkthrough({
         {route && (
           <motion.div
             key={route.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }}
+            transition={prefersReducedMotion ? { duration: 0 } : undefined}
             className="rounded-2xl bg-gradient-to-br from-purple-500/15 to-pink-500/10 border border-white/10 p-5"
           >
             {/* Header */}
@@ -289,9 +293,9 @@ export function NeighborhoodWalkthrough({
               {route.stops.map((stop, idx) => (
                 <motion.div
                   key={stop.venue.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.08 }}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { delay: idx * 0.08 }}
                   className="flex items-center gap-3"
                 >
                   <div className="flex flex-col items-center">
@@ -340,7 +344,7 @@ export function NeighborhoodWalkthrough({
           animate={{ opacity: 1 }}
           className="rounded-2xl border border-dashed border-white/20 p-8 text-center"
         >
-          <MapPin size={32} weight="duotone" className="mx-auto mb-3 text-white/30" />
+          <MapPin size={32} weight="duotone" className="mx-auto mb-3 text-white/30" aria-hidden="true" />
           <p className="text-sm text-white/40">
             Select a theme to generate a walkthrough route
           </p>

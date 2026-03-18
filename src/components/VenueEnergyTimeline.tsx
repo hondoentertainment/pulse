@@ -19,7 +19,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { Venue } from '@/lib/types'
 import { useVenueEnergyHistory } from '@/hooks/use-venue-energy-history'
 import type { EnergyDataPoint, EnergyTrend } from '@/lib/venue-energy-history'
@@ -95,6 +95,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
 export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimelineProps) {
   const { history, isLoading } = useVenueEnergyHistory(venue)
+  const prefersReducedMotion = useReducedMotion()
 
   const chartData = useMemo(() => {
     if (!history) return []
@@ -121,12 +122,15 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
   if (compact) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
         data-testid="energy-timeline-compact"
       >
-        <div className="h-16">
+        <div className="sr-only">
+          Energy is {getTrendLabel(history.trend).toLowerCase()}. Current score: {history.currentScore}.
+        </div>
+        <div className="h-16" role="img" aria-label={`Energy timeline for ${venue.name}, currently ${getTrendLabel(history.trend).toLowerCase()}`}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 2, right: 2, bottom: 0, left: 2 }}>
               <defs>
@@ -142,7 +146,7 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
                 stroke="oklch(0.70 0.22 60)"
                 strokeWidth={1.5}
                 fill={`url(#energyGradientCompact-${venue.id})`}
-                isAnimationActive={true}
+                isAnimationActive={!prefersReducedMotion}
                 animationDuration={1000}
               />
               <ReferenceLine x={currentHour} stroke="hsl(var(--primary))" strokeDasharray="3 3" strokeWidth={1} />
@@ -155,9 +159,9 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.5 }}
       data-testid="energy-timeline-full"
     >
       <Card className="p-4 bg-card/80 border-border">
@@ -198,8 +202,13 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
           </div>
         </div>
 
+        {/* Screen reader summary */}
+        <div className="sr-only" aria-live="polite">
+          Energy is {getTrendLabel(history.trend).toLowerCase()}. Current score: {history.currentScore}. Best time to visit: {formatHourLabel(history.bestTimeToVisit)}.
+        </div>
+
         {/* Chart */}
-        <div className="h-48">
+        <div className="h-48" role="img" aria-label={`Energy timeline chart for ${venue.name}. Currently ${getTrendLabel(history.trend).toLowerCase()} with a score of ${history.currentScore}. Best time to visit: ${formatHourLabel(history.bestTimeToVisit)}.`}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 5, bottom: 5, left: -15 }}>
               <defs>
@@ -232,7 +241,7 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
                 stroke="oklch(0.70 0.22 60)"
                 strokeWidth={2}
                 fill={`url(#energyGradient-${venue.id})`}
-                isAnimationActive={true}
+                isAnimationActive={!prefersReducedMotion}
                 animationDuration={1200}
                 animationEasing="ease-out"
               />
@@ -270,11 +279,11 @@ export function VenueEnergyTimeline({ venue, compact = false }: VenueEnergyTimel
         {/* Footer info */}
         <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Star size={12} weight="fill" className="text-yellow-400" />
+            <Star size={12} weight="fill" className="text-yellow-400" aria-hidden="true" />
             <span>Best time: <span className="text-foreground font-semibold">{formatHourLabel(history.bestTimeToVisit)}</span></span>
           </div>
           <div className="flex items-center gap-1">
-            <Lightning size={12} weight="fill" className="text-accent" />
+            <Lightning size={12} weight="fill" className="text-accent" aria-hidden="true" />
             <span>Current: <span className="text-foreground font-semibold">{history.currentScore}</span></span>
           </div>
         </div>

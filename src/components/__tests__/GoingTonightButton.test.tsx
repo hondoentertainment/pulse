@@ -13,6 +13,7 @@ vi.mock('framer-motion', () => ({
     div: ({ children, whileTap, initial, animate, transition, exit, variants, ...props }: Record<string, unknown>) => <div {...props}>{children as React.ReactNode}</div>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }))
 
 function makeUser(id: string, username: string): User {

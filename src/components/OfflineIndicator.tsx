@@ -47,9 +47,11 @@ export function OfflineBanner({ lastSyncTime }: OfflineBannerProps) {
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className="fixed top-14 left-0 right-0 z-50 bg-amber-500/90 backdrop-blur-sm"
       data-testid="offline-banner"
+      role="alert"
+      aria-live="assertive"
     >
       <div className="max-w-2xl mx-auto px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium text-amber-950">
-        <WifiSlash size={16} weight="bold" className="shrink-0" />
+        <WifiSlash size={16} weight="bold" className="shrink-0" aria-hidden="true" />
         <span>
           You&apos;re offline — showing cached data from {timeLabel}
         </span>
@@ -76,15 +78,24 @@ export function SyncProgress({ total, synced }: SyncProgressProps) {
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className="fixed top-14 left-0 right-0 z-50 bg-blue-500/90 backdrop-blur-sm"
       data-testid="sync-progress"
+      role="status"
+      aria-live="polite"
     >
       <div className="max-w-2xl mx-auto px-4 py-2">
         <div className="flex items-center justify-center gap-2 text-sm font-medium text-white">
-          <CloudArrowUp size={16} weight="bold" className="shrink-0" />
+          <CloudArrowUp size={16} weight="bold" className="shrink-0" aria-hidden="true" />
           <span>
             Syncing {synced} of {total} queued actions...
           </span>
         </div>
-        <div className="mt-1 h-1 rounded-full bg-blue-300/40 overflow-hidden">
+        <div
+          className="mt-1 h-1 rounded-full bg-blue-300/40 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={synced}
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-label={`Syncing progress: ${synced} of ${total} actions`}
+        >
           <motion.div
             className="h-full bg-white rounded-full"
             initial={{ width: 0 }}
@@ -108,8 +119,10 @@ export function VenueCacheBadge({ cachedAt }: VenueCacheBadgeProps) {
     <span
       className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
       data-testid="venue-cache-badge"
+      role="status"
+      aria-label={`Showing cached data from ${formatRelativeTime(cachedAt)}`}
     >
-      <Database size={12} weight="fill" />
+      <Database size={12} weight="fill" aria-hidden="true" />
       Cached {formatRelativeTime(cachedAt)}
     </span>
   )
@@ -132,12 +145,14 @@ export function CacheManager({ stats, onClear, onRefresh }: CacheManagerProps) {
         type="button"
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center justify-between text-sm font-semibold text-foreground"
+        aria-expanded={expanded}
+        aria-label="Offline Cache settings"
       >
         <div className="flex items-center gap-2">
-          <Database size={18} weight="duotone" />
+          <Database size={18} weight="duotone" aria-hidden="true" />
           <span>Offline Cache</span>
         </div>
-        {expanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
+        {expanded ? <CaretUp size={16} aria-hidden="true" /> : <CaretDown size={16} aria-hidden="true" />}
       </button>
 
       <AnimatePresence>
@@ -179,16 +194,18 @@ export function CacheManager({ stats, onClear, onRefresh }: CacheManagerProps) {
                 type="button"
                 onClick={onRefresh}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                aria-label="Refresh cache"
               >
-                <ArrowsClockwise size={14} weight="bold" />
+                <ArrowsClockwise size={14} weight="bold" aria-hidden="true" />
                 Refresh
               </button>
               <button
                 type="button"
                 onClick={onClear}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+                aria-label="Clear all cached data"
               >
-                <Trash size={14} weight="bold" />
+                <Trash size={14} weight="bold" aria-hidden="true" />
                 Clear
               </button>
             </div>

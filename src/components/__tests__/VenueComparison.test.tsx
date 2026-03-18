@@ -13,6 +13,7 @@ vi.mock('framer-motion', () => ({
     p: ({ children, ...props }: HTMLAttributes<HTMLParagraphElement>) => <p {...props}>{children}</p>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }))
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {

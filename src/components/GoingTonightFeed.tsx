@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MapPin, Users, TrendUp, ArrowRight, CalendarCheck, MoonStars } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -50,12 +50,13 @@ export function GoingTonightFeed({
   onVenueClick,
 }: GoingTonightFeedProps) {
   const isEmpty = friendPlans.length === 0 && popularVenues.length === 0
+  const prefersReducedMotion = useReducedMotion()
 
   return (
-    <Card className="p-4 bg-card border-border overflow-hidden" data-testid="going-tonight-feed">
+    <Card className="p-4 bg-card border-border overflow-hidden" data-testid="going-tonight-feed" role="log" aria-label="Tonight's plans feed">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <MoonStars size={20} weight="fill" className="text-primary" />
+        <MoonStars size={20} weight="fill" className="text-primary" aria-hidden="true" />
         <h3 className="text-lg font-bold">Tonight's Plans</h3>
       </div>
 
@@ -72,7 +73,7 @@ export function GoingTonightFeed({
           {friendPlans.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Users size={12} weight="fill" />
+                <Users size={12} weight="fill" aria-hidden="true" />
                 <span>Friends Going Out</span>
               </div>
               <motion.div variants={containerVariants} className="space-y-2">
@@ -92,7 +93,7 @@ export function GoingTonightFeed({
           {popularVenues.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <TrendUp size={12} weight="fill" />
+                <TrendUp size={12} weight="fill" aria-hidden="true" />
                 <span>Popular Tonight</span>
               </div>
               <motion.div variants={containerVariants} className="space-y-2">
@@ -125,6 +126,7 @@ function FriendPlanRow({
   onVenueClick?: (venueId: string) => void
 }) {
   const { user, venue, rsvp } = plan
+  const prefersReducedMotion = useReducedMotion()
 
   return (
     <motion.div
@@ -157,8 +159,9 @@ function FriendPlanRow({
         <button
           onClick={() => onVenueClick?.(venue.id)}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={`View ${venue.name}`}
         >
-          <MapPin size={10} weight="fill" />
+          <MapPin size={10} weight="fill" aria-hidden="true" />
           <span className="truncate">{venue.name}</span>
         </button>
         {rsvp.arrivalEstimate && (
@@ -168,12 +171,13 @@ function FriendPlanRow({
 
       {/* Join Button */}
       <motion.button
-        whileTap={{ scale: 0.9 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.9 }}
         onClick={() => onJoin(venue.id)}
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors flex-shrink-0"
         data-testid="join-button"
+        aria-label={`Join ${user.username} at ${venue.name}`}
       >
-        <CalendarCheck size={14} weight="fill" />
+        <CalendarCheck size={14} weight="fill" aria-hidden="true" />
         Join
       </motion.button>
     </motion.div>
@@ -198,6 +202,10 @@ function PopularVenueRow({
       variants={itemVariants}
       className="p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
       onClick={() => onVenueClick?.(venue.venue.id)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onVenueClick?.(venue.venue.id) } }}
+      tabIndex={0}
+      role="button"
+      aria-label={`${venue.venue.name}, ranked #${rank}, ${venue.goingCount} people going`}
       data-testid="popular-venue-row"
     >
       <div className="flex items-center justify-between mb-2">
@@ -206,13 +214,20 @@ function PopularVenueRow({
           <span className="text-sm font-semibold truncate">{venue.venue.name}</span>
         </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-          <Users size={12} weight="fill" />
+          <Users size={12} weight="fill" aria-hidden="true" />
           <span>{venue.goingCount} going</span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+      <div
+        className="h-1.5 bg-secondary rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={venue.goingCount}
+        aria-valuemin={0}
+        aria-valuemax={venue.maxCount}
+        aria-label={`${venue.goingCount} of ${venue.maxCount} capacity`}
+      >
         <motion.div
           className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
           initial={{ width: 0 }}
@@ -234,10 +249,10 @@ function EmptyState() {
       className="flex flex-col items-center justify-center py-8 text-center"
       data-testid="empty-state"
     >
-      <MoonStars size={40} weight="duotone" className="text-muted-foreground/40 mb-3" />
+      <MoonStars size={40} weight="duotone" className="text-muted-foreground/40 mb-3" aria-hidden="true" />
       <p className="text-sm font-medium text-muted-foreground">No plans yet</p>
       <p className="text-xs text-muted-foreground/60 mt-1">Be the first to go out!</p>
-      <ArrowRight size={16} className="text-muted-foreground/30 mt-2" />
+      <ArrowRight size={16} className="text-muted-foreground/30 mt-2" aria-hidden="true" />
     </motion.div>
   )
 }

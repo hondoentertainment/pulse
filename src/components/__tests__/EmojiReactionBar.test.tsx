@@ -19,6 +19,7 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }))
 
 function makeEmptyCounts(): Record<ReactionType, number> {
@@ -59,7 +60,7 @@ describe('EmojiReactionBar', () => {
 
     for (const [type, config] of Object.entries(REACTION_EMOJIS)) {
       const btn = screen.getByTestId(`reaction-btn-${type}`)
-      expect(btn.getAttribute('aria-label')).toBe(config.label)
+      expect(btn.getAttribute('aria-label')).toBe(`${config.label} reaction`)
     }
   })
 

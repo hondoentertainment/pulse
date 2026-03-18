@@ -11,6 +11,7 @@ vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   },
+  useReducedMotion: () => false,
 }))
 
 // Mock Recharts to avoid rendering issues in jsdom

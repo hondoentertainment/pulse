@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { CaretLeft, Trophy, Fire, Lightning, Crown, Warning, Clock } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { User } from '@/lib/types'
@@ -36,32 +36,38 @@ function getTimeRemaining(expiresAt: string): string {
 }
 
 function MultiplierBadge({ multiplier }: { multiplier: number }) {
+  const prefersReducedMotion = useReducedMotion()
   if (multiplier <= 1) return null
 
   const color = multiplier >= 3 ? 'from-yellow-500 to-amber-400' : multiplier >= 2 ? 'from-purple-500 to-pink-400' : 'from-blue-500 to-cyan-400'
 
   return (
     <motion.div
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
+      initial={prefersReducedMotion ? false : { scale: 0 }}
+      animate={prefersReducedMotion ? false : { scale: 1 }}
+      transition={prefersReducedMotion ? { duration: 0 } : undefined}
+      role="status"
+      aria-label={`${multiplier}x XP multiplier active`}
       className={cn(
         'flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r text-white text-xs font-bold shadow-lg',
         color
       )}
     >
-      <Lightning size={12} weight="fill" />
+      <Lightning size={12} weight="fill" aria-hidden="true" />
       {multiplier}x XP
     </motion.div>
   )
 }
 
 function AtRiskSection({ streaks }: { streaks: Streak[] }) {
+  const prefersReducedMotion = useReducedMotion()
   if (streaks.length === 0) return null
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      transition={prefersReducedMotion ? { duration: 0 } : undefined}
       className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-3"
       role="alert"
       aria-label={`${streaks.length} streak${streaks.length > 1 ? 's' : ''} at risk of expiring`}

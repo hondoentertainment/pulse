@@ -223,6 +223,7 @@ export function QuickBoostFlow({
           {!prefersReducedMotion && Array.from({ length: 12 }).map((_, i) => (
             <motion.div
               key={i}
+              aria-hidden="true"
               className="absolute w-2 h-2 rounded-full"
               style={{
                 backgroundColor: ['oklch(0.70 0.22 60)', 'oklch(0.65 0.28 340)', 'oklch(0.70 0.18 80)', 'oklch(0.65 0.25 300)'][i % 4],
@@ -294,11 +295,11 @@ export function QuickBoostFlow({
             <motion.div
               key="step1"
               custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              variants={prefersReducedMotion ? undefined : slideVariants}
+              initial={prefersReducedMotion ? { opacity: 0 } : "enter"}
+              animate={prefersReducedMotion ? { opacity: 1 } : "center"}
+              exit={prefersReducedMotion ? { opacity: 0 } : "exit"}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: 'easeInOut' }}
               className="space-y-3"
             >
               <div className="mb-4">
@@ -352,11 +353,11 @@ export function QuickBoostFlow({
             <motion.div
               key="step2"
               custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              variants={prefersReducedMotion ? undefined : slideVariants}
+              initial={prefersReducedMotion ? { opacity: 0 } : "enter"}
+              animate={prefersReducedMotion ? { opacity: 1 } : "center"}
+              exit={prefersReducedMotion ? { opacity: 0 } : "exit"}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: 'easeInOut' }}
               className="space-y-4"
             >
               <div className="mb-4">
@@ -396,11 +397,11 @@ export function QuickBoostFlow({
             <motion.div
               key="step3"
               custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              variants={prefersReducedMotion ? undefined : slideVariants}
+              initial={prefersReducedMotion ? { opacity: 0 } : "enter"}
+              animate={prefersReducedMotion ? { opacity: 1 } : "center"}
+              exit={prefersReducedMotion ? { opacity: 0 } : "exit"}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: 'easeInOut' }}
               className="space-y-4"
             >
               <div className="mb-4">
@@ -439,11 +440,12 @@ export function QuickBoostFlow({
               </Card>
 
               <motion.button
-                whileTap={{ scale: 0.97 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
                 onClick={handleConfirm}
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                aria-label={`Boost ${venue.name} now with ${config.label} for ${formatBoostDuration(selectedDuration)}`}
               >
-                <Rocket size={18} weight="fill" />
+                <Rocket size={18} weight="fill" aria-hidden="true" />
                 Boost Now
               </motion.button>
             </motion.div>

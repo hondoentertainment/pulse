@@ -17,6 +17,7 @@ vi.mock('framer-motion', () => ({
     div: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }))
 
 vi.mock('@phosphor-icons/react', () => ({

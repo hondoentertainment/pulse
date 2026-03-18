@@ -14,6 +14,7 @@ vi.mock('framer-motion', () => ({
     circle: (props: Record<string, unknown>) => <circle {...props} />,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }))
 
 function makeStreak(overrides: Partial<Streak> = {}): Streak {
