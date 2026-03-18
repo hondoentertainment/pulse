@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -25,6 +25,14 @@ import { VenueQuickActions } from './VenueQuickActions'
 import { VenueActivityStream } from './VenueActivityStream'
 // Phase 4: Personalization
 import VenueMemoryCard from './VenueMemoryCard'
+// Phase 5: Social & engagement features
+import { GoingTonightButton } from './GoingTonightButton'
+import { EmojiReactionBar } from './EmojiReactionBar'
+import { EmojiBurstOverlay } from './EmojiBurstOverlay'
+import { BoostStatusBadge } from './BoostStatusBadge'
+import { useGoingTonight } from '@/hooks/use-going-tonight'
+import { useEmojiBurst } from '@/hooks/use-emoji-burst'
+import { useVenueBoost } from '@/hooks/use-venue-boost'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -89,6 +97,33 @@ export function VenuePage({
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
 
+  // Going Tonight RSVP state
+  const venuesArray = useMemo(() => [venue], [venue])
+  const usersArray = useMemo(() => (currentUser ? [currentUser] : []), [currentUser])
+  const friendIds = useMemo(() => currentUser?.friends ?? [], [currentUser])
+  const goingTonight = useGoingTonight(
+    currentUser?.id ?? '',
+    friendIds,
+    venuesArray,
+    usersArray,
+  )
+  const myRsvpStatus = goingTonight.getMyStatus(venue.id)
+  const venuePlan = goingTonight.getVenuePlan(venue.id)
+  const friendsGoingUsers = useMemo(() => {
+    const friendRsvps = goingTonight.friendsPlans.get(venue.id) ?? []
+    return friendRsvps
+      .filter(r => r.status === 'going')
+      .map(r => goingTonight.mockFriends.find(f => f.id === r.userId))
+      .filter((u): u is User => !!u)
+  }, [goingTonight.friendsPlans, goingTonight.mockFriends, venue.id])
+
+  // Emoji burst state (shared between EmojiReactionBar and EmojiBurstOverlay)
+  const { particles, reactionCounts, triggerBurst } = useEmojiBurst()
+
+  // Venue boost state
+  const { getVenueActiveBoosts } = useVenueBoost(venue)
+  const activeBoostsForVenue = getVenueActiveBoosts(venue.id)
+
   const refreshLiveData = useCallback(() => {
     setLiveData(getVenueLiveData(venue.id))
   }, [venue.id])
@@ -117,7 +152,15 @@ export function VenuePage({
               <ArrowLeft size={24} />
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">{venue.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{venue.name}</h1>
+                {activeBoostsForVenue.length > 0 && (
+                  <BoostStatusBadge
+                    boost={activeBoostsForVenue[0]}
+                    venuePulseScore={venue.pulseScore}
+                  />
+                )}
+              </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 {venue.category && (
                   <span className="font-mono uppercase">{venue.category}</span>
@@ -309,6 +352,16 @@ export function VenuePage({
           friendCount={presenceData?.friendsNearbyCount ?? 0}
         />
 
+        {/* Going Tonight RSVP Button */}
+        <GoingTonightButton
+          venueId={venue.id}
+          currentStatus={myRsvpStatus}
+          friendsGoing={friendsGoingUsers}
+          onMarkGoing={goingTonight.markGoing}
+          onMarkMaybe={goingTonight.markMaybe}
+          onCancel={goingTonight.cancelGoing}
+        />
+
         {/* Phase 4: Venue Memory Card */}
         {currentUser && (
           <VenueMemoryCard
@@ -421,6 +474,12 @@ export function VenuePage({
           venueName={venue.name}
         />
 
+        {/* Emoji Reaction Bar */}
+        <EmojiReactionBar
+          onReaction={triggerBurst}
+          reactionCounts={reactionCounts}
+        />
+
         <Separator />
 
         {venuePulses.length === 0 ? (
@@ -449,6 +508,9 @@ export function VenuePage({
         onOpenChange={setShareOpen}
         card={shareCard}
       />
+
+      {/* Emoji Burst Overlay (floating particles) */}
+      <EmojiBurstOverlay particles={particles} />
 
       <QuickReportSheet
         open={reportSheetOpen}
