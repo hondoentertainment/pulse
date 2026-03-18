@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { type ReactionBurst, REACTION_EMOJIS } from '@/lib/emoji-reactions'
 
 interface EmojiBurstOverlayProps {
@@ -6,6 +6,14 @@ interface EmojiBurstOverlayProps {
 }
 
 export function EmojiBurstOverlay({ particles }: EmojiBurstOverlayProps) {
+  const prefersReducedMotion = useReducedMotion()
+
+  // For reduced motion users, don't render floating particles at all.
+  // The count increment in EmojiReactionBar already provides feedback.
+  if (prefersReducedMotion) {
+    return null
+  }
+
   return (
     <div
       className="pointer-events-none fixed inset-0 z-50 overflow-hidden"

@@ -68,11 +68,20 @@ export const StreakCounter = memo(function StreakCounter({ streak, onExpand, siz
       aria-label={`${def?.label ?? streak.type}: ${streak.currentCount} streak${nextMilestone ? `, next milestone at ${nextMilestone}` : ''}${atRisk ? ', at risk of expiring!' : ''}`}
     >
       {/* Progress Ring */}
-      <div className="relative" style={{ width: dimension, height: dimension }}>
+      <div
+        className="relative"
+        style={{ width: dimension, height: dimension }}
+        role="progressbar"
+        aria-valuenow={Math.round(progress * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${def?.label ?? streak.type} streak progress: ${streak.currentCount}${nextMilestone ? ` of ${nextMilestone}` : ''}`}
+      >
         <svg
           width={dimension}
           height={dimension}
           className="transform -rotate-90"
+          aria-hidden="true"
         >
           {/* Background circle */}
           <circle
@@ -122,11 +131,11 @@ export const StreakCounter = memo(function StreakCounter({ streak, onExpand, siz
               className="absolute -top-1 -right-1"
             >
               <motion.div
-                animate={{
+                animate={prefersReducedMotion ? undefined : {
                   scale: [1, 1.2, 1],
                   rotate: [0, -5, 5, 0],
                 }}
-                transition={{
+                transition={prefersReducedMotion ? { duration: 0 } : {
                   duration: 0.8,
                   repeat: Infinity,
                   repeatType: 'mirror',

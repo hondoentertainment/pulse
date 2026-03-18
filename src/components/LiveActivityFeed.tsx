@@ -119,6 +119,7 @@ export const LiveActivityFeed = memo(function LiveActivityFeed({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="overflow-y-auto max-h-96 px-2"
+        role="log"
         aria-live="polite"
         aria-relevant="additions"
       >

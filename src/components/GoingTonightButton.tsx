@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Check, DotsThreeVertical, Clock, X, Question } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { User } from '@/lib/types'
@@ -68,6 +68,7 @@ export function GoingTonightButton({
   const [showConfetti, setShowConfetti] = useState(false)
   const [showArrivalPicker, setShowArrivalPicker] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   const status: RSVPStatus | 'none' = currentStatus?.status ?? 'none'
 
@@ -107,10 +108,16 @@ export function GoingTonightButton({
 
   return (
     <div className="relative">
+      {/* Screen reader announcement */}
+      <div className="sr-only" aria-live="assertive">
+        {status === 'going' && "You're now going tonight"}
+        {status === 'maybe' && "You're marked as maybe tonight"}
+      </div>
+
       {/* Main Button */}
       <motion.button
         onClick={handleTap}
-        whileTap={{ scale: 0.95 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
         className={cn(
           'relative flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all',
           status === 'none' &&
@@ -122,6 +129,13 @@ export function GoingTonightButton({
         )}
         data-testid="going-tonight-button"
         data-status={status}
+        aria-pressed={status === 'going'}
+        aria-expanded={showMenu}
+        aria-label={
+          status === 'going' ? "I'm Going Tonight" :
+          status === 'maybe' ? 'Maybe Tonight' :
+          'Going Tonight?'
+        }
       >
         {/* Status icon */}
         <div className="flex-shrink-0">
@@ -182,8 +196,8 @@ export function GoingTonightButton({
 
         {/* Confetti particles */}
         <AnimatePresence>
-          {showConfetti && (
-            <div className="absolute inset-0 pointer-events-none overflow-visible">
+          {showConfetti && !prefersReducedMotion && (
+            <div className="absolute inset-0 pointer-events-none overflow-visible" aria-hidden="true">
               {Array.from({ length: 8 }).map((_, i) => (
                 <ConfettiParticle key={i} index={i} />
               ))}
@@ -203,16 +217,19 @@ export function GoingTonightButton({
             transition={{ duration: 0.15 }}
             className="absolute top-full left-0 right-0 mt-2 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden"
             data-testid="going-menu"
+            role="menu"
+            aria-label="RSVP options"
           >
             {/* Arrival Time Picker */}
             {showArrivalPicker ? (
               <div className="p-2 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1" id="arrival-picker-label">
                   When are you arriving?
                 </p>
                 {ARRIVAL_OPTIONS.map((time) => (
                   <button
                     key={time}
+                    role="menuitem"
                     onClick={() => handleArrivalSelect(time)}
                     className={cn(
                       'w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-secondary transition-colors',
@@ -220,7 +237,7 @@ export function GoingTonightButton({
                     )}
                     data-testid={`arrival-${time}`}
                   >
-                    <Clock size={14} weight="fill" className="inline mr-2 opacity-60" />
+                    <Clock size={14} weight="fill" className="inline mr-2 opacity-60" aria-hidden="true" />
                     {time}
                   </button>
                 ))}
@@ -229,6 +246,7 @@ export function GoingTonightButton({
               <div className="p-2 space-y-1">
                 {status !== 'going' && (
                   <button
+                    role="menuitem"
                     onClick={() => {
                       onMarkGoing(venueId)
                       setShowMenu(false)
@@ -238,35 +256,38 @@ export function GoingTonightButton({
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary transition-colors text-emerald-400"
                     data-testid="menu-going"
                   >
-                    <Check size={16} weight="bold" />
+                    <Check size={16} weight="bold" aria-hidden="true" />
                     I'm Going
                   </button>
                 )}
                 {status !== 'maybe' && (
                   <button
+                    role="menuitem"
                     onClick={handleMarkMaybe}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary transition-colors text-amber-400"
                     data-testid="menu-maybe"
                   >
-                    <Question size={16} weight="bold" />
+                    <Question size={16} weight="bold" aria-hidden="true" />
                     Maybe
                   </button>
                 )}
                 <button
+                  role="menuitem"
                   onClick={() => setShowArrivalPicker(true)}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary transition-colors text-muted-foreground"
                   data-testid="menu-arrival"
                 >
-                  <Clock size={16} weight="bold" />
+                  <Clock size={16} weight="bold" aria-hidden="true" />
                   Set Arrival Time
                 </button>
-                <div className="border-t border-border my-1" />
+                <div className="border-t border-border my-1" role="separator" />
                 <button
+                  role="menuitem"
                   onClick={handleCancel}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary transition-colors text-red-400"
                   data-testid="menu-cancel"
                 >
-                  <X size={16} weight="bold" />
+                  <X size={16} weight="bold" aria-hidden="true" />
                   Cancel Plans
                 </button>
               </div>

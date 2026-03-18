@@ -2,6 +2,8 @@ import { ReactNode } from 'react'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { useOfflineCache } from '@/hooks/use-offline-cache'
 import { Plus } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { Venue } from '@/lib/types'
@@ -35,6 +37,13 @@ export function AppShell({ state, handlers, sortedVenues, children }: AppShellPr
     handleCreatePulse,
   } = handlers
 
+  const offlineCache = useOfflineCache(
+    sortedVenues,
+    realtimeLocation ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } : null,
+    state.currentUser?.favoriteVenues ?? [],
+    state.currentUser?.followedVenues ?? [],
+  )
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <AppHeader
@@ -43,6 +52,15 @@ export function AppShell({ state, handlers, sortedVenues, children }: AppShellPr
         hasRealtimeLocation={!!realtimeLocation}
         locationPermissionDenied={locationPermissionDenied}
         currentTime={currentTime}
+      />
+
+      <OfflineIndicator
+        isOnline={offlineCache.isOnline}
+        lastSyncTime={offlineCache.lastSyncTime}
+        syncProgress={offlineCache.syncProgress}
+        cacheStats={offlineCache.cacheStats}
+        onClearCache={offlineCache.clearCache}
+        onRefreshCache={offlineCache.forcePrefetch}
       />
 
       {children}

@@ -29,6 +29,8 @@ import { MapVenuePinSVG, MapVenuePinLabels } from './MapVenuePin'
 import { MapVenueSheet } from './MapVenueSheet'
 import { MapTopBar, MapRightControls, MapBottomLeftControls } from './MapControls'
 import { MapSmartRoute } from './MapSmartRoute'
+import { VenueComparison } from '@/components/VenueComparison'
+import { compareVenues } from '@/lib/venue-comparison'
 
 const PROGRESSIVE_DISCLOSURE_LIMIT = 5
 
@@ -290,6 +292,17 @@ export function InteractiveMap({
       .map((id) => map.get(id))
       .filter((point): point is VenueRenderPoint => !!point)
   }, [comparedVenueIds, previewVenues])
+
+  const comparisonSelectedVenues: [Venue | null, Venue | null] = useMemo(() => [
+    comparedVenues[0]?.venue ?? null,
+    comparedVenues[1]?.venue ?? null,
+  ], [comparedVenues])
+
+  const comparisonResult = useMemo(() => {
+    const [venueA, venueB] = comparisonSelectedVenues
+    if (!venueA || !venueB) return null
+    return compareVenues(venueA, venueB, userLocation ?? undefined, 0, 0)
+  }, [comparisonSelectedVenues, userLocation])
 
   const bestNextVenue = previewVenues[0] ?? null
 
@@ -720,6 +733,32 @@ export function InteractiveMap({
             >
               Show top {PROGRESSIVE_DISCLOSURE_LIMIT} only
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Venue Comparison Panel */}
+      <AnimatePresence>
+        {comparedVenues.length >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-16 right-4 z-30 w-[min(340px,40vw)] max-h-[60vh] overflow-y-auto bg-card/95 backdrop-blur-sm rounded-xl border border-border shadow-xl p-3"
+            data-testid="map-venue-comparison"
+          >
+            <VenueComparison
+              selectedVenues={comparisonSelectedVenues}
+              comparisonResult={comparisonResult}
+              onRemoveVenue={(index) => {
+                setComparedVenueIds(prev => prev.filter((_, i) => i !== index))
+              }}
+              onSwapVenues={() => {
+                setComparedVenueIds(prev => [...prev].reverse())
+              }}
+              onClear={() => setComparedVenueIds([])}
+            />
           </motion.div>
         )}
       </AnimatePresence>

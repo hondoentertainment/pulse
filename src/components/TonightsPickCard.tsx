@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   X,
   MapPin,
@@ -106,10 +106,18 @@ function PulseScoreRing({ score }: { score: number }) {
   const radius = 22
   const circumference = 2 * Math.PI * radius
   const progress = score / 100
+  const prefersReducedMotion = useReducedMotion()
 
   return (
-    <div className="relative w-14 h-14 flex items-center justify-center">
-      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 52 52">
+    <div
+      className="relative w-14 h-14 flex items-center justify-center"
+      role="progressbar"
+      aria-valuenow={score}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Pulse score: ${score} out of 100`}
+    >
+      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 52 52" aria-hidden="true">
         <circle
           cx="26"
           cy="26"
@@ -128,12 +136,12 @@ function PulseScoreRing({ score }: { score: number }) {
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - progress)}
-          variants={ringVariants}
-          initial="hidden"
-          animate="visible"
+          variants={prefersReducedMotion ? undefined : ringVariants}
+          initial={prefersReducedMotion ? false : "hidden"}
+          animate={prefersReducedMotion ? false : "visible"}
         />
       </svg>
-      <span className="text-sm font-bold text-white">{score}</span>
+      <span className="text-sm font-bold text-white" aria-hidden="true">{score}</span>
     </div>
   )
 }
@@ -178,6 +186,7 @@ function AlternateVenueCard({
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick?.(venue)}
       className="shrink-0 w-44 rounded-xl bg-zinc-800/60 border border-zinc-700/50 p-3 text-left"
+      aria-label={`Alternative: ${venue.name}, ${getEnergyLabel(venue.pulseScore)}`}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-purple-400">{getCategoryIcon(venue.category)}</span>
@@ -210,6 +219,7 @@ export function TonightsPickCard({
 
   const { venue, explanation, alternates } = pick
   const gradient = getGradient(venue.pulseScore)
+  const prefersReducedMotion = useReducedMotion()
 
   return (
     <AnimatePresence mode="wait">
@@ -230,18 +240,21 @@ export function TonightsPickCard({
           )}
         >
           {/* Shimmer overlay */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
-            animate={{
-              x: ['-100%', '200%'],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              repeatDelay: 4,
-              ease: 'easeInOut',
-            }}
-          />
+          {!prefersReducedMotion && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+              aria-hidden="true"
+              animate={{
+                x: ['-100%', '200%'],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                repeatDelay: 4,
+                ease: 'easeInOut',
+              }}
+            />
+          )}
 
           {/* Dismiss button */}
           <button
@@ -257,7 +270,7 @@ export function TonightsPickCard({
           <div className="relative z-10 flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0 pr-12">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-purple-200">
+                <span className="text-purple-200" aria-hidden="true">
                   {getCategoryIcon(venue.category)}
                 </span>
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-200/70">
@@ -279,14 +292,14 @@ export function TonightsPickCard({
 
           {/* Friend avatars row */}
           {friendAvatars && friendAvatars.length > 0 && (
-            <div className="relative z-10 flex items-center gap-1.5 mb-4" data-testid="friend-avatars">
-              <Users size={14} weight="fill" className="text-purple-200/60" />
+            <div className="relative z-10 flex items-center gap-1.5 mb-4" data-testid="friend-avatars" aria-label={`${friendAvatars.length} friends are here`}>
+              <Users size={14} weight="fill" className="text-purple-200/60" aria-hidden="true" />
               <div className="flex -space-x-2">
                 {friendAvatars.slice(0, 5).map((avatar, i) => (
                   <img
                     key={i}
                     src={avatar}
-                    alt=""
+                    alt="Friend avatar"
                     className="w-6 h-6 rounded-full border-2 border-purple-900/50 object-cover"
                   />
                 ))}
@@ -302,24 +315,27 @@ export function TonightsPickCard({
           {/* CTA buttons */}
           <div className="relative z-10 flex gap-2">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
               onClick={() => onLetsGo?.(venue)}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-purple-900 text-sm font-bold transition-colors hover:bg-purple-50"
               data-testid="lets-go-button"
+              aria-label={`Let's go to ${venue.name}`}
             >
-              <Lightning size={16} weight="fill" />
+              <Lightning size={16} weight="fill" aria-hidden="true" />
               Let's Go
-              <ArrowRight size={14} weight="bold" />
+              <ArrowRight size={14} weight="bold" aria-hidden="true" />
             </motion.button>
 
             {alternates.length > 0 && (
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
                 onClick={onToggleAlternates}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 text-white/80 text-sm font-semibold hover:bg-white/15 transition-colors"
                 data-testid="see-alternatives-button"
+                aria-expanded={showAlternates}
+                aria-label="See alternative venues"
               >
                 See Alternatives
                 {showAlternates ? (

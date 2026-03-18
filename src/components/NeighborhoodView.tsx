@@ -1,14 +1,18 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Venue, Pulse } from '@/lib/types'
 import { Neighborhood, NeighborhoodScore, getNeighborhoodLeaderboard, getHottestNeighborhood, assignVenueToNeighborhood } from '@/lib/neighborhood-scores'
-import { CaretLeft, MapTrifold, Crown, TrendUp } from '@phosphor-icons/react'
+import { CaretLeft, MapTrifold, Crown, TrendUp, NavigationArrow } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { useNeighborhoodWalkthrough } from '@/hooks/use-neighborhood-walkthrough'
+
+const NeighborhoodWalkthrough = lazy(() => import('@/components/NeighborhoodWalkthrough').then(m => ({ default: m.NeighborhoodWalkthrough })))
 
 interface NeighborhoodViewProps {
   venues: Venue[]
   pulses: Pulse[]
   onBack: () => void
   onVenueClick: (venue: Venue) => void
+  userLocation?: { lat: number; lng: number } | null
 }
 
 function buildNeighborhoods(venues: Venue[]): Neighborhood[] {
@@ -38,8 +42,25 @@ function buildNeighborhoods(venues: Venue[]): Neighborhood[] {
   })
 }
 
-export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: NeighborhoodViewProps) {
+export function NeighborhoodView({ venues, pulses, onBack, onVenueClick, userLocation = null }: NeighborhoodViewProps) {
   const neighborhoods = useMemo(() => buildNeighborhoods(venues), [venues])
+  const [showWalkthrough, setShowWalkthrough] = useState(false)
+  const [walkthroughNeighborhood, setWalkthroughNeighborhood] = useState<string | null>(null)
+
+  const walkthroughVenues = useMemo(() => {
+    if (!walkthroughNeighborhood) return venues
+    const n = neighborhoods.find(n => n.name === walkthroughNeighborhood)
+    if (!n) return venues
+    return venues.filter(v => n.venueIds.includes(v.id))
+  }, [walkthroughNeighborhood, neighborhoods, venues])
+
+  const walkthrough = useNeighborhoodWalkthrough(walkthroughVenues, userLocation)
+
+  const handleStartWalkthrough = (neighborhoodName: string) => {
+    setWalkthroughNeighborhood(neighborhoodName)
+    setShowWalkthrough(true)
+    walkthrough.generateRoute(neighborhoodName)
+  }
 
   const leaderboard = useMemo(
     () => getNeighborhoodLeaderboard(neighborhoods, venues, pulses),
@@ -132,6 +153,14 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: Neigh
                   </span>
                 )}
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStartWalkthrough(ns.name) }}
+                className="ml-2 flex items-center gap-1 px-3 py-1.5 rounded-full bg-purple-500/10 text-purple-400 text-xs font-medium hover:bg-purple-500/20 transition-colors"
+                data-testid={`walkthrough-btn-${ns.neighborhoodId}`}
+              >
+                <NavigationArrow size={12} weight="fill" />
+                Bar Crawl
+              </button>
             </motion.div>
           ))}
         </div>
@@ -155,6 +184,40 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: Neigh
                 </div>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Neighborhood Walkthrough Section */}
+        {showWalkthrough && walkthroughNeighborhood && (
+          <div className="space-y-3" data-testid="walkthrough-section">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <NavigationArrow size={20} weight="fill" className="text-purple-400" />
+                <h2 className="text-lg font-bold">Bar Crawl: {walkthroughNeighborhood}</h2>
+              </div>
+              <button
+                onClick={() => { setShowWalkthrough(false); walkthrough.endWalkthrough() }}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="walkthrough-close"
+              >
+                Close
+              </button>
+            </div>
+            <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading walkthrough...</div>}>
+              <NeighborhoodWalkthrough
+                route={walkthrough.activeRoute}
+                currentStopIndex={walkthrough.currentStopIndex}
+                isActive={walkthrough.isActive}
+                isCompleted={walkthrough.isCompleted}
+                estimatedCompletion={walkthrough.estimatedCompletion}
+                availableThemes={walkthrough.availableThemes}
+                onGenerateRoute={(neighborhood, theme) => walkthrough.generateRoute(neighborhood, theme)}
+                onStart={walkthrough.startWalkthrough}
+                onAdvance={walkthrough.advanceToNext}
+                onEnd={() => { walkthrough.endWalkthrough(); setShowWalkthrough(false) }}
+                neighborhood={walkthroughNeighborhood}
+              />
+            </Suspense>
           </div>
         )}
       </div>

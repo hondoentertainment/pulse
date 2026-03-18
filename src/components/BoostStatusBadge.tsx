@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, memo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Lightning } from '@phosphor-icons/react'
 import type { ActiveBoost, BoostAnalytics } from '@/lib/venue-quick-boost'
 import {
@@ -21,6 +21,7 @@ interface BoostStatusBadgeProps {
  */
 export const BoostStatusBadge = memo(function BoostStatusBadge({ boost, venuePulseScore, onTap }: BoostStatusBadgeProps) {
   const [timeRemaining, setTimeRemaining] = useState(() => getBoostTimeRemaining(boost))
+  const prefersReducedMotion = useReducedMotion()
 
   const config = BOOST_CONFIGS[boost.type]
 
@@ -58,20 +59,22 @@ export const BoostStatusBadge = memo(function BoostStatusBadge({ boost, venuePul
   return (
     <motion.button
       onClick={handleTap}
-      whileTap={{ scale: 0.95 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
       className="relative inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-colors"
       style={{
         backgroundColor: `color-mix(in oklch, ${config.pinColor} 20%, transparent)`,
         color: config.pinColor,
       }}
+      aria-label={`${config.badgeText} boost, ${isExpired ? 'ended' : `${formatTime(timeRemaining)} remaining`}. Tap for details.`}
     >
       {/* Pulsing glow */}
-      {!isExpired && (
+      {!isExpired && !prefersReducedMotion && (
         <motion.div
           className="absolute inset-0 rounded-full"
           style={{
             backgroundColor: `color-mix(in oklch, ${config.pinColor} 15%, transparent)`,
           }}
+          aria-hidden="true"
           animate={{
             scale: [1, 1.15, 1],
             opacity: [0.6, 0, 0.6],
@@ -84,7 +87,7 @@ export const BoostStatusBadge = memo(function BoostStatusBadge({ boost, venuePul
         />
       )}
 
-      <Lightning size={10} weight="fill" />
+      <Lightning size={10} weight="fill" aria-hidden="true" />
       <span className="relative z-10">{config.badgeText}</span>
       <span className="relative z-10 opacity-70">{formatTime(timeRemaining)}</span>
     </motion.button>
