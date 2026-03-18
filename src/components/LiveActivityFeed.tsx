@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { MapPin, Lightning, MusicNote, TrendUp, Beer } from '@phosphor-icons/react'
 import type { Venue, Pulse } from '@/lib/types'
 import type { ActivityEvent, ActivityEventType } from '@/lib/live-activity-feed'
@@ -49,7 +49,7 @@ interface LiveActivityFeedProps {
   compact?: boolean
 }
 
-export function LiveActivityFeed({
+export const LiveActivityFeed = memo(function LiveActivityFeed({
   venues,
   pulses,
   onVenueTap,
@@ -57,6 +57,7 @@ export function LiveActivityFeed({
 }: LiveActivityFeedProps) {
   const { events, isLive, pauseFeed, resumeFeed } =
     useLiveActivityFeed({ venues, pulses, enabled: true })
+  const prefersReducedMotion = useReducedMotion()
 
   const [userScrolled, setUserScrolled] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -89,7 +90,7 @@ export function LiveActivityFeed({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full" role="feed" aria-label="Live activity feed" aria-busy={!isLive}>
       {/* Header with live indicator */}
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2">
@@ -98,14 +99,16 @@ export function LiveActivityFeed({
             className={`inline-block w-2 h-2 rounded-full ${
               isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
             }`}
+            aria-hidden="true"
           />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" aria-live="polite">
             {isLive ? 'Live' : 'Paused'}
           </span>
         </div>
         <button
           onClick={isLive ? pauseFeed : resumeFeed}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={isLive ? 'Pause live feed' : 'Resume live feed'}
         >
           {isLive ? 'Pause' : 'Resume'}
         </button>
@@ -116,22 +119,25 @@ export function LiveActivityFeed({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="overflow-y-auto max-h-96 px-2"
+        aria-live="polite"
+        aria-relevant="additions"
       >
         <AnimatePresence initial={false}>
           {events.map((event) => (
             <motion.div
               key={event.id}
-              initial={{ opacity: 0, y: -20, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20, height: 0 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, height: 'auto' }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut' }}
             >
               <button
                 onClick={() => onVenueTap?.(event.venueId)}
                 className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors flex items-start gap-3"
+                aria-label={`${event.venueName}: ${event.message}, ${getRelativeTime(event.timestamp)}`}
               >
                 {/* Icon */}
-                <div className="flex-shrink-0 mt-0.5 text-muted-foreground">
+                <div className="flex-shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true">
                   {getEventIcon(event.type)}
                 </div>
 
@@ -156,6 +162,7 @@ export function LiveActivityFeed({
                   </span>
                   <span
                     className={`inline-block w-1.5 h-1.5 rounded-full ${getEnergyDotColor(event)}`}
+                    aria-hidden="true"
                   />
                 </div>
               </button>
@@ -165,4 +172,4 @@ export function LiveActivityFeed({
       </div>
     </div>
   )
-}
+})

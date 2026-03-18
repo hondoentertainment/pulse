@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { motion } from 'framer-motion'
 import { Lightning } from '@phosphor-icons/react'
 import type { ActiveBoost, BoostAnalytics } from '@/lib/venue-quick-boost'
@@ -19,7 +19,7 @@ interface BoostStatusBadgeProps {
  * Features a pulsing glow animation matching the boost color.
  * Tap to reveal boost analytics.
  */
-export function BoostStatusBadge({ boost, venuePulseScore, onTap }: BoostStatusBadgeProps) {
+export const BoostStatusBadge = memo(function BoostStatusBadge({ boost, venuePulseScore, onTap }: BoostStatusBadgeProps) {
   const [timeRemaining, setTimeRemaining] = useState(() => getBoostTimeRemaining(boost))
 
   const config = BOOST_CONFIGS[boost.type]
@@ -89,4 +89,4 @@ export function BoostStatusBadge({ boost, venuePulseScore, onTap }: BoostStatusB
       <span className="relative z-10 opacity-70">{formatTime(timeRemaining)}</span>
     </motion.button>
   )
-}
+})

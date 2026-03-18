@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Fire, Warning } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
@@ -41,7 +41,7 @@ const SIZE_CONFIG = {
   large: { dimension: 80, strokeWidth: 5, radius: 33, fontSize: 'text-xl', iconSize: 18 },
 } as const
 
-export function StreakCounter({ streak, onExpand, size = 'medium' }: StreakCounterProps) {
+export const StreakCounter = memo(function StreakCounter({ streak, onExpand, size = 'medium' }: StreakCounterProps) {
   const [isHovered, setIsHovered] = useState(false)
   const progress = getProgressToNextMilestone(streak)
   const nextMilestone = getNextMilestone(streak)
@@ -179,4 +179,4 @@ export function StreakCounter({ streak, onExpand, size = 'medium' }: StreakCount
       </AnimatePresence>
     </motion.button>
   )
-}
+})

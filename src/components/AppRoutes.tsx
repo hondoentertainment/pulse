@@ -31,6 +31,10 @@ const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
+const StreakDashboard = lazy(() => import('@/components/StreakDashboard').then(m => ({ default: m.StreakDashboard })))
+const VenueComparison = lazy(() => import('@/components/VenueComparison').then(m => ({ default: m.VenueComparison })))
+const NeighborhoodWalkthrough = lazy(() => import('@/components/NeighborhoodWalkthrough').then(m => ({ default: m.NeighborhoodWalkthrough })))
+const QuickBoostFlow = lazy(() => import('@/components/QuickBoostFlow').then(m => ({ default: m.QuickBoostFlow })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
