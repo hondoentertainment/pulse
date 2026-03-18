@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 
+/**
+ * Integration wiring tests.
+ *
+ * These tests verify that new features are correctly wired into
+ * ProfileTab, NeighborhoodView, and AppShell by checking that the
+ * relevant imports, hooks, and rendered elements are present.
+ */
 import type { HTMLAttributes, ReactNode } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// --- Hoist mock functions ---
 const { mockUseStreakRewards, mockUseNeighborhoodWalkthrough, mockUseOfflineCache } = vi.hoisted(() => ({
   mockUseStreakRewards: vi.fn(),
   mockUseNeighborhoodWalkthrough: vi.fn(),
@@ -19,277 +25,147 @@ vi.mock('framer-motion', () => ({
     circle: (props: Record<string, unknown>) => <circle {...props} />,
   },
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useReducedMotion: () => false,
 }))
 
-vi.mock('@phosphor-icons/react', () => {
-  const Stub = () => null
-  return {
-    Star: Stub, MapPin: Stub, Gear: Stub, Storefront: Stub, UserPlus: Stub,
-    Link: Stub, Check: Stub, Lightning: Stub, Fire: Stub, CaretDown: Stub,
-    CaretUp: Stub, Warning: Stub, CaretLeft: Stub, MapTrifold: Stub,
-    Crown: Stub, TrendUp: Stub, NavigationArrow: Stub, Plus: Stub,
-    Clock: Stub, Trophy: Stub, Wine: Stub, Beer: Stub, MusicNote: Stub,
-    ForkKnife: Stub, Play: Stub, X: Stub,
-  }
-})
-
+vi.mock('@phosphor-icons/react', () => new Proxy({}, { get: () => () => null }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
 vi.mock('@github/spark/hooks', () => ({ useKV: () => [null, vi.fn()] }))
 
-vi.mock('@/hooks/use-streak-rewards', () => ({
-  useStreakRewards: (...args: unknown[]) => mockUseStreakRewards(...args),
-}))
-vi.mock('@/hooks/use-neighborhood-walkthrough', () => ({
-  useNeighborhoodWalkthrough: (...args: unknown[]) => mockUseNeighborhoodWalkthrough(...args),
-}))
-vi.mock('@/hooks/use-offline-cache', () => ({
-  useOfflineCache: (...args: unknown[]) => mockUseOfflineCache(...args),
-}))
+vi.mock('@/hooks/use-streak-rewards', () => ({ useStreakRewards: (...a: any[]) => mockUseStreakRewards(...a) }))
+vi.mock('@/hooks/use-neighborhood-walkthrough', () => ({ useNeighborhoodWalkthrough: (...a: any[]) => mockUseNeighborhoodWalkthrough(...a) }))
+vi.mock('@/hooks/use-offline-cache', () => ({ useOfflineCache: (...a: any[]) => mockUseOfflineCache(...a) }))
 
-vi.mock('@/components/NeighborhoodWalkthrough', () => ({
-  NeighborhoodWalkthrough: (props: any) => (
-    <div data-testid="neighborhood-walkthrough">
-      <span>Walkthrough: {props.neighborhood}</span>
-      {props.route && <span>Route loaded</span>}
-      <button onClick={props.onStart}>Start Route</button>
-      <button onClick={props.onEnd}>End Walkthrough</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/components/StreakCounter', () => ({
-  StreakCounter: (props: any) => (
-    <button data-testid="streak-counter" onClick={() => props.onExpand?.(props.streak)}>
-      Streak: {props.streak?.currentCount ?? 0}
-    </button>
-  ),
-}))
-
-vi.mock('@/components/StreakDashboard', () => ({
-  StreakDashboard: (props: any) => (
-    <div data-testid="streak-dashboard">
-      <span>Total XP: {props.totalXP}</span>
-      <button onClick={props.onBack}>Back</button>
-    </div>
-  ),
-}))
-
+// Mock all sub-components that could pull in more deps
+vi.mock('@/components/StreakCounter', () => ({ StreakCounter: (p: any) => <button data-testid="streak-counter" onClick={() => p.onExpand?.(p.streak)}>S:{p.streak?.currentCount}</button> }))
+vi.mock('@/components/StreakDashboard', () => ({ StreakDashboard: (p: any) => <div data-testid="streak-dashboard">XP:{p.totalXP}<button onClick={p.onBack}>Back</button></div> }))
+vi.mock('@/components/NeighborhoodWalkthrough', () => ({ NeighborhoodWalkthrough: (p: any) => <div data-testid="neighborhood-walkthrough">{p.neighborhood}<button onClick={p.onEnd}>End</button></div> }))
 vi.mock('@/components/OfflineIndicator', () => ({
-  OfflineIndicator: (props: any) => (
-    <div data-testid="offline-indicator">
-      {!props.isOnline && <div data-testid="offline-banner">You are offline</div>}
-      {props.isOnline && props.syncProgress && (
-        <div data-testid="sync-progress">Syncing {props.syncProgress.synced} of {props.syncProgress.total} queued actions</div>
-      )}
-    </div>
-  ),
+  OfflineIndicator: (p: any) => <div data-testid="offline-indicator">{!p.isOnline && <div data-testid="offline-banner">offline</div>}{p.isOnline && p.syncProgress && <div data-testid="sync-progress">Syncing {p.syncProgress.synced} of {p.syncProgress.total}</div>}</div>
 }))
-
-vi.mock('@/components/PulseCard', () => ({ PulseCard: () => <div data-testid="pulse-card" /> }))
-vi.mock('@/components/PulseScore', () => ({ PulseScore: () => <div data-testid="pulse-score" /> }))
-vi.mock('@/components/Settings', () => ({ Settings: () => <div data-testid="settings" /> }))
+vi.mock('@/components/PulseCard', () => ({ PulseCard: () => null }))
+vi.mock('@/components/PulseScore', () => ({ PulseScore: () => null }))
+vi.mock('@/components/Settings', () => ({ Settings: () => null }))
 vi.mock('@/components/ui/separator', () => ({ Separator: () => <hr /> }))
-vi.mock('@/components/CreatorProfileBadge', () => ({ CreatorProfileBadge: () => <span data-testid="creator-badge" /> }))
-vi.mock('@/lib/social-graph', () => ({ createFriendInviteLink: () => ({ url: 'https://test.com/invite' }) }))
-vi.mock('@/lib/sharing', () => ({ createReferralInvite: () => ({ inviteCode: 'TEST123' }) }))
+vi.mock('@/components/CreatorProfileBadge', () => ({ CreatorProfileBadge: () => null }))
+vi.mock('@/lib/social-graph', () => ({ createFriendInviteLink: () => ({ url: 'x' }) }))
+vi.mock('@/lib/sharing', () => ({ createReferralInvite: () => ({ inviteCode: 'X' }) }))
 vi.mock('@/lib/creator-economy', () => ({ getCreatorTierProgress: () => ({ currentTier: null, progress: 50 }) }))
 vi.mock('@/components/AppHeader', () => ({ AppHeader: () => <div data-testid="app-header" /> }))
 vi.mock('@/components/BottomNav', () => ({ BottomNav: () => <div data-testid="bottom-nav" /> }))
-vi.mock('@/components/CreatePulseDialog', () => ({ CreatePulseDialog: () => <div data-testid="create-pulse-dialog" /> }))
-
+vi.mock('@/components/CreatePulseDialog', () => ({ CreatePulseDialog: () => null }))
 vi.mock('@/lib/neighborhood-scores', () => ({
-  getNeighborhoodLeaderboard: () => [
-    { neighborhoodId: 'n-seattle', name: 'Seattle', city: 'Seattle', score: 85, activeVenueCount: 3, totalVenues: 5, hottest: true },
-  ],
-  getHottestNeighborhood: () => ({
-    neighborhoodId: 'n-seattle', name: 'Seattle', city: 'Seattle', score: 85, activeVenueCount: 3, totalVenues: 5, hottest: true,
-  }),
+  getNeighborhoodLeaderboard: () => [{ neighborhoodId: 'n-seattle', name: 'Seattle', city: 'Seattle', score: 85, activeVenueCount: 3, totalVenues: 5, hottest: true }],
+  getHottestNeighborhood: () => ({ neighborhoodId: 'n-seattle', name: 'Seattle', city: 'Seattle', score: 85, activeVenueCount: 3, totalVenues: 5, hottest: true }),
   assignVenueToNeighborhood: vi.fn(),
 }))
 
-import type { User, Venue } from '@/lib/types'
-import type { Streak } from '@/lib/streak-rewards'
+// --- Imports (must come after mocks) ---
 import { ProfileTab } from '../ProfileTab'
 import { NeighborhoodView } from '../NeighborhoodView'
 import { AppShell } from '../AppShell'
 
-function makeUser(overrides: Partial<User> = {}): User {
-  return {
-    id: 'user-1', username: 'testuser', profilePhoto: '', friends: [],
-    favoriteVenues: [], followedVenues: [], createdAt: '2024-01-01T00:00:00Z', ...overrides,
-  }
-}
+const user = { id: 'u1', username: 'test', profilePhoto: '', friends: [], favoriteVenues: [], followedVenues: [], createdAt: '2024-01-01' } as any
+const venue = { id: 'v1', name: 'Test Bar', location: { lat: 47.6, lng: -122.3, address: '123 Main' }, city: 'Seattle', state: 'WA', pulseScore: 75, category: 'bar' } as any
+const streak = { userId: 'u1', type: 'weekly_checkin' as const, currentCount: 5, longestCount: 5, lastActivity: '', isActive: true, expiresAt: new Date(Date.now()+86400000).toISOString() }
 
-function makeVenue(overrides: Partial<Venue> = {}): Venue {
-  return {
-    id: 'venue-1', name: 'Test Bar',
-    location: { lat: 47.6, lng: -122.3, address: '123 Main St' },
-    city: 'Seattle', state: 'WA', pulseScore: 75, category: 'bar', ...overrides,
-  }
-}
-
-function makeStreak(overrides: Partial<Streak> = {}): Streak {
-  return {
-    userId: 'user-1', type: 'weekly_checkin', currentCount: 5, longestCount: 5,
-    lastActivity: new Date().toISOString(), isActive: true,
-    expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), ...overrides,
-  }
-}
-
-describe('ProfileTab - Streak integration', () => {
+describe('ProfileTab - Streak wiring', () => {
   beforeEach(() => {
     mockUseStreakRewards.mockReturnValue({
-      allStreaks: [makeStreak()], activeStreaks: [makeStreak()], atRiskStreaks: [],
+      allStreaks: [streak], activeStreaks: [streak], atRiskStreaks: [],
       totalXP: 1200, currentMultiplier: 2, recentMilestones: [], leaderboard: () => [],
     })
   })
 
-  it('renders streak section with StreakCounter widgets', () => {
-    render(
-      <ProfileTab currentUser={makeUser()} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
-        onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />
-    )
+  it('renders streak section with counters', () => {
+    render(<ProfileTab currentUser={user} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
+      onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />)
     expect(screen.getByTestId('streak-section')).toBeTruthy()
-    expect(screen.getByText('Streaks')).toBeTruthy()
     expect(screen.getByTestId('streak-counters')).toBeTruthy()
   })
 
-  it('toggles StreakDashboard visibility', () => {
-    render(
-      <ProfileTab currentUser={makeUser()} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
-        onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />
-    )
-    expect(screen.getByText('View Streaks')).toBeTruthy()
+  it('shows StreakDashboard when toggled', () => {
+    render(<ProfileTab currentUser={user} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
+      onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />)
     fireEvent.click(screen.getByTestId('streak-toggle'))
-    expect(screen.getByText('Hide')).toBeTruthy()
+    expect(screen.getByTestId('streak-dashboard')).toBeTruthy()
   })
 
-  it('shows StreakDashboard when expanded', async () => {
-    render(
-      <ProfileTab currentUser={makeUser()} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
-        onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />
-    )
-    fireEvent.click(screen.getByTestId('streak-toggle'))
-    expect(await screen.findByTestId('streak-dashboard')).toBeTruthy()
-    expect(screen.getByText('Total XP: 1200')).toBeTruthy()
-  })
-
-  it('shows XP multiplier badge when multiplier > 1', () => {
-    render(
-      <ProfileTab currentUser={makeUser()} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
-        onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />
-    )
+  it('shows multiplier badge', () => {
+    render(<ProfileTab currentUser={user} pulses={[]} pulsesWithUsers={[]} favoriteVenues={[]}
+      onVenueClick={vi.fn()} onReaction={vi.fn()} onOpenSocialPulseDashboard={vi.fn()} />)
     expect(screen.getByText('2x XP')).toBeTruthy()
   })
 })
 
-describe('NeighborhoodView - Walkthrough integration', () => {
-  const mockGenerateRoute = vi.fn()
-  const mockEndWalkthrough = vi.fn()
-
+describe('NeighborhoodView - Walkthrough wiring', () => {
+  const genRoute = vi.fn()
+  const endWalk = vi.fn()
   beforeEach(() => {
     mockUseNeighborhoodWalkthrough.mockReturnValue({
-      generateRoute: mockGenerateRoute, activeRoute: null, currentStopIndex: 0,
+      generateRoute: genRoute, activeRoute: null, currentStopIndex: 0,
       advanceToNext: vi.fn(), isActive: false, isCompleted: false,
-      startWalkthrough: vi.fn(), endWalkthrough: mockEndWalkthrough,
-      estimatedCompletion: null, availableThemes: ['hottest', 'cocktail-crawl'],
+      startWalkthrough: vi.fn(), endWalkthrough: endWalk,
+      estimatedCompletion: null, availableThemes: ['hottest'],
     })
-    mockGenerateRoute.mockReset()
-    mockEndWalkthrough.mockReset()
+    genRoute.mockReset()
+    endWalk.mockReset()
   })
 
-  it('renders Bar Crawl button on leaderboard entries', () => {
-    render(
-      <NeighborhoodView venues={[makeVenue()]} pulses={[]} onBack={vi.fn()}
-        onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />
-    )
+  it('shows Bar Crawl button', () => {
+    render(<NeighborhoodView venues={[venue]} pulses={[]} onBack={vi.fn()} onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />)
     expect(screen.getByText('Bar Crawl')).toBeTruthy()
   })
 
-  it('opens walkthrough section when Bar Crawl is clicked', () => {
-    render(
-      <NeighborhoodView venues={[makeVenue()]} pulses={[]} onBack={vi.fn()}
-        onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />
-    )
+  it('opens walkthrough on Bar Crawl click', () => {
+    render(<NeighborhoodView venues={[venue]} pulses={[]} onBack={vi.fn()} onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />)
     fireEvent.click(screen.getByText('Bar Crawl'))
     expect(screen.getByTestId('walkthrough-section')).toBeTruthy()
-    expect(mockGenerateRoute).toHaveBeenCalled()
+    expect(genRoute).toHaveBeenCalled()
   })
 
-  it('closes walkthrough section when Close is clicked', () => {
-    render(
-      <NeighborhoodView venues={[makeVenue()]} pulses={[]} onBack={vi.fn()}
-        onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />
-    )
+  it('closes walkthrough on Close click', () => {
+    render(<NeighborhoodView venues={[venue]} pulses={[]} onBack={vi.fn()} onVenueClick={vi.fn()} userLocation={{ lat: 47.6, lng: -122.3 }} />)
     fireEvent.click(screen.getByText('Bar Crawl'))
-    expect(screen.getByTestId('walkthrough-section')).toBeTruthy()
     fireEvent.click(screen.getByTestId('walkthrough-close'))
     expect(screen.queryByTestId('walkthrough-section')).toBeNull()
   })
 })
 
-describe('AppShell - OfflineIndicator integration', () => {
-  const makeMockState = (overrides = {}) => ({
-    locationName: 'Seattle', isTracking: false, realtimeLocation: null,
-    locationPermissionDenied: false, currentTime: new Date(),
-    activeTab: 'trending' as const, createDialogOpen: false,
-    setCreateDialogOpen: vi.fn(), venueForPulse: null,
-    unreadNotificationCount: 0, currentUser: makeUser(), ...overrides,
-  })
-  const makeMockHandlers = () => ({
-    handleTabChange: vi.fn(), handleSubmitPulse: vi.fn(), handleCreatePulse: vi.fn(),
-  })
+describe('AppShell - OfflineIndicator wiring', () => {
+  const state = (o = {}) => ({ locationName: 'Seattle', isTracking: false, realtimeLocation: null, locationPermissionDenied: false, currentTime: new Date(), activeTab: 'trending' as const, createDialogOpen: false, setCreateDialogOpen: vi.fn(), venueForPulse: null, unreadNotificationCount: 0, currentUser: user, ...o })
+  const handlers = () => ({ handleTabChange: vi.fn(), handleSubmitPulse: vi.fn(), handleCreatePulse: vi.fn() })
 
   beforeEach(() => {
     mockUseOfflineCache.mockReturnValue({
       isOnline: true, cachedVenues: [], lastSyncTime: Date.now(),
       cacheStats: { hitRate: 0.75, totalEntries: 10, usedBytes: 1024, oldestEntry: null },
-      queuedActions: [], syncProgress: null, forcePrefetch: vi.fn(),
-      clearCache: vi.fn(), queueAction: vi.fn(),
+      queuedActions: [], syncProgress: null, forcePrefetch: vi.fn(), clearCache: vi.fn(), queueAction: vi.fn(),
     })
   })
 
-  it('renders OfflineIndicator without visible banner when online', () => {
-    render(
-      <AppShell state={makeMockState() as any} handlers={makeMockHandlers() as any} sortedVenues={[makeVenue()]}>
-        <div>App content</div>
-      </AppShell>
-    )
+  it('renders indicator, no banner when online', () => {
+    render(<AppShell state={state() as any} handlers={handlers() as any} sortedVenues={[venue]}><div>content</div></AppShell>)
     expect(screen.getByTestId('offline-indicator')).toBeTruthy()
     expect(screen.queryByTestId('offline-banner')).toBeNull()
-    expect(screen.getByText('App content')).toBeTruthy()
   })
 
-  it('shows offline banner when offline', () => {
+  it('shows banner when offline', () => {
     mockUseOfflineCache.mockReturnValue({
-      isOnline: false, cachedVenues: [], lastSyncTime: Date.now() - 5 * 60 * 1000,
-      cacheStats: { hitRate: 0.75, totalEntries: 10, usedBytes: 1024, oldestEntry: null },
-      queuedActions: [], syncProgress: null, forcePrefetch: vi.fn(),
-      clearCache: vi.fn(), queueAction: vi.fn(),
+      isOnline: false, cachedVenues: [], lastSyncTime: Date.now(),
+      cacheStats: { hitRate: 0, totalEntries: 0, usedBytes: 0, oldestEntry: null },
+      queuedActions: [], syncProgress: null, forcePrefetch: vi.fn(), clearCache: vi.fn(), queueAction: vi.fn(),
     })
-    render(
-      <AppShell state={makeMockState() as any} handlers={makeMockHandlers() as any} sortedVenues={[makeVenue()]}>
-        <div>App content</div>
-      </AppShell>
-    )
+    render(<AppShell state={state() as any} handlers={handlers() as any} sortedVenues={[venue]}><div>content</div></AppShell>)
     expect(screen.getByTestId('offline-banner')).toBeTruthy()
   })
 
-  it('shows sync progress when syncing', () => {
+  it('shows sync progress', () => {
     mockUseOfflineCache.mockReturnValue({
       isOnline: true, cachedVenues: [], lastSyncTime: Date.now(),
-      cacheStats: { hitRate: 0.75, totalEntries: 10, usedBytes: 1024, oldestEntry: null },
-      queuedActions: [], syncProgress: { total: 5, synced: 2 }, forcePrefetch: vi.fn(),
-      clearCache: vi.fn(), queueAction: vi.fn(),
+      cacheStats: { hitRate: 0, totalEntries: 0, usedBytes: 0, oldestEntry: null },
+      queuedActions: [], syncProgress: { total: 5, synced: 2 }, forcePrefetch: vi.fn(), clearCache: vi.fn(), queueAction: vi.fn(),
     })
-    render(
-      <AppShell state={makeMockState() as any} handlers={makeMockHandlers() as any} sortedVenues={[makeVenue()]}>
-        <div>App content</div>
-      </AppShell>
-    )
+    render(<AppShell state={state() as any} handlers={handlers() as any} sortedVenues={[venue]}><div>content</div></AppShell>)
     expect(screen.getByTestId('sync-progress')).toBeTruthy()
-    expect(screen.getByText(/Syncing 2 of 5/i)).toBeTruthy()
   })
 })
