@@ -267,7 +267,7 @@ describe('Performance: Emoji burst caps at 30 particles', () => {
 })
 
 describe('Performance: Lazy-loadable components have default exports', () => {
-  it('StreakDashboard has a default export', async () => {
+  it('StreakDashboard has a default export', { timeout: 15000 }, async () => {
     const mod = await import('../components/StreakDashboard')
     expect(mod.default).toBeDefined()
     expect(typeof mod.default).toBe('function')

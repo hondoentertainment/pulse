@@ -214,12 +214,13 @@ export function TonightsPickCard({
   onAlternateClick,
   friendAvatars,
 }: TonightsPickCardProps) {
+  const prefersReducedMotion = useReducedMotion()
+
   if (isLoading) return <PickSkeleton />
   if (!pick) return null
 
   const { venue, explanation, alternates } = pick
   const gradient = getGradient(venue.pulseScore)
-  const prefersReducedMotion = useReducedMotion()
 
   return (
     <AnimatePresence mode="wait">
