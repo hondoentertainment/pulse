@@ -1,15 +1,43 @@
+import { useEffect, useMemo, useRef } from 'react'
 import { Sparkle } from '@phosphor-icons/react'
 import { RecommendationCard } from './RecommendationCard'
 import type { Recommendation } from '@/lib/venue-recommendations'
 import type { Venue } from '@/lib/types'
 import { motion } from 'framer-motion'
+import type { PromotedVenue } from '@/lib/promoted-discoveries'
 
 interface RecommendationsSectionProps {
   recommendations: Recommendation[]
   onVenueClick: (venue: Venue) => void
+  promotions?: PromotedVenue[]
+  onPromotionImpression?: (promotionId: string) => void
+  onPromotionClick?: (promotionId: string) => void
 }
 
-export function RecommendationsSection({ recommendations, onVenueClick }: RecommendationsSectionProps) {
+export function RecommendationsSection({
+  recommendations,
+  onVenueClick,
+  promotions = [],
+  onPromotionImpression,
+  onPromotionClick,
+}: RecommendationsSectionProps) {
+  const promotedByVenueId = useMemo(
+    () => new Map(promotions.map(promo => [promo.venueId, promo.id])),
+    [promotions]
+  )
+  const seenImpressions = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (recommendations.length === 0) return
+    const visible = recommendations.slice(0, 5)
+    for (const rec of visible) {
+      const promoId = promotedByVenueId.get(rec.venue.id)
+      if (!promoId || seenImpressions.current.has(promoId)) continue
+      seenImpressions.current.add(promoId)
+      onPromotionImpression?.(promoId)
+    }
+  }, [onPromotionImpression, recommendations, promotedByVenueId])
+
   if (recommendations.length === 0) return null
 
   return (
@@ -31,7 +59,12 @@ export function RecommendationsSection({ recommendations, onVenueClick }: Recomm
           <RecommendationCard
             key={rec.venue.id}
             recommendation={rec}
-            onClick={() => onVenueClick(rec.venue)}
+            isSponsored={promotedByVenueId.has(rec.venue.id)}
+            onClick={() => {
+              const promoId = promotedByVenueId.get(rec.venue.id)
+              if (promoId) onPromotionClick?.(promoId)
+              onVenueClick(rec.venue)
+            }}
           />
         ))}
       </div>

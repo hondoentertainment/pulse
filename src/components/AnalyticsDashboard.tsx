@@ -34,6 +34,22 @@ export function AnalyticsDashboard() {
     .reduce((sum, a) => sum + (a.timeToFirstRealActivity || 0), 0) / 
     Math.max(1, analytics.filter(a => a.timeToFirstRealActivity !== undefined).length)
 
+  const cityMetrics = seededVenues.reduce<Record<string, { total: number; converted: number }>>((acc, venue) => {
+    const city = venue.city || 'Unknown'
+    if (!acc[city]) acc[city] = { total: 0, converted: 0 }
+    acc[city].total += 1
+    if (!venue.preTrending) acc[city].converted += 1
+    return acc
+  }, {})
+  const cityRows = Object.entries(cityMetrics)
+    .map(([city, data]) => ({
+      city,
+      total: data.total,
+      converted: data.converted,
+      conversionRate: data.total > 0 ? (data.converted / data.total) : 0
+    }))
+    .sort((a, b) => b.conversionRate - a.conversionRate)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -68,6 +84,22 @@ export function AnalyticsDashboard() {
             </p>
           </div>
           <p className="text-xl font-bold font-mono">{avgTimeToFirstActivity.toFixed(1)} hours</p>
+        </Card>
+      )}
+
+      {cityRows.length > 0 && (
+        <Card className="p-4 space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Seeded Conversion by City</p>
+          <div className="space-y-2">
+            {cityRows.slice(0, 8).map((row) => (
+              <div key={row.city} className="flex items-center justify-between text-sm">
+                <span className="font-medium truncate">{row.city}</span>
+                <span className="text-muted-foreground font-mono">
+                  {row.converted}/{row.total} ({Math.round(row.conversionRate * 100)}%)
+                </span>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 

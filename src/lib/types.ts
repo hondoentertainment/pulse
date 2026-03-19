@@ -18,6 +18,8 @@ export interface User {
     visibility: 'everyone' | 'friends' | 'off'
     hideAtSensitiveVenues: boolean
   }
+  postStreak?: number
+  lastPostDate?: string
 }
 
 export interface Venue {
@@ -91,6 +93,8 @@ export interface Pulse {
   isPending?: boolean
   uploadError?: boolean
   credibilityWeight?: number
+  crewId?: string
+  isPioneer?: boolean
 }
 
 export interface PulseWithUser extends Pulse {
@@ -98,7 +102,7 @@ export interface PulseWithUser extends Pulse {
   venue: Venue
 }
 
-export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact'
+export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact' | 'wave'
 
 export interface Notification {
   id: string
@@ -108,6 +112,7 @@ export interface Notification {
   venueId?: string
   reactionType?: 'fire' | 'eyes' | 'skull' | 'lightning'
   energyThreshold?: 'buzzing' | 'electric'
+  recommendedVenueId?: string
   createdAt: string
   read: boolean
 }
@@ -116,6 +121,7 @@ export interface NotificationWithData extends Notification {
   user?: User
   pulse?: PulseWithUser
   venue?: Venue
+  recommendedVenue?: Venue
 }
 
 export interface GroupedNotification extends NotificationWithData {

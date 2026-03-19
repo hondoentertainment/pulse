@@ -17,11 +17,11 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
         if (!notification.pulse || !notification.user || !notification.venue) return null
         const energyConfig = ENERGY_CONFIG[notification.pulse.energyRating]
         const isGroupedPulse = notification.count && notification.count > 1
-        
+
         if (isGroupedPulse && notification.groupedUsers) {
           const displayUsers = notification.groupedUsers.slice(0, 3)
           const remainingCount = (notification.count || 0) - displayUsers.length
-          
+
           return (
             <>
               <div className="flex items-start gap-3">
@@ -60,7 +60,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             </>
           )
         }
-        
+
         return (
           <>
             <div className="flex items-start gap-3">
@@ -118,13 +118,13 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
           skull: Skull,
           lightning: Lightning
         }
-        
+
         const isGrouped = notification.count && notification.count > 1
-        
+
         if (isGrouped && notification.groupedUsers && notification.groupedReactionTypes) {
           const displayUsers = notification.groupedUsers.slice(0, 3)
           const remainingCount = (notification.count || 0) - displayUsers.length
-          
+
           return (
             <div className="flex items-start gap-3">
               <div className="flex -space-x-2 flex-shrink-0">
@@ -172,7 +172,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
             </div>
           )
         }
-        
+
         if (!notification.user) return null
         const ReactionIcon = notification.reactionType ? reactionIcons[notification.reactionType] : Fire
         return (
@@ -223,7 +223,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
       case 'trending_venue': {
         if (!notification.venue) return null
         const isGroupedTrending = notification.count && notification.count > 1
-        
+
         return (
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-energy-electric to-energy-buzzing flex items-center justify-center flex-shrink-0 animate-pulse-glow">
@@ -256,7 +256,7 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
         const thresholdColor = notification.energyThreshold === 'electric'
           ? 'from-energy-electric to-primary'
           : 'from-energy-buzzing to-accent'
-        
+
         return (
           <div className="flex items-start gap-3">
             <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${thresholdColor} flex items-center justify-center flex-shrink-0 animate-pulse-glow`}>
@@ -285,6 +285,34 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
 
       }
 
+      case 'wave': {
+        if (!notification.venue || !notification.recommendedVenue) return null
+        return (
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0 animate-pulse`}>
+              <TrendUp size={20} weight="fill" className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm">
+                <span className="font-semibold text-accent">The Wave is moving.</span>
+                {' '}The crowd is leaving{' '}
+                <span className="font-semibold text-foreground">{notification.venue.name}</span>.
+                Head to{' '}
+                <span className="font-semibold text-accent">{notification.recommendedVenue.name}</span>.
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className="bg-purple-500 text-white text-xs px-2 py-0.5">
+                  Predictive Route
+                </Badge>
+                <span className="text-xs text-muted-foreground font-mono uppercase">
+                  {formatTimeAgo(notification.createdAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       default:
         return null
     }
@@ -300,11 +328,10 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
       transition={{ duration: 0.3 }}
     >
       <Card
-        className={`p-4 cursor-pointer transition-all hover:bg-card/80 border-l-4 ${
-          notification.read
+        className={`p-4 cursor-pointer transition-all hover:bg-card/80 border-l-4 ${notification.read
             ? 'border-l-border'
             : 'border-l-accent bg-card/50'
-        }`}
+          }`}
         onClick={onClick}
       >
         {content}

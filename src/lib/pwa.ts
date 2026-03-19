@@ -41,7 +41,7 @@ export function listenForInstallPrompt(
 ): () => void {
   const handler = (e: Event) => {
     e.preventDefault()
-    deferredPrompt = e
+    deferredPrompt = e as BeforeInstallPromptEvent
     onPromptAvailable()
   }
   window.addEventListener('beforeinstallprompt', handler)
@@ -98,7 +98,7 @@ export async function requestPushPermission(): Promise<PushSubscription | null> 
       // In production, this would be a real VAPID key
       applicationServerKey: urlBase64ToUint8Array(
         'BPh-fake-vapid-key-for-development-only-replace-in-production-with-real-key-00'
-      ),
+      ) as any,
     })
     return subscription
   } catch {
@@ -127,6 +127,7 @@ export async function sendLocalNotification(
     reg.showNotification(title, {
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
+      // @ts-expect-error vibrate is supported in most browsers
       vibrate: [200, 100, 200],
       ...options,
     })

@@ -33,13 +33,17 @@ export function NotificationFeed({
     const venue = notification.venueId
       ? venues.find((v) => v.id === notification.venueId)
       : pulse
-      ? venues.find((v) => v.id === pulse.venueId)
-      : undefined
+        ? venues.find((v) => v.id === pulse.venueId)
+        : undefined
 
     const user =
       notification.type === 'friend_pulse' || notification.type === 'pulse_reaction'
         ? currentUser
         : undefined
+
+    const recommendedVenue = notification.recommendedVenueId
+      ? venues.find((v) => v.id === notification.recommendedVenueId)
+      : undefined
 
     if (!notification.pulseId && !notification.venueId) return null
 
@@ -48,12 +52,13 @@ export function NotificationFeed({
       user,
       pulse: pulse
         ? {
-            ...pulse,
-            user: currentUser,
-            venue: venue!
-          }
+          ...pulse,
+          user: currentUser,
+          venue: venue!
+        }
         : undefined,
-      venue
+      venue,
+      recommendedVenue
     }
   }
 
@@ -91,14 +96,14 @@ export function NotificationFeed({
 
   const handleNotificationClick = (notification: GroupedNotification) => {
     markAsRead(notification.id)
-    
+
     if (notification.groupedUsers && notification.count && notification.count > 1) {
       const relatedNotifications = (notifications || []).filter(
         n => n.type === 'pulse_reaction' && n.pulseId === notification.pulseId
       )
       relatedNotifications.forEach(n => markAsRead(n.id))
     }
-    
+
     onNotificationClick(notification)
   }
 

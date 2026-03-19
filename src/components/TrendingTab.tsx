@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef } from 'react'
 import { Venue, PulseWithUser, User } from '@/lib/types'
 import { Favorites } from '@/components/Favorites'
 import { TrendingSections } from '@/components/TrendingSections'
@@ -11,10 +12,13 @@ import { Star, Megaphone, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
-import { getPeakCategories } from '@/lib/time-contextual-scoring'
-import { PromotedVenue, isPromotionActive } from '@/lib/promoted-discoveries'
+import { getDayType, getPeakCategories, getTimeOfDay } from '@/lib/time-contextual-scoring'
+import { getSmartVenueSort } from '@/lib/contextual-intelligence'
+import { PromotedVenue, isPromotionActive, sortWithPromotions } from '@/lib/promoted-discoveries'
 import { PulseScore } from '@/components/PulseScore'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { Pulse } from '@/lib/types'
+import type { ContentReport } from '@/lib/content-moderation'
 
 interface TrendingTabProps {
   venues: Venue[]
@@ -28,11 +32,14 @@ interface TrendingTabProps {
   allUsers: User[]
   trendingSubTab: 'trending' | 'my-spots'
   promotions?: PromotedVenue[]
+  onPromotionImpression?: (promotionId: string) => void
+  onPromotionClick?: (promotionId: string) => void
   onSubTabChange: (tab: 'trending' | 'my-spots') => void
   onVenueClick: (venue: Venue) => void
   onToggleFavorite: (venueId: string) => void
   onToggleFollow: (venueId: string) => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
+  onReportPulse?: (report: ContentReport) => void
   isFavorite: (venueId: string) => boolean
   onCompareVenues?: (venueIds: string[]) => void
 }
@@ -53,11 +60,45 @@ export function TrendingTab({
   onToggleFavorite,
   onToggleFollow,
   onReaction,
+  onReportPulse,
   isFavorite,
   promotions,
+  onPromotionImpression,
+  onPromotionClick,
   onCompareVenues,
 }: TrendingTabProps) {
   const activePromotions = (promotions || []).filter(isPromotionActive)
+  const seenPromotionImpressions = useRef<Set<string>>(new Set())
+  const recommended = useMemo(() => {
+    const base = getRecommendations(currentUser, venues, pulses, userLocation ?? undefined)
+    if (base.length === 0 || activePromotions.length === 0) return base
+
+    const promotedIds = new Set(activePromotions.map(promo => promo.venueId))
+    const orderedVenues = sortWithPromotions(base.map(item => item.venue), promotedIds)
+    const byVenueId = new Map(base.map(item => [item.venue.id, item]))
+    return orderedVenues
+      .map(venue => byVenueId.get(venue.id))
+      .filter((item): item is NonNullable<typeof item> => !!item)
+  }, [activePromotions, currentUser, pulses, userLocation, venues])
+
+  const topVenueIdsForCompare = useMemo(() => {
+    const now = new Date()
+    const smartSorted = getSmartVenueSort(
+      venues,
+      currentUser,
+      getTimeOfDay(now),
+      getDayType(now)
+    )
+    return smartSorted.slice(0, 3).map(venue => venue.id)
+  }, [currentUser, venues])
+
+  useEffect(() => {
+    for (const promotion of activePromotions.slice(0, 2)) {
+      if (seenPromotionImpressions.current.has(promotion.id)) continue
+      seenPromotionImpressions.current.add(promotion.id)
+      onPromotionImpression?.(promotion.id)
+    }
+  }, [activePromotions, onPromotionImpression])
 
   return (
     <>
@@ -101,11 +142,7 @@ export function TrendingTab({
             size="sm"
             className="w-full border-primary/20 text-primary hover:bg-primary/10"
             onClick={() => {
-              const topVenues = [...venues]
-                .sort((a, b) => b.pulseScore - a.pulseScore)
-                .slice(0, 3)
-                .map(v => v.id)
-              onCompareVenues(topVenues)
+              onCompareVenues(topVenueIdsForCompare)
             }}
           >
             <Scales size={16} className="mr-2" />
@@ -116,6 +153,14 @@ export function TrendingTab({
 
       {trendingSubTab === 'trending' && (
         <>
+          {venues.length === 0 && (
+            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+              {[1, 2, 3].map(i => (
+                <Skeleton key={i} className="w-full h-32 rounded-xl" />
+              ))}
+            </div>
+          )}
+
           {favoriteVenues.length > 0 && (
             <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
               <div className="space-y-3">
@@ -151,8 +196,11 @@ export function TrendingTab({
           {/* Personalized recommendations */}
           <div className="max-w-2xl mx-auto px-4 pt-4">
             <RecommendationsSection
-              recommendations={getRecommendations(currentUser, venues, pulses, userLocation ?? undefined)}
+              recommendations={recommended}
               onVenueClick={onVenueClick}
+              promotions={activePromotions}
+              onPromotionImpression={onPromotionImpression}
+              onPromotionClick={onPromotionClick}
             />
           </div>
 
@@ -176,7 +224,10 @@ export function TrendingTab({
                 return (
                   <button
                     key={promo.id}
-                    onClick={() => onVenueClick(venue)}
+                    onClick={() => {
+                      onPromotionClick?.(promo.id)
+                      onVenueClick(venue)
+                    }}
                     className="w-full p-3 bg-card rounded-xl border border-yellow-500/20 flex items-center gap-3 hover:border-yellow-500/40 transition-colors text-left"
                   >
                     <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
@@ -216,6 +267,7 @@ export function TrendingTab({
           onVenueClick={onVenueClick}
           onToggleFollow={onToggleFollow}
           onReaction={onReaction}
+          onReport={onReportPulse}
         />
       )}
     </>

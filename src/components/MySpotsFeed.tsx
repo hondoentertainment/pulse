@@ -5,6 +5,7 @@ import { PulseScore } from '@/components/PulseScore'
 import { MapPin, HeartStraight, Buildings } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
+import type { ContentReport } from '@/lib/content-moderation'
 
 interface MySpotsFeedProps {
   followedVenues: Venue[]
@@ -15,6 +16,7 @@ interface MySpotsFeedProps {
   onVenueClick: (venue: Venue) => void
   onToggleFollow: (venueId: string) => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
+  onReport?: (report: ContentReport) => void
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -35,7 +37,8 @@ export function MySpotsFeed({
   currentUserId,
   onVenueClick,
   onToggleFollow,
-  onReaction
+  onReaction,
+  onReport
 }: MySpotsFeedProps) {
   const followedPulses = pulses
     .filter((p) => followedVenues.some((v) => v.id === p.venueId))
@@ -136,6 +139,7 @@ export function MySpotsFeed({
               allPulses={pulses}
               onReaction={(type) => onReaction(pulse.id, type)}
               currentUserId={currentUserId}
+              onReport={onReport}
             />
           ))
         )}

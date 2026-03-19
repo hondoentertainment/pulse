@@ -4,7 +4,8 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Settings } from '@/components/Settings'
 import { Separator } from '@/components/ui/separator'
-import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning } from '@phosphor-icons/react'
+import { Badge } from '@/components/ui/badge'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
@@ -22,6 +23,7 @@ interface ProfileTabProps {
   onOpenSettings?: () => void
   onOpenOwnerDashboard?: () => void
   onOpenCreatorDashboard?: () => void
+  onOpenModerationQueue?: () => void
 }
 
 export function ProfileTab({
@@ -35,6 +37,7 @@ export function ProfileTab({
   onOpenSettings,
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,
+  onOpenModerationQueue,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
@@ -75,6 +78,11 @@ export function ProfileTab({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold">{currentUser.username}</h2>
+            {currentUser.postStreak && currentUser.postStreak >= 2 && (
+              <Badge className="bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-orange-500/30 text-xs py-0 h-5">
+                🔥 {currentUser.postStreak} Day Streak
+              </Badge>
+            )}
             {tierProgress.currentTier && (
               <CreatorProfileBadge tier={tierProgress.currentTier} size="sm" />
             )}
@@ -218,6 +226,12 @@ export function ProfileTab({
           <button onClick={onOpenOwnerDashboard} className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors w-full">
             <Storefront size={18} weight="fill" className="text-primary" />
             <span className="text-sm font-medium">Venue Owner Dashboard</span>
+          </button>
+        )}
+        {onOpenModerationQueue && (
+          <button onClick={onOpenModerationQueue} className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors w-full">
+            <ShieldCheck size={18} weight="fill" className="text-primary" />
+            <span className="text-sm font-medium">Moderation Queue</span>
           </button>
         )}
         {onOpenSettings ? (

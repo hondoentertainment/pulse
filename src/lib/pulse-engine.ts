@@ -56,7 +56,9 @@ export function calculatePulseScore(pulses: Pulse[], useCredibilityWeighting: bo
       ? pulse.credibilityWeight
       : 1.0
 
-    totalScore += energyValue * recencyFactor * engagementFactor * credibilityWeight * 25
+    const squadMultiplier = pulse.crewId ? 1.5 : 1.0
+
+    totalScore += energyValue * recencyFactor * engagementFactor * credibilityWeight * squadMultiplier * 25
     validPulses++
   })
 

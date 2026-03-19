@@ -14,7 +14,7 @@ import {
 } from '@phosphor-icons/react'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
-import { getPendingCount, clearQueue } from '@/lib/offline-queue'
+import { getPendingCount, clearQueue, getLastQueueSyncStatus, getQueueRetryInfo } from '@/lib/offline-queue'
 import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
 import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefersReducedMotion } from '@/lib/accessibility'
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
@@ -31,7 +31,9 @@ interface SettingsPageProps {
 export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }: SettingsPageProps) {
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
-  const offlineCount = getPendingCount()
+  const [offlineCount, setOfflineCount] = useState(getPendingCount())
+  const [queueSyncStatus, setQueueSyncStatus] = useState(getLastQueueSyncStatus())
+  const [queueRetryInfo, setQueueRetryInfo] = useState(getQueueRetryInfo())
   const [currentLocale, setCurrentLocale] = useState<Locale>(getLocale())
   const [contrastMode, setContrastMode] = useState<HighContrastMode>(getHighContrastMode())
   const [canInstallPwa, setCanInstallPwa] = useState(false)
@@ -39,6 +41,15 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
 
   useEffect(() => {
     return listenForInstallPrompt(() => setCanInstallPwa(true))
+  }, [])
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setOfflineCount(getPendingCount())
+      setQueueSyncStatus(getLastQueueSyncStatus())
+      setQueueRetryInfo(getQueueRetryInfo())
+    }, 2000)
+    return () => clearInterval(intervalId)
   }, [])
 
   const presenceSettings = currentUser.presenceSettings ?? {
@@ -85,6 +96,8 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
 
   const handleClearOfflineQueue = () => {
     clearQueue()
+    setOfflineCount(0)
+    setQueueRetryInfo(getQueueRetryInfo())
     toast.success('Offline queue cleared')
   }
 
@@ -428,26 +441,36 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
         )}
 
         {/* Offline Queue */}
-        {offlineCount > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <Card className="p-4 space-y-3 border-yellow-500/30">
-              <div className="flex items-center gap-2">
-                <WifiSlash size={18} weight="fill" className="text-yellow-500" />
-                <Label className="font-bold">Offline Queue</Label>
-                <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500/30">
-                  {offlineCount} pending
-                </Badge>
-              </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <Card className="p-4 space-y-3 border-yellow-500/30">
+            <div className="flex items-center gap-2">
+              <WifiSlash size={18} weight="fill" className="text-yellow-500" />
+              <Label className="font-bold">Offline Queue</Label>
+              <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500/30">
+                {offlineCount} pending
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pulses queued while offline will sync when you're back online.
+            </p>
+            {queueRetryInfo.failedCount > 0 && queueRetryInfo.nextRetryInMs !== null && (
               <p className="text-xs text-muted-foreground">
-                Pulses queued while offline will sync when you're back online.
+                Next retry ETA: {Math.ceil(queueRetryInfo.nextRetryInMs / 1000)}s ({queueRetryInfo.failedCount} failed item{queueRetryInfo.failedCount > 1 ? 's' : ''})
               </p>
-              <Button size="sm" variant="outline" onClick={handleClearOfflineQueue}>
-                <Trash size={14} className="mr-1" />
-                Clear Queue
-              </Button>
-            </Card>
-          </motion.div>
-        )}
+            )}
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Last sync attempt: {queueSyncStatus.lastAttemptAt ? new Date(queueSyncStatus.lastAttemptAt).toLocaleTimeString() : 'Never'}</p>
+              <p>Last result: {queueSyncStatus.lastSyncedCount} synced, {queueSyncStatus.lastFailedCount} failed</p>
+              {queueSyncStatus.lastBatchDurationMs !== undefined && (
+                <p>Batch duration: {queueSyncStatus.lastBatchDurationMs}ms</p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={handleClearOfflineQueue}>
+              <Trash size={14} className="mr-1" />
+              Clear Queue
+            </Button>
+          </Card>
+        </motion.div>
 
         {/* Data & Account */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>

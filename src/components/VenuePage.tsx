@@ -18,6 +18,7 @@ import { motion } from 'framer-motion'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
 import { ParallaxVenueHero } from './ParallaxVenueHero'
+import type { ContentReport } from '@/lib/content-moderation'
 // Phase 2: Venue star moment
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
 import { VenueEnergyTimeline } from './VenueEnergyTimeline'
@@ -25,6 +26,7 @@ import { VenueQuickActions } from './VenueQuickActions'
 import { VenueActivityStream } from './VenueActivityStream'
 // Phase 4: Personalization
 import VenueMemoryCard from './VenueMemoryCard'
+import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -51,7 +53,9 @@ interface VenuePageProps {
   currentUser?: User | null
   onBack: () => void
   onCreatePulse: () => void
+  onStartCrewCheckIn?: () => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
+  onReportPulse?: (report: ContentReport) => void
   onToggleFavorite: () => void
   onToggleFollow?: () => void
   presenceData?: PresenceData | null
@@ -75,7 +79,9 @@ export function VenuePage({
   currentUser,
   onBack,
   onCreatePulse,
+  onStartCrewCheckIn,
   onReaction,
+  onReportPulse,
   onToggleFavorite,
   onToggleFollow,
   presenceData,
@@ -118,6 +124,9 @@ export function VenuePage({
             </button>
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{venue.name}</h1>
+              {venue.pulseScore >= 25 && getContextualLabel(venue) && (
+                <p className="text-sm text-accent font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
+              )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 {venue.category && (
                   <span className="font-mono uppercase">{venue.category}</span>
@@ -134,6 +143,19 @@ export function VenuePage({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {onToggleFollow && (
+                <button
+                  onClick={onToggleFollow}
+                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                  title={isFollowed ? "Unfollow" : "Follow"}
+                >
+                  <HeartStraight
+                    size={24}
+                    weight={isFollowed ? "fill" : "regular"}
+                    className={isFollowed ? "text-primary" : "text-muted-foreground"}
+                  />
+                </button>
+              )}
               <button
                 onClick={handleShare}
                 className="p-2 rounded-lg hover:bg-secondary transition-colors"
@@ -328,6 +350,17 @@ export function VenuePage({
           </Button>
         </div>
 
+        {onStartCrewCheckIn && (
+          <Button
+            variant="outline"
+            onClick={onStartCrewCheckIn}
+            className="w-full border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <CalendarCheck size={18} weight="bold" className="mr-2" />
+            Check In With Crew
+          </Button>
+        )}
+
         {/* Ticketing & Table Reservations */}
         {(onGetTickets || onReserveTable) && (
           <div className="flex gap-2">
@@ -420,6 +453,7 @@ export function VenuePage({
                 allPulses={venuePulses}
                 onReaction={(type) => onReaction(pulse.id, type)}
                 currentUserId={currentUser?.id}
+                onReport={onReportPulse}
               />
             ))}
           </div>

@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
 import { Neighborhood, NeighborhoodScore, getNeighborhoodLeaderboard, getHottestNeighborhood, assignVenueToNeighborhood } from '@/lib/neighborhood-scores'
 import { CaretLeft, MapTrifold, Crown, TrendUp } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { trackEvent } from '@/lib/analytics'
 
 interface NeighborhoodViewProps {
   venues: Venue[]
@@ -57,6 +58,27 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: Neigh
     if (!n) return []
     return venues.filter(v => n.venueIds.includes(v.id)).sort((a, b) => b.pulseScore - a.pulseScore).slice(0, 5)
   }, [hottest, neighborhoods, venues])
+
+  useEffect(() => {
+    trackEvent({
+      type: 'neighborhood_view',
+      timestamp: Date.now(),
+      neighborhoodCount: neighborhoods.length,
+    })
+  }, [neighborhoods.length])
+
+  const handleVenueClick = (venue: Venue) => {
+    const neighborhood = assignVenueToNeighborhood(venue, neighborhoods)
+    if (neighborhood) {
+      trackEvent({
+        type: 'neighborhood_venue_click',
+        timestamp: Date.now(),
+        neighborhoodId: neighborhood.id,
+        venueId: venue.id,
+      })
+    }
+    onVenueClick(venue)
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -142,7 +164,17 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: Neigh
             {hottestVenues.map((venue, i) => (
               <button
                 key={venue.id}
-                onClick={() => onVenueClick(venue)}
+                onClick={() => {
+                  if (hottest) {
+                    trackEvent({
+                      type: 'neighborhood_hottest_click',
+                      timestamp: Date.now(),
+                      neighborhoodId: hottest.neighborhoodId,
+                      city: hottest.city,
+                    })
+                  }
+                  handleVenueClick(venue)
+                }}
                 className="w-full bg-card rounded-xl p-3 border border-border flex items-center gap-3 hover:border-primary/50 transition-colors text-left"
               >
                 <span className="text-sm font-bold text-muted-foreground w-6">{i + 1}</span>

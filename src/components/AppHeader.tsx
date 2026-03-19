@@ -8,6 +8,7 @@ interface AppHeaderProps {
   hasRealtimeLocation: boolean
   locationPermissionDenied: boolean
   currentTime: Date
+  queuedPulseCount?: number
   onSearchClick?: () => void
 }
 
@@ -17,6 +18,7 @@ export function AppHeader({
   hasRealtimeLocation,
   locationPermissionDenied,
   currentTime,
+  queuedPulseCount = 0,
   onSearchClick,
 }: AppHeaderProps) {
   return (
@@ -75,6 +77,12 @@ export function AppHeader({
             <Clock size={14} weight="fill" className="text-accent" />
             <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
           </div>
+          {queuedPulseCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/15 text-accent">
+              <span className="text-[10px] uppercase font-bold">Queued</span>
+              <span>{queuedPulseCount}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -16,6 +16,9 @@ export type AnalyticsEvent =
   | { type: 'venue_discovery'; timestamp: number; venueId: string; method: 'trending' | 'map' | 'search' | 'friend_activity' }
   | { type: 'share'; timestamp: number; contentType: 'venue' | 'pulse' | 'invite'; method: 'native' | 'clipboard' | 'story' }
   | { type: 'friend_add'; timestamp: number; method: 'qr' | 'search' | 'suggestion' | 'invite' }
+  | { type: 'neighborhood_view'; timestamp: number; neighborhoodCount: number }
+  | { type: 'neighborhood_hottest_click'; timestamp: number; neighborhoodId: string; city?: string }
+  | { type: 'neighborhood_venue_click'; timestamp: number; neighborhoodId: string; venueId: string }
   | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
@@ -47,6 +50,13 @@ export interface CoreLoopMetrics {
   reactionsPerSession: number
   discoveryActionsPerSession: number
   coreLoopCompletionRate: number
+}
+
+export interface SocialConversionMetrics {
+  friendAdds: number
+  usersWithFriendAdds: number
+  usersWithFriendAddThenPulse: number
+  conversionRate: number
 }
 
 export interface SeededContentMetrics {
@@ -184,6 +194,47 @@ export function analyzeCoreLoop(events: AnalyticsEvent[]): CoreLoopMetrics {
     reactionsPerSession: reactions / sessions,
     discoveryActionsPerSession: discoveries / sessions,
     coreLoopCompletionRate: loopComplete ? 1 : 0,
+  }
+}
+
+/**
+ * Analyze social conversion from friend adds to pulse creation.
+ */
+export function analyzeSocialConversion(events: AnalyticsEvent[]): SocialConversionMetrics {
+  const friendAdds = events.filter(
+    (event): event is Extract<AnalyticsEvent, { type: 'friend_add' }> => event.type === 'friend_add'
+  )
+
+  if (friendAdds.length === 0) {
+    return {
+      friendAdds: 0,
+      usersWithFriendAdds: 0,
+      usersWithFriendAddThenPulse: 0,
+      conversionRate: 0,
+    }
+  }
+
+  // The event model currently has no stable userId on friend_add/pulse_submit.
+  // Use timestamp windows as a lightweight proxy until user-linked analytics is added.
+  const pulseTimes = events
+    .filter((event): event is Extract<AnalyticsEvent, { type: 'pulse_submit' }> => event.type === 'pulse_submit')
+    .map(event => event.timestamp)
+    .sort((a, b) => a - b)
+
+  const conversionWindowMs = 24 * 60 * 60 * 1000
+  let converted = 0
+  for (const addEvent of friendAdds) {
+    const hasPulseAfterAdd = pulseTimes.some(
+      pulseTime => pulseTime >= addEvent.timestamp && pulseTime <= addEvent.timestamp + conversionWindowMs
+    )
+    if (hasPulseAfterAdd) converted++
+  }
+
+  return {
+    friendAdds: friendAdds.length,
+    usersWithFriendAdds: friendAdds.length,
+    usersWithFriendAddThenPulse: converted,
+    conversionRate: friendAdds.length > 0 ? converted / friendAdds.length : 0,
   }
 }
 

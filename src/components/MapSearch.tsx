@@ -10,6 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useVoiceSearch } from '@/hooks/use-voice-search'
 import { toast } from 'sonner'
+import { getSmartVenueSort } from '@/lib/contextual-intelligence'
+import { getDayType, getTimeOfDay } from '@/lib/time-contextual-scoring'
+import type { User } from '@/lib/types'
 
 interface MapSearchProps {
   venues: Venue[]
@@ -54,15 +57,34 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
 
   const filteredVenues = query.trim()
     ? venues.filter((venue) => {
-        const searchQuery = query.toLowerCase()
-        const matchesName = venue.name.toLowerCase().includes(searchQuery)
-        const matchesCategory = venue.category?.toLowerCase().includes(searchQuery)
-        return matchesName || matchesCategory
-      })
+      const searchQuery = query.toLowerCase()
+      const matchesName = venue.name.toLowerCase().includes(searchQuery)
+      const matchesCategory = venue.category?.toLowerCase().includes(searchQuery)
+      return matchesName || matchesCategory
+    })
     : []
 
   const sortedResults = userLocation
-    ? filteredVenues.sort((a, b) => {
+    ? (() => {
+      const now = new Date()
+      const neutralUser: User = {
+        id: 'anonymous-search',
+        username: 'guest',
+        profilePhoto: '',
+        friends: [],
+        favoriteVenues: [],
+        followedVenues: [],
+        createdAt: now.toISOString(),
+        venueCheckInHistory: {},
+      }
+      const contextualOrder = getSmartVenueSort(
+        [...filteredVenues],
+        neutralUser,
+        getTimeOfDay(now),
+        getDayType(now)
+      )
+      const contextualRank = new Map(contextualOrder.map((venue, index) => [venue.id, index]))
+      return contextualOrder.sort((a, b) => {
         const distA = calculateDistance(
           userLocation.lat,
           userLocation.lng,
@@ -75,8 +97,13 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
           b.location.lat,
           b.location.lng
         )
-        return distA - distB
+        const rankA = contextualRank.get(a.id) ?? contextualOrder.length
+        const rankB = contextualRank.get(b.id) ?? contextualOrder.length
+        const scoreA = distA * 0.7 + rankA * 0.3
+        const scoreB = distB * 0.7 + rankB * 0.3
+        return scoreA - scoreB
       })
+    })()
     : filteredVenues
 
   useEffect(() => {
@@ -144,8 +171,8 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
     } else {
       startListening()
       toast.success('Listening...', {
-        description: 'Speak the name of a venue',
-        duration: 2000
+        description: 'Try: "Coffee", "Electric", or "Neumos"',
+        duration: 3000
       })
     }
   }
@@ -230,11 +257,11 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
                     {sortedResults.map((venue, index) => {
                       const distance = userLocation
                         ? calculateDistance(
-                            userLocation.lat,
-                            userLocation.lng,
-                            venue.location.lat,
-                            venue.location.lng
-                          )
+                          userLocation.lat,
+                          userLocation.lng,
+                          venue.location.lat,
+                          venue.location.lng
+                        )
                         : undefined
 
                       return (

@@ -75,10 +75,10 @@ export function InteractiveMap({
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
-  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const cameraSettleTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const venueSelectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const hoverClearTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cameraSettleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const venueSelectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inertialFrameRef = useRef<number | null>(null)
   const panVelocityRef = useRef({ lat: 0, lng: 0 })
   const lastPanFrameRef = useRef<{ x: number; y: number; ts: number } | null>(null)
@@ -115,7 +115,9 @@ export function InteractiveMap({
       }
     }, 3000)
 
-    return () => clearTimeout(loadingTimeoutRef.current)
+    return () => {
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
+    }
   }, [center, userLocation, venues])
 
   useEffect(() => {
@@ -217,7 +219,7 @@ export function InteractiveMap({
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
         const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as string)) {
+        if (!filters.energyLevels.includes(energyLevel as any)) {
           return false
         }
       }
@@ -260,8 +262,8 @@ export function InteractiveMap({
       // Only nearby venues (within 50mi of center or user) sorted by pulseScore
       const nearby = userLocation
         ? filtered
-            .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
-            .sort((a, b) => b.pulseScore - a.pulseScore)
+          .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
+          .sort((a, b) => b.pulseScore - a.pulseScore)
         : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
       return nearby.slice(0, 5)
     }
@@ -535,6 +537,11 @@ export function InteractiveMap({
       setZoom(1)
       setFollowUser(true)
     }
+  }
+
+  const handleToggleFullHeatmap = () => {
+    triggerHapticFeedback('light')
+    setShowFullHeatmap(prev => !prev)
   }
 
   const handleWheelZoom = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -962,7 +969,7 @@ export function InteractiveMap({
 
           return (
             <g key={venue.id} className="pointer-events-none">
-              {isHighEnergy && !isCameraMoving && !accessibilityMode && (
+              {(isHighEnergy || hasRecentActivity) && !isCameraMoving && !accessibilityMode && (
                 <>
                   <circle
                     cx={x}
@@ -1089,29 +1096,29 @@ export function InteractiveMap({
 
       {/* Empty State Message */}
       {venueRenderPoints.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          >
-            <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
-              <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
-              <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Zoom out or pan to discover nearby spots
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="pointer-events-auto"
-                onClick={handleCenterOnUser}
-              >
-                <NavigationArrow size={14} weight="fill" className="mr-1.5" />
-                Center on Me
-              </Button>
-            </Card>
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        >
+          <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
+            <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
+            <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Zoom out or pan to discover nearby spots
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="pointer-events-auto"
+              onClick={handleCenterOnUser}
+            >
+              <NavigationArrow size={14} weight="fill" className="mr-1.5" />
+              Center on Me
+            </Button>
+          </Card>
+        </motion.div>
+      )}
 
       {clusteredMapData.clusters.map((cluster) => (
         <div
@@ -1725,59 +1732,59 @@ export function InteractiveMap({
               const isAhead = headingDelta !== null && headingDelta < 30
 
               return (
-              <motion.div layout key={`preview-wrap-${point.venue.id}`}>
-              <Card
-                className={cn(
-                  "pointer-events-auto min-w-[180px] p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg",
-                  hoveredVenue?.id === point.venue.id && "border-accent/70 shadow-accent/30",
-                  isCompared && "border-primary/70 shadow-primary/20"
-                )}
-              >
-                <button
-                  className="w-full text-left"
-                  onClick={() => handleVenueSelect(point.venue)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold truncate">{point.venue.name}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase truncate">
-                        {point.venue.category || 'Venue'}
-                      </p>
-                      {isAhead && (
-                        <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
-                          Ahead
-                        </Badge>
-                      )}
-                      {point.distance !== undefined && (
-                        <p className="text-[10px] text-accent font-mono mt-0.5">
-                          {formatDistance(point.distance, unitSystem)}
-                        </p>
-                      )}
-                    </div>
-                    <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
-                  </div>
-                </button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="mt-1 h-7 w-full text-[11px]"
-                  onClick={() => {
-                    triggerHapticFeedback('medium')
-                    onVenueClick(point.venue)
-                  }}
-                >
-                  Open
-                </Button>
-                <Button
-                  size="sm"
-                  variant={isCompared ? "default" : "ghost"}
-                  className="mt-1 h-7 w-full text-[11px]"
-                  onClick={() => toggleCompareVenue(point.venue.id)}
-                >
-                  {isCompared ? 'Compared' : 'Compare'}
-                </Button>
-              </Card>
-              </motion.div>
+                <motion.div layout key={`preview-wrap-${point.venue.id}`}>
+                  <Card
+                    className={cn(
+                      "pointer-events-auto min-w-[180px] p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg",
+                      hoveredVenue?.id === point.venue.id && "border-accent/70 shadow-accent/30",
+                      isCompared && "border-primary/70 shadow-primary/20"
+                    )}
+                  >
+                    <button
+                      className="w-full text-left"
+                      onClick={() => handleVenueSelect(point.venue)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate">{point.venue.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase truncate">
+                            {point.venue.category || 'Venue'}
+                          </p>
+                          {isAhead && (
+                            <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
+                              Ahead
+                            </Badge>
+                          )}
+                          {point.distance !== undefined && (
+                            <p className="text-[10px] text-accent font-mono mt-0.5">
+                              {formatDistance(point.distance, unitSystem)}
+                            </p>
+                          )}
+                        </div>
+                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                      </div>
+                    </button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-7 w-full text-[11px]"
+                      onClick={() => {
+                        triggerHapticFeedback('medium')
+                        onVenueClick(point.venue)
+                      }}
+                    >
+                      Open
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isCompared ? "default" : "ghost"}
+                      className="mt-1 h-7 w-full text-[11px]"
+                      onClick={() => toggleCompareVenue(point.venue.id)}
+                    >
+                      {isCompared ? 'Compared' : 'Compare'}
+                    </Button>
+                  </Card>
+                </motion.div>
               )
             })}
           </div>
@@ -1844,6 +1851,20 @@ export function InteractiveMap({
           </AnimatePresence>
         </Card>
       </div>
+
+      {/* Progressive Disclosure Toggle */}
+      {!nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0 && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleToggleFullHeatmap}
+            className="bg-card/90 backdrop-blur-md shadow-lg border border-border/50 text-xs font-semibold px-4 py-1.5 rounded-full hover:bg-card/100 transition-colors"
+          >
+            {showFullHeatmap ? "Show Top Surges Only" : "Show Full Heatmap"}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

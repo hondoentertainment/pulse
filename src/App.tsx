@@ -15,12 +15,13 @@ import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
 import type { TabId } from '@/components/BottomNav'
 import { CreatePulseDialog } from '@/components/CreatePulseDialog'
-import { InteractiveMap } from '@/components/InteractiveMap'
-import { NotificationFeed } from '@/components/NotificationFeed'
-import { TrendingTab } from '@/components/TrendingTab'
-import { ProfileTab } from '@/components/ProfileTab'
 import { AppHeader } from '@/components/AppHeader'
-import { DiscoverTab } from '@/components/DiscoverTab'
+
+const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
+const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
+const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ default: m.TrendingTab })))
+const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
+const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
@@ -34,6 +35,7 @@ const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
+const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { Plus } from '@phosphor-icons/react'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
@@ -44,7 +46,7 @@ import {
   canPostPulse
 } from '@/lib/pulse-engine'
 import { calculateUserCredibility } from '@/lib/credibility'
-import { checkUserRateLimit } from '@/lib/rate-limiter'
+import { checkUserRateLimit, detectAbuse } from '@/lib/rate-limiter'
 import { announce, initHighContrast } from '@/lib/accessibility'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
@@ -54,22 +56,26 @@ import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
 import { PulseStory, createStory } from '@/lib/stories'
 import { VenueEvent, createEvent } from '@/lib/events'
 import { Crew, CrewCheckIn } from '@/lib/crew-mode'
+import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
-import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
-import { trackEvent } from '@/lib/analytics'
+import { PromotedVenue, createPromotedVenue, recordImpression, recordClick, isPromotionActive } from '@/lib/promoted-discoveries'
+import { trackEvent, trackPerformance } from '@/lib/analytics'
 import { isFeatureEnabled } from '@/lib/feature-flags'
+import { ContentReport, UserBlock, UserMute, filterModeratedPulses } from '@/lib/content-moderation'
 
 import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { initializeSeededHashtags, applyHashtagDecay, updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn, calculateScoreVelocity } from '@/lib/venue-trending'
+import { enqueuePulse, getPendingCount, processQueue, registerConnectivityListeners, isOnline } from '@/lib/offline-queue'
+import { fetchEventsFromApi, fetchPulsesFromApi, postEventToApi, postPulseToApi, syncQueuedPulseToApi } from '@/lib/server-api'
 
-type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | null
+type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'moderation' | 'challenges' | 'my-tickets' | 'night-planner' | null
 
 function App() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [activeTab, setActiveTab] = useState<TabId>('map')
+  const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
   const [subPage, setSubPage] = useState<SubPage>(null)
@@ -116,8 +122,19 @@ function App() {
     }
   })
 
+  const launchedCitySet = new Set(
+    (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
+      .split(',')
+      .map((city: string) => city.trim().toLowerCase())
+      .filter(Boolean)
+  )
+  const initialVenues = [...MOCK_VENUES, ...US_EXPANSION_VENUES].filter((venue) => {
+    if (launchedCitySet.size === 0) return true
+    return launchedCitySet.has((venue.city ?? '').toLowerCase())
+  })
+
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
-  const [venues, setVenues] = useKV<Venue[]>('venues', [...MOCK_VENUES, ...US_EXPANSION_VENUES])
+  const [venues, setVenues] = useKV<Venue[]>('venues', initialVenues)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [stories, setStories] = useKV<PulseStory[]>('stories', [])
@@ -126,15 +143,26 @@ function App() {
   const [crewCheckIns, setCrewCheckIns] = useKV<CrewCheckIn[]>('crewCheckIns', [])
   const [playlists, setPlaylists] = useKV<PulsePlaylist[]>('playlists', [])
   const [promotions, setPromotions] = useKV<PromotedVenue[]>('promotions', [])
+  const [contentReports, setContentReports] = useKV<ContentReport[]>('contentReports', [])
+  const [userBlocks] = useKV<UserBlock[]>('userBlocks', [])
+  const [userMutes] = useKV<UserMute[]>('userMutes', [])
   const [integrationVenue, setIntegrationVenue] = useState<Venue | null>(null)
   const [simulatedLocation, setSimulatedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false)
+  const [queuedPulseCount, setQueuedPulseCount] = useState(0)
 
   useEffect(() => {
     if (!hashtags || hashtags.length === 0) {
       setHashtags(initializeSeededHashtags())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const updateQueuedCount = () => setQueuedPulseCount(getPendingCount())
+    updateQueuedCount()
+    const intervalId = setInterval(updateQueuedCount, 3000)
+    return () => clearInterval(intervalId)
   }, [])
 
   useEffect(() => {
@@ -167,6 +195,7 @@ function App() {
           ),
         ]
         setEvents(demoEvents)
+        Promise.allSettled(demoEvents.map((event) => postEventToApi(event))).catch(() => { })
       }
     }
     if (!promotions || promotions.length === 0) {
@@ -179,6 +208,92 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues])
+
+  useEffect(() => {
+    let mounted = true
+    if (events && events.length > 0) return
+
+    fetchEventsFromApi().then((remoteEvents) => {
+      if (!mounted || !remoteEvents || remoteEvents.length === 0) return
+      setEvents(remoteEvents)
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [events, setEvents])
+
+  useEffect(() => {
+    let mounted = true
+    if (pulses && pulses.length > 0) return
+
+    fetchPulsesFromApi().then((remotePulses) => {
+      if (!mounted || !remotePulses || remotePulses.length === 0) return
+      setPulses(remotePulses)
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [pulses, setPulses])
+
+  useEffect(() => {
+    const syncCallback = async () => {
+      const result = await processQueue(
+        async (queuedPulse) => syncQueuedPulseToApi({
+          id: queuedPulse.id,
+          venueId: queuedPulse.venueId,
+          energyRating: queuedPulse.energyRating,
+          caption: queuedPulse.caption,
+          photos: queuedPulse.photos,
+          hashtags: queuedPulse.hashtags,
+        }),
+        {
+          onItemAttempt: (pulse) => {
+            trackEvent({
+              type: 'performance',
+              timestamp: Date.now(),
+              metric: 'queue_sync_attempt',
+              value: pulse.retryCount,
+              unit: 'retry_count',
+            })
+          },
+          onItemResult: (_pulse, success, elapsedMs) => {
+            trackPerformance(success ? 'queue_sync_success_ms' : 'queue_sync_failure_ms', elapsedMs)
+          },
+          onBatchComplete: ({ synced, failed, total, elapsedMs }) => {
+            trackPerformance('queue_sync_batch_ms', elapsedMs)
+            trackEvent({
+              type: 'performance',
+              timestamp: Date.now(),
+              metric: 'queue_sync_batch_result',
+              value: total > 0 ? synced / total : 1,
+              unit: 'success_ratio',
+            })
+            if (failed > 0) {
+              toast.warning(`${failed} queued pulse${failed > 1 ? 's' : ''} still pending sync`)
+            }
+          }
+        }
+      )
+      setQueuedPulseCount(getPendingCount())
+      if (result.synced > 0) {
+        toast.success(`Synced ${result.synced} queued pulse${result.synced > 1 ? 's' : ''}`)
+      }
+    }
+
+    if (isOnline() && getPendingCount() > 0) {
+      syncCallback()
+    }
+
+    const cleanup = registerConnectivityListeners(
+      syncCallback,
+      () => {
+        toast.message('You are offline. New pulses will queue locally.')
+      }
+    )
+    return cleanup
+  }, [])
 
   const userLocation = useMemo(
     () => realtimeLocation
@@ -312,6 +427,32 @@ function App() {
   }) => {
     if (!venueForPulse || !currentUser || !venues) return
 
+    const recentActions = (pulses || [])
+      .filter(pulse => pulse.userId === currentUser.id)
+      .map(pulse => ({
+        action: 'pulse_create',
+        timestamp: new Date(pulse.createdAt).getTime(),
+        metadata: { energyRating: pulse.energyRating }
+      }))
+
+    recentActions.push({
+      action: 'pulse_create',
+      timestamp: Date.now(),
+      metadata: { energyRating: data.energyRating }
+    })
+
+    const abuseSignals = detectAbuse(currentUser.id, recentActions)
+    const highSeveritySignal = abuseSignals.find(signal => signal.severity === 'high')
+    if (highSeveritySignal) {
+      toast.error('Pulse blocked for safety checks', { description: highSeveritySignal.description })
+      return
+    }
+    if (abuseSignals.some(signal => signal.severity === 'medium')) {
+      toast.warning('Unusual posting pattern detected', {
+        description: 'Please keep pulses authentic to avoid temporary restrictions'
+      })
+    }
+
     const rateCheck = checkUserRateLimit(currentUser.id, 'pulse_create')
     if (!rateCheck.allowed) {
       toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` })
@@ -325,10 +466,23 @@ function App() {
 
     const userCredibility = calculateUserCredibility(currentUser, pulses || [])
 
+    const activeCrewCheckIns = getActiveCrewCheckIns(crewCheckIns || [], venueForPulse.id)
+    const currentCrewCheckIn = activeCrewCheckIns.find(ci =>
+      ci.initiatorId === currentUser.id || ci.confirmations[currentUser.id]
+    )
+
+    const today = now.toISOString().split('T')[0]
+    const venuePulsesToday = (pulses || []).filter(p => {
+      if (p.venueId !== venueForPulse.id) return false
+      return new Date(p.createdAt).toISOString().split('T')[0] === today
+    })
+    const isPioneer = venuePulsesToday.length === 0
+
     const newPulse: Pulse = {
       id: `pulse-${Date.now()}`,
       userId: currentUser.id,
       venueId: venueForPulse.id,
+      crewId: currentCrewCheckIn?.crewId,
       photos: data.photos,
       video: data.video,
       energyRating: data.energyRating,
@@ -344,7 +498,8 @@ function App() {
       },
       views: 0,
       isPending: true,
-      credibilityWeight: userCredibility
+      credibilityWeight: userCredibility,
+      isPioneer
     }
 
     setPulses((current) => {
@@ -390,18 +545,41 @@ function App() {
           createdAt: new Date().toISOString(),
           venueCheckInHistory: {
             [venueForPulse.id]: 1
-          }
+          },
+          postStreak: 1,
+          lastPostDate: today
         }
       }
+
+      let newStreak = user.postStreak || 0
+      if (user.lastPostDate !== today) {
+        if (user.lastPostDate) {
+          const lastDateObj = new Date(user.lastPostDate)
+          const todayObj = new Date(today)
+          const diffDays = Math.ceil(Math.abs(todayObj.getTime() - lastDateObj.getTime()) / (1000 * 60 * 60 * 24))
+          newStreak = diffDays === 1 ? newStreak + 1 : 1
+        } else {
+          newStreak = 1
+        }
+      }
+
       const checkInHistory = user.venueCheckInHistory || {}
       return {
         ...user,
         venueCheckInHistory: {
           ...checkInHistory,
           [venueForPulse.id]: (checkInHistory[venueForPulse.id] || 0) + 1
-        }
+        },
+        postStreak: newStreak,
+        lastPostDate: today
       }
     })
+
+    if (isPioneer) {
+      toast.success('Pioneer! 🧗', {
+        description: 'You dropped the first pulse here today.'
+      })
+    }
 
     toast.success('Pulse posted!', {
       description: `Your vibe at ${venueForPulse.name} is live`
@@ -410,58 +588,90 @@ function App() {
 
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 
-    setTimeout(() => {
-      setPulses((current) => {
-        if (!current) return []
-        return current.map((p) =>
-          p.id === newPulse.id ? { ...p, isPending: false } : p
-        )
+    const syncOnline = await postPulseToApi(newPulse)
+    if (!syncOnline) {
+      enqueuePulse({
+        id: newPulse.id,
+        venueId: newPulse.venueId,
+        energyRating: newPulse.energyRating,
+        caption: newPulse.caption,
+        photos: newPulse.photos,
+        hashtags: newPulse.hashtags,
+      })
+      setQueuedPulseCount(getPendingCount())
+      toast.message('Saved offline. Will sync when connection is restored.')
+    }
+
+    setPulses((current) => {
+      if (!current) return []
+      return current.map((p) =>
+        p.id === newPulse.id ? { ...p, isPending: false, uploadError: false } : p
+      )
+    })
+
+    const updatedVenuePulses = [...(pulses || []), newPulse].filter((p) => p.venueId === venueForPulse.id)
+    const newScore = calculatePulseScore(updatedVenuePulses)
+
+    if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
+      const friendNotification: Notification = {
+        id: `notif-${Date.now()}`,
+        type: 'friend_pulse',
+        userId: currentUser.id,
+        pulseId: newPulse.id,
+        venueId: venueForPulse.id,
+        createdAt: now.toISOString(),
+        read: false
+      }
+
+      setNotifications((current) => {
+        if (!current) return [friendNotification]
+        return [friendNotification, ...current]
+      })
+    }
+
+    if ((previousScore < 50 && newScore >= 50) || (previousScore < 75 && newScore >= 75)) {
+      const impactNotification: Notification = {
+        id: `notif-impact-${Date.now()}`,
+        type: 'impact',
+        userId: currentUser.id,
+        pulseId: newPulse.id,
+        venueId: venueForPulse.id,
+        energyThreshold: newScore >= 75 ? 'electric' : 'buzzing',
+        createdAt: now.toISOString(),
+        read: false
+      }
+
+      setNotifications((current) => {
+        if (!current) return [impactNotification]
+        return [impactNotification, ...current]
       })
 
-      const updatedVenuePulses = [...(pulses || []), newPulse].filter((p) => p.venueId === venueForPulse.id)
-      const newScore = calculatePulseScore(updatedVenuePulses)
+      const thresholdLabel = newScore >= 75 ? 'Electric ⚡' : 'Buzzing 🔥'
+      toast.success('You moved the needle!', {
+        description: `Your pulse pushed ${venueForPulse.name} into ${thresholdLabel}`,
+        duration: 5000
+      })
+    }
 
-      if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
-        const friendNotification: Notification = {
-          id: `notif-${Date.now()}`,
-          type: 'friend_pulse',
+    // Phase 8: The Wave (Predictive Routing)
+    if (previousScore - newScore >= 15 && previousScore >= 50) {
+      const altVenues = venues.filter(v => v.id !== venueForPulse.id && v.pulseScore >= 50)
+      const altVenue = altVenues.sort((a, b) => b.pulseScore - a.pulseScore)[0]
+      if (altVenue) {
+        const waveNotification: Notification = {
+          id: `notif-wave-${Date.now()}`,
+          type: 'wave',
           userId: currentUser.id,
-          pulseId: newPulse.id,
           venueId: venueForPulse.id,
+          recommendedVenueId: altVenue.id,
           createdAt: now.toISOString(),
           read: false
         }
-
-        setNotifications((current) => {
-          if (!current) return [friendNotification]
-          return [friendNotification, ...current]
-        })
+        setNotifications((current) => current ? [waveNotification, ...current] : [waveNotification])
       }
+    }
 
-      if ((previousScore < 50 && newScore >= 50) || (previousScore < 75 && newScore >= 75)) {
-        const impactNotification: Notification = {
-          id: `notif-impact-${Date.now()}`,
-          type: 'impact',
-          userId: currentUser.id,
-          pulseId: newPulse.id,
-          venueId: venueForPulse.id,
-          energyThreshold: newScore >= 75 ? 'electric' : 'buzzing',
-          createdAt: now.toISOString(),
-          read: false
-        }
-
-        setNotifications((current) => {
-          if (!current) return [impactNotification]
-          return [impactNotification, ...current]
-        })
-
-        const thresholdLabel = newScore >= 75 ? 'Electric ⚡' : 'Buzzing 🔥'
-        toast.success('You moved the needle!', {
-          description: `Your pulse pushed ${venueForPulse.name} into ${thresholdLabel}`,
-          duration: 5000
-        })
-      }
-    }, 1500)
+    setCreateDialogOpen(false)
   }
 
   const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
@@ -518,6 +728,16 @@ function App() {
     toast.success(`Reacted ${emoji}`)
   }
 
+  const handleEventsUpdate = (updatedEvents: VenueEvent[]) => {
+    setEvents(updatedEvents)
+    Promise.allSettled(updatedEvents.map((event) => postEventToApi(event))).then((results) => {
+      const failures = results.filter((result) => result.status === 'rejected' || (result.status === 'fulfilled' && result.value === false)).length
+      if (failures > 0) {
+        toast.warning(`Saved locally. ${failures} event sync${failures > 1 ? 's' : ''} pending.`)
+      }
+    })
+  }
+
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
     const tabLabels: Record<TabId, string> = {
@@ -531,14 +751,67 @@ function App() {
   }
 
   const unreadNotificationCount = (notifications || []).filter((n) => !n.read).length
+  const moderatedPulses = filterModeratedPulses(
+    pulses || [],
+    currentUser?.id || '',
+    userBlocks || [],
+    userMutes || []
+  )
 
   const getPulsesWithUsers = (): PulseWithUser[] => {
-    if (!pulses || !currentUser || !venues) return []
-    return pulses.map((pulse) => ({
+    if (!currentUser || !venues) return []
+    return moderatedPulses.map((pulse) => ({
       ...pulse,
       user: currentUser,
       venue: venues.find((v) => v.id === pulse.venueId)!
     })).filter(p => p.venue)
+  }
+
+  const handlePulseReport = (report: ContentReport) => {
+    setContentReports((current) => [report, ...(current || [])])
+    toast.success('Report submitted. Thanks for keeping Pulse safe.')
+  }
+
+  const handlePromotionImpression = (promotionId: string) => {
+    setPromotions((current) => {
+      if (!current) return []
+      return current.map((promo) => {
+        if (promo.id !== promotionId || !isPromotionActive(promo)) return promo
+        return recordImpression(promo)
+      })
+    })
+  }
+
+  const handlePromotionClick = (promotionId: string) => {
+    setPromotions((current) => {
+      if (!current) return []
+      return current.map((promo) => {
+        if (promo.id !== promotionId || !isPromotionActive(promo)) return promo
+        return recordClick(promo)
+      })
+    })
+  }
+
+  const handleStartCrewCheckIn = (venueId: string) => {
+    if (!currentUser) return
+    const userCrews = getUserCrews(crews || [], currentUser.id)
+    const targetCrew = userCrews.find(crew => crew.memberIds.length > 1)
+    if (!targetCrew) {
+      toast.error('Create a crew first to check in together')
+      return
+    }
+
+    const hasActiveAtVenue = (crewCheckIns || []).some(
+      checkIn => checkIn.crewId === targetCrew.id && checkIn.venueId === venueId && checkIn.status !== 'completed'
+    )
+    if (hasActiveAtVenue) {
+      toast.message(`${targetCrew.name} already has an active check-in here`)
+      return
+    }
+
+    const newCrewCheckIn = initiateCrewCheckIn(targetCrew, venueId, currentUser.id, 'buzzing')
+    setCrewCheckIns((current) => [newCrewCheckIn, ...(current || [])])
+    toast.success(`Crew check-in started for ${targetCrew.name}`)
   }
 
   const handleToggleFavorite = (venueId: string) => {
@@ -617,13 +890,13 @@ function App() {
     return (
       <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
         <OnboardingFlow
-        onComplete={(prefs: OnboardingPreferences) => {
-          if (prefs.favoriteCategories.length > 0) {
-            setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
-          }
-          setHasCompletedOnboarding(true)
-        }}
-      />
+          onComplete={(prefs: OnboardingPreferences) => {
+            if (prefs.favoriteCategories.length > 0) {
+              setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
+            }
+            setHasCompletedOnboarding(true)
+          }}
+        />
       </Suspense>
     )
   }
@@ -638,10 +911,10 @@ function App() {
     return (
       <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
         <SocialPulseDashboard
-        venues={venues}
-        pulses={pulses}
-        onBack={() => setShowAdminDashboard(false)}
-      />
+          venues={venues}
+          pulses={pulses}
+          onBack={() => setShowAdminDashboard(false)}
+        />
       </Suspense>
     )
   }
@@ -654,11 +927,12 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <AchievementsPage
-          currentUser={currentUser}
-          pulses={pulses}
-          venues={venues}
-          onBack={() => setSubPage(null)}
-        />
+            currentUser={currentUser}
+            pulses={moderatedPulses}
+            venues={venues}
+            crews={crews || []}
+            onBack={() => setSubPage(null)}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -670,13 +944,13 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <EventsPage
-          venues={venues}
-          events={events || []}
-          currentUserId={currentUser.id}
-          onBack={() => setSubPage(null)}
-          onEventUpdate={(updated) => setEvents(updated)}
-          onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
-        />
+            venues={venues}
+            events={events || []}
+            currentUserId={currentUser.id}
+            onBack={() => setSubPage(null)}
+            onEventUpdate={handleEventsUpdate}
+            onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -688,15 +962,15 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <CrewPage
-          currentUser={currentUser}
-          allUsers={ALL_USERS}
-          crews={crews || []}
-          crewCheckIns={crewCheckIns || []}
-          venues={venues}
-          onBack={() => setSubPage(null)}
-          onCrewsUpdate={(updated) => setCrews(updated)}
-          onCheckInsUpdate={(updated) => setCrewCheckIns(updated)}
-        />
+            currentUser={currentUser}
+            allUsers={ALL_USERS}
+            crews={crews || []}
+            crewCheckIns={crewCheckIns || []}
+            venues={venues}
+            onBack={() => setSubPage(null)}
+            onCrewsUpdate={(updated) => setCrews(updated)}
+            onCheckInsUpdate={(updated) => setCrewCheckIns(updated)}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -708,11 +982,11 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <InsightsPage
-          currentUser={currentUser}
-          pulses={pulses}
-          venues={venues}
-          onBack={() => setSubPage(null)}
-        />
+            currentUser={currentUser}
+            pulses={moderatedPulses}
+            venues={venues}
+            onBack={() => setSubPage(null)}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -724,11 +998,11 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <NeighborhoodView
-          venues={venues}
-          pulses={pulses}
-          onBack={() => setSubPage(null)}
-          onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
-        />
+            venues={venues}
+            pulses={moderatedPulses}
+            onBack={() => setSubPage(null)}
+            onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -740,13 +1014,13 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <PlaylistsPage
-          currentUser={currentUser}
-          playlists={playlists || []}
-          pulses={pulses}
-          venues={venues}
-          onBack={() => setSubPage(null)}
-          onPlaylistsUpdate={(updated) => setPlaylists(updated)}
-        />
+            currentUser={currentUser}
+            playlists={playlists || []}
+            pulses={pulses}
+            venues={venues}
+            onBack={() => setSubPage(null)}
+            onPlaylistsUpdate={(updated) => setPlaylists(updated)}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -758,14 +1032,29 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <SettingsPage
-          currentUser={currentUser}
-          onBack={() => setSubPage(null)}
-          onUpdateUser={(user) => setCurrentUser(user)}
-          onCityChange={(loc) => {
-            setSimulatedLocation(loc)
-            toast.success('Location updated')
-          }}
-        />
+            currentUser={currentUser}
+            onBack={() => setSubPage(null)}
+            onUpdateUser={(user) => setCurrentUser(user)}
+            onCityChange={(loc) => {
+              setSimulatedLocation(loc)
+              toast.success('Location updated')
+            }}
+          />
+        </Suspense>
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
+      </>
+    )
+  }
+
+  if (subPage === 'moderation') {
+    return (
+      <>
+        <Suspense fallback={pageFallback}>
+          <ModerationQueuePage
+            reports={contentReports || []}
+            onBack={() => setSubPage(null)}
+            onUpdateReports={(updatedReports) => setContentReports(updatedReports)}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -777,14 +1066,14 @@ function App() {
       <>
         <Suspense fallback={pageFallback}>
           <IntegrationHub
-          venue={integrationVenue}
-          userLocation={userLocation}
-          venues={venues}
-          currentUser={currentUser}
-          pulses={pulses}
-          onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
-          onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
-        />
+            venue={integrationVenue}
+            userLocation={userLocation}
+            venues={venues}
+            currentUser={currentUser}
+            pulses={pulses}
+            onBack={() => { setSubPage(null); setIntegrationVenue(null) }}
+            onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }}
+          />
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
       </>
@@ -839,34 +1128,36 @@ function App() {
         <Toaster position="top-center" theme="dark" />
         <Suspense fallback={pageFallback}>
           <VenuePage
-          venue={selectedVenue}
-          venuePulses={venuePulses}
-          distance={distance}
-          unitSystem={unitSystem}
-          locationName={locationName}
-          currentTime={currentTime}
-          isTracking={isTracking}
-          hasRealtimeLocation={!!realtimeLocation}
-          isFavorite={isFavorite(selectedVenue.id)}
-          isFollowed={isFollowed(selectedVenue.id)}
-          currentUser={currentUser}
-          presenceData={presenceData}
-          onOpenPresence={() => setPresenceSheetOpen(true)}
-          onBack={() => setSelectedVenue(null)}
-          onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
-          onReaction={handleReaction}
-          onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
-          onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
-          onOpenIntegrations={() => {
-            if (!integrationsEnabled) {
-              toast.error('Integrations are currently unavailable')
-              return
-            }
-            setIntegrationVenue(selectedVenue)
-            setSelectedVenue(null)
-            setSubPage('integrations')
-          }}
-        />
+            venue={selectedVenue}
+            venuePulses={venuePulses}
+            distance={distance}
+            unitSystem={unitSystem}
+            locationName={locationName}
+            currentTime={currentTime}
+            isTracking={isTracking}
+            hasRealtimeLocation={!!realtimeLocation}
+            isFavorite={isFavorite(selectedVenue.id)}
+            isFollowed={isFollowed(selectedVenue.id)}
+            currentUser={currentUser}
+            presenceData={presenceData}
+            onOpenPresence={() => setPresenceSheetOpen(true)}
+            onBack={() => setSelectedVenue(null)}
+            onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
+            onStartCrewCheckIn={() => handleStartCrewCheckIn(selectedVenue.id)}
+            onReaction={handleReaction}
+            onReportPulse={handlePulseReport}
+            onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
+            onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
+            onOpenIntegrations={() => {
+              if (!integrationsEnabled) {
+                toast.error('Integrations are currently unavailable')
+                return
+              }
+              setIntegrationVenue(selectedVenue)
+              setSelectedVenue(null)
+              setSubPage('integrations')
+            }}
+          />
         </Suspense>
         <PresenceSheet
           open={presenceSheetOpen}
@@ -901,7 +1192,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <main className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
       <AppHeader
         locationName={locationName}
@@ -909,150 +1200,157 @@ function App() {
         hasRealtimeLocation={!!realtimeLocation}
         locationPermissionDenied={locationPermissionDenied}
         currentTime={currentTime}
+        queuedPulseCount={queuedPulseCount}
       />
 
-      <AnimatePresence mode="wait">
-        {activeTab === 'trending' && (
-          <motion.div
-            key="trending"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <TrendingTab
-              venues={venues}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              favoriteVenues={favoriteVenues}
-              followedVenues={followedVenues}
-              userLocation={userLocation}
-              unitSystem={unitSystem}
-              currentUser={currentUser}
-              allUsers={ALL_USERS}
-              trendingSubTab={trendingSubTab}
-              onSubTabChange={setTrendingSubTab}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleFollow={handleToggleFollow}
-              onReaction={handleReaction}
-              isFavorite={isFavorite}
-              promotions={promotions || []}
-            />
-          </motion.div>
-        )}
-
-        {activeTab === 'discover' && (
-          <motion.div
-            key="discover"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <DiscoverTab
-              venues={venues}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              currentUser={currentUser}
-              allUsers={ALL_USERS}
-              stories={stories || []}
-              events={events || []}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onStoryClick={(storyList) => {
-                setStoryViewerStories(storyList)
-                setStoryViewerOpen(true)
-              }}
-              onAddFriend={handleAddFriend}
-              onNavigate={(page) => setSubPage(page)}
-            />
-          </motion.div>
-        )}
-
-        {activeTab === 'map' && (
-          <motion.div
-            key="map"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
-          >
-            <div className="h-full">
-              <InteractiveMap
+      <Suspense fallback={pageFallback}>
+        <AnimatePresence mode="wait">
+          {activeTab === 'trending' && (
+            <motion.div
+              key="trending"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <TrendingTab
                 venues={venues}
+                pulses={moderatedPulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                favoriteVenues={favoriteVenues}
+                followedVenues={followedVenues}
                 userLocation={userLocation}
+                unitSystem={unitSystem}
+                currentUser={currentUser}
+                allUsers={ALL_USERS}
+                trendingSubTab={trendingSubTab}
+                onSubTabChange={setTrendingSubTab}
                 onVenueClick={(venue) => setSelectedVenue(venue)}
-                isTracking={isTracking}
-                locationAccuracy={realtimeLocation?.accuracy}
-                locationHeading={realtimeLocation?.heading}
+                onToggleFavorite={handleToggleFavorite}
+                onToggleFollow={handleToggleFollow}
+                onReaction={handleReaction}
+                onReportPulse={handlePulseReport}
+                isFavorite={isFavorite}
+                promotions={promotions || []}
+                onPromotionImpression={handlePromotionImpression}
+                onPromotionClick={handlePromotionClick}
               />
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {activeTab === 'notifications' && (
-          <motion.div
-            key="notifications"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <NotificationFeed
-              currentUser={currentUser}
-              pulses={pulses}
-              venues={venues}
-              onNotificationClick={handleNotificationClick}
-            />
-          </motion.div>
-        )}
+          {activeTab === 'discover' && (
+            <motion.div
+              key="discover"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DiscoverTab
+                venues={venues}
+                pulses={moderatedPulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                currentUser={currentUser}
+                allUsers={ALL_USERS}
+                stories={stories || []}
+                events={events || []}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                onStoryClick={(storyList) => {
+                  setStoryViewerStories(storyList)
+                  setStoryViewerOpen(true)
+                }}
+                onAddFriend={handleAddFriend}
+                onNavigate={(page) => setSubPage(page)}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'profile' && (
-          <motion.div
-            key="profile"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ProfileTab
-              currentUser={currentUser}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              favoriteVenues={favoriteVenues}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onReaction={handleReaction}
-              onOpenSocialPulseDashboard={() => {
-                if (!socialDashboardEnabled) {
-                  toast.error('Admin dashboard is currently unavailable')
-                  return
-                }
-                setShowAdminDashboard(true)
-              }}
-              onOpenSettings={() => setSubPage('settings')}
-              onOpenOwnerDashboard={() => {
-                if (!socialDashboardEnabled) {
-                  toast.error('Owner dashboard is currently unavailable')
-                  return
-                }
-                setShowAdminDashboard(true)
-              }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {activeTab === 'map' && (
+            <motion.div
+              key="map"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
+            >
+              <div className="h-full">
+                <InteractiveMap
+                  venues={venues}
+                  userLocation={userLocation}
+                  onVenueClick={(venue) => setSelectedVenue(venue)}
+                  isTracking={isTracking}
+                  locationAccuracy={realtimeLocation?.accuracy}
+                  locationHeading={realtimeLocation?.heading}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <motion.div
+              key="notifications"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <NotificationFeed
+                currentUser={currentUser}
+                pulses={moderatedPulses}
+                venues={venues}
+                onNotificationClick={handleNotificationClick}
+              />
+            </motion.div>
+          )}
+
+          {activeTab === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ProfileTab
+                currentUser={currentUser}
+                pulses={moderatedPulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                favoriteVenues={favoriteVenues}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                onReaction={handleReaction}
+                onOpenSocialPulseDashboard={() => {
+                  if (!socialDashboardEnabled) {
+                    toast.error('Admin dashboard is currently unavailable')
+                    return
+                  }
+                  setShowAdminDashboard(true)
+                }}
+                onOpenSettings={() => setSubPage('settings')}
+                onOpenOwnerDashboard={() => {
+                  if (!socialDashboardEnabled) {
+                    toast.error('Owner dashboard is currently unavailable')
+                    return
+                  }
+                  setShowAdminDashboard(true)
+                }}
+                onOpenModerationQueue={() => setSubPage('moderation')}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Suspense>
 
       {/* Story Viewer Overlay */}
       <AnimatePresence>
         {storyViewerOpen && storyViewerStories.length > 0 && (
           <Suspense fallback={null}>
             <StoryViewer
-            stories={storyViewerStories}
-            currentUserId={currentUser.id}
-            onClose={() => setStoryViewerOpen(false)}
-            onReact={handleStoryReact}
-          />
+              stories={storyViewerStories}
+              currentUserId={currentUser.id}
+              onClose={() => setStoryViewerOpen(false)}
+              onReact={handleStoryReact}
+            />
           </Suspense>
         )}
       </AnimatePresence>
@@ -1080,7 +1378,7 @@ function App() {
       >
         <Plus size={28} weight="bold" />
       </motion.button>
-    </div>
+    </main>
   )
 }
 

@@ -78,7 +78,19 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{pulse.user.username}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold truncate">{pulse.user.username}</p>
+                {pulse.user.postStreak && pulse.user.postStreak >= 2 && (
+                  <Badge className="bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-orange-500/30 text-[10px] px-1.5 py-0 h-4">
+                    🔥 {pulse.user.postStreak} Day Streak
+                  </Badge>
+                )}
+                {pulse.isPioneer && (
+                  <Badge className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border-yellow-500/30 text-[10px] px-1.5 py-0 h-4">
+                    🧗 Pioneer
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground font-mono uppercase tracking-wide">
                 {formatTimeAgo(pulse.createdAt)}
               </p>
@@ -163,8 +175,15 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
 
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => onReaction?.('fire')}
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+                  window.navigator.vibrate([10])
+                }
+                onReaction?.('fire')
+              }}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.fire.includes(currentUserId)
@@ -175,9 +194,16 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
             >
               <Fire size={18} weight={currentUserId && pulse.reactions.fire.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.fire.length}</span>
-            </button>
-            <button
-              onClick={() => onReaction?.('lightning')}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+                  window.navigator.vibrate([10])
+                }
+                onReaction?.('lightning')
+              }}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.lightning.includes(currentUserId)
@@ -188,9 +214,16 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
             >
               <Lightning size={18} weight={currentUserId && pulse.reactions.lightning.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.lightning.length}</span>
-            </button>
-            <button
-              onClick={() => onReaction?.('eyes')}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+                  window.navigator.vibrate([10])
+                }
+                onReaction?.('eyes')
+              }}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.eyes.includes(currentUserId)
@@ -201,9 +234,16 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
             >
               <Eye size={18} weight={currentUserId && pulse.reactions.eyes.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.eyes.length}</span>
-            </button>
-            <button
-              onClick={() => onReaction?.('skull')}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+                  window.navigator.vibrate([10])
+                }
+                onReaction?.('skull')
+              }}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.skull.includes(currentUserId)
@@ -214,7 +254,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
             >
               <Skull size={18} weight={currentUserId && pulse.reactions.skull.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.skull.length}</span>
-            </button>
+            </motion.button>
           </div>
 
           <div className="flex items-center gap-2">

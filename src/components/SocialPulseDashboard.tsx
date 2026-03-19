@@ -14,6 +14,7 @@ import { HashtagManager } from './HashtagManager'
 import { SocialPulseGraph } from './SocialPulseGraph'
 import { CorrelationOverlayChart } from './CorrelationOverlayChart'
 import { CorrelationInsights } from './CorrelationInsights'
+import { AnalyticsDashboard } from './AnalyticsDashboard'
 import {
   useSocialPulseIngestion,
   useSocialPulseWindows,
@@ -312,10 +313,11 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-4xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="correlations">Correlations</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="seeded">Seeded Analytics</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -574,6 +576,10 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
               onToggleActive={handleToggleActive}
               onUpdateVenueMapping={handleUpdateVenueMapping}
             />
+          </TabsContent>
+
+          <TabsContent value="seeded" className="space-y-6">
+            <AnalyticsDashboard />
           </TabsContent>
         </Tabs>
       </div>

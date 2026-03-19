@@ -5,6 +5,7 @@ import { defineConfig, PluginOption } from "vite";
 import sparkPlugin from "@github/spark/spark-vite-plugin";
 import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
+import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 const isVitest = process.env.VITEST === 'true'
@@ -37,6 +38,11 @@ export default defineConfig({
     // DO NOT REMOVE
     createIconImportProxy() as PluginOption,
     sparkPlugin() as PluginOption,
+    ViteImageOptimizer({
+      jpg: { quality: 75 },
+      png: { quality: 80 },
+      webp: { quality: 80 },
+    }) as PluginOption,
   ].filter(Boolean) as PluginOption[],
   resolve: {
     alias: {

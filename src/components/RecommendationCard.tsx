@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 
 interface RecommendationCardProps {
   recommendation: Recommendation
+  isSponsored?: boolean
   onClick: () => void
 }
 
@@ -19,7 +20,7 @@ const REASON_ICONS: Record<string, typeof Sparkle> = {
   nearby: MapPin,
 }
 
-export function RecommendationCard({ recommendation, onClick }: RecommendationCardProps) {
+export function RecommendationCard({ recommendation, isSponsored = false, onClick }: RecommendationCardProps) {
   const { venue, reasons } = recommendation
   const label = getEnergyLabel(venue.pulseScore)
   const color = getEnergyColor(venue.pulseScore)
@@ -43,13 +44,20 @@ export function RecommendationCard({ recommendation, onClick }: RecommendationCa
               {venue.category}{venue.city ? ` · ${venue.city}` : ''}
             </p>
           </div>
-          <Badge
-            variant="outline"
-            className="text-[10px] shrink-0 border-0 font-bold"
-            style={{ color, backgroundColor: `${color}20` }}
-          >
-            {label}
-          </Badge>
+          <div className="flex items-center gap-1">
+            {isSponsored && (
+              <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500">
+                Sponsored
+              </Badge>
+            )}
+            <Badge
+              variant="outline"
+              className="text-[10px] shrink-0 border-0 font-bold"
+              style={{ color, backgroundColor: `${color}20` }}
+            >
+              {label}
+            </Badge>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1.5 mt-2">

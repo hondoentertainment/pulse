@@ -1,0 +1,42 @@
+﻿{
+    "performance":  [
+                        {
+                            "id":  "first-contentful-paint",
+                            "title":  "First Contentful Paint",
+                            "score":  0.28,
+                            "displayValue":  "3.8Â s"
+                        },
+                        {
+                            "id":  "largest-contentful-paint",
+                            "title":  "Largest Contentful Paint",
+                            "score":  0.18,
+                            "displayValue":  "5.5Â s"
+                        },
+                        {
+                            "id":  "total-blocking-time",
+                            "title":  "Total Blocking Time",
+                            "score":  0.98,
+                            "displayValue":  "110Â ms"
+                        },
+                        {
+                            "id":  "speed-index",
+                            "title":  "Speed Index",
+                            "score":  0.84,
+                            "displayValue":  "3.8Â s"
+                        }
+                    ],
+    "accessibility":  [
+                          {
+                              "id":  "color-contrast",
+                              "title":  "Background and foreground colors do not have a sufficient contrast ratio.",
+                              "score":  0,
+                              "displayValue":  null
+                          },
+                          {
+                              "id":  "landmark-one-main",
+                              "title":  "Document does not have a main landmark.",
+                              "score":  0,
+                              "displayValue":  null
+                          }
+                      ]
+}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { User, Pulse, Venue } from '@/lib/types'
+import type { Crew } from '@/lib/crew-mode'
 import { calculateAchievementProgress, getUnlockedAchievements, ACHIEVEMENTS, calculateCheckInStreak } from '@/lib/achievements'
 import { AchievementBadge } from '@/components/AchievementBadge'
 import { StreakBadge } from '@/components/StreakBadge'
@@ -10,13 +11,15 @@ interface AchievementsPageProps {
   currentUser: User
   pulses: Pulse[]
   venues: Venue[]
+  crews?: Crew[]
   onBack: () => void
 }
 
-export function AchievementsPage({ currentUser, pulses, venues, onBack }: AchievementsPageProps) {
+export function AchievementsPage({ currentUser, pulses, venues: _venues, crews = [], onBack }: AchievementsPageProps) {
+  const crewsCreatedByUser = crews.filter(crew => crew.createdBy === currentUser.id).length
   const progress = useMemo(
-    () => calculateAchievementProgress(currentUser, pulses, pulses),
-    [currentUser, pulses]
+    () => calculateAchievementProgress(currentUser, pulses, pulses, crewsCreatedByUser),
+    [currentUser, pulses, crewsCreatedByUser]
   )
 
   const unlocked = useMemo(() => getUnlockedAchievements(progress), [progress])

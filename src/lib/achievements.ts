@@ -96,7 +96,8 @@ export const ACHIEVEMENTS: Achievement[] = [
 export function calculateAchievementProgress(
   user: User,
   pulses: Pulse[],
-  allPulses: Pulse[]
+  allPulses: Pulse[],
+  crewsCreatedByUser: number = 0
 ): UserAchievement[] {
   const userPulses = pulses.filter(p => p.userId === user.id)
   const results: UserAchievement[] = []
@@ -190,12 +191,12 @@ export function calculateAchievementProgress(
     showcased: false,
   })
 
-  // Crew starter (placeholder — checked externally)
+  // Crew starter
   results.push({
     achievementId: 'crew_starter',
     userId: user.id,
-    unlockedAt: '',
-    progress: 0,
+    unlockedAt: crewsCreatedByUser >= 1 ? now : '',
+    progress: crewsCreatedByUser,
     showcased: false,
   })
 

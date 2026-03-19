@@ -1,0 +1,9 @@
+﻿--- COLOR CONTRAST ---
+<button data-slot="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm foâ€¦">
+
+--- LCP ELEMENT ---
+
+--- UNUSED JS ---
+http://localhost:4173/assets/index-CyYn9cES.js (55 KB wasted)
+http://localhost:4173/assets/react-vendor-CEgW99Dp.js (54 KB wasted)
+http://localhost:4173/assets/framer-motion-xqeZnBNt.js (23 KB wasted)

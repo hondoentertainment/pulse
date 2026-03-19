@@ -1,0 +1,30 @@
+﻿{
+    "performance":  [
+                        {
+                            "id":  "first-contentful-paint",
+                            "title":  "First Contentful Paint",
+                            "score":  0.34,
+                            "displayValue":  "3.5Â s"
+                        },
+                        {
+                            "id":  "largest-contentful-paint",
+                            "title":  "Largest Contentful Paint",
+                            "score":  0.25,
+                            "displayValue":  "5.1Â s"
+                        },
+                        {
+                            "id":  "speed-index",
+                            "title":  "Speed Index",
+                            "score":  0.88,
+                            "displayValue":  "3.5Â s"
+                        }
+                    ],
+    "accessibility":  [
+                          {
+                              "id":  "landmark-one-main",
+                              "title":  "Document does not have a main landmark.",
+                              "score":  0,
+                              "displayValue":  null
+                          }
+                      ]
+}
