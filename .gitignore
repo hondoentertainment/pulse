@@ -37,3 +37,11 @@ pids
 .claude/
 playwright-report/
 test-results/
+.env*.local
+
+# Debug & CI artifacts
+test_out*.txt
+eslint.json
+lint_output.txt
+analysis.txt
+lighthouse-*.json
