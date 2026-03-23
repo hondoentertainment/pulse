@@ -1,0 +1,60 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Install serve
+        run: npm install -g serve
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Check bundle size budget
+        run: |
+          MAX_JS_KB=1500
+          TOTAL_JS=$(find dist/assets -name '*.js' -exec du -cb {} + | tail -1 | cut -f1)
+          TOTAL_JS_KB=$((TOTAL_JS / 1024))
+          echo "Total JS bundle: ${TOTAL_JS_KB} KB (budget: ${MAX_JS_KB} KB)"
+          if [ "$TOTAL_JS_KB" -gt "$MAX_JS_KB" ]; then
+            echo "::error::JS bundle size ($TOTAL_JS_KB KB) exceeds budget ($MAX_JS_KB KB)"
+            exit 1
+          fi
+          echo "✅ Bundle size within budget"
+
+      - name: Report bundle breakdown
+        if: always()
+        run: |
+          echo "## 📦 Bundle Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Chunk | Size (KB) |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----------|" >> $GITHUB_STEP_SUMMARY
+          for file in dist/assets/*.js; do
+            size=$(du -k "$file" | cut -f1)
+            name=$(basename "$file")
+            echo "| \`$name\` | $size |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$(find dist/assets -name '*.js' -exec du -cb {} + | tail -1 | cut -f1)
+          echo "**Total JS:** $((TOTAL / 1024)) KB" >> $GITHUB_STEP_SUMMARY

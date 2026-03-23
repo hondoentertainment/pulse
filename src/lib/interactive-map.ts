@@ -178,6 +178,11 @@ export function buildVenueRenderPoints(params: {
     ))
 }
 
+import Supercluster from 'supercluster'
+
+let clusterIndex: Supercluster<any, any> | null = null
+let lastPointsCount = -1
+
 export function clusterVenueRenderPoints(
   points: VenueRenderPoint[],
   zoom: number,
@@ -190,41 +195,54 @@ export function clusterVenueRenderPoints(
     }
   }
 
-  const cellSize = Math.max(56, 92 - zoom * 24)
-  const buckets = new Map<string, VenueRenderPoint[]>()
+  // Optimize supercluster caching on static datasets
+  if (!clusterIndex || lastPointsCount !== points.length) {
+    clusterIndex = new Supercluster({
+      radius: 54, // Max distance in pixels to cluster points
+      maxZoom: 16,
+    })
 
-  for (const point of points) {
-    const key = `${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`
-    const existing = buckets.get(key)
+    const geoJsonPoints = points.map(p => ({
+      type: 'Feature' as const,
+      properties: { point: p },
+      geometry: { type: 'Point' as const, coordinates: [p.venue.location.lng, p.venue.location.lat] }
+    }))
 
-    if (existing) {
-      existing.push(point)
-    } else {
-      buckets.set(key, [point])
-    }
+    clusterIndex.load(geoJsonPoints)
+    lastPointsCount = points.length
   }
+
+  // Map arbitrary local zoom (0.6 - 4.5) to Supercluster zoom levels (0 - 16)
+  const scZoom = Math.max(0, Math.min(16, Math.floor((zoom - 0.6) / (4.5 - 0.6) * 16)))
+  
+  // Calculate bounding box in lat/lng since we overs-can the viewport
+  // For simplicity since Supercluster uses standard coordinates, we extract all clusters globally
+  const clustersData = clusterIndex.getClusters([-180, -85, 180, 85], scZoom)
 
   const clusters: VenueCluster[] = []
   const singles: VenueRenderPoint[] = []
 
-  for (const [bucketId, bucketPoints] of buckets) {
-    if (bucketPoints.length === 1) {
-      singles.push(bucketPoints[0])
-      continue
+  clustersData.forEach(c => {
+    if (c.properties?.cluster) {
+      // It's a cluster
+      const leaves = clusterIndex!.getLeaves(c.properties.cluster_id, Infinity)
+      const venues = leaves.map(l => l.properties.point as VenueRenderPoint)
+      
+      const x = venues.reduce((sum, v) => sum + v.x, 0) / venues.length
+      const y = venues.reduce((sum, v) => sum + v.y, 0) / venues.length
+      const maxPulseScore = venues.reduce((max, v) => Math.max(max, v.venue.pulseScore), 0)
+
+      clusters.push({
+        id: `cluster-${c.properties.cluster_id}`,
+        x,
+        y,
+        venues,
+        maxPulseScore,
+      })
+    } else {
+      singles.push(c.properties.point)
     }
-
-    const x = bucketPoints.reduce((sum, point) => sum + point.x, 0) / bucketPoints.length
-    const y = bucketPoints.reduce((sum, point) => sum + point.y, 0) / bucketPoints.length
-    const maxPulseScore = bucketPoints.reduce((max, point) => Math.max(max, point.venue.pulseScore), 0)
-
-    clusters.push({
-      id: bucketId,
-      x,
-      y,
-      venues: bucketPoints,
-      maxPulseScore,
-    })
-  }
+  })
 
   return { clusters, singles }
 }

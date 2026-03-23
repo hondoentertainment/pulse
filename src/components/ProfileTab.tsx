@@ -122,6 +122,8 @@ export function ProfileTab({
                       <img
                         src={latestPulse.photos[0]}
                         alt={venue.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     ) : (

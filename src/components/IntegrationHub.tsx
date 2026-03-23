@@ -156,6 +156,8 @@ export function IntegrationHub({
                   <img
                     src={nowPlaying.albumArt}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="w-12 h-12 rounded-lg object-cover"
                   />
                 )}

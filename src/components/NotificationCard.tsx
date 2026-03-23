@@ -100,6 +100,8 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
                   <img
                     src={notification.pulse.photos[0]}
                     alt="Pulse preview"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 </div>

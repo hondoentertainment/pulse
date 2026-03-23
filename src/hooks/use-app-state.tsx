@@ -30,11 +30,14 @@ import { createEvent } from '@/lib/events'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity } from '@/lib/venue-trending'
-import { getPendingCount, processQueue, registerConnectivityListeners, isOnline } from '@/lib/offline-queue'
-import { fetchEventsFromApi, fetchPulsesFromApi, postEventToApi, syncQueuedPulseToApi } from '@/lib/server-api'
+import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
+import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
 import { trackEvent, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 
 export type SubPage =
   | 'events'
@@ -189,6 +192,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     distanceFilter: 0.001,
   })
 
+  const { profile: supabaseProfile } = useSupabaseAuth()
+
   const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
     id: 'user-1',
     username: 'kyle',
@@ -201,6 +206,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     credibilityScore: 1.0,
     presenceSettings: { enabled: true, visibility: 'everyone', hideAtSensitiveVenues: true },
   })
+
+  // Bridge Supabase Profile -> Local State
+  useEffect(() => {
+    if (supabaseProfile) setCurrentUser(supabaseProfile)
+  }, [supabaseProfile, setCurrentUser])
 
   const launchedCitySet = new Set(
     (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
@@ -228,16 +238,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [userMutes] = useKV<UserMute[]>('userMutes', [])
 
   // ── Side-effects ─────────────────────────────────────────
+  // Activate batched Supabase Realtime subscriptions (Phase 6)
+  useRealtimeSubscription(true)
+
   useEffect(() => {
     if (!hashtags || hashtags.length === 0) setHashtags(initializeSeededHashtags())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    const update = () => setQueuedPulseCount(getPendingCount())
-    update()
-    const id = setInterval(update, 3000)
-    return () => clearInterval(id)
   }, [])
 
   useEffect(() => { initHighContrast() }, [])
@@ -267,42 +273,34 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues])
 
-  // Remote data sync
+  // Remote data sync with React Query
+  const { data: serverEvents } = useQuery({
+    queryKey: ['events'],
+    queryFn: fetchEventsFromApi,
+  })
+
+  const { data: serverVenues } = useQuery({
+    queryKey: ['venues'],
+    queryFn: fetchVenuesFromSupabase,
+  })
+
+  const { data: serverPulses } = useQuery({
+    queryKey: ['pulses'],
+    queryFn: fetchPulsesFromSupabase,
+  })
+
+  // Hydrate local KV state from React Query
   useEffect(() => {
-    let mounted = true
-    if (events && events.length > 0) return
-    fetchEventsFromApi().then(r => { if (mounted && r?.length) setEvents(r) })
-    return () => { mounted = false }
-  }, [events, setEvents])
+    if (serverEvents && serverEvents.length > 0) setEvents(serverEvents)
+  }, [serverEvents, setEvents])
 
   useEffect(() => {
-    let mounted = true
-    if (pulses && pulses.length > 0) return
-    fetchPulsesFromApi().then(r => { if (mounted && r?.length) setPulses(r) })
-    return () => { mounted = false }
-  }, [pulses, setPulses])
+    if (serverVenues && serverVenues.length > 0) setVenues(serverVenues)
+  }, [serverVenues, setVenues])
 
-  // Offline queue sync
   useEffect(() => {
-    const syncCallback = async () => {
-      const result = await processQueue(
-        async (queuedPulse) => syncQueuedPulseToApi({ id: queuedPulse.id, venueId: queuedPulse.venueId, energyRating: queuedPulse.energyRating, caption: queuedPulse.caption, photos: queuedPulse.photos, hashtags: queuedPulse.hashtags }),
-        {
-          onItemAttempt: (pulse) => { trackEvent({ type: 'performance', timestamp: Date.now(), metric: 'queue_sync_attempt', value: pulse.retryCount, unit: 'retry_count' }) },
-          onItemResult: (_pulse, success, elapsedMs) => { trackPerformance(success ? 'queue_sync_success_ms' : 'queue_sync_failure_ms', elapsedMs) },
-          onBatchComplete: ({ synced, failed, total, elapsedMs }) => {
-            trackPerformance('queue_sync_batch_ms', elapsedMs)
-            trackEvent({ type: 'performance', timestamp: Date.now(), metric: 'queue_sync_batch_result', value: total > 0 ? synced / total : 1, unit: 'success_ratio' })
-            if (failed > 0) toast.warning(`${failed} queued pulse${failed > 1 ? 's' : ''} still pending sync`)
-          },
-        }
-      )
-      setQueuedPulseCount(getPendingCount())
-      if (result.synced > 0) toast.success(`Synced ${result.synced} queued pulse${result.synced > 1 ? 's' : ''}`)
-    }
-    if (isOnline() && getPendingCount() > 0) syncCallback()
-    return registerConnectivityListeners(syncCallback, () => { toast.message('You are offline. New pulses will queue locally.') })
-  }, [])
+    if (serverPulses && serverPulses.length > 0) setPulses(serverPulses)
+  }, [serverPulses, setPulses])
 
   // Location
   const userLocation = useMemo(
@@ -415,8 +413,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     contentReports, setContentReports,
     userBlocks, userMutes,
     currentUser, setCurrentUser,
-    userLocation, locationName, locationError, isTracking,
-    realtimeLocation, locationPermissionDenied, setLocationPermissionDenied,
+    userLocation, locationName, locationError: locationError ?? undefined, isTracking,
+    realtimeLocation: realtimeLocation ? { ...realtimeLocation, heading: realtimeLocation.heading ?? undefined } : null, locationPermissionDenied, setLocationPermissionDenied,
     simulatedLocation, setSimulatedLocation,
     unitSystem, notificationSettings, currentTime,
     integrationsEnabled, socialDashboardEnabled,

@@ -438,6 +438,7 @@ export function StoryViewer({
                 <img
                   src={story.profilePhoto}
                   alt=""
+                  decoding="async"
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (
@@ -507,6 +508,8 @@ export function StoryViewer({
                   <img
                     src={story.photos[0]}
                     alt=""
+                    fetchPriority="high"
+                    decoding="sync"
                     className="max-h-[55vh] rounded-2xl object-cover shadow-2xl"
                     draggable={false}
                   />

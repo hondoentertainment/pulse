@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig, PluginOption } from "vite";
@@ -5,7 +6,8 @@ import { defineConfig, PluginOption } from "vite";
 import sparkPlugin from "@github/spark/spark-vite-plugin";
 import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
-import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
+import { ViteImageOptimizer } from 'vite-plugin-image-optimizer'
+import { VitePWA } from 'vite-plugin-pwa'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 const isVitest = process.env.VITEST === 'true'
@@ -26,6 +28,9 @@ export default defineConfig({
             if (id.includes('@tanstack/react-query')) return 'tanstack-query';
             if (id.includes('@phosphor-icons')) return 'phosphor';
             if (id.includes('octokit') || id.includes('@octokit')) return 'octokit';
+            if (id.includes('@supabase/')) return 'supabase';
+            if (id.includes('@sentry/')) return 'sentry';
+            if (id.includes('@vercel/')) return 'vercel';
           }
         },
       },
@@ -42,6 +47,29 @@ export default defineConfig({
       jpg: { quality: 75 },
       png: { quality: 80 },
       webp: { quality: 80 },
+    }) as PluginOption,
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      manifest: false, // Utilizing existing public/manifest.json
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
+            handler: 'NetworkOnly',
+            method: 'POST',
+            options: {
+              backgroundSync: {
+                name: 'pulse-sync-queue',
+                options: {
+                  maxRetentionTime: 24 * 60 // Retry for max 24 Hours
+                }
+              }
+            }
+          }
+        ]
+      }
     }) as PluginOption,
   ].filter(Boolean) as PluginOption[],
   resolve: {

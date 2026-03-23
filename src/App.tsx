@@ -3,9 +3,7 @@ import { AppStateProvider, useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { calculatePresence } from '@/lib/presence-engine'
 import { calculateDistance } from '@/lib/pulse-engine'
-import { PresenceSheet } from '@/components/PresenceSheet'
 import { BottomNav } from '@/components/BottomNav'
-import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { AppHeader } from '@/components/AppHeader'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { MainTabRouter } from '@/components/MainTabRouter'
@@ -18,6 +16,8 @@ const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m =
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
 const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboard').then(m => ({ default: m.SocialPulseDashboard })))
+const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => ({ default: m.PresenceSheet })))
+const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -139,20 +139,24 @@ function AppContent() {
             }}
           />
         </Suspense>
-        <PresenceSheet
-          open={presenceSheetOpen}
-          onClose={() => setPresenceSheetOpen(false)}
-          presence={presenceData}
-          currentUser={currentUser}
-          onUpdateSettings={(settings) => {
-            setCurrentUser(prev => {
-              if (!prev) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), presenceSettings: settings }
-              return { ...prev, presenceSettings: settings }
-            })
-          }}
-        />
+        <Suspense fallback={null}>
+          <PresenceSheet
+            open={presenceSheetOpen}
+            onClose={() => setPresenceSheetOpen(false)}
+            presence={presenceData}
+            currentUser={currentUser}
+            onUpdateSettings={(settings) => {
+              setCurrentUser(prev => {
+                if (!prev) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), presenceSettings: settings }
+                return { ...prev, presenceSettings: settings }
+              })
+            }}
+          />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
-        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+        <Suspense fallback={null}>
+          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+        </Suspense>
       </>
     )
   }
@@ -186,7 +190,9 @@ function AppContent() {
       </AnimatePresence>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
-      <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+      <Suspense fallback={null}>
+        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+      </Suspense>
 
       <motion.button
         whileHover={{ scale: 1.05 }}
@@ -201,11 +207,15 @@ function AppContent() {
   )
 }
 
+import { SupabaseAuthProvider } from '@/hooks/use-supabase-auth'
+
 function App() {
   return (
-    <AppStateProvider>
-      <AppContent />
-    </AppStateProvider>
+    <SupabaseAuthProvider>
+      <AppStateProvider>
+        <AppContent />
+      </AppStateProvider>
+    </SupabaseAuthProvider>
   )
 }
 

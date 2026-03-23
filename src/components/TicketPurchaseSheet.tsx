@@ -361,7 +361,7 @@ export function TicketPurchaseSheet({
                           >
                             <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
                               {friend.profilePhoto ? (
-                                <img src={friend.profilePhoto} alt="" className="w-full h-full object-cover" />
+                                <img src={friend.profilePhoto} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-xs font-bold">
                                   {friend.username[0].toUpperCase()}

@@ -148,6 +148,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 <img
                   src={photo}
                   alt={`Pulse photo ${idx + 1}`}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>

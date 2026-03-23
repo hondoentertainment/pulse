@@ -238,6 +238,8 @@ function PlaylistCardUI({
                   key={j}
                   src={photo}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-16 flex-1 object-cover"
                 />
               ))}

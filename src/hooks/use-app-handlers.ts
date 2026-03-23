@@ -1,5 +1,7 @@
+import { queryClient } from '@/lib/query-client'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
-import type { EnergyRating, GroupedNotification, ContentReport } from '@/lib/types'
+import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
+import type { ContentReport } from '@/lib/content-moderation'
 import type { VenueEvent } from '@/lib/events'
 import { PulseStory } from '@/lib/stories'
 import { calculateUserCredibility } from '@/lib/credibility'
@@ -13,8 +15,9 @@ import { COOLDOWN_MINUTES } from '@/lib/types'
 import { toast } from 'sonner'
 import { updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn } from '@/lib/venue-trending'
-import { enqueuePulse, getPendingCount } from '@/lib/offline-queue'
-import { postPulseToApi, postEventToApi } from '@/lib/server-api'
+
+import { postEventToApi } from '@/lib/server-api'
+import { uploadPulseToSupabase } from '@/lib/supabase-api'
 import { trackEvent } from '@/lib/analytics'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
 import { createStory } from '@/lib/stories'
@@ -118,6 +121,7 @@ export function useAppHandlers() {
     }
 
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
+    queryClient.setQueryData(['pulses'], (current: Pulse[] | undefined) => { if (!current) return [newPulse]; return [newPulse, ...current] })
 
     const story = createStory(newPulse, currentUser, venueForPulse.name)
     setStories(current => { if (!current) return [story]; return [story, ...current] })
@@ -147,13 +151,12 @@ export function useAppHandlers() {
     if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
     toast.success('Pulse posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
     announce(`Pulse posted at ${venueForPulse.name}`)
+    if (navigator.vibrate) navigator.vibrate([20, 50, 20])
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 
-    const syncOnline = await postPulseToApi(newPulse)
+    const syncOnline = await uploadPulseToSupabase(newPulse)
     if (!syncOnline) {
-      enqueuePulse({ id: newPulse.id, venueId: newPulse.venueId, energyRating: newPulse.energyRating, caption: newPulse.caption, photos: newPulse.photos, hashtags: newPulse.hashtags })
-      setQueuedPulseCount(getPendingCount())
-      toast.message('Saved offline. Will sync when connection is restored.')
+      toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
     }
 
     setPulses(current => { if (!current) return []; return current.map(p => p.id === newPulse.id ? { ...p, isPending: false, uploadError: false } : p) })
@@ -196,14 +199,17 @@ export function useAppHandlers() {
     const rateCheck = checkUserRateLimit(currentUser.id, 'reaction')
     if (!rateCheck.allowed) return
     trackEvent({ type: 'pulse_reaction', timestamp: Date.now(), pulseId, reactionType: type })
+    if (navigator.vibrate) navigator.vibrate([10])
     setPulses(current => {
       if (!current) return []
-      return current.map(p => {
+      const next = current.map(p => {
         if (p.id !== pulseId) return p
         const reactions = p.reactions[type]
         const hasReacted = reactions.includes(currentUser.id)
         return { ...p, reactions: { ...p.reactions, [type]: hasReacted ? reactions.filter(id => id !== currentUser.id) : [...reactions, currentUser.id] } }
       })
+      queryClient.setQueryData(['pulses'], next)
+      return next
     })
   }
 
@@ -218,6 +224,7 @@ export function useAppHandlers() {
     trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
     setCurrentUser(prev => { if (!prev) return prev!; if (prev.friends.includes(userId)) return prev; return { ...prev, friends: [...prev.friends, userId] } })
     toast.success('Friend added!')
+    if (navigator.vibrate) navigator.vibrate([30])
   }
 
   const handleStoryReact = (_storyId: string, emoji: string) => { toast.success(`Reacted ${emoji}`) }
@@ -232,6 +239,7 @@ export function useAppHandlers() {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
+    if (navigator.vibrate) navigator.vibrate([15])
     const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
     announce(`Switched to ${labels[tab]} tab`)
   }

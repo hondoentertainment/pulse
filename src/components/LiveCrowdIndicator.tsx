@@ -116,6 +116,8 @@ export function LiveCrowdIndicator({ count, trend, friendCount, avatars = [] }: 
                 <img
                   src={avatar}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="w-8 h-8 rounded-full border-2 border-card object-cover"
                 />
               ) : (

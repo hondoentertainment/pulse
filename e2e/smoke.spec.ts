@@ -96,8 +96,6 @@ test.describe('After onboarding', () => {
     })
 
     await page.getByRole('button', { name: /^map$/i }).click()
-    await expect(
-      page.getByRole('button', { name: /zoom in/i })
-    ).toBeVisible()
+    await expect(page.locator('.mapboxgl-canvas, canvas').first()).toBeVisible({ timeout: 15_000 })
   })
 })

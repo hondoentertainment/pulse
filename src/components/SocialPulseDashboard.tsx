@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useAppState } from '@/hooks/use-app-state'
+import Tilt from 'react-parallax-tilt'
 import { useKV } from '@github/spark/hooks'
 import { TrackedHashtag, Venue, Pulse } from '@/lib/types'
 import { getEvents, getIntegrationActionSummary } from '@/lib/analytics'
@@ -77,6 +79,8 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
   const [editorVenueId, setEditorVenueId] = useState<string>(venues[0]?.id ?? 'all')
   const [integrationDraft, setIntegrationDraft] = useState<IntegrationEditorDraft>(() => buildIntegrationDraft(venues[0]))
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+
+  const { contentReports, setContentReports, setPulses } = useAppState()
 
   const { socialPosts } = useSocialPulseIngestion(
     trackedHashtags || [],
@@ -260,64 +264,73 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Hash size={20} weight="fill" />
-                    <span className="text-sm">Active Hashtags</span>
+            <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} scale={1.02} transitionSpeed={2000}>
+              <Card className="h-full border-border/50 shadow-sm hover:border-accent/50 hover:shadow-accent/10 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Hash size={20} weight="fill" />
+                      <span className="text-sm">Active Hashtags</span>
+                    </div>
+                    <div className="text-2xl font-bold">{activeHashtags.length}</div>
                   </div>
-                  <div className="text-2xl font-bold">{activeHashtags.length}</div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Tilt>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Lightning size={20} weight="fill" />
-                    <span className="text-sm">Total Posts</span>
+            <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} scale={1.02} transitionSpeed={2000}>
+              <Card className="h-full border-border/50 shadow-sm hover:border-accent/50 hover:shadow-accent/10 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Lightning size={20} weight="fill" />
+                      <span className="text-sm">Total Posts</span>
+                    </div>
+                    <div className="text-2xl font-bold">{totalPosts}</div>
                   </div>
-                  <div className="text-2xl font-bold">{totalPosts}</div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Tilt>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock size={20} weight="fill" />
-                    <span className="text-sm">Last Hour</span>
+            <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} scale={1.02} transitionSpeed={2000}>
+              <Card className="h-full border-border/50 shadow-sm hover:border-accent/50 hover:shadow-accent/10 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock size={20} weight="fill" />
+                      <span className="text-sm">Last Hour</span>
+                    </div>
+                    <div className="text-2xl font-bold text-accent">{recentPosts}</div>
                   </div>
-                  <div className="text-2xl font-bold text-accent">{recentPosts}</div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Tilt>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <LinkSimple size={20} weight="fill" />
-                    <span className="text-sm">Integration Clicks</span>
+            <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} scale={1.02} transitionSpeed={2000}>
+              <Card className="h-full border-border/50 shadow-sm hover:border-accent/50 hover:shadow-accent/10 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <LinkSimple size={20} weight="fill" />
+                      <span className="text-sm">Integration Clicks</span>
+                    </div>
+                    <div className="text-2xl font-bold">{integrationSummary.totalActions}</div>
                   </div>
-                  <div className="text-2xl font-bold">{integrationSummary.totalActions}</div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Tilt>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full max-w-4xl">
+          <TabsList className="grid grid-cols-6 w-full max-w-5xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="correlations">Correlations</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="seeded">Seeded Analytics</TabsTrigger>
+            <TabsTrigger value="moderation">Moderation</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -580,6 +593,64 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
 
           <TabsContent value="seeded" className="space-y-6">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="moderation" className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-xl font-bold mb-4">Content Moderation Queue</h3>
+              {!contentReports || contentReports.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>Queue is empty. Everything looks good!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {contentReports.map((report) => {
+                    const reportedPulse = pulses.find(p => p.id === report.targetId)
+                    return (
+                      <div key={report.id} className="p-4 rounded-lg border border-border bg-secondary/20 flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="destructive">{report.reason}</Badge>
+                            <span className="text-xs text-muted-foreground">{new Date(report.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p className="text-sm"><span className="font-semibold">Reporter ID:</span> {report.reporterId}</p>
+                          {reportedPulse && (
+                            <div className="mt-2 p-3 bg-background rounded-md border border-border/50 text-sm">
+                              <p className="font-semibold">{reportedPulse.caption || 'No caption'}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Pulse ID: {reportedPulse.id} • User ID: {reportedPulse.userId}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => {
+                              toast.success('Report resolved')
+                              setContentReports(current => (current || []).filter(r => r.id !== report.id))
+                            }}
+                          >
+                            Resolve / Ignore
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => {
+                              toast.success('Content removed')
+                              setPulses(current => (current || []).filter(p => p.id !== report.targetId))
+                              setContentReports(current => (current || []).filter(r => r.id !== report.id))
+                            }}
+                          >
+                            Delete Pulse
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

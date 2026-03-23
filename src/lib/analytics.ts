@@ -5,6 +5,9 @@
  * seeded content analytics, and error monitoring.
  */
 
+import { track as vercelTrack } from '@vercel/analytics'
+import * as Sentry from '@sentry/react'
+
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
   | { type: 'onboarding_start'; timestamp: number }
@@ -88,8 +91,11 @@ export function trackEvent(event: AnalyticsEvent): void {
   if (eventLog.length > MAX_EVENTS) {
     eventLog.splice(0, eventLog.length - MAX_EVENTS)
   }
+  
+  // Broadcast to Vercel Analytics
+  const { type, timestamp, ...properties } = event
+  vercelTrack(type, properties as Record<string, any>)
 }
-
 /**
  * Get all tracked events, optionally filtered by type.
  */
@@ -324,6 +330,13 @@ export function trackError(error: Error | string, context?: string): void {
     stack,
     context,
   })
+
+  // Broadcast to Sentry
+  if (typeof error === 'string') {
+    Sentry.captureMessage(error, { extra: { context } })
+  } else {
+    Sentry.captureException(error, { extra: { context } })
+  }
 }
 
 /**
