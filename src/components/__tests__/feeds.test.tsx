@@ -42,7 +42,7 @@ vi.mock('@github/spark/hooks', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Component-specific mocks
+// Component mocks (only for child components used by parents under test)
 // ---------------------------------------------------------------------------
 
 vi.mock('@/components/VenueCard', () => ({
@@ -75,38 +75,18 @@ vi.mock('@/components/RecommendationCard', () => ({
   ),
 }))
 
-vi.mock('@/components/TrendingSections', () => ({
-  TrendingSections: ({ sections }: any) => (
-    <div data-testid="trending-sections">{sections.length} sections</div>
-  ),
-}))
+// ---------------------------------------------------------------------------
+// Lib mocks (use vi.fn() so they can be overridden per test)
+// ---------------------------------------------------------------------------
 
-vi.mock('@/components/MySpotsFeed', () => ({
-  MySpotsFeed: () => <div data-testid="my-spots-feed">My Spots Feed</div>,
-}))
-
-vi.mock('@/components/RecommendationsSection', () => ({
-  RecommendationsSection: ({ recommendations }: any) => (
-    <div data-testid="recommendations-section">{recommendations.length} recs</div>
-  ),
-}))
-
-vi.mock('@/components/LiveActivityFeed', () => ({
-  LiveActivityFeed: () => <div data-testid="live-activity-feed">Live Activity</div>,
-}))
-
-vi.mock('@/components/Favorites', () => ({
-  Favorites: ({ favoriteVenues }: any) => (
-    <div data-testid="favorites">{favoriteVenues.length} favorites</div>
-  ),
-}))
-
+const mockGetTrendingSections = vi.fn().mockReturnValue([])
 vi.mock('@/lib/venue-trending', () => ({
-  getTrendingSections: () => [],
+  getTrendingSections: (...args: any[]) => mockGetTrendingSections(...args),
 }))
 
+const mockGetRecommendations = vi.fn().mockReturnValue([])
 vi.mock('@/lib/venue-recommendations', () => ({
-  getRecommendations: () => [],
+  getRecommendations: (...args: any[]) => mockGetRecommendations(...args),
 }))
 
 vi.mock('@/lib/promoted-discoveries', () => ({
@@ -124,24 +104,25 @@ vi.mock('@/lib/contextual-intelligence', () => ({
   getSmartVenueSort: (venues: any[]) => venues,
 }))
 
+const mockGetPersonalizedVenues = vi.fn().mockReturnValue([])
 vi.mock('@/lib/personalization-engine', () => ({
-  getPersonalizedVenues: () => [],
+  getPersonalizedVenues: (...args: any[]) => mockGetPersonalizedVenues(...args),
   getVenueRecommendationReason: () => 'Great vibe match',
 }))
 
+const mockGroupNotifications = vi.fn().mockReturnValue([])
 vi.mock('@/lib/notification-grouping', () => ({
-  groupNotifications: () => [],
+  groupNotifications: (...args: any[]) => mockGroupNotifications(...args),
 }))
 
+const mockGenerateActivityDigest = vi.fn().mockReturnValue({ entries: [] })
 vi.mock('@/lib/social-graph', () => ({
-  generateActivityDigest: () => ({ entries: [] }),
+  generateActivityDigest: (...args: any[]) => mockGenerateActivityDigest(...args),
   formatSuggestionReason: (reason: any) =>
     reason.type === 'mutual_friends'
       ? `${reason.count} mutual friends`
       : 'Seen at same venues',
 }))
-
-vi.mock('@/lib/challenges', () => ({}))
 
 vi.mock('@/lib/venue-challenges', () => ({
   getActiveChallenges: (c: any[]) => c,
@@ -177,23 +158,13 @@ vi.mock('@/lib/pulse-engine', () => ({
 vi.mock('@/lib/content-moderation', () => ({}))
 
 vi.mock('@/hooks/use-notification-settings', () => ({
-  useNotificationSettings: () => ({ settings: { groupReactions: true, groupFriendPulses: false, groupTrendingVenues: false }, updateSettings: vi.fn() }),
+  useNotificationSettings: () => ({
+    settings: { groupReactions: true, groupFriendPulses: false, groupTrendingVenues: false },
+    updateSettings: vi.fn(),
+  }),
 }))
 
 vi.mock('@/lib/social-coordination', () => ({}))
-
-vi.mock('@/lib/types', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>()
-  return {
-    ...actual,
-    ENERGY_CONFIG: {
-      dead: { label: 'Dead', value: 0, color: '#666', emoji: '💀' },
-      chill: { label: 'Chill', value: 1, color: '#4ade80', emoji: '😎' },
-      buzzing: { label: 'Buzzing', value: 2, color: '#f59e0b', emoji: '🔥' },
-      electric: { label: 'Electric', value: 3, color: '#d946ef', emoji: '⚡' },
-    },
-  }
-})
 
 // ---------------------------------------------------------------------------
 // Helper factories
@@ -249,7 +220,6 @@ function makePulseWithUser(overrides: any = {}) {
 
 describe('TrendingSections', () => {
   it('renders section titles', async () => {
-    // Use the real component (unmock for this suite)
     const { TrendingSections } = await import('@/components/TrendingSections')
 
     const sections = [
@@ -278,6 +248,31 @@ describe('TrendingSections', () => {
 
 describe('TrendingTab', () => {
   it('renders Trending and My Spots tabs', async () => {
+    // TrendingTab imports child components; we need to mock them as modules
+    // They are already mocked above for TrendingSections, MySpotsFeed, etc.
+    // But TrendingTab imports them directly, so we mock the ones it uses:
+    vi.mock('@/components/TrendingSections', () => ({
+      TrendingSections: ({ sections }: any) => (
+        <div data-testid="trending-sections">{sections.length} sections</div>
+      ),
+    }))
+    vi.mock('@/components/MySpotsFeed', () => ({
+      MySpotsFeed: () => <div data-testid="my-spots-feed">My Spots Feed</div>,
+    }))
+    vi.mock('@/components/RecommendationsSection', () => ({
+      RecommendationsSection: ({ recommendations }: any) => (
+        <div data-testid="recommendations-section">{recommendations.length} recs</div>
+      ),
+    }))
+    vi.mock('@/components/LiveActivityFeed', () => ({
+      LiveActivityFeed: () => <div data-testid="live-activity-feed">Live Activity</div>,
+    }))
+    vi.mock('@/components/Favorites', () => ({
+      Favorites: ({ favoriteVenues }: any) => (
+        <div data-testid="favorites">{favoriteVenues.length} favorites</div>
+      ),
+    }))
+
     const { TrendingTab } = await import('@/components/TrendingTab')
 
     render(
@@ -312,11 +307,9 @@ describe('TrendingTab', () => {
 
 describe('NotificationFeed', () => {
   it('renders All and Unread tabs when notifications exist', async () => {
-    // Override groupNotifications to return some notifications
-    const { groupNotifications } = await import('@/lib/notification-grouping')
-    vi.mocked(groupNotifications).mockReturnValue([
+    mockGroupNotifications.mockReturnValue([
       { id: 'n1', type: 'friend_pulse', read: false, createdAt: new Date().toISOString(), pulseId: 'p1', venueId: 'v1' },
-    ] as any)
+    ])
 
     const { NotificationFeed } = await import('@/components/NotificationFeed')
 
@@ -340,10 +333,9 @@ describe('NotificationFeed', () => {
 
 describe('ForYouFeed', () => {
   it('renders For You heading when venues are provided', async () => {
-    const { getPersonalizedVenues } = await import('@/lib/personalization-engine')
-    vi.mocked(getPersonalizedVenues).mockReturnValue([
+    mockGetPersonalizedVenues.mockReturnValue([
       { venue: makeVenue(), personalScore: 0.9, reasons: ['Great vibe'], distance: 0.5 },
-    ] as any)
+    ])
 
     const mod = await import('@/components/ForYouFeed')
     const ForYouFeed = mod.default
@@ -368,8 +360,6 @@ describe('ForYouFeed', () => {
 
 describe('MySpotsFeed', () => {
   it('renders followed venues', async () => {
-    // Unmock MySpotsFeed for direct testing
-    vi.doUnmock('@/components/MySpotsFeed')
     const { MySpotsFeed } = await import('@/components/MySpotsFeed')
 
     const venues = [makeVenue(), makeVenue({ id: 'venue-2', name: 'Lounge B' })]
@@ -392,7 +382,6 @@ describe('MySpotsFeed', () => {
   })
 
   it('shows empty state when no venues', async () => {
-    vi.doUnmock('@/components/MySpotsFeed')
     const { MySpotsFeed } = await import('@/components/MySpotsFeed')
 
     render(
@@ -418,17 +407,20 @@ describe('MySpotsFeed', () => {
 
 describe('LiveActivityFeed', () => {
   it('renders activity feed heading', async () => {
-    vi.doUnmock('@/components/LiveActivityFeed')
-    const { generateActivityDigest } = await import('@/lib/social-graph')
-    vi.mocked(generateActivityDigest).mockReturnValue({
+    mockGenerateActivityDigest.mockReturnValue({
       entries: [
         {
           userId: 'friend-1',
           username: 'frienduser',
-          venues: [{ venueId: 'venue-1', venueName: 'Test Venue', energyRating: 'buzzing', timestamp: new Date().toISOString() }],
+          venues: [{
+            venueId: 'venue-1',
+            venueName: 'Test Venue',
+            energyRating: 'buzzing',
+            timestamp: new Date().toISOString(),
+          }],
         },
       ],
-    } as any)
+    })
 
     const { LiveActivityFeed } = await import('@/components/LiveActivityFeed')
 
@@ -531,7 +523,6 @@ describe('ChallengeFeed', () => {
 
 describe('RecommendationsSection', () => {
   it('renders You Might Like heading', async () => {
-    vi.doUnmock('@/components/RecommendationsSection')
     const { RecommendationsSection } = await import('@/components/RecommendationsSection')
 
     const recommendations = [
@@ -556,7 +547,6 @@ describe('RecommendationsSection', () => {
 
 describe('Favorites', () => {
   it('renders favorite venue names', async () => {
-    vi.doUnmock('@/components/Favorites')
     const { Favorites } = await import('@/components/Favorites')
 
     const venues = [
@@ -579,7 +569,6 @@ describe('Favorites', () => {
   })
 
   it('shows empty state when no favorites', async () => {
-    vi.doUnmock('@/components/Favorites')
     const { Favorites } = await import('@/components/Favorites')
 
     render(
@@ -682,12 +671,10 @@ describe('StoryViewer', () => {
       />
     )
 
-    // The story viewer should display venue name
     expect(screen.getByText('Cool Bar')).toBeDefined()
 
-    // Close button should exist (X icon rendered as span by the phosphor mock)
+    // Close button wraps the X icon
     const closeIcon = screen.getByTestId('icon-X')
-    // The close button is the parent of the icon
     const closeButton = closeIcon.closest('button')
     expect(closeButton).not.toBeNull()
     fireEvent.click(closeButton!)
@@ -718,7 +705,6 @@ describe('VirtualizedList', () => {
     // calculateVisibleRange mock returns { startIndex: 0, endIndex: 5 }
     expect(screen.getByText('Item 0')).toBeDefined()
     expect(screen.getByText('Item 5')).toBeDefined()
-    // Items beyond endIndex should not be rendered
     expect(screen.queryByText('Item 10')).toBeNull()
   })
 })
@@ -771,11 +757,9 @@ describe('FriendSuggestions', () => {
     expect(screen.getByText('charlie')).toBeDefined()
     expect(screen.getByText('dana')).toBeDefined()
 
-    // Should have Add buttons
     const addButtons = screen.getAllByText('Add')
     expect(addButtons.length).toBe(2)
 
-    // Click first Add button
     fireEvent.click(addButtons[0])
     expect(onAddFriend).toHaveBeenCalledWith('sug-1')
   })
