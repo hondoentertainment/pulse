@@ -1,7 +1,8 @@
-# Pulse - Implementation Summary
+# Pulse — Implementation Summary
 
 ## Overview
-This document summarizes the major improvements implemented based on the product recommendations to strengthen Pulse's core loop, build trust, and improve engagement.
+
+This document summarizes the major improvements implemented to strengthen Pulse's core loop, build trust, and improve engagement. For the full product spec, see [PRD.md](PRD.md). For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Implemented Features
 
@@ -126,14 +127,20 @@ Updated PRD with:
 ## Technical Details
 
 ### New Files Created
-1. `/src/components/ScoreBreakdown.tsx` - Score transparency component
+
+| File | Purpose |
+|------|---------|
+| `src/components/ScoreBreakdown.tsx` | Score transparency component |
 
 ### Modified Files
-1. `/src/lib/types.ts` - Added `isPending`, `uploadError` to Pulse; `followedVenues` to User; `impact` notification type; `energyThreshold` field
-2. `/src/components/PulseCard.tsx` - Added pending/error states, retry functionality, visual indicators
-3. `/src/components/NotificationCard.tsx` - Added impact notification rendering
-4. `/src/App.tsx` - Integrated score breakdown, impact detection, pending states, venue following
-5. `/PRD.md` - Added core loop, updated features, edge cases, component docs
+
+| File | Changes |
+|------|---------|
+| `src/lib/types.ts` | Added `isPending`, `uploadError` to Pulse; `followedVenues` to User; `impact` notification type; `energyThreshold` field |
+| `src/components/PulseCard.tsx` | Added pending/error states, retry functionality, visual indicators |
+| `src/components/NotificationCard.tsx` | Added impact notification rendering |
+| `src/App.tsx` | Integrated score breakdown, impact detection, pending states, venue following |
+| `PRD.md` | Added core loop, updated features, edge cases, component docs |
 
 ### Key Implementation Patterns
 

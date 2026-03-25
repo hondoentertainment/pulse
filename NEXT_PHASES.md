@@ -3,51 +3,73 @@
 ## Current State Assessment
 
 ### Project Overview
-Pulse is a nightlife/venue discovery PWA built with React 18 + TypeScript + Vite. It features an interactive map, real-time venue pulse scores, social features, crew coordination, stories, integrations (Spotify, Uber, Lyft), and a comprehensive venue analytics platform.
+
+Pulse is a nightlife/venue discovery PWA built with React 19, TypeScript, and Vite. It features an interactive map, real-time venue pulse scores, social features, crew coordination, stories, integrations (Spotify, Uber, Lyft), and a comprehensive venue analytics platform.
 
 ### Scale
-- **60,243** lines of TypeScript/TSX source code
-- **68** library modules (`src/lib/`)
-- **125** components (`src/components/`) + UI primitives (`src/components/ui/`)
-- **19** custom hooks (`src/hooks/`)
-- **34** unit test files, **1** E2E smoke test
-- **3** CI/CD workflows (CI, Deploy, Lighthouse)
+
+| Metric | Count |
+|--------|-------|
+| Lines of TypeScript/TSX | ~60,243 |
+| Library modules (`src/lib/`) | 69 |
+| Components (`src/components/` + `ui/`) | 125+ |
+| Custom hooks (`src/hooks/`) | 19 |
+| Unit test files | 34+ |
+| Component test files | 6+ |
+| E2E smoke tests | 1 |
+| CI/CD workflows | 3 |
+| Total tests | 470+ |
 
 ### Build Status
-- **Build**: Passes with chunk size warning (react-vendor 672 KB)
-- **Lint**: 1 error, 107 warnings (mostly unused vars)
-- **Tests**: 2 failing test files (5 failures / 472 total tests)
-  - `analytics.test.ts` — 3 failures (event tracking/filtering/clearing)
-  - `interactive-map.test.ts` — 2 failures (time-aware boost, clustering)
+
+- **Build:** Passes with chunk size warning (`react-vendor` ~672 KB)
+- **Lint:** Warnings present (mostly unused vars), tracked for cleanup
+- **Tests:** Actively maintained with expanding coverage
+
+For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-## Phase 1: Stabilization & Code Health (Priority: Critical)
+## Phase 1: Stabilization & Code Health
 
-**Goal**: Green CI, zero lint errors, passing tests.
+**Priority:** Critical
+**Goal:** Green CI, zero lint errors, passing tests.
 
 ### 1.1 Fix Failing Tests
-- [ ] `src/lib/__tests__/analytics.test.ts` — 3 failing tests (trackEvent/getEvents)
-- [ ] `src/lib/__tests__/interactive-map.test.ts` — 2 failing tests (time-aware category boost, clustering)
+
+- [ ] `src/lib/__tests__/analytics.test.ts` — event tracking/filtering/clearing failures
+- [ ] `src/lib/__tests__/interactive-map.test.ts` — time-aware boost and clustering failures
 
 ### 1.2 Resolve Lint Errors
-- [ ] Fix the 1 lint error blocking clean CI
-- [ ] Triage the 107 warnings — fix unused imports/vars or prefix with `_`
+
+- [ ] Fix any lint errors blocking clean CI
+- [ ] Triage warnings — fix unused imports/vars or prefix with `_`
+- [ ] Target: zero errors, warnings trending down each sprint
 
 ### 1.3 Bundle Size Optimization
-- [ ] `react-vendor` chunk is 672 KB (exceeds 600 KB warning)
-- [ ] `sentry` chunk is 257 KB — evaluate lazy loading Sentry
-- [ ] `index` chunk is 202 KB — audit for code that should be lazy-loaded
-- [ ] Total precache is ~4 MB — review PWA caching strategy
+
+| Chunk | Current Size | Target |
+|-------|-------------|--------|
+| `react-vendor` | ~672 KB | < 600 KB |
+| `sentry` | ~257 KB | Lazy load |
+| `index` | ~202 KB | Audit for code splitting |
+| Total precache | ~4 MB | < 3 MB |
+
+- [ ] Evaluate lazy loading Sentry (initialize after first render)
+- [ ] Audit index chunk for components that should be route-split
+- [ ] Review PWA precache strategy — not all routes need precaching
 
 ---
 
-## Phase 2: Test Coverage Expansion (Priority: High)
+## Phase 2: Test Coverage Expansion
 
-**Goal**: Meaningful test coverage for critical user flows.
+**Priority:** High
+**Goal:** Meaningful test coverage for critical user flows.
 
-### 2.1 Component Testing (Current: ~1% coverage)
+### 2.1 Component Testing
+
 Priority components needing tests:
+
 - [ ] `OnboardingFlow` — first-run experience
 - [ ] `InteractiveMap` — core map interactions
 - [ ] `VenuePage` — venue detail rendering and actions
@@ -56,121 +78,146 @@ Priority components needing tests:
 - [ ] `GlobalSearch` — search experience
 - [ ] `NotificationFeed` — notifications rendering
 
+**Progress:** UI primitives, cards, navigation, venue features, presentational components, and feeds/lists test files have been created and are passing.
+
 ### 2.2 Integration Testing
+
 - [ ] Supabase auth flow (`use-supabase-auth.tsx`)
 - [ ] Offline queue sync behavior (`offline-queue.ts`)
 - [ ] Real-time subscription handling (`use-realtime-subscription.ts`)
 
 ### 2.3 E2E Test Expansion
+
 - [ ] Venue search and selection flow
 - [ ] Pulse creation flow
 - [ ] Social interactions (favorites, follows, crew)
 - [ ] Offline/online transition behavior
-- [ ] Integration flows (Spotify, ride-share)
 
 ### 2.4 CI Enhancements
-- [ ] Add code coverage reporting and thresholds
-- [ ] Add `npm audit` to CI pipeline
+
+- [ ] Add code coverage reporting and minimum thresholds
 - [ ] Add Prettier formatting enforcement
+- [ ] Add bundle size budget check to CI
 
 ---
 
-## Phase 3: Architecture & Performance (Priority: High)
+## Phase 3: Architecture & Performance
 
-**Goal**: Reduce complexity, improve performance, prepare for scale.
+**Priority:** High
+**Goal:** Reduce complexity, improve performance, prepare for scale.
 
 ### 3.1 State Management Refactor
-- [ ] `use-app-state.tsx` is a monolithic state provider — evaluate splitting into domain-specific contexts (venue state, social state, UI state)
-- [ ] `App.tsx` passes many props through — consider colocating state closer to consumers
-- [ ] Evaluate React Query / TanStack Query for server state (partially set up via `query-client.ts` but underutilized)
+
+- [ ] `use-app-state.tsx` is a monolithic state provider — split into domain-specific contexts (venue, social, UI)
+- [ ] `App.tsx` passes many props — colocate state closer to consumers
+- [ ] Fully adopt TanStack Query for server state (partially set up via `query-client.ts`)
 
 ### 3.2 Code Splitting & Lazy Loading
-- [ ] Many large components loaded eagerly — audit import graph
-- [ ] Route-based splitting for sub-pages (settings, achievements, events, playlists, etc.)
+
+- [ ] Route-based splitting for sub-pages (settings, achievements, events, playlists)
 - [ ] Lazy load heavy integrations (Spotify, maps, analytics dashboards)
+- [ ] Defer Three.js loading until 3D features are accessed
 
 ### 3.3 Mock Data Decoupling
+
 - [ ] `mock-data.ts`, `global-venues.ts`, `us-venues.ts` contain hardcoded venue data
 - [ ] Transition to API-driven data; mock data should only exist in test fixtures
-- [ ] `use-simulated-activity.ts` — replace simulation hooks with real data sources
+- [ ] Replace `use-simulated-activity.ts` with real data sources
 
 ### 3.4 Dead Code Audit
-- [ ] 107 lint warnings suggest significant unused code
-- [ ] Several lib modules appear to have no component consumers (e.g., `white-label.ts`, `public-api.ts`, `twitter-ingestion.ts`)
-- [ ] Audit and remove unused modules to reduce bundle size
+
+- [ ] Audit modules with no component consumers (candidates: `white-label.ts`, `public-api.ts`, `twitter-ingestion.ts`)
+- [ ] Remove unused exports identified by lint warnings
+- [ ] Reduce bundle size through tree-shaking improvements
 
 ---
 
-## Phase 4: Backend & Data Layer (Priority: Medium-High)
+## Phase 4: Backend & Data Layer
 
-**Goal**: Move from client-side mock data to real backend services.
+**Priority:** Medium-High
+**Goal:** Move from client-side mock data to real backend services.
 
-### 4.1 Supabase Integration Completion
-- [ ] `supabase.ts` and `supabase-api.ts` exist but usage appears limited
-- [ ] Implement real authentication flow (currently mock user `nightowl`)
-- [ ] Set up database tables for venues, pulses, users, social graph
-- [ ] Real-time subscriptions for live venue activity
+### 4.1 Supabase Integration
+
+- [ ] Design database schema for venues, pulses, users, reactions, stories, events, notifications
+- [ ] Implement real authentication flow (replace mock user `nightowl`)
+- [ ] Set up Row Level Security (RLS) policies
+- [ ] Enable real-time subscriptions for live venue activity
 
 ### 4.2 API Layer
-- [ ] `server-api.ts` and `public-api.ts` exist as stubs — implement real endpoints
+
+- [ ] Implement real endpoints in Supabase Edge Functions
 - [ ] Define API contracts for venue CRUD, pulse creation, social actions
-- [ ] Rate limiting (`rate-limiter.ts`) needs server-side enforcement
+- [ ] Move rate limiting to server-side enforcement
+- [ ] Implement webhook HMAC signing on the server
 
 ### 4.3 Data Persistence
-- [ ] Offline queue (`offline-queue.ts`) needs real sync target
-- [ ] User preferences should persist to backend, not just local state
-- [ ] Implement proper caching strategy with cache invalidation
+
+- [ ] Offline queue needs real sync target (Supabase)
+- [ ] User preferences should persist to backend
+- [ ] Implement cache invalidation strategy with TanStack Query
 
 ---
 
-## Phase 5: Production Readiness (Priority: Medium)
+## Phase 5: Production Readiness
 
-**Goal**: Security, monitoring, and operational readiness.
+**Priority:** Medium
+**Goal:** Security, monitoring, and operational readiness.
+
+See [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) for the detailed rollout plan and [SECURITY.md](SECURITY.md) for security priorities.
 
 ### 5.1 Security
-- [ ] Content moderation (`content-moderation.ts`) — needs real moderation service
-- [ ] Payment processing (`payment-processing.ts`) — needs PCI-compliant integration
+
+- [ ] Content moderation with server-side enforcement
+- [ ] Payment processing with PCI-compliant integration
 - [ ] Input sanitization audit across all user-input surfaces
 - [ ] Auth token handling and session management
 
 ### 5.2 Monitoring & Observability
-- [ ] Sentry is integrated but verify error boundary coverage
-- [ ] Analytics (`analytics.ts`) — currently broken (tests failing)
-- [ ] Add structured logging for debugging
-- [ ] Performance monitoring (Web Vitals already tracked via Lighthouse CI)
+
+- [ ] Verify Sentry error boundary coverage across all routes
+- [ ] Add structured logging for backend functions
+- [ ] Performance monitoring (Web Vitals via Lighthouse CI)
+- [ ] Uptime monitoring and alerting
 
 ### 5.3 Accessibility
-- [ ] `AccessibilityProvider.tsx` and `accessibility.ts` exist but coverage is unknown
-- [ ] Lighthouse accessibility score target is only 0.85 — raise to 0.95+
-- [ ] Keyboard navigation audit for all interactive elements
+
+- [ ] Raise Lighthouse accessibility target from 0.85 to 0.95+
+- [ ] Full keyboard navigation audit
 - [ ] Screen reader testing for critical flows
+- [ ] Color contrast verification for all energy level indicators
 
 ### 5.4 Internationalization
-- [ ] `i18n.ts` exists — audit for completeness
-- [ ] Ensure all user-facing strings are externalized
+
+- [ ] Audit `i18n.ts` for completeness
+- [ ] Externalize all user-facing strings
 - [ ] RTL layout support if targeting international markets
 
 ---
 
-## Phase 6: Feature Polish & UX (Priority: Medium)
+## Phase 6: Feature Polish & UX
 
-**Goal**: Refine existing features before adding new ones.
+**Priority:** Medium
+**Goal:** Refine existing features before adding new ones.
 
 ### 6.1 Map Experience
-- [ ] Fix clustering algorithm (test currently failing)
-- [ ] Time-aware category boosting (test currently failing)
-- [ ] Performance with 240+ venues at high zoom levels
+
+- [ ] Fix clustering algorithm edge cases
+- [ ] Time-aware category boosting
+- [ ] Performance optimization with 240+ venues at high zoom
 
 ### 6.2 Social Features
-- [ ] Crew mode (`crew-mode.ts`) — verify end-to-end flow works
-- [ ] Social graph (`social-graph.ts`) — friend suggestions, activity feed
-- [ ] Stories (`stories.ts`) — creation and viewing flow
-- [ ] Presence system (`presence-engine.ts`) — real-time "who's here"
+
+- [ ] End-to-end crew mode verification
+- [ ] Friend suggestions and activity feed
+- [ ] Story creation and viewing flow
+- [ ] Real-time presence system
 
 ### 6.3 Creator & Venue Owner Tools
-- [ ] `creator-economy.ts`, `venue-owner.ts`, `venue-platform.ts` — large modules that need real backend
-- [ ] `VenueOwnerDashboard.tsx`, `CreatorDashboard.tsx` — verify these render correctly
-- [ ] Analytics dashboards need real data sources
+
+- [ ] Connect dashboards to real data sources
+- [ ] Verify rendering of VenueOwnerDashboard and CreatorDashboard
+- [ ] Analytics dashboards with real metrics
 
 ---
 
@@ -178,15 +225,22 @@ Priority components needing tests:
 
 | Priority | Phase | Effort | Impact |
 |----------|-------|--------|--------|
-| 1 | Phase 1: Stabilization | 1-2 days | Unblocks CI, builds confidence |
+| 1 | Phase 1: Stabilization | 1–2 days | Unblocks CI, builds confidence |
 | 2 | Phase 3.4: Dead Code Audit | 1 day | Reduces bundle, simplifies codebase |
-| 3 | Phase 2.1-2.2: Core Test Coverage | 1-2 weeks | Prevents regressions |
-| 4 | Phase 3.1-3.3: Architecture | 1-2 weeks | Enables scaling |
-| 5 | Phase 4: Backend Integration | 2-4 weeks | Moves beyond demo to product |
-| 6 | Phase 5: Production Readiness | 1-2 weeks | Required for launch |
+| 3 | Phase 2.1–2.2: Core Test Coverage | 1–2 weeks | Prevents regressions |
+| 4 | Phase 3.1–3.3: Architecture | 1–2 weeks | Enables scaling |
+| 5 | Phase 4: Backend Integration | 2–4 weeks | Moves beyond prototype to product |
+| 6 | Phase 5: Production Readiness | 1–2 weeks | Required for launch |
 | 7 | Phase 6: Feature Polish | Ongoing | User experience refinement |
-| 8 | Phase 2.3-2.4: E2E & CI | 1 week | Long-term quality |
+| 8 | Phase 2.3–2.4: E2E & CI | 1 week | Long-term quality |
 
 ---
 
-*Generated: 2026-03-24*
+## Related Documentation
+
+- [README.md](README.md) — project overview and setup
+- [ARCHITECTURE.md](ARCHITECTURE.md) — system architecture and module boundaries
+- [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) — phased rollout plan
+- [RELEASE_CHECKS.md](RELEASE_CHECKS.md) — pre-deployment checks
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development workflow and code style
+- [SECURITY.md](SECURITY.md) — security policy and priorities
