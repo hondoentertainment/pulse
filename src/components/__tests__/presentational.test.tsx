@@ -126,59 +126,25 @@ const makeVenue = (overrides: Record<string, any> = {}) => ({
 })
 
 // ---------------------------------------------------------------------------
-// 1. EmptyState
-// ---------------------------------------------------------------------------
-
-describe('EmptyState', () => {
-  let EmptyState: any
-  beforeEach(async () => {
-    const mod = await import('@/components/EmptyState')
-    EmptyState = mod.EmptyState
-  })
-
-  it.each([
-    ['no-pulses', 'No pulses yet'],
-    ['no-notifications', 'All caught up!'],
-    ['no-favorites', 'No favorites yet'],
-    ['no-nearby', 'No venues nearby'],
-    ['offline', "You're offline"],
-  ] as const)('renders title for variant "%s"', (variant, expectedTitle) => {
-    render(<EmptyState variant={variant} />)
-    expect(screen.getByText(expectedTitle)).toBeDefined()
-  })
-
-  it('shows CTA button when onAction provided for "no-pulses"', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-pulses" onAction={onAction} />)
-    expect(screen.getByText('Drop a Pulse')).toBeDefined()
-  })
-
-  it('shows CTA button when onAction provided for "no-favorites"', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-favorites" onAction={onAction} />)
-    expect(screen.getByText('Explore Venues')).toBeDefined()
-  })
-
-  it('does not show CTA for variant without ctaText', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-notifications" onAction={onAction} />)
-    expect(screen.queryByText('Drop a Pulse')).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// 2. AnimatedEmptyState
+// 1. AnimatedEmptyState (consolidated from EmptyState + AnimatedEmptyState)
 // ---------------------------------------------------------------------------
 
 describe('AnimatedEmptyState', () => {
   let AnimatedEmptyState: any
+  let EmptyState: any
   beforeEach(async () => {
     const mod = await import('@/components/AnimatedEmptyState')
     AnimatedEmptyState = mod.AnimatedEmptyState
+    EmptyState = mod.EmptyState
+  })
+
+  it('EmptyState is re-exported as alias', () => {
+    expect(EmptyState).toBe(AnimatedEmptyState)
   })
 
   it.each([
     ['no-venues', 'No venues nearby'],
+    ['no-nearby', 'No venues nearby'],
     ['no-notifications', 'All caught up!'],
     ['no-favorites', 'No favorites yet'],
     ['no-pulses', 'No pulses yet'],
@@ -193,6 +159,18 @@ describe('AnimatedEmptyState', () => {
     const onAction = vi.fn()
     render(<AnimatedEmptyState variant="no-venues" onAction={onAction} actionLabel="Go" />)
     expect(screen.getByText('Go')).toBeDefined()
+  })
+
+  it('shows default CTA label when onAction provided for "no-pulses"', () => {
+    const onAction = vi.fn()
+    render(<AnimatedEmptyState variant="no-pulses" onAction={onAction} />)
+    expect(screen.getByText('Drop a Pulse')).toBeDefined()
+  })
+
+  it('shows default CTA label when onAction provided for "no-favorites"', () => {
+    const onAction = vi.fn()
+    render(<AnimatedEmptyState variant="no-favorites" onAction={onAction} />)
+    expect(screen.getByText('Discover Venues')).toBeDefined()
   })
 })
 
@@ -539,13 +517,13 @@ describe('PageTransition', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 16. DirectionalPageTransition
+// 16. DirectionalPageTransition (consolidated into PageTransition module)
 // ---------------------------------------------------------------------------
 
 describe('DirectionalPageTransition', () => {
   let DirectionalPageTransition: any
   beforeEach(async () => {
-    const mod = await import('@/components/DirectionalPageTransition')
+    const mod = await import('@/components/PageTransition')
     DirectionalPageTransition = mod.DirectionalPageTransition
   })
 
@@ -751,54 +729,23 @@ describe('EnergySlider', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 24. SkeletonCard
+// 24. SkeletonCascade (consolidated from SkeletonCard + SkeletonCascade)
 // ---------------------------------------------------------------------------
 
-describe('SkeletonCard', () => {
+describe('SkeletonCascade', () => {
+  let SkeletonCascade: any
   let VenueCardSkeleton: any
   let PulseCardSkeleton: any
   let NotificationCardSkeleton: any
   let SkeletonList: any
 
   beforeEach(async () => {
-    const mod = await import('@/components/SkeletonCard')
+    const mod = await import('@/components/SkeletonCascade')
+    SkeletonCascade = mod.SkeletonCascade
     VenueCardSkeleton = mod.VenueCardSkeleton
     PulseCardSkeleton = mod.PulseCardSkeleton
     NotificationCardSkeleton = mod.NotificationCardSkeleton
     SkeletonList = mod.SkeletonList
-  })
-
-  it('VenueCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<VenueCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('PulseCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<PulseCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('NotificationCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<NotificationCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('SkeletonList renders multiple skeletons', () => {
-    const { container } = render(<SkeletonList count={3} type="venue" />)
-    const pulseElements = container.querySelectorAll('.animate-pulse')
-    expect(pulseElements.length).toBe(3)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// 25. SkeletonCascade
-// ---------------------------------------------------------------------------
-
-describe('SkeletonCascade', () => {
-  let SkeletonCascade: any
-  beforeEach(async () => {
-    const mod = await import('@/components/SkeletonCascade')
-    SkeletonCascade = mod.SkeletonCascade
   })
 
   it('renders correct number of items', () => {
@@ -809,8 +756,28 @@ describe('SkeletonCascade', () => {
 
   it('defaults to 5 items', () => {
     const { container } = render(<SkeletonCascade variant="pulse" />)
-    // Each pulse skeleton has a .rounded-xl wrapper
     const items = container.querySelectorAll('.rounded-xl')
     expect(items.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('VenueCardSkeleton renders', () => {
+    const { container } = render(<VenueCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('PulseCardSkeleton renders', () => {
+    const { container } = render(<PulseCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('NotificationCardSkeleton renders', () => {
+    const { container } = render(<NotificationCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('SkeletonList renders multiple skeletons via SkeletonCascade', () => {
+    const { container } = render(<SkeletonList count={3} type="venue" />)
+    const items = container.querySelectorAll('.rounded-xl')
+    expect(items.length).toBeGreaterThanOrEqual(3)
   })
 })

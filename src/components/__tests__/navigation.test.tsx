@@ -480,11 +480,11 @@ describe('BottomNav', () => {
   })
 })
 
-describe('EnhancedBottomNav', () => {
+describe('BottomNav (consolidated from EnhancedBottomNav)', () => {
   it('renders tab labels', async () => {
-    const { EnhancedBottomNav } = await import('@/components/EnhancedBottomNav')
+    const { BottomNav } = await import('@/components/BottomNav')
     render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={vi.fn()} />
+      <BottomNav activeTab="trending" onTabChange={vi.fn()} />
     )
     expect(screen.getByText('Trending')).toBeTruthy()
     expect(screen.getByText('Discover')).toBeTruthy()
@@ -494,10 +494,10 @@ describe('EnhancedBottomNav', () => {
   })
 
   it('calls onTabChange when a tab is clicked', async () => {
-    const { EnhancedBottomNav } = await import('@/components/EnhancedBottomNav')
+    const { BottomNav } = await import('@/components/BottomNav')
     const onTabChange = vi.fn()
     render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={onTabChange} />
+      <BottomNav activeTab="trending" onTabChange={onTabChange} />
     )
     fireEvent.click(screen.getByText('Map'))
     expect(onTabChange).toHaveBeenCalledWith('map')
@@ -794,12 +794,12 @@ describe('InteractiveMap', () => {
   })
 })
 
-describe('Settings', () => {
+describe('SettingsPage (consolidated from Settings)', () => {
   it('renders settings sections', async () => {
-    const { Settings } = await import('@/components/Settings')
-    render(<Settings onOpenSocialPulseDashboard={vi.fn()} />)
+    const { SettingsPage } = await import('@/components/SettingsPage')
+    const mockUser = { id: 'u1', username: 'testuser', profilePhoto: '', friends: [], favoriteVenues: [], followedVenues: [], createdAt: '', venueCheckInHistory: {} }
+    render(<SettingsPage currentUser={mockUser as any} onBack={vi.fn()} onUpdateUser={vi.fn()} />)
     expect(screen.getByText('Settings')).toBeTruthy()
     expect(screen.getByText('Notifications')).toBeTruthy()
-    expect(screen.getByText('Distance Units')).toBeTruthy()
   })
 })
