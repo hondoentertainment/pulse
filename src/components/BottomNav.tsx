@@ -19,7 +19,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t border-white/10 z-50 safe-area-inset-bottom">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon
@@ -34,7 +34,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/10 rounded-lg"
+                  className="absolute inset-0 bg-gradient-to-r from-[#833AB4]/10 via-[#E1306C]/10 to-[#F77737]/10 rounded-xl"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
@@ -45,14 +45,14 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
                     size={24}
                     weight={isActive ? 'fill' : 'regular'}
                     className={`transition-colors ${
-                      isActive ? 'text-primary' : 'text-muted-foreground'
+                      isActive ? 'text-[#E1306C]' : 'text-muted-foreground'
                     }`}
                   />
                   {tab.badge !== undefined && tab.badge > 0 && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold"
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white rounded-full flex items-center justify-center text-[10px] font-bold"
                     >
                       {tab.badge > 9 ? '9+' : tab.badge}
                     </motion.div>
@@ -60,7 +60,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
                 </div>
                 <span
                   className={`text-[10px] font-medium transition-colors ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                    isActive ? 'text-[#E1306C]' : 'text-muted-foreground'
                   }`}
                 >
                   {tab.label}
