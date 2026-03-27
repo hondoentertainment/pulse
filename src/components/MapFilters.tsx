@@ -127,13 +127,13 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
         variant="secondary"
         className={cn(
           'bg-card/95 backdrop-blur-sm hover:bg-card shadow-lg relative',
-          activeFilterCount > 0 && 'ring-2 ring-primary'
+          activeFilterCount > 0 && 'ring-2 ring-[#E1306C]'
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Faders size={20} weight="bold" />
         {activeFilterCount > 0 && (
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-primary text-primary-foreground text-xs">
+          <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-[#E1306C] to-[#F77737] text-white text-xs border-0">
             {activeFilterCount}
           </Badge>
         )}
@@ -148,12 +148,12 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
             transition={{ duration: 0.2 }}
             className="absolute top-0 right-16 w-80 max-w-[calc(100vw-5rem)] z-50"
           >
-            <Card className="bg-card/98 backdrop-blur-md border-border shadow-xl">
+            <Card className="bg-card/95 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl">
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Faders size={20} weight="bold" />
-                    <h3 className="font-bold text-lg">Filters</h3>
+                    <h3 className="font-semibold text-lg">Filters</h3>
                   </div>
                   <div className="flex items-center gap-2">
                     {activeFilterCount > 0 && (
@@ -182,7 +182,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                     <Separator />
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Microphone size={16} weight="fill" className="text-accent" />
+                        <Microphone size={16} weight="fill" className="text-[#E1306C]" />
                         <h4 className="font-semibold text-sm">Voice Filter</h4>
                       </div>
                       <Button
@@ -191,7 +191,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                         onClick={handleVoiceToggle}
                         className={cn(
                           'w-full gap-2',
-                          isListening && 'bg-accent text-accent-foreground animate-pulse-glow'
+                          isListening && 'bg-[#E1306C] text-white animate-pulse-glow'
                         )}
                       >
                         {isListening ? (
@@ -230,7 +230,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                   <div className="space-y-6 pr-4">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Lightning size={16} weight="fill" className="text-primary" />
+                        <Lightning size={16} weight="fill" className="text-[#FCAF45]" />
                         <h4 className="font-semibold text-sm">Energy Level</h4>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -238,7 +238,10 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                           variant={filters.energyLevels.length === 0 ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => toggleEnergyLevel('all')}
-                          className="h-9"
+                          className={cn(
+                            "h-9 rounded-full",
+                            filters.energyLevels.length === 0 && "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90"
+                          )}
                         >
                           All
                         </Button>
@@ -250,16 +253,10 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                             }
                             size="sm"
                             onClick={() => toggleEnergyLevel(level.value)}
-                            className="h-9 gap-2"
-                            style={
-                              filters.energyLevels.includes(level.value)
-                                ? {
-                                    background: level.color,
-                                    borderColor: level.color,
-                                    color: 'oklch(0.98 0 0)'
-                                  }
-                                : {}
-                            }
+                            className={cn(
+                              "h-9 gap-2 rounded-full",
+                              filters.energyLevels.includes(level.value) && "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90"
+                            )}
                           >
                             <span>{level.emoji}</span>
                             <span>{level.label}</span>
@@ -272,7 +269,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
 
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Fire size={16} weight="fill" className="text-accent" />
+                        <Fire size={16} weight="fill" className="text-[#F77737]" />
                         <h4 className="font-semibold text-sm">Category</h4>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -284,7 +281,10 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                               variant={filters.categories.length === 0 ? 'default' : 'outline'}
                               size="sm"
                               onClick={() => onChange({ ...filters, categories: [] })}
-                              className="h-9"
+                              className={cn(
+                                "h-9 rounded-full",
+                                filters.categories.length === 0 && "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90"
+                              )}
                             >
                               All
                             </Button>
@@ -296,7 +296,10 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                                 }
                                 size="sm"
                                 onClick={() => toggleCategory(category)}
-                                className="h-9"
+                                className={cn(
+                                  "h-9 rounded-full",
+                                  filters.categories.includes(category) && "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90"
+                                )}
                               >
                                 {category}
                               </Button>
@@ -310,7 +313,7 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
 
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <MapPin size={16} weight="fill" className="text-foreground" />
+                        <MapPin size={16} weight="fill" className="text-[#405DE6]" />
                         <h4 className="font-semibold text-sm">Distance</h4>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -320,7 +323,10 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                             variant={filters.maxDistance === option.value ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setDistance(option.value)}
-                            className="h-9"
+                            className={cn(
+                              "h-9 rounded-full",
+                              filters.maxDistance === option.value && "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90"
+                            )}
                           >
                             {unitSystem === 'imperial' ? option.labelMi : option.labelKm}
                           </Button>

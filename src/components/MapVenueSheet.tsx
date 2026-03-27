@@ -63,9 +63,9 @@ function VenuePreviewCard({
       <div
         className={cn(
           "absolute top-0 left-0 right-0 h-0.5 rounded-t-xl",
-          venue.pulseScore >= 80 ? "bg-gradient-to-r from-fuchsia-500 via-rose-500 to-amber-500" :
-          venue.pulseScore >= 60 ? "bg-gradient-to-r from-rose-500 to-orange-400" :
-          venue.pulseScore >= 30 ? "bg-gradient-to-r from-sky-500 to-blue-400" :
+          venue.pulseScore >= 80 ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737]" :
+          venue.pulseScore >= 60 ? "bg-gradient-to-r from-[#E1306C] to-[#F77737]" :
+          venue.pulseScore >= 30 ? "bg-gradient-to-r from-[#FCAF45] to-[#F77737]" :
           "bg-muted"
         )}
       />
@@ -75,10 +75,10 @@ function VenuePreviewCard({
           {/* Category icon */}
           <div className={cn(
             "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-            venue.pulseScore >= 80 ? "bg-fuchsia-500/15 text-fuchsia-400" :
-            venue.pulseScore >= 60 ? "bg-rose-500/15 text-rose-400" :
-            venue.pulseScore >= 30 ? "bg-sky-500/15 text-sky-400" :
-            "bg-muted text-muted-foreground"
+            venue.pulseScore >= 80 ? "bg-[#E1306C]/15 text-[#E1306C]" :
+            venue.pulseScore >= 60 ? "bg-[#F77737]/15 text-[#F77737]" :
+            venue.pulseScore >= 30 ? "bg-[#FCAF45]/15 text-[#FCAF45]" :
+            "bg-[#833AB4]/15 text-[#833AB4]"
           )}>
             <Icon size={24} weight="fill" />
           </div>
@@ -86,12 +86,12 @@ function VenuePreviewCard({
           {/* Venue info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-base truncate">{venue.name}</h3>
-              {isHot && <Fire size={16} weight="fill" className="text-orange-500 flex-shrink-0" />}
+              <h3 className="font-semibold text-base truncate">{venue.name}</h3>
+              {isHot && <Fire size={16} weight="fill" className="text-[#F77737] flex-shrink-0" />}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               {venue.category && (
-                <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-border/50 text-muted-foreground">
+                <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-white/10 text-muted-foreground">
                   {venue.category}
                 </Badge>
               )}
@@ -110,7 +110,7 @@ function VenuePreviewCard({
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/30">
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
           {(venue.verifiedCheckInCount ?? 0) > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Users size={14} />
@@ -131,7 +131,7 @@ function VenuePreviewCard({
           <Button
             size="sm"
             variant="default"
-            className="h-8 px-4 text-xs font-bold gap-1.5"
+            className="h-8 px-4 text-xs font-semibold gap-1.5 bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90 rounded-full"
             onClick={onViewDetails}
           >
             View
@@ -210,7 +210,7 @@ export function MapVenueSheet({
           animate={{ height: snapToHeight[venue ? snap : 'closed'] }}
           exit={{ height: '0px' }}
           transition={{ type: 'spring', stiffness: 400, damping: 40 }}
-          className="absolute bottom-0 left-0 right-0 z-30 bg-card/98 backdrop-blur-xl border-t border-border/50 rounded-t-2xl overflow-hidden"
+          className="absolute bottom-0 left-0 right-0 z-30 bg-card/95 backdrop-blur-xl border-t border-white/10 rounded-t-2xl overflow-hidden shadow-2xl"
           style={{ maxHeight: '85vh' }}
         >
           {/* Drag handle */}
@@ -232,7 +232,7 @@ export function MapVenueSheet({
                 else if (snap === 'half') setSnap('full')
                 else setSnap('half')
               }}
-              className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               {snap === 'full' ? (
                 <CaretDown size={14} weight="bold" />
@@ -255,7 +255,7 @@ export function MapVenueSheet({
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 48px)' }}>
             {/* Selected venue preview */}
             {venue && (
-              <div className="border-b border-border/30">
+              <div className="border-b border-white/10">
                 <VenuePreviewCard
                   venue={venue}
                   distance={selectedDistance}
@@ -268,7 +268,7 @@ export function MapVenueSheet({
             {/* Nearby venues list (shown when expanded) */}
             {snap !== 'peek' && (
               <div className="px-4 py-3">
-                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   {venue ? 'More Nearby' : 'Nearby Venues'}
                 </h4>
                 <div className="space-y-1">
@@ -283,14 +283,14 @@ export function MapVenueSheet({
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.03 }}
                           onClick={() => onVenueClick(v)}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-colors text-left"
+                          className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-gradient-to-r hover:from-[#833AB4]/5 hover:via-[#E1306C]/5 hover:to-[#F77737]/5 transition-colors text-left"
                         >
                           <div className={cn(
                             "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0",
-                            v.pulseScore >= 80 ? "bg-fuchsia-500/10 text-fuchsia-400" :
-                            v.pulseScore >= 60 ? "bg-rose-500/10 text-rose-400" :
-                            v.pulseScore >= 30 ? "bg-sky-500/10 text-sky-400" :
-                            "bg-muted text-muted-foreground"
+                            v.pulseScore >= 80 ? "bg-[#E1306C]/10 text-[#E1306C]" :
+                            v.pulseScore >= 60 ? "bg-[#F77737]/10 text-[#F77737]" :
+                            v.pulseScore >= 30 ? "bg-[#FCAF45]/10 text-[#FCAF45]" :
+                            "bg-[#833AB4]/10 text-[#833AB4]"
                           )}>
                             <VIcon size={18} weight="fill" />
                           </div>
