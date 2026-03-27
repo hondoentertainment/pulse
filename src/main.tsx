@@ -45,11 +45,11 @@ if (typeof window !== "undefined") {
 }
 
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { queryClient, queryPersister } from './lib/query-client'
+import { queryClient, queryPersister, CACHE_MAX_AGE } from './lib/query-client'
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister }}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: CACHE_MAX_AGE }}>
       <App />
       <Analytics />
       <SpeedInsights />
