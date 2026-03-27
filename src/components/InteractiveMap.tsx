@@ -5,7 +5,7 @@ import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import {
-  MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
+  MapPin, NavigationArrow, Plus, Minus,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
   Users, Fire, Lightning
 } from '@phosphor-icons/react'
@@ -22,7 +22,6 @@ import {
   clampCenter,
   clampZoom,
   clusterVenueRenderPoints,
-  getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
   type VenueRenderPoint
@@ -64,9 +63,7 @@ export function InteractiveMap({
     maxDistance: Infinity
   })
   const [nearMeActive, setNearMeActive] = useState(false)
-  const [showLegend, setShowLegend] = useState(false)
-  const [showFullHeatmap, setShowFullHeatmap] = useState(false)
-  const [comparedVenueIds, setComparedVenueIds] = useState<string[]>([])
+
   const [showOnboardingTips, setShowOnboardingTips] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
@@ -257,19 +254,8 @@ export function InteractiveMap({
       return true
     })
 
-    // Progressive disclosure: show top 5 surging venues by default
-    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
-      // Only nearby venues (within 50mi of center or user) sorted by pulseScore
-      const nearby = userLocation
-        ? filtered
-          .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
-          .sort((a, b) => b.pulseScore - a.pulseScore)
-        : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
-      return nearby.slice(0, 5)
-    }
-
     return filtered
-  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap])
+  }, [venues, filters, userLocation, nearMeActive])
 
   const availableCategories = Array.from(
     new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
@@ -539,10 +525,6 @@ export function InteractiveMap({
     }
   }
 
-  const handleToggleFullHeatmap = () => {
-    triggerHapticFeedback('light')
-    setShowFullHeatmap(prev => !prev)
-  }
 
   const handleWheelZoom = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -716,15 +698,6 @@ export function InteractiveMap({
     return latLngToPixel(venue.location.lat, venue.location.lng, center, zoom, dimensions)
   }
 
-  const handleFitToVenues = () => {
-    const viewport = getFittedViewport(filteredVenues, dimensions)
-    if (!viewport) return
-    stopInertia()
-    triggerHapticFeedback('medium')
-    setCenter(viewport.center)
-    setZoom(viewport.zoom)
-    setFollowUser(false)
-  }
 
   const venueRenderPoints = useMemo<VenueRenderPoint[]>(() => {
     if (!center) return []
@@ -796,8 +769,6 @@ export function InteractiveMap({
     return ids
   }, [clusteredMapData.singles, isDragging, isCameraMoving, zoom, hoveredVenue, accessibilityMode])
 
-  const activeFilterCount = filters.energyLevels.length + filters.categories.length + (filters.maxDistance !== Infinity ? 1 : 0)
-
   const previewVenues = useMemo(() => {
     if (!center) return [] as VenueRenderPoint[]
     return getPreviewVenuePoints({
@@ -808,39 +779,7 @@ export function InteractiveMap({
     })
   }, [center, venueRenderPoints, locationHeading, userLocation])
 
-  const comparedVenues = useMemo(() => {
-    const map = new Map(previewVenues.map((point) => [point.venue.id, point]))
-    return comparedVenueIds
-      .map((id) => map.get(id))
-      .filter((point): point is VenueRenderPoint => !!point)
-  }, [comparedVenueIds, previewVenues])
-
-  const bestNextVenue = previewVenues[0] ?? null
-
-  const statusChips = [
-    followUser && userLocation ? 'Following You' : null,
-    isCameraMoving ? 'Moving' : 'Settled',
-    locationHeading !== null && locationHeading !== undefined ? `Heading ${Math.round(locationHeading)}°` : null,
-    activeFilterCount > 0 ? `${activeFilterCount} Filters` : 'All Venues',
-    clusteredMapData.clusters.length > 0 ? `${clusteredMapData.clusters.length} Clusters` : null,
-    comparedVenueIds.length > 0 ? `${comparedVenueIds.length} Comparing` : null,
-    accessibilityMode ? 'Accessibility Mode' : null
-  ].filter(Boolean) as string[]
-
-  useEffect(() => {
-    if (comparedVenueIds.length === 0) return
-    const validIds = new Set(previewVenues.map((point) => point.venue.id))
-    setComparedVenueIds((prev) => prev.filter((id) => validIds.has(id)))
-  }, [previewVenues, comparedVenueIds.length])
-
-  const toggleCompareVenue = (venueId: string) => {
-    triggerHapticFeedback('light')
-    setComparedVenueIds((prev) => {
-      if (prev.includes(venueId)) return prev.filter((id) => id !== venueId)
-      if (prev.length >= 3) return [...prev.slice(1), venueId]
-      return [...prev, venueId]
-    })
-  }
+  // Compare mode removed — premature complexity for a discovery map
 
   const onboardingTips = [
     'Pinch or scroll to zoom. Double tap to zoom quickly.',
@@ -857,16 +796,18 @@ export function InteractiveMap({
     setTipIndex(0)
   }
 
-  const handleSmartRoute = () => {
-    if (!bestNextVenue) return
-    triggerHapticFeedback('medium')
-    handleVenueSelect(bestNextVenue.venue)
-  }
 
   if (!center) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-secondary rounded-xl">
-        <p className="text-muted-foreground">Loading map...</p>
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[oklch(0.18_0.01_260)] to-[oklch(0.12_0_0)] rounded-xl gap-4">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+          <MapPin size={20} weight="fill" className="absolute inset-0 m-auto text-accent" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-foreground">Finding your location</p>
+          <p className="text-xs text-muted-foreground mt-1">Discovering nearby venues...</p>
+        </div>
       </div>
     )
   }
@@ -1371,27 +1312,13 @@ export function InteractiveMap({
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2">
-        <div className="flex items-start gap-2">
-          <div className="flex-1 max-w-md">
-            <MapSearch
-              venues={venues}
-              onVenueSelect={handleVenueSelect}
-              userLocation={userLocation}
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-1.5 flex-wrap max-w-lg">
-          {statusChips.map((chip) => (
-            <Badge
-              key={chip}
-              variant="secondary"
-              className="bg-card/90 backdrop-blur-sm border border-border/70 text-[10px] font-semibold"
-            >
-              {chip}
-            </Badge>
-          ))}
+      <div className="absolute top-4 left-4 right-14 z-10 flex flex-col gap-2">
+        <div className="flex-1 max-w-md">
+          <MapSearch
+            venues={venues}
+            onVenueSelect={handleVenueSelect}
+            userLocation={userLocation}
+          />
         </div>
 
         {showOnboardingTips && (
@@ -1511,216 +1438,82 @@ export function InteractiveMap({
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              setShowFullHeatmap(!showFullHeatmap)
+              if (filters.categories.includes('restaurant') || filters.categories.includes('food')) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'restaurant' && c !== 'food') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'restaurant', 'food'] }))
+              }
             }}
             className={cn(
               "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
               "border backdrop-blur-sm shadow-sm",
-              showFullHeatmap
+              filters.categories.includes('restaurant') || filters.categories.includes('food')
                 ? "bg-accent text-accent-foreground border-accent"
                 : "bg-card/90 text-foreground border-border hover:bg-secondary"
             )}
           >
-            {showFullHeatmap ? 'Top 5' : 'Full Map'}
+            <ForkKnife size={14} weight="fill" className="inline mr-1" />
+            Food
           </button>
         </div>
       </div>
 
-      {/* Consolidated Right Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-        <Button
-          size="sm"
-          variant={accessibilityMode ? "default" : "secondary"}
-          className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
-          onClick={() => {
-            triggerHapticFeedback('light')
-            setAccessibilityMode((prev) => !prev)
-          }}
-        >
-          A11y
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
-          onClick={handleFitToVenues}
-        >
-          <MapPin size={14} weight="fill" className="mr-1.5" />
-          Fit view
-        </Button>
-        {!followUser && userLocation && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
-            onClick={handleCenterOnUser}
-          >
-            <NavigationArrow size={14} weight="fill" className="mr-1.5" />
-            Re-center
-          </Button>
-        )}
-        {/* Venue Count Badge */}
-        <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2 shadow-lg">
-          <div className="flex items-center gap-2">
-            <MapPin size={16} weight="fill" className="text-primary" />
-            <div className="text-xs">
-              <span className="font-bold text-foreground">{filteredVenues.length}</span>
-              <span className="text-muted-foreground ml-1">
-                {filteredVenues.length === 1 ? 'venue' : 'venues'}
-              </span>
-            </div>
-          </div>
-        </Card>
-
+      {/* Right Controls — compact vertical strip (Uber-style) */}
+      <div className="absolute top-4 right-4 flex flex-col gap-1.5 z-10">
         <MapFilters
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
         />
 
-        {/* Unified Control Group */}
-        <Card className="bg-card/95 backdrop-blur-sm border-border p-1.5 shadow-lg">
-          <div className="flex flex-col gap-1">
-            <div className="flex gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-11 w-11 hover:bg-secondary touch-manipulation"
-                onClick={handleZoomIn}
-                title="Zoom in (+)"
-                aria-label="Zoom in"
-              >
-                <Plus size={18} weight="bold" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-11 w-11 hover:bg-secondary touch-manipulation"
-                onClick={handleZoomOut}
-                title="Zoom out (-)"
-                aria-label="Zoom out"
-              >
-                <Minus size={18} weight="bold" />
-              </Button>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="flex gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className={cn(
-                  "h-11 w-11 touch-manipulation",
-                  followUser && "bg-accent text-accent-foreground"
-                )}
-                onClick={handleCenterOnUser}
-                title="Center on me"
-                aria-label="Center map on my location"
-              >
-                <NavigationArrow size={18} weight="fill" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className={cn(
-                  "h-11 w-11 touch-manipulation",
-                  nearMeActive && "bg-accent text-accent-foreground"
-                )}
-                onClick={() => {
-                  triggerHapticFeedback('light')
-                  setNearMeActive(!nearMeActive)
-                }}
-                title="Near me (0.5 mi)"
-                aria-label="Toggle near me venues"
-              >
-                <MapPin size={18} weight="fill" />
-              </Button>
-            </div>
+        <Card className="bg-card/95 backdrop-blur-xl border-border/60 p-1 shadow-lg">
+          <div className="flex flex-col gap-0.5">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 hover:bg-secondary touch-manipulation"
+              onClick={handleZoomIn}
+              aria-label="Zoom in"
+            >
+              <Plus size={18} weight="bold" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 hover:bg-secondary touch-manipulation"
+              onClick={handleZoomOut}
+              aria-label="Zoom out"
+            >
+              <Minus size={18} weight="bold" />
+            </Button>
+            <div className="h-px bg-border/50 mx-1" />
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn(
+                "h-10 w-10 touch-manipulation",
+                followUser && "bg-accent text-accent-foreground"
+              )}
+              onClick={handleCenterOnUser}
+              aria-label="Center map on my location"
+            >
+              <NavigationArrow size={18} weight="fill" />
+            </Button>
           </div>
         </Card>
-
-        {/* Zoom Level Indicator */}
-        <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1">
-          {zoom.toFixed(1)}x
-        </div>
-        <div className="text-[10px] font-mono text-muted-foreground/80 text-center bg-card/70 backdrop-blur-sm rounded px-2 py-1">
-          Drag to pan · scroll to zoom
-        </div>
       </div>
 
-      {previewVenues.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[min(94%,720px)] pointer-events-none">
-          {bestNextVenue && (
-            <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[11px] font-semibold text-foreground">Smart Route</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Best next stop: {bestNextVenue.venue.name}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  className="h-7 text-[11px]"
-                  onClick={handleSmartRoute}
-                >
-                  Take Me
-                </Button>
-              </div>
-            </Card>
-          )}
-          <AnimatePresence>
-            {comparedVenues.length > 0 && (
-              <motion.div
-                layout
-                initial={{ opacity: 0, y: 14, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 14, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-semibold text-foreground">
-                      Compare ({comparedVenues.length}/3)
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-[11px]"
-                      onClick={() => setComparedVenueIds([])}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {comparedVenues.map((point) => (
-                      <motion.button
-                        layout
-                        key={`compare-${point.venue.id}`}
-                        className="text-left rounded-md border border-border/70 bg-background/40 px-2 py-1.5 hover:bg-background/60 transition-colors"
-                        onClick={() => onVenueClick(point.venue)}
-                      >
-                        <p className="text-[11px] font-semibold truncate">{point.venue.name}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase truncate">
-                          {point.venue.category || 'Venue'}
-                        </p>
-                        <div className="flex items-center justify-between mt-1">
-                          <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
-                          {point.distance !== undefined && (
-                            <span className="text-[10px] text-accent font-mono">
-                              {formatDistance(point.distance, unitSystem)}
-                            </span>
-                          )}
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <div className="flex gap-2 overflow-x-auto pb-1 px-1">
-            {previewVenues.map((point) => {
-              const isCompared = comparedVenueIds.includes(point.venue.id)
+      {/* Bottom venue carousel — Uber-style single row */}
+      {previewVenues.length > 0 && !isDragging && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute bottom-4 left-0 right-0 z-20 pointer-events-none"
+        >
+          <div className="flex gap-2.5 overflow-x-auto pb-1 px-4 snap-x snap-mandatory scrollbar-hide">
+            {previewVenues.map((point, index) => {
+              const Icon = getCategoryIcon(point.venue.category)
+              const isFirst = index === 0
               const headingDelta = (locationHeading !== null && locationHeading !== undefined && userLocation)
                 ? getHeadingDelta(calculateBearing(
                   userLocation.lat,
@@ -1732,139 +1525,74 @@ export function InteractiveMap({
               const isAhead = headingDelta !== null && headingDelta < 30
 
               return (
-                <motion.div layout key={`preview-wrap-${point.venue.id}`}>
-                  <Card
-                    className={cn(
-                      "pointer-events-auto min-w-[180px] p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg",
-                      hoveredVenue?.id === point.venue.id && "border-accent/70 shadow-accent/30",
-                      isCompared && "border-primary/70 shadow-primary/20"
-                    )}
-                  >
-                    <button
-                      className="w-full text-left"
-                      onClick={() => handleVenueSelect(point.venue)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold truncate">{point.venue.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase truncate">
-                            {point.venue.category || 'Venue'}
-                          </p>
-                          {isAhead && (
-                            <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
-                              Ahead
-                            </Badge>
-                          )}
-                          {point.distance !== undefined && (
-                            <p className="text-[10px] text-accent font-mono mt-0.5">
-                              {formatDistance(point.distance, unitSystem)}
-                            </p>
-                          )}
-                        </div>
-                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                <motion.button
+                  key={`preview-${point.venue.id}`}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={cn(
+                    "pointer-events-auto snap-start flex-shrink-0 w-[200px] rounded-2xl p-3 text-left transition-all active:scale-[0.97]",
+                    "bg-card/95 backdrop-blur-xl border shadow-lg",
+                    isFirst
+                      ? "border-accent/60 shadow-accent/20 ring-1 ring-accent/30"
+                      : "border-border/60",
+                    hoveredVenue?.id === point.venue.id && "border-accent/70 shadow-accent/30"
+                  )}
+                  onClick={() => {
+                    triggerHapticFeedback('medium')
+                    onVenueClick(point.venue)
+                  }}
+                >
+                  {isFirst && (
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <NavigationArrow size={10} weight="fill" className="text-accent" />
+                      <span className="text-[9px] font-bold text-accent uppercase tracking-wider">Suggested</span>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-2.5">
+                    <div className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
+                      point.venue.pulseScore >= 80 ? "bg-fuchsia-500/15 text-fuchsia-400" :
+                      point.venue.pulseScore >= 60 ? "bg-rose-500/15 text-rose-400" :
+                      point.venue.pulseScore >= 30 ? "bg-sky-500/15 text-sky-400" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      <Icon size={18} weight="fill" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold truncate leading-tight">{point.venue.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {point.venue.category && (
+                          <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                            {point.venue.category}
+                          </span>
+                        )}
+                        {isAhead && (
+                          <span className="text-[9px] font-semibold text-accent">Ahead</span>
+                        )}
                       </div>
-                    </button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="mt-1 h-7 w-full text-[11px]"
-                      onClick={() => {
-                        triggerHapticFeedback('medium')
-                        onVenueClick(point.venue)
-                      }}
-                    >
-                      Open
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={isCompared ? "default" : "ghost"}
-                      className="mt-1 h-7 w-full text-[11px]"
-                      onClick={() => toggleCompareVenue(point.venue.id)}
-                    >
-                      {isCompared ? 'Compared' : 'Compare'}
-                    </Button>
-                  </Card>
-                </motion.div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                    <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                    {point.distance !== undefined && (
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {formatDistance(point.distance, unitSystem)}
+                      </span>
+                    )}
+                  </div>
+                </motion.button>
               )
             })}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Bottom Left Controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+      {/* Bottom Left — GPS only */}
+      <div className="absolute bottom-4 left-4 z-10">
         <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
-
-        {(filters.energyLevels.length > 0 ||
-          filters.categories.length > 0 ||
-          filters.maxDistance !== Infinity) && (
-            <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">
-                Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}
-                {venues.length} venues
-              </p>
-            </Card>
-          )}
-
-        {/* Collapsible Legend */}
-        <Card className="bg-card/95 backdrop-blur-sm border-border overflow-hidden">
-          <button
-            onClick={() => setShowLegend(!showLegend)}
-            className="w-full px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
-          >
-            <span className="text-xs font-bold text-foreground">Energy Levels</span>
-            {showLegend ? (
-              <CaretUp size={14} className="text-muted-foreground" />
-            ) : (
-              <CaretDown size={14} className="text-muted-foreground" />
-            )}
-          </button>
-          <AnimatePresence>
-            {showLegend && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="px-3 pb-3 grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
-                    <span className="text-xs text-muted-foreground">Dead</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)] border border-foreground/20" />
-                    <span className="text-xs text-muted-foreground">Chill</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)] border border-foreground/20 shadow-sm" />
-                    <span className="text-xs text-muted-foreground">Buzzing</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)] border border-foreground/20 shadow-sm animate-pulse-glow" />
-                    <span className="text-xs text-muted-foreground">Electric</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Card>
       </div>
-
-      {/* Progressive Disclosure Toggle */}
-      {!nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0 && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleToggleFullHeatmap}
-            className="bg-card/90 backdrop-blur-md shadow-lg border border-border/50 text-xs font-semibold px-4 py-1.5 rounded-full hover:bg-card/100 transition-colors"
-          >
-            {showFullHeatmap ? "Show Top Surges Only" : "Show Full Heatmap"}
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
