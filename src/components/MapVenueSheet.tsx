@@ -111,10 +111,12 @@ function VenuePreviewCard({
 
         {/* Stats row */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/30">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Users size={14} />
-            <span className="font-medium">{Math.floor(venue.pulseScore * 1.5 + 5)} here</span>
-          </div>
+          {(venue.verifiedCheckInCount ?? 0) > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Users size={14} />
+              <span className="font-medium">{venue.verifiedCheckInCount} here</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lightning size={14} className={venue.pulseScore > 50 ? "text-yellow-500" : ""} />
             <span className="font-medium">{energyLabel}</span>

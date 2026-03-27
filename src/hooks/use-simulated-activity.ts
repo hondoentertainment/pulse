@@ -49,18 +49,16 @@ function generateActivity(venues: Venue[]): Activity | null {
 
   switch (type) {
     case "checkin": {
-      const count = randomInt(2, 8)
-      message = `${count} people just checked in at ${venue.name}`
-      break
+      // Skip — don't fabricate check-in counts
+      return null
     }
     case "trending": {
       message = `${venue.name} is now trending!`
       break
     }
     case "friend_nearby": {
-      const friend = FRIEND_NAMES[randomInt(0, FRIEND_NAMES.length - 1)]
-      message = `Your friend ${friend} is near ${venue.name}`
-      break
+      // Skip — don't fabricate friend proximity
+      return null
     }
     case "energy_change": {
       const energy = ENERGY_LEVELS[randomInt(0, ENERGY_LEVELS.length - 1)]

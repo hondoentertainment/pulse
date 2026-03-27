@@ -23,7 +23,7 @@ import type { ContentReport } from '@/lib/content-moderation'
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
 import { VenueEnergyTimeline } from './VenueEnergyTimeline'
 import { VenueQuickActions } from './VenueQuickActions'
-import { VenueActivityStream } from './VenueActivityStream'
+// VenueActivityStream removed — was displaying fabricated activity
 // Phase 4: Personalization
 import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
@@ -35,7 +35,6 @@ import {
   reportCrowdLevel,
   reportDressCode,
   reportNowPlaying,
-  seedDemoReports,
   type VenueLiveData,
 } from '@/lib/live-intelligence'
 
@@ -100,8 +99,6 @@ export function VenuePage({
   }, [venue.id])
 
   useEffect(() => {
-    // Seed demo data on first load for this venue
-    seedDemoReports([venue.id])
     refreshLiveData()
   }, [venue.id, refreshLiveData])
 
@@ -303,12 +300,14 @@ export function VenuePage({
           </>
         )}
 
-        {/* Phase 2: Live Crowd Indicator */}
-        <LiveCrowdIndicator
-          count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
-          trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
-          friendCount={presenceData?.friendsNearbyCount ?? 0}
-        />
+        {/* Phase 2: Live Crowd Indicator — only show with real presence data */}
+        {(presenceData?.friendsHereNowCount ?? venue.verifiedCheckInCount ?? 0) > 0 && (
+          <LiveCrowdIndicator
+            count={presenceData?.friendsHereNowCount ?? venue.verifiedCheckInCount ?? 0}
+            trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
+            friendCount={presenceData?.friendsNearbyCount ?? 0}
+          />
+        )}
 
         {/* Phase 4: Venue Memory Card */}
         {currentUser && (
@@ -430,11 +429,7 @@ export function VenuePage({
 
         <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
 
-        {/* Phase 2: Activity Stream */}
-        <VenueActivityStream
-          venueId={venue.id}
-          venueName={venue.name}
-        />
+        {/* Activity stream removed — was displaying fabricated check-ins and arrivals */}
 
         <Separator />
 

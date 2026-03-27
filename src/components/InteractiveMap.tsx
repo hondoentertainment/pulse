@@ -1345,13 +1345,15 @@ export function InteractiveMap({
                     </div>
                   )}
 
-                  {/* Social Signals / Stats simulated */}
+                  {/* Social Signals / Stats */}
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Users size={12} />
-                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
-                      </div>
+                      {(hoveredVenue.verifiedCheckInCount ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Users size={12} />
+                          <span className="font-medium">{hoveredVenue.verifiedCheckInCount} here</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
                         <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
