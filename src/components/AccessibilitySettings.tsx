@@ -94,6 +94,7 @@ function applySettings(settings: A11ySettings): void {
 // Custom hook (exported for other components to consume)
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useA11ySettings() {
   const [settings, setSettingsState] = useState<A11ySettings>(loadSettings)
 

@@ -25,11 +25,11 @@ describe('featureFlags defaults', () => {
     expect(featureFlags).toHaveProperty('smartMap')
   })
 
-  it('defaults to true for all flags when no env vars override', () => {
-    // In test environment, no VITE_FF_ env vars are set,
-    // so parseFlag falls back to defaults which are all true
-    expect(featureFlags.integrations).toBe(true)
-    expect(featureFlags.socialDashboard).toBe(true)
+  it('reflects production launch defaults', () => {
+    // integrations and socialDashboard are disabled by default at launch
+    expect(featureFlags.integrations).toBe(false)
+    expect(featureFlags.socialDashboard).toBe(false)
+    // smartMap is enabled by default
     expect(featureFlags.smartMap).toBe(true)
   })
 })

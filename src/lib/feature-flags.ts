@@ -207,6 +207,32 @@ export function getFlagConfig(flag: FeatureFlag): FlagConfig {
   return DEFAULT_FLAGS[flag]
 }
 
+/**
+ * Backward-compatible flat map of flag → boolean (no userId context).
+ * Prefer `isFeatureEnabled(flag, userId)` for per-user evaluation.
+ * @deprecated Use `isFeatureEnabled` or `getAllFlags` instead.
+ */
+export const featureFlags: Record<FeatureFlag, boolean> = new Proxy(
+  {} as Record<FeatureFlag, boolean>,
+  {
+    get(_target, prop: string) {
+      return isFeatureEnabled(prop as FeatureFlag)
+    },
+    has(_target, prop: string) {
+      return prop in DEFAULT_FLAGS
+    },
+    ownKeys() {
+      return Object.keys(DEFAULT_FLAGS)
+    },
+    getOwnPropertyDescriptor(_target, prop: string) {
+      if (prop in DEFAULT_FLAGS) {
+        return { configurable: true, enumerable: true, value: isFeatureEnabled(prop as FeatureFlag) }
+      }
+      return undefined
+    },
+  }
+)
+
 // ---------------------------------------------------------------------------
 // React hook
 // ---------------------------------------------------------------------------

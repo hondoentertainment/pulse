@@ -152,6 +152,7 @@ export function AuthGuard({ children, requiredRole, fallback }: AuthGuardProps) 
  * Returns the current user's derived application role, or undefined when not
  * signed in. Useful for conditional rendering without wrapping entire trees.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppRole(): AppRole | undefined {
   const { user } = useSupabaseAuth();
   if (!user) return undefined;
