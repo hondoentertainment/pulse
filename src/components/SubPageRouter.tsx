@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
+import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { BottomNav } from '@/components/BottomNav'
 import { toast } from 'sonner'
@@ -14,7 +14,13 @@ const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = (
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 animate-pulse">
+    <div className="w-32 h-3 rounded-full bg-muted" />
+    <div className="w-48 h-3 rounded-full bg-muted" />
+    <div className="w-24 h-3 rounded-full bg-muted" />
+  </div>
+)
 
 export function SubPageRouter() {
   const state = useAppState()

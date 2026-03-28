@@ -32,7 +32,7 @@ interface DiscoverTabProps {
 export function DiscoverTab({
   venues,
   pulses,
-  pulsesWithUsers,
+  pulsesWithUsers: _pulsesWithUsers,
   currentUser,
   allUsers,
   stories,

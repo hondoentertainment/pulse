@@ -19,7 +19,14 @@ const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboar
 const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => ({ default: m.PresenceSheet })))
 const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+// Loading skeleton used across all lazy Suspense boundaries
+const pageFallback = (
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 animate-pulse">
+    <div className="w-32 h-3 rounded-full bg-muted" />
+    <div className="w-48 h-3 rounded-full bg-muted" />
+    <div className="w-24 h-3 rounded-full bg-muted" />
+  </div>
+)
 
 function AppContent() {
   const state = useAppState()
@@ -36,7 +43,7 @@ function AppContent() {
     venueForPulse,
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, currentTime, queuedPulseCount,
-    userLocation, unitSystem, moderatedPulses,
+    userLocation, unitSystem,
     presenceSheetOpen, setPresenceSheetOpen,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
@@ -72,7 +79,7 @@ function AppContent() {
 
   // ── Loading gate ─────────────────────────────────────────
   if (!venues || !currentUser || !pulses) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+    return pageFallback
   }
 
   // ── Admin dashboard ──────────────────────────────────────

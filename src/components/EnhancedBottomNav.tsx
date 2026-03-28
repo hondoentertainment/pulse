@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
 import { motion, useAnimation, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'

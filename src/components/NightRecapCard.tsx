@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { MapPin, Lightning, Users, ShareNetwork } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
 import { ENERGY_CONFIG } from '@/lib/types'
 import type { NightRecap } from '@/lib/retention-engine'
 
@@ -58,7 +57,7 @@ export function NightRecapCard({ recap, onShare }: NightRecapCardProps) {
 
         {/* Venue list */}
         <motion.div variants={itemVariants} className="space-y-2 mb-5">
-          {recap.venuesVisited.map((venue, i) => (
+          {recap.venuesVisited.map((venue) => (
             <motion.div
               key={venue.id}
               variants={itemVariants}

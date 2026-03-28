@@ -8,20 +8,33 @@
  * This prevents 500 simultaneous reactions at a viral venue from individually
  * triggering 500 React re-renders. Instead, they are collapsed into a single
  * batched state update every ~2 seconds.
+ *
+ * Production features:
+ * - Connection status tracking with typed states
+ * - Automatic reconnection with exponential backoff (max 5 attempts)
+ * - Proper cleanup of channels and batchers on unmount
+ * - Error capture via Sentry integration
+ * - Optional filter support for targeted subscriptions
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/query-client'
 import {
   reactionBatcher,
   presenceBatcher,
   pulseBatcher,
-  type BatchEvent,
   type BatchFlush,
 } from '@/lib/realtime-batcher'
+import { captureError, addBreadcrumb } from '@/lib/sentry'
 import type { Pulse } from '@/lib/types'
 import { trackPerformance } from '@/lib/analytics'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+
+const MAX_RECONNECT_ATTEMPTS = 5
+const BASE_RECONNECT_DELAY_MS = 1000
 
 /**
  * Flush handler for pulse inserts — merges new pulses into React Query cache.
@@ -53,7 +66,7 @@ function handleReactionBatchFlush(batch: BatchFlush) {
 
   queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
     const updates = new Map(batch.events.map(e => [e.key, e.payload as Partial<Pulse>]))
-    
+
     return old.map(pulse => {
       const update = updates.get(pulse.id)
       if (!update) return pulse
@@ -70,7 +83,6 @@ function handleReactionBatchFlush(batch: BatchFlush) {
 function handlePresenceBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
 
-  // Presence updates are stored in a dedicated query key
   queryClient.setQueryData<Record<string, unknown>>(['venue-presence'], (old = {}) => {
     const merged = { ...old }
     for (const event of batch.events) {
@@ -83,20 +95,47 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
 }
 
 /**
- * Hook that manages Supabase Realtime subscriptions with batched state updates.
+ * Hook that manages Supabase Realtime subscriptions with batched state updates,
+ * automatic reconnection, and connection status tracking.
  */
 export function useRealtimeSubscription(enabled = true) {
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected')
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const reconnectAttemptsRef = useRef(0)
+  const isMountedRef = useRef(true)
 
-  useEffect(() => {
-    if (!enabled) return
+  const updateStatus = useCallback((next: ConnectionStatus) => {
+    if (!isMountedRef.current) return
+    setStatus(next)
+    addBreadcrumb(`Realtime connection: ${next}`, 'realtime')
+  }, [])
+
+  const teardown = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = undefined
+    }
+    if (channelRef.current) {
+      channelRef.current.unsubscribe()
+      channelRef.current = null
+    }
+    pulseBatcher.stop()
+    reactionBatcher.stop()
+    presenceBatcher.stop()
+  }, [])
+
+  const connect = useCallback(() => {
+    if (!isMountedRef.current) return
+
+    teardown()
+    updateStatus('connecting')
 
     // Start all batchers
     pulseBatcher.start(handlePulseBatchFlush)
     reactionBatcher.start(handleReactionBatchFlush)
     presenceBatcher.start(handlePresenceBatchFlush)
 
-    // Subscribe to Supabase Realtime
     const channel = supabase
       .channel('pulse-realtime')
       .on(
@@ -164,16 +203,79 @@ export function useRealtimeSubscription(enabled = true) {
           })
         }
       )
-      .subscribe()
+      .subscribe((channelStatus, err) => {
+        if (!isMountedRef.current) return
+
+        if (channelStatus === 'SUBSCRIBED') {
+          reconnectAttemptsRef.current = 0
+          updateStatus('connected')
+          addBreadcrumb('Realtime channel subscribed', 'realtime')
+        } else if (channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT') {
+          const error = err instanceof Error ? err : new Error(`Channel error: ${channelStatus}`)
+          captureError(error, { channelStatus, attempt: reconnectAttemptsRef.current })
+          scheduleReconnect()
+        } else if (channelStatus === 'CLOSED') {
+          if (isMountedRef.current) {
+            updateStatus('disconnected')
+          }
+        }
+      })
 
     channelRef.current = channel
+  }, [teardown, updateStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scheduleReconnect = useCallback(() => {
+    if (!isMountedRef.current) return
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      updateStatus('disconnected')
+      captureError(
+        new Error(`Realtime: max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) exceeded`),
+        { attempts: reconnectAttemptsRef.current }
+      )
+      return
+    }
+
+    updateStatus('reconnecting')
+    reconnectAttemptsRef.current++
+
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s (capped at 30s)
+    const delay = Math.min(
+      30000,
+      BASE_RECONNECT_DELAY_MS * Math.pow(2, reconnectAttemptsRef.current - 1)
+    )
+
+    addBreadcrumb(
+      `Realtime reconnect scheduled in ${delay}ms (attempt ${reconnectAttemptsRef.current})`,
+      'realtime',
+      { delay, attempt: reconnectAttemptsRef.current }
+    )
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) connect()
+    }, delay)
+  }, [connect, updateStatus])
+
+  // Expose reconnect for manual triggering (e.g. from UI)
+  const reconnect = useCallback(() => {
+    reconnectAttemptsRef.current = 0
+    connect()
+  }, [connect])
+
+  useEffect(() => {
+    isMountedRef.current = true
+
+    if (!enabled) {
+      updateStatus('disconnected')
+      return
+    }
+
+    connect()
 
     return () => {
-      pulseBatcher.stop()
-      reactionBatcher.stop()
-      presenceBatcher.stop()
-      channel.unsubscribe()
-      channelRef.current = null
+      isMountedRef.current = false
+      teardown()
     }
-  }, [enabled])
+  }, [enabled]) // intentionally omit connect/teardown to avoid re-subscribing on every render
+
+  return { status, reconnect }
 }

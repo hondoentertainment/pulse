@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { VenueEvent } from '@/lib/events'
 import { User } from '@/lib/types'
 import {
-  TicketTier,
   TicketType,
   Ticket,
   TICKET_TYPE_CONFIG,

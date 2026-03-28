@@ -68,7 +68,7 @@ export function InteractiveMap({
   const [tipIndex, setTipIndex] = useState(0)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
-  const [accessibilityMode, setAccessibilityMode] = useState(false)
+  const [accessibilityMode, _setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
@@ -216,7 +216,7 @@ export function InteractiveMap({
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
         const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as any)) {
+        if (!filters.energyLevels.includes(energyLevel)) {
           return false
         }
       }

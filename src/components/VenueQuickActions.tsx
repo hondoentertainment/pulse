@@ -20,7 +20,7 @@ interface ActionButtonProps {
   isActive?: boolean
 }
 
-function ActionButton({ icon, label, onClick, isPrimary, isActive }: ActionButtonProps) {
+function ActionButton({ icon, label, onClick, isPrimary, isActive: _isActive }: ActionButtonProps) {
   const handleClick = () => {
     // Trigger haptic feedback if available
     if (navigator.vibrate) {
@@ -56,7 +56,7 @@ function ActionButton({ icon, label, onClick, isPrimary, isActive }: ActionButto
 }
 
 export function VenueQuickActions({
-  venue,
+  venue: _venue,
   onCheckIn,
   onShare,
   onDirections,

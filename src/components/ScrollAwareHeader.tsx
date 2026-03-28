@@ -20,7 +20,7 @@ const springTransition = {
 export function ScrollAwareHeader({
   children,
   isScrolled,
-  scrollDirection,
+  scrollDirection: _scrollDirection,
   locationName,
   className,
 }: ScrollAwareHeaderProps) {

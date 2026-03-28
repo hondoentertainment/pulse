@@ -37,6 +37,7 @@ const AccessibilityContext = createContext<AccessibilityContextValue | null>(nul
  * Consume the accessibility context.
  * Must be used within an `<AccessibilityProvider>`.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAccessibility(): AccessibilityContextValue {
   const ctx = useContext(AccessibilityContext)
   if (!ctx) {

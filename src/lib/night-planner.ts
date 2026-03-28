@@ -252,7 +252,7 @@ function selectPurposes(numStops: number, startTime: string): StopPurpose[] {
 function filterByPreferences(venues: Venue[], preferences: PlanPreferences): Venue[] {
   const avoidSet = new Set(preferences.avoidCategories.map(c => c.toLowerCase()))
 
-  let filtered = venues.filter(v => {
+  const filtered = venues.filter(v => {
     const cat = (v.category ?? '').toLowerCase()
     return !avoidSet.has(cat)
   })

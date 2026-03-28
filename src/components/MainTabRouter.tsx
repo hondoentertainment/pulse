@@ -9,7 +9,13 @@ const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ d
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = (
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 animate-pulse">
+    <div className="w-32 h-3 rounded-full bg-muted" />
+    <div className="w-48 h-3 rounded-full bg-muted" />
+    <div className="w-24 h-3 rounded-full bg-muted" />
+  </div>
+)
 
 const tabMotion = {
   initial: { opacity: 0, y: 20 },
@@ -56,7 +62,6 @@ export function MainTabRouter() {
     handlePulseReport,
     handlePromotionImpression,
     handlePromotionClick,
-    handleTabChange,
   } = handlers
 
   if (!venues || !currentUser) return null

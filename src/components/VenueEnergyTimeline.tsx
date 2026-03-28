@@ -1,5 +1,4 @@
 import { useMemo, useId } from 'react'
-import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
 interface VenueEnergyTimelineProps {
@@ -96,7 +95,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
   const height = 80
   const padding = { top: 8, bottom: 20, left: 30, right: 10 }
 
-  const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data])
+  const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data, padding])
 
   // Build fill path (line + close at bottom)
   const fillPath = useMemo(() => {
@@ -105,7 +104,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
     const firstX = padding.left
     const lastX = width - padding.right
     return `${linePath} L ${lastX},${chartBottom} L ${firstX},${chartBottom} Z`
-  }, [linePath])
+  }, [linePath, padding.bottom, padding.left, padding.right])
 
   // Find peak point
   const peakIndex = useMemo(() => {
@@ -136,7 +135,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
       len += Math.sqrt(dx * dx + dy * dy)
     }
     return Math.ceil(len)
-  }, [data])
+  }, [data, getX, getY])
 
   const timeLabels = [
     { label: '6h ago', x: padding.left },

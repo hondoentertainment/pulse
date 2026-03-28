@@ -86,7 +86,7 @@ export default function FriendMapDots({
 
   const clusters = useMemo(
     () => clusterFriends(friends, latLngToPixel),
-    [friends, latLngToPixel, zoom]
+    [friends, latLngToPixel]
   )
 
   return (

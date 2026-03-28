@@ -3,10 +3,10 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ChartBar, Plus, Trophy, TrendUp, TrendDown, X, Lightning, Users, Fire } from '@phosphor-icons/react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Venue, Pulse } from '@/lib/types'
-import { getCompetitorBenchmark, type BenchmarkComparison, type CompetitorBenchmarkResult } from '@/lib/venue-platform'
+import { getCompetitorBenchmark, type CompetitorBenchmarkResult } from '@/lib/venue-platform'
 
 interface CompetitorBenchmarkProps {
   venue: Venue

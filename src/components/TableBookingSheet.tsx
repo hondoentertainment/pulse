@@ -78,7 +78,7 @@ export function TableBookingSheet({
       })
     }
     return dates
-  }, [])
+  }, [today])
 
   const deposit = selectedTable ? calculateDeposit(selectedTable.minimumSpend) : 0
 
