@@ -2,7 +2,6 @@ import type { Venue, Pulse, User, EnergyRating } from './types'
 import { getRecommendations } from './venue-recommendations'
 import { analyzeVenuePatterns, predictSurge } from './predictive-surge'
 import { generateRideshareLink } from './integrations'
-import type { Crew } from './crew-mode'
 
 /**
  * AI Night Planner — Multi-stop itinerary engine
@@ -509,8 +508,8 @@ export function adaptPlan(
   currentTime: string,
   liveEnergyScores: Record<string, { energy: EnergyRating; score: number }>,
   venues: Venue[],
-  pulses: Pulse[],
-  user: User
+  _pulses: Pulse[],
+  _user: User
 ): { plan: NightPlan; swapSuggestions: SwapSuggestion[] } {
   const now = new Date(currentTime).getTime()
   const swapSuggestions: SwapSuggestion[] = []

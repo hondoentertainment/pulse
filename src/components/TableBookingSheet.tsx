@@ -37,9 +37,9 @@ export function TableBookingSheet({
   existingReservations,
   onBook,
 }: TableBookingSheetProps) {
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
   const [selectedDate, setSelectedDate] = useState<string>(
-    today.toISOString().split('T')[0]
+    () => new Date().toISOString().split('T')[0]
   )
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [partySize, setPartySize] = useState(4)

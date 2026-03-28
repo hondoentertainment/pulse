@@ -134,7 +134,7 @@ export function createMockSupabaseClient() {
   }
 
   // make the terminal methods resolve by default
-  ;(queryBuilder.select as any).mockResolvedValue = vi.fn().mockResolvedValue({ data: [], error: null })
+  ;(queryBuilder.select as unknown as { mockResolvedValue: (v: unknown) => unknown }).mockResolvedValue = vi.fn().mockResolvedValue({ data: [], error: null })
 
   const from = vi.fn().mockReturnValue(queryBuilder)
 

@@ -153,8 +153,8 @@ function FormMessage({ className, ...props }: ComponentProps<"p">) {
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export {
+  // eslint-disable-next-line react-refresh/only-export-components
   useFormField,
   Form,
   FormItem,

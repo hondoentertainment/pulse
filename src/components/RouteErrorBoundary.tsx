@@ -96,6 +96,7 @@ export class RouteErrorBoundary extends Component<
 
 // ── Default fallback UI ────────────────────────────────────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 function RouteErrorFallback({ error, routeName, reset }: FallbackProps) {
   // In development, rethrow so the browser's error overlay is shown instead
   if (import.meta.env.DEV) throw error

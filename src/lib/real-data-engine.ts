@@ -173,7 +173,7 @@ function getDayMultiplier(now: Date, city?: string): number {
   // Adjust day based on local time too
   const utcDay = now.getUTCDay()
   const offset = city ? (CITY_TIMEZONE_OFFSETS[city] ?? -7) : -(now.getTimezoneOffset() / 60)
-  const localHour = (now.getUTCHours() + offset + 24) % 24
+  const _localHour = (now.getUTCHours() + offset + 24) % 24
   // If past midnight with positive offset, it might be next day
   let day = utcDay
   if (now.getUTCHours() + offset >= 24) day = (day + 1) % 7

@@ -1,5 +1,4 @@
 import type { Venue, User } from './types'
-import { ENERGY_CONFIG } from './types'
 import { getEnergyLabel, getEnergyColor } from './pulse-engine'
 import { getTimeOfDay, normalizeCategoryKeyPublic } from './time-contextual-scoring'
 import type { TimeOfDay } from './time-contextual-scoring'

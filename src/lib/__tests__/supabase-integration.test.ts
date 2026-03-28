@@ -66,7 +66,7 @@ import {
   fetchPulsesFromSupabase,
   uploadPulseToSupabase,
 } from '@/lib/supabase-api'
-import { makeVenue, makePulse, makeUser } from './test-utils'
+import { makePulse } from './test-utils'
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { WifiSlash, WifiHigh, ArrowsClockwise, CloudCheck } from '@phosphor-icons/react'
+import { WifiSlash, ArrowsClockwise, CloudCheck } from '@phosphor-icons/react'
 import type { ConnectionStatus as RealtimeStatus } from '@/hooks/use-realtime-subscription'
 import { onQueueEvent, getPendingCountSync } from '@/lib/offline-queue'
 

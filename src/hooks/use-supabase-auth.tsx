@@ -102,6 +102,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSupabaseAuth() {
   const context = useContext(SupabaseAuthContext)
   if (context === undefined) {
