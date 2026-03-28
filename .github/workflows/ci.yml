@@ -2,37 +2,105 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
-  test-and-build:
+  ci:
+    name: Lint · Test · Build · Audit
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Lint
-      run: npm run lint
-      
-    - name: Unit Tests
-      run: npm run test
-      
-    - name: Build
-      run: npm run build
-      
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-      
-    - name: Smoke Tests
-      run: npm run test:smoke
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # -----------------------------------------------------------------------
+      # Lint — strict mode, zero warnings allowed
+      # -----------------------------------------------------------------------
+      - name: Lint (strict)
+        run: npm run lint -- --max-warnings 0
+
+      # -----------------------------------------------------------------------
+      # Unit tests with coverage
+      # -----------------------------------------------------------------------
+      - name: Unit tests with coverage
+        run: npm run test -- --coverage --reporter=verbose
+        env:
+          CI: true
+
+      - name: Print coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const s = require('./coverage/coverage-summary.json').total;
+              console.log('Coverage summary:');
+              console.log('  Statements : ' + s.statements.pct + '%');
+              console.log('  Branches   : ' + s.branches.pct + '%');
+              console.log('  Functions  : ' + s.functions.pct + '%');
+              console.log('  Lines      : ' + s.lines.pct + '%');
+            "
+          else
+            echo 'No coverage-summary.json found.'
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+      # -----------------------------------------------------------------------
+      # Build
+      # -----------------------------------------------------------------------
+      - name: Build
+        run: npm run build
+
+      # -----------------------------------------------------------------------
+      # Bundle size budget check — fail if total JS exceeds 1,500 KB
+      # -----------------------------------------------------------------------
+      - name: Check bundle size budget
+        run: |
+          BUDGET_KB=1500
+          TOTAL_KB=$(find dist/assets -name '*.js' -exec wc -c {} + 2>/dev/null \
+            | tail -1 | awk '{printf "%.0f", $1/1024}')
+          echo "Total JS bundle size: ${TOTAL_KB} KB (budget: ${BUDGET_KB} KB)"
+          if [ "${TOTAL_KB}" -gt "${BUDGET_KB}" ]; then
+            echo "ERROR: Bundle size ${TOTAL_KB} KB exceeds budget of ${BUDGET_KB} KB."
+            exit 1
+          fi
+          echo "Bundle size is within budget."
+
+      # -----------------------------------------------------------------------
+      # Security audit — fail on high or critical vulnerabilities
+      # -----------------------------------------------------------------------
+      - name: npm audit (high severity gate)
+        run: npm audit --audit-level=high
+
+      # -----------------------------------------------------------------------
+      # Playwright smoke tests
+      # -----------------------------------------------------------------------
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm run test:smoke
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

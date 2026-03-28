@@ -48,15 +48,15 @@ export async function initSentry(): Promise<void> {
     environment: import.meta.env.MODE,
     release: (import.meta.env.VITE_APP_VERSION as string | undefined) || '0.0.0',
     integrations: [
-      Sentry.browserTracingIntegration({
-        // Propagate trace headers only to same-origin requests and localhost
-        tracePropagationTargets: ['localhost', /^\//],
-      }),
+      Sentry.browserTracingIntegration(),
       Sentry.replayIntegration({
         maskAllText: false,
         blockAllMedia: false,
       }),
     ],
+
+    // Propagate trace headers only to same-origin requests and localhost
+    tracePropagationTargets: ['localhost', /^\//],
 
     // Capture all traces in dev; 10 % in production to control costs
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
@@ -73,8 +73,9 @@ export async function initSentry(): Promise<void> {
       }
 
       // Scrub Authorization headers accidentally captured in breadcrumbs
-      if (event.breadcrumbs?.values) {
-        for (const crumb of event.breadcrumbs.values) {
+      const crumbs = event.breadcrumbs?.values?.()
+      if (crumbs) {
+        for (const crumb of crumbs) {
           if (crumb.data?.['Authorization']) {
             crumb.data['Authorization'] = '[Filtered]'
           }

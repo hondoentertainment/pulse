@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+type MockProps = { children?: ReactNode; [key: string]: unknown }
+
 
 // ---------------------------------------------------------------------------
 // Standard mocks
@@ -10,8 +13,8 @@ vi.mock('framer-motion', () => ({
   motion: new Proxy(
     {},
     {
-      get: (_target, prop) => {
-        return ({ children, ...props }: any) => {
+      get: (_target, _prop) => {
+        return ({ children, ...props }: MockProps) => {
           const filteredProps: Record<string, unknown> = {}
           for (const [key, value] of Object.entries(props)) {
             if (
@@ -45,10 +48,10 @@ vi.mock('framer-motion', () => ({
       },
     }
   ),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-  LayoutGroup: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
+  LayoutGroup: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0) }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0) }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
   useAnimation: () => ({
@@ -62,9 +65,9 @@ vi.mock('@phosphor-icons/react', () =>
   new Proxy(
     {},
     {
-      get: (_target, prop) => {
+      get: (_target, _prop) => {
         if (prop === '__esModule') return true
-        return (props: any) => (
+        return (props: MockProps) => (
           <span data-testid={`icon-${String(prop)}`} {...props} />
         )
       },
@@ -73,7 +76,7 @@ vi.mock('@phosphor-icons/react', () =>
 )
 
 vi.mock('@github/spark/hooks', () => ({
-  useKV: (_key: string, defaultValue: any) => [defaultValue, vi.fn()],
+  useKV: (_key: string, defaultValue: unknown) => [defaultValue, vi.fn()],
 }))
 
 // ---------------------------------------------------------------------------
@@ -81,39 +84,39 @@ vi.mock('@github/spark/hooks', () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }: any) =>
+  Dialog: ({ children, open }: MockProps) =>
     open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: any) => <p>{children}</p>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
-  DialogClose: ({ children }: any) => <button>{children}</button>,
-  DialogTrigger: ({ children }: any) => <div>{children}</div>,
+  DialogContent: ({ children }: MockProps) => <div>{children}</div>,
+  DialogHeader: ({ children }: MockProps) => <div>{children}</div>,
+  DialogTitle: ({ children }: MockProps) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: MockProps) => <p>{children}</p>,
+  DialogFooter: ({ children }: MockProps) => <div>{children}</div>,
+  DialogClose: ({ children }: MockProps) => <button>{children}</button>,
+  DialogTrigger: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ children, open }: any) =>
+  Sheet: ({ children, open }: MockProps) =>
     open ? <div data-testid="sheet">{children}</div> : null,
-  SheetContent: ({ children }: any) => <div>{children}</div>,
-  SheetHeader: ({ children }: any) => <div>{children}</div>,
-  SheetTitle: ({ children }: any) => <h2>{children}</h2>,
-  SheetDescription: ({ children }: any) => <p>{children}</p>,
-  SheetFooter: ({ children }: any) => <div>{children}</div>,
-  SheetClose: ({ children }: any) => <button>{children}</button>,
-  SheetTrigger: ({ children }: any) => <div>{children}</div>,
+  SheetContent: ({ children }: MockProps) => <div>{children}</div>,
+  SheetHeader: ({ children }: MockProps) => <div>{children}</div>,
+  SheetTitle: ({ children }: MockProps) => <h2>{children}</h2>,
+  SheetDescription: ({ children }: MockProps) => <p>{children}</p>,
+  SheetFooter: ({ children }: MockProps) => <div>{children}</div>,
+  SheetClose: ({ children }: MockProps) => <button>{children}</button>,
+  SheetTrigger: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 vi.mock('@/components/ui/drawer', () => ({
-  Drawer: ({ children, open }: any) =>
+  Drawer: ({ children, open }: MockProps) =>
     open ? <div data-testid="drawer">{children}</div> : null,
-  DrawerContent: ({ children }: any) => <div>{children}</div>,
-  DrawerHeader: ({ children }: any) => <div>{children}</div>,
-  DrawerTitle: ({ children }: any) => <h2>{children}</h2>,
-  DrawerDescription: ({ children }: any) => <p>{children}</p>,
-  DrawerFooter: ({ children }: any) => <div>{children}</div>,
-  DrawerClose: ({ children }: any) => <button>{children}</button>,
-  DrawerTrigger: ({ children }: any) => <div>{children}</div>,
+  DrawerContent: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerHeader: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerTitle: ({ children }: MockProps) => <h2>{children}</h2>,
+  DrawerDescription: ({ children }: MockProps) => <p>{children}</p>,
+  DrawerFooter: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerClose: ({ children }: MockProps) => <button>{children}</button>,
+  DrawerTrigger: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 // ---------------------------------------------------------------------------
@@ -121,39 +124,39 @@ vi.mock('@/components/ui/drawer', () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, asChild, ...props }: any) => (
+  Button: ({ children, asChild: _asChild, ...props }: MockProps) => (
     <button {...props}>{children}</button>
   ),
 }))
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+  Badge: ({ children, ...props }: MockProps) => <span {...props}>{children}</span>,
 }))
 
 vi.mock('@/components/ui/input', () => ({
-  Input: (props: any) => <input {...props} />,
+  Input: (props: MockProps) => <input {...props} />,
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  Card: ({ children, ...props }: MockProps) => <div {...props}>{children}</div>,
 }))
 
 vi.mock('@/components/ui/textarea', () => ({
-  Textarea: (props: any) => <textarea {...props} />,
+  Textarea: (props: MockProps) => <textarea {...props} />,
 }))
 
 vi.mock('@/components/ui/progress', () => ({
-  Progress: (props: any) => <div role="progressbar" {...props} />,
+  Progress: (props: MockProps) => <div role="progressbar" {...props} />,
 }))
 
 vi.mock('@/components/ui/label', () => ({
-  Label: ({ children, ...props }: any) => (
+  Label: ({ children, ...props }: MockProps) => (
     <label {...props}>{children}</label>
   ),
 }))
 
 vi.mock('@/components/ui/switch', () => ({
-  Switch: (props: any) => <input type="checkbox" role="switch" {...props} />,
+  Switch: (props: MockProps) => <input type="checkbox" role="switch" {...props} />,
 }))
 
 vi.mock('@/components/ui/separator', () => ({
@@ -161,7 +164,7 @@ vi.mock('@/components/ui/separator', () => ({
 }))
 
 vi.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children }: any) => <div>{children}</div>,
+  ScrollArea: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 // ---------------------------------------------------------------------------
@@ -178,7 +181,7 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('@/lib/utils', () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 vi.mock('@/lib/content-moderation', () => ({
@@ -204,8 +207,8 @@ vi.mock('@/lib/video-compression', () => ({
 }))
 
 vi.mock('@/lib/sharing', () => ({
-  buildNativeShareData: (card: any) => ({ title: card.title }),
-  buildClipboardShareText: (card: any) => card.url,
+  buildNativeShareData: (card: Record<string, unknown>) => ({ title: card["title"] }),
+  buildClipboardShareText: (card: Record<string, unknown>) => card["url"],
 }))
 
 vi.mock('@/lib/contextual-intelligence', () => ({
@@ -215,7 +218,7 @@ vi.mock('@/lib/contextual-intelligence', () => ({
     primaryCategory: 'Nightlife',
     secondaryCategories: ['Live Music', 'Rooftops'],
   }),
-  getSmartVenueSort: (venues: any[]) => venues,
+  getSmartVenueSort: (venues: unknown[]) => venues,
 }))
 
 vi.mock('@/lib/time-contextual-scoring', () => ({
@@ -233,13 +236,13 @@ vi.mock('@/lib/types', () => ({
 }))
 
 vi.mock('@/components/EnergySlider', () => ({
-  EnergySlider: (props: any) => (
+  EnergySlider: (props: MockProps) => (
     <div data-testid="energy-slider">{props.value}</div>
   ),
 }))
 
 vi.mock('@/components/PulseScore', () => ({
-  PulseScore: ({ score }: any) => <span data-testid="pulse-score">{score}</span>,
+  PulseScore: ({ score }: MockProps) => <span data-testid="pulse-score">{score}</span>,
 }))
 
 vi.mock('@/components/GPSIndicator', () => ({
@@ -429,7 +432,7 @@ vi.mock('@/lib/units', () => ({
 
 vi.mock('@/lib/interactive-map', () => ({
   buildVenueRenderPoints: () => [],
-  clampCenter: (c: any) => c,
+  clampCenter: (c: unknown) => c,
   clampZoom: (z: number) => z,
   clusterVenueRenderPoints: () => [],
   getFittedViewport: () => ({ center: { x: 0, y: 0 }, zoom: 1 }),
@@ -610,7 +613,7 @@ describe('CreatePulseDialog', () => {
     pulseScore: 72,
     location: { lat: 40.7, lng: -74.0 },
     city: 'NYC',
-  } as any
+  } as Record<string, unknown>
 
   it('when open, renders dialog with venue name', async () => {
     const { CreatePulseDialog } = await import(
@@ -710,7 +713,7 @@ describe('GlobalSearch', () => {
       pulseScore: 65,
       location: { lat: 45.5, lng: -122.6 },
     },
-  ] as any[]
+  ] as unknown[]
 
   it('when open, renders search input', async () => {
     const { GlobalSearch } = await import('@/components/GlobalSearch')

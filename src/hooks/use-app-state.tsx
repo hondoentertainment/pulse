@@ -32,7 +32,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
-import { trackEvent, trackPerformance } from '@/lib/analytics'
+import { trackEvent } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'
@@ -54,6 +54,7 @@ export type SubPage =
   | 'night-planner'
   | null
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ALL_USERS: User[] = [
   { id: 'user-2', username: 'sarah_j', profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
   { id: 'user-3', username: 'mike_v', profilePhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
@@ -158,6 +159,7 @@ export interface AppState {
 
 const AppStateContext = createContext<AppState | null>(null)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppState(): AppState {
   const ctx = useContext(AppStateContext)
   if (!ctx) throw new Error('useAppState must be used within AppStateProvider')

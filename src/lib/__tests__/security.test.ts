@@ -476,128 +476,133 @@ import {
   csrfHeader,
 } from '../csrf';
 
-// Provide a minimal sessionStorage mock for the test environment.
-const sessionStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value; },
-    removeItem: (key: string) => { delete store[key]; },
-    clear: () => { store = {}; },
-    get length() { return Object.keys(store).length; },
-    key: (i: number) => Object.keys(store)[i] ?? null,
+// ---------------------------------------------------------------------------
+// CSRF suite — all CSRF tests are wrapped in a describe so their beforeEach /
+// afterEach lifecycle hooks are scoped and do not affect rate-limiter tests.
+// ---------------------------------------------------------------------------
+
+describe('CSRF', () => {
+  // Minimal sessionStorage stub (Node has no window/sessionStorage)
+  let ssStub: {
+    getItem: (k: string) => string | null;
+    setItem: (k: string, v: string) => void;
+    removeItem: (k: string) => void;
+    clear: () => void;
+    length: number;
+    key: (i: number) => string | null;
   };
-})();
 
-// Provide a minimal crypto mock.
-const cryptoMock = {
-  getRandomValues: (buf: Uint8Array) => {
-    for (let i = 0; i < buf.length; i++) buf[i] = Math.floor(Math.random() * 256);
-    return buf;
-  },
-};
+  const cryptoStub = {
+    getRandomValues: (buf: Uint8Array) => {
+      for (let i = 0; i < buf.length; i++) buf[i] = Math.floor(Math.random() * 256);
+      return buf;
+    },
+  };
 
-beforeEach(() => {
-  sessionStorageMock.clear();
-  // Patch globals so the CSRF module can use them.
-  Object.defineProperty(globalThis, 'window', {
-    value: { sessionStorage: sessionStorageMock, crypto: cryptoMock },
-    configurable: true,
-  });
-});
-
-afterEach(() => {
-  // Restore window to avoid leaking into other test suites.
-  // @ts-expect-error — intentional teardown
-  delete globalThis.window;
-});
-
-describe('CSRF token generation', () => {
-  it('generates a non-empty hex string', () => {
-    const token = getCsrfToken();
-    expect(typeof token).toBe('string');
-    expect(token.length).toBeGreaterThan(0);
-    expect(/^[0-9a-f]+$/i.test(token)).toBe(true);
+  beforeEach(() => {
+    let store: Record<string, string> = {};
+    ssStub = {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => { store[k] = v; },
+      removeItem: (k) => { delete store[k]; },
+      clear: () => { store = {}; },
+      get length() { return Object.keys(store).length; },
+      key: (i) => Object.keys(store)[i] ?? null,
+    };
+    vi.stubGlobal('window', { sessionStorage: ssStub, crypto: cryptoStub });
   });
 
-  it('returns the same token on subsequent calls within TTL', () => {
-    const first = getCsrfToken();
-    const second = getCsrfToken();
-    expect(first).toBe(second);
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('rotateCsrfToken produces a new token', () => {
-    const original = getCsrfToken();
-    const rotated = rotateCsrfToken();
-    expect(rotated).not.toBe(original);
-    expect(getCsrfToken()).toBe(rotated);
-  });
-});
+  describe('CSRF token generation', () => {
+    it('generates a non-empty hex string', () => {
+      const token = getCsrfToken();
+      expect(typeof token).toBe('string');
+      expect(token.length).toBeGreaterThan(0);
+      expect(/^[0-9a-f]+$/i.test(token)).toBe(true);
+    });
 
-describe('validateCsrfToken', () => {
-  it('validates the correct token', () => {
-    const token = getCsrfToken();
-    expect(validateCsrfToken(token)).toBe(true);
-  });
+    it('returns the same token on subsequent calls within TTL', () => {
+      const first = getCsrfToken();
+      const second = getCsrfToken();
+      expect(first).toBe(second);
+    });
 
-  it('rejects an incorrect token', () => {
-    getCsrfToken();
-    expect(validateCsrfToken('wrong-token')).toBe(false);
-  });
-
-  it('rejects an empty string', () => {
-    getCsrfToken();
-    expect(validateCsrfToken('')).toBe(false);
+    it('rotateCsrfToken produces a new token', () => {
+      const original = getCsrfToken();
+      const rotated = rotateCsrfToken();
+      expect(rotated).not.toBe(original);
+      expect(getCsrfToken()).toBe(rotated);
+    });
   });
 
-  it('rejects when no token is stored', () => {
-    clearCsrfToken();
-    expect(validateCsrfToken('any-token')).toBe(false);
+  describe('validateCsrfToken', () => {
+    it('validates the correct token', () => {
+      const token = getCsrfToken();
+      expect(validateCsrfToken(token)).toBe(true);
+    });
+
+    it('rejects an incorrect token', () => {
+      getCsrfToken();
+      expect(validateCsrfToken('wrong-token')).toBe(false);
+    });
+
+    it('rejects an empty string', () => {
+      getCsrfToken();
+      expect(validateCsrfToken('')).toBe(false);
+    });
+
+    it('rejects when no token is stored', () => {
+      clearCsrfToken();
+      expect(validateCsrfToken('any-token')).toBe(false);
+    });
+
+    it('rejects an expired token', () => {
+      const past = Date.now() - 1; // already expired
+      ssStub.setItem(
+        'csrf_token',
+        JSON.stringify({ value: 'old-token', expiresAt: past }),
+      );
+      expect(validateCsrfToken('old-token')).toBe(false);
+    });
   });
 
-  it('rejects an expired token', () => {
-    const past = Date.now() - 1; // already expired
-    sessionStorageMock.setItem(
-      'csrf_token',
-      JSON.stringify({ value: 'old-token', expiresAt: past }),
-    );
-    expect(validateCsrfToken('old-token')).toBe(false);
-  });
-});
+  describe('consumeCsrfToken', () => {
+    it('returns true and rotates on valid token', () => {
+      const token = getCsrfToken();
+      const result = consumeCsrfToken(token);
+      expect(result).toBe(true);
+      // Token should have been rotated — same token is now invalid
+      expect(validateCsrfToken(token)).toBe(false);
+    });
 
-describe('consumeCsrfToken', () => {
-  it('returns true and rotates on valid token', () => {
-    const token = getCsrfToken();
-    const result = consumeCsrfToken(token);
-    expect(result).toBe(true);
-    // Token should have been rotated — same token is now invalid
-    expect(validateCsrfToken(token)).toBe(false);
+    it('returns false without rotating on invalid token', () => {
+      const token = getCsrfToken();
+      expect(consumeCsrfToken('bad-token')).toBe(false);
+      // Original token should still be valid
+      expect(validateCsrfToken(token)).toBe(true);
+    });
   });
 
-  it('returns false without rotating on invalid token', () => {
-    const token = getCsrfToken();
-    expect(consumeCsrfToken('bad-token')).toBe(false);
-    // Original token should still be valid
-    expect(validateCsrfToken(token)).toBe(true);
+  describe('clearCsrfToken', () => {
+    it('invalidates the stored token', () => {
+      const token = getCsrfToken();
+      clearCsrfToken();
+      expect(validateCsrfToken(token)).toBe(false);
+    });
   });
-});
 
-describe('clearCsrfToken', () => {
-  it('invalidates the stored token', () => {
-    const token = getCsrfToken();
-    clearCsrfToken();
-    expect(validateCsrfToken(token)).toBe(false);
+  describe('csrfHeader', () => {
+    it('returns an object with the X-CSRF-Token key', () => {
+      const header = csrfHeader();
+      expect(header).toHaveProperty('X-CSRF-Token');
+      expect(typeof header['X-CSRF-Token']).toBe('string');
+      expect(header['X-CSRF-Token'].length).toBeGreaterThan(0);
+    });
   });
-});
-
-describe('csrfHeader', () => {
-  it('returns an object with the X-CSRF-Token key', () => {
-    const header = csrfHeader();
-    expect(header).toHaveProperty('X-CSRF-Token');
-    expect(typeof header['X-CSRF-Token']).toBe('string');
-    expect(header['X-CSRF-Token'].length).toBeGreaterThan(0);
-  });
-});
+}); // end describe('CSRF')
 
 // ---------------------------------------------------------------------------
 // 5. Auth guard role logic

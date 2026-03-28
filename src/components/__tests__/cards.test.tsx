@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
-import type { HTMLAttributes, PropsWithChildren } from 'react'
+import React from 'react'
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+type MockProps = { children?: ReactNode; [key: string]: unknown }
+
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
-      return ({ children, ...props }: any) => {
+    get: (_target, _prop) => {
+      return ({ children, ...props }: MockProps) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
           if (!['initial','animate','exit','transition','whileHover','whileTap','whileInView','whileDrag','drag','dragConstraints','dragElastic','layout','layoutId','variants','custom','onAnimationComplete','style'].includes(key)) {
@@ -19,16 +22,16 @@ vi.mock('framer-motion', () => ({
       }
     }
   }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0) }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0) }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
 }))
 
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return (props: MockProps) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
@@ -55,11 +58,11 @@ vi.mock('@/lib/sharing', () => ({
 }))
 
 vi.mock('@/components/ReportDialog', () => ({
-  ReportDialog: (props: any) => <div data-testid="report-dialog" />,
+  ReportDialog: (_props: MockProps) => <div data-testid="report-dialog" />,
 }))
 
 vi.mock('@/components/ShareSheet', () => ({
-  ShareSheet: (props: any) => <div data-testid="share-sheet" />,
+  ShareSheet: (_props: MockProps) => <div data-testid="share-sheet" />,
 }))
 
 vi.mock('@/hooks/use-unit-preference', () => ({
@@ -82,7 +85,7 @@ vi.mock('@/lib/units', () => ({
 }))
 
 vi.mock('@/components/PulseScore', () => ({
-  PulseScore: ({ score }: any) => <span data-testid="pulse-score">{score}</span>,
+  PulseScore: ({ score }: MockProps) => <span data-testid="pulse-score">{score}</span>,
 }))
 
 vi.mock('@/lib/events', () => ({
@@ -132,7 +135,7 @@ vi.mock('@/hooks/use-haptics', () => ({
 }))
 
 vi.mock('@/lib/utils', () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 // ── Helper factories ──────────────────────────────────────────
@@ -190,7 +193,7 @@ function makePulse(overrides: Partial<import('@/lib/types').PulseWithUser> = {})
 // ── 1. PulseCard ──────────────────────────────────────────────
 
 describe('PulseCard', () => {
-  let PulseCard: any
+  let PulseCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/PulseCard')
@@ -244,7 +247,7 @@ describe('PulseCard', () => {
 // ── 2. VenueCard ──────────────────────────────────────────────
 
 describe('VenueCard', () => {
-  let VenueCard: any
+  let VenueCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/VenueCard')
@@ -290,7 +293,7 @@ describe('VenueCard', () => {
 // ── 3. NotificationCard ───────────────────────────────────────
 
 describe('NotificationCard', () => {
-  let NotificationCard: any
+  let NotificationCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/NotificationCard')
@@ -349,7 +352,7 @@ describe('NotificationCard', () => {
 // ── 4. EventCard ──────────────────────────────────────────────
 
 describe('EventCard', () => {
-  let EventCard: any
+  let EventCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/EventCard')
@@ -415,7 +418,7 @@ describe('EventCard', () => {
 // ── 5. RecommendationCard ─────────────────────────────────────
 
 describe('RecommendationCard', () => {
-  let RecommendationCard: any
+  let RecommendationCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/RecommendationCard')
@@ -441,7 +444,7 @@ describe('RecommendationCard', () => {
 // ── 6. NightRecapCard ─────────────────────────────────────────
 
 describe('NightRecapCard', () => {
-  let NightRecapCard: any
+  let NightRecapCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/NightRecapCard')
@@ -472,7 +475,7 @@ describe('NightRecapCard', () => {
 // ── 7. DailyDiscoveryDrop ─────────────────────────────────────
 
 describe('DailyDiscoveryDrop', () => {
-  let DailyDiscoveryDrop: any
+  let DailyDiscoveryDrop: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/DailyDiscoveryDrop')
@@ -499,7 +502,7 @@ describe('DailyDiscoveryDrop', () => {
 // ── 8. PromotedVenueCard ──────────────────────────────────────
 
 describe('PromotedVenueCard', () => {
-  let PromotedVenueCard: any
+  let PromotedVenueCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/PromotedVenueCard')
@@ -542,7 +545,7 @@ describe('PromotedVenueCard', () => {
 // ── 9. ShareableVenueCard ─────────────────────────────────────
 
 describe('ShareableVenueCard', () => {
-  let ShareableVenueCard: any
+  let ShareableVenueCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/ShareableVenueCard')
@@ -568,7 +571,7 @@ describe('ShareableVenueCard', () => {
 // ── 10. VenueMemoryCard ───────────────────────────────────────
 
 describe('VenueMemoryCard', () => {
-  let VenueMemoryCard: any
+  let VenueMemoryCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/VenueMemoryCard')
@@ -605,7 +608,7 @@ describe('VenueMemoryCard', () => {
 // ── 11. VenueNarrativeCard ────────────────────────────────────
 
 describe('VenueNarrativeCard', () => {
-  let VenueNarrativeCard: any
+  let VenueNarrativeCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/VenueNarrativeCard')
@@ -630,7 +633,7 @@ describe('VenueNarrativeCard', () => {
 // ── 12. SwipeableCard & QuickReactions ────────────────────────
 
 describe('SwipeableCard', () => {
-  let SwipeableCard: any
+  let SwipeableCard: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/SwipeableCard')
@@ -649,7 +652,7 @@ describe('SwipeableCard', () => {
 })
 
 describe('QuickReactions', () => {
-  let QuickReactions: any
+  let QuickReactions: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/SwipeableCard')
@@ -677,7 +680,7 @@ describe('QuickReactions', () => {
 // ── 13. AchievementBadge & AchievementShowcase ────────────────
 
 describe('AchievementBadge', () => {
-  let AchievementBadge: any
+  let AchievementBadge: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/AchievementBadge')
@@ -703,7 +706,7 @@ describe('AchievementBadge', () => {
 // ── 14. PredictiveSuggestion ──────────────────────────────────
 
 describe('PredictiveSuggestion', () => {
-  let PredictiveSuggestion: any
+  let PredictiveSuggestion: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/PredictiveSuggestion')
@@ -744,7 +747,7 @@ describe('PredictiveSuggestion', () => {
 // ── 15. HappeningNowBanner ────────────────────────────────────
 
 describe('HappeningNowBanner', () => {
-  let HappeningNowBanner: any
+  let HappeningNowBanner: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/HappeningNowBanner')

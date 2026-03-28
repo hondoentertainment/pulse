@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
-      return ({ children, ...props }: any) => {
+    get: (_target, _prop) => {
+      return ({ children, ...props }: MockProps) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
           if (!['initial','animate','exit','transition','whileHover','whileTap','whileInView','whileDrag','drag','dragConstraints','dragElastic','layout','layoutId','variants','custom','onAnimationComplete','style'].includes(key)) {
@@ -18,22 +19,22 @@ vi.mock('framer-motion', () => ({
       }
     }
   }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0) }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0) }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
 }))
 
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
-  get: (_target, prop) => {
+  get: (_target, _prop) => {
     if (prop === '__esModule') return true
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return (props: MockProps) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
 vi.mock('@github/spark/hooks', () => ({
-  useKV: (_key: string, defaultValue: any) => [defaultValue, vi.fn()],
+  useKV: (_key: string, defaultValue: unknown) => [defaultValue, vi.fn()],
 }))
 
 // ── Lib mocks ──────────────────────────────────────────────
@@ -48,7 +49,7 @@ vi.mock('@/lib/achievements', () => ({
 vi.mock('@/lib/events', () => ({
   getUpcomingEvents: () => [],
   getUserEvents: () => [],
-  rsvpToEvent: (e: any) => e,
+  rsvpToEvent: (e: unknown) => e,
   predictEventSurge: () => null,
   getEventsSoon: () => [],
 }))
@@ -253,12 +254,12 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  AreaChart: ({ children }: any) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: MockProps) => <div>{children}</div>,
+  AreaChart: ({ children }: MockProps) => <div>{children}</div>,
   Area: () => <div />,
-  BarChart: ({ children }: any) => <div>{children}</div>,
+  BarChart: ({ children }: MockProps) => <div>{children}</div>,
   Bar: () => <div />,
-  LineChart: ({ children }: any) => <div>{children}</div>,
+  LineChart: ({ children }: MockProps) => <div>{children}</div>,
   Line: () => <div />,
   XAxis: () => <div />,
   YAxis: () => <div />,
@@ -266,7 +267,7 @@ vi.mock('recharts', () => ({
   Tooltip: () => <div />,
   Legend: () => <div />,
   Cell: () => <div />,
-  PieChart: ({ children }: any) => <div>{children}</div>,
+  PieChart: ({ children }: MockProps) => <div>{children}</div>,
   Pie: () => <div />,
 }))
 
@@ -342,16 +343,16 @@ vi.mock('@/components/GuestCRM', () => ({
 
 // ── Helper factories ───────────────────────────────────────
 
-function makeVenue(overrides: any = {}) {
+function makeVenue(overrides: Record<string, unknown> = {}) {
   return { id: 'venue-1', name: 'Test Venue', location: { lat: 40.7, lng: -74.0, address: '123 Main St' }, city: 'New York', state: 'NY', pulseScore: 75, category: 'Bar', lastPulseAt: new Date().toISOString(), ...overrides }
 }
-function makeUser(overrides: any = {}) {
+function makeUser(overrides: Record<string, unknown> = {}) {
   return { id: 'user-1', username: 'testuser', friends: ['friend-1'], createdAt: new Date().toISOString(), ...overrides }
 }
-function makePulse(overrides: any = {}) {
+function makePulse(overrides: Record<string, unknown> = {}) {
   return { id: 'pulse-1', userId: 'user-1', venueId: 'venue-1', photos: [], energyRating: 'buzzing' as const, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now()+5400000).toISOString(), reactions: { fire: [], eyes: [], skull: [], lightning: [] }, views: 10, ...overrides }
 }
-function makePulseWithUser(overrides: any = {}) {
+function makePulseWithUser(overrides: Record<string, unknown> = {}) {
   const pulse = makePulse(overrides)
   return { ...pulse, user: makeUser(), venue: makeVenue(), ...overrides }
 }
@@ -373,6 +374,8 @@ import { DiscoverTab } from '@/components/DiscoverTab'
 import { CreatorDashboard } from '@/components/CreatorDashboard'
 import { VenueOwnerDashboard } from '@/components/VenueOwnerDashboard'
 import { VenuePlatformDashboard } from '@/components/VenuePlatformDashboard'
+type MockProps = { children?: ReactNode; [key: string]: unknown }
+
 
 // ── Tests ──────────────────────────────────────────────────
 
@@ -526,7 +529,7 @@ describe('NightPlannerPage', () => {
 
 describe('ModerationQueuePage', () => {
   const defaultProps = {
-    reports: [] as any[],
+    reports: [] as unknown[],
     onBack: vi.fn(),
     onUpdateReports: vi.fn(),
   }

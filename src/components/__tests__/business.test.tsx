@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+type MockProps = { children?: ReactNode; [key: string]: unknown }
+
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
-      return ({ children, ...props }: any) => {
+    get: (_target, _prop) => {
+      return ({ children, ...props }: MockProps) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
           if (!['initial','animate','exit','transition','whileHover','whileTap','whileInView','whileDrag','drag','dragConstraints','dragElastic','layout','layoutId','variants','custom','onAnimationComplete','style'].includes(key)) {
@@ -19,9 +22,9 @@ vi.mock('framer-motion', () => ({
       }
     }
   }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0) }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0) }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
   useAnimation: () => ({ start: () => Promise.resolve(), stop: () => {} }),
@@ -31,43 +34,43 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return (props: MockProps) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
 vi.mock('@github/spark/hooks', () => ({
-  useKV: (_key: string, defaultValue: any) => [defaultValue, vi.fn()],
+  useKV: (_key: string, defaultValue: unknown) => [defaultValue, vi.fn()],
 }))
 
 vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ children, open }: any) => open !== false ? <div data-testid="sheet">{children}</div> : null,
-  SheetContent: ({ children }: any) => <div>{children}</div>,
-  SheetHeader: ({ children }: any) => <div>{children}</div>,
-  SheetTitle: ({ children }: any) => <h2>{children}</h2>,
-  SheetDescription: ({ children }: any) => <p>{children}</p>,
-  SheetClose: ({ children }: any) => <button>{children}</button>,
-  SheetFooter: ({ children }: any) => <div>{children}</div>,
-  SheetTrigger: ({ children }: any) => <div>{children}</div>,
+  Sheet: ({ children, open }: MockProps) => open !== false ? <div data-testid="sheet">{children}</div> : null,
+  SheetContent: ({ children }: MockProps) => <div>{children}</div>,
+  SheetHeader: ({ children }: MockProps) => <div>{children}</div>,
+  SheetTitle: ({ children }: MockProps) => <h2>{children}</h2>,
+  SheetDescription: ({ children }: MockProps) => <p>{children}</p>,
+  SheetClose: ({ children }: MockProps) => <button>{children}</button>,
+  SheetFooter: ({ children }: MockProps) => <div>{children}</div>,
+  SheetTrigger: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 vi.mock('@/components/ui/drawer', () => ({
-  Drawer: ({ children, open }: any) => open !== false ? <div data-testid="drawer">{children}</div> : null,
-  DrawerContent: ({ children }: any) => <div>{children}</div>,
-  DrawerHeader: ({ children }: any) => <div>{children}</div>,
-  DrawerTitle: ({ children }: any) => <h2>{children}</h2>,
-  DrawerDescription: ({ children }: any) => <p>{children}</p>,
-  DrawerClose: ({ children }: any) => <button>{children}</button>,
-  DrawerFooter: ({ children }: any) => <div>{children}</div>,
-  DrawerTrigger: ({ children }: any) => <div>{children}</div>,
+  Drawer: ({ children, open }: MockProps) => open !== false ? <div data-testid="drawer">{children}</div> : null,
+  DrawerContent: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerHeader: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerTitle: ({ children }: MockProps) => <h2>{children}</h2>,
+  DrawerDescription: ({ children }: MockProps) => <p>{children}</p>,
+  DrawerClose: ({ children }: MockProps) => <button>{children}</button>,
+  DrawerFooter: ({ children }: MockProps) => <div>{children}</div>,
+  DrawerTrigger: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  AreaChart: ({ children }: any) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: MockProps) => <div>{children}</div>,
+  AreaChart: ({ children }: MockProps) => <div>{children}</div>,
   Area: () => null,
-  BarChart: ({ children }: any) => <div>{children}</div>,
+  BarChart: ({ children }: MockProps) => <div>{children}</div>,
   Bar: () => null,
-  LineChart: ({ children }: any) => <div>{children}</div>,
+  LineChart: ({ children }: MockProps) => <div>{children}</div>,
   Line: () => null,
   XAxis: () => null,
   YAxis: () => null,
@@ -75,7 +78,7 @@ vi.mock('recharts', () => ({
   Tooltip: () => null,
   Legend: () => null,
   Cell: () => null,
-  PieChart: ({ children }: any) => <div>{children}</div>,
+  PieChart: ({ children }: MockProps) => <div>{children}</div>,
   Pie: () => null,
 }))
 
@@ -143,7 +146,7 @@ vi.mock('@/lib/venue-platform', () => ({
   getNewGuests: () => [],
   addGuestTag: vi.fn(),
   addGuestNote: vi.fn(),
-  getStaffingRecommendation: (_vid: string, _d: Date, _p: any[]) => ({
+  getStaffingRecommendation: (_vid: string, _d: Date, _p: unknown[]) => ({
     date: new Date().toISOString(),
     hours: Array.from({ length: 17 }, (_, i) => ({
       hour: i + 10 > 23 ? i + 10 - 24 : i + 10,
@@ -198,7 +201,7 @@ vi.mock('@/hooks/use-app-state', () => ({
 }))
 
 vi.mock('react-parallax-tilt', () => ({
-  default: ({ children }: any) => <div>{children}</div>,
+  default: ({ children }: MockProps) => <div>{children}</div>,
 }))
 
 vi.mock('@/hooks/use-social-pulse', () => ({
@@ -228,7 +231,7 @@ vi.mock('@/components/VenueLivePanel', () => ({ VenueLivePanel: () => <div data-
 vi.mock('@/components/QuickReportSheet', () => ({ QuickReportSheet: () => null }))
 vi.mock('@/components/AnimatedEmptyState', () => ({ AnimatedEmptyState: () => <div>No pulses</div> }))
 vi.mock('@/components/WhoIsHereRow', () => ({ WhoIsHereRow: () => null }))
-vi.mock('@/components/ParallaxVenueHero', () => ({ ParallaxVenueHero: ({ children }: any) => <div>{children}</div> }))
+vi.mock('@/components/ParallaxVenueHero', () => ({ ParallaxVenueHero: ({ children }: MockProps) => <div>{children}</div> }))
 vi.mock('@/components/LiveCrowdIndicator', () => ({ LiveCrowdIndicator: () => null }))
 vi.mock('@/components/VenueEnergyTimeline', () => ({ VenueEnergyTimeline: () => null }))
 vi.mock('@/components/VenueQuickActions', () => ({ VenueQuickActions: () => null }))
@@ -252,19 +255,19 @@ vi.mock('@/lib/content-moderation', () => ({}))
 // ---- UI component mocks ----
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: MockProps) => <button {...props}>{children}</button>,
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  CardContent: ({ children }: any) => <div>{children}</div>,
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h3>{children}</h3>,
-  CardDescription: ({ children }: any) => <p>{children}</p>,
+  Card: ({ children, ...props }: MockProps) => <div {...props}>{children}</div>,
+  CardContent: ({ children }: MockProps) => <div>{children}</div>,
+  CardHeader: ({ children }: MockProps) => <div>{children}</div>,
+  CardTitle: ({ children }: MockProps) => <h3>{children}</h3>,
+  CardDescription: ({ children }: MockProps) => <p>{children}</p>,
 }))
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+  Badge: ({ children, ...props }: MockProps) => <span {...props}>{children}</span>,
 }))
 
 vi.mock('@/components/ui/separator', () => ({
@@ -272,44 +275,44 @@ vi.mock('@/components/ui/separator', () => ({
 }))
 
 vi.mock('@/components/ui/input', () => ({
-  Input: (props: any) => <input {...props} />,
+  Input: (props: MockProps) => <input {...props} />,
 }))
 
 vi.mock('@/components/ui/label', () => ({
-  Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
+  Label: ({ children, ...props }: MockProps) => <label {...props}>{children}</label>,
 }))
 
 vi.mock('@/components/ui/switch', () => ({
-  Switch: (props: any) => <input type="checkbox" {...props} />,
+  Switch: (props: MockProps) => <input type="checkbox" {...props} />,
 }))
 
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ children }: any) => <div>{children}</div>,
-  SelectContent: ({ children }: any) => <div>{children}</div>,
-  SelectItem: ({ children }: any) => <option>{children}</option>,
-  SelectTrigger: ({ children }: any) => <div>{children}</div>,
+  Select: ({ children }: MockProps) => <div>{children}</div>,
+  SelectContent: ({ children }: MockProps) => <div>{children}</div>,
+  SelectItem: ({ children }: MockProps) => <option>{children}</option>,
+  SelectTrigger: ({ children }: MockProps) => <div>{children}</div>,
   SelectValue: () => <span />,
 }))
 
 vi.mock('@/components/ui/avatar', () => ({
-  Avatar: ({ children }: any) => <div>{children}</div>,
-  AvatarFallback: ({ children }: any) => <span>{children}</span>,
+  Avatar: ({ children }: MockProps) => <div>{children}</div>,
+  AvatarFallback: ({ children }: MockProps) => <span>{children}</span>,
   AvatarImage: () => <img />,
 }))
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children }: any) => <div>{children}</div>,
-  TabsContent: ({ children }: any) => <div>{children}</div>,
-  TabsList: ({ children }: any) => <div>{children}</div>,
-  TabsTrigger: ({ children }: any) => <button>{children}</button>,
+  Tabs: ({ children }: MockProps) => <div>{children}</div>,
+  TabsContent: ({ children }: MockProps) => <div>{children}</div>,
+  TabsList: ({ children }: MockProps) => <div>{children}</div>,
+  TabsTrigger: ({ children }: MockProps) => <button>{children}</button>,
 }))
 
 vi.mock('@/components/ui/progress', () => ({
-  Progress: (props: any) => <div role="progressbar" aria-valuenow={props.value} />,
+  Progress: (props: MockProps) => <div role="progressbar" aria-valuenow={props.value as number} />,
 }))
 
 vi.mock('@/lib/utils', () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 vi.mock('@/lib/types', () => ({
@@ -325,13 +328,13 @@ vi.mock('@/lib/events', () => ({}))
 
 // ---- Helper factories ----
 
-function makeVenue(overrides: any = {}) {
+function makeVenue(overrides: Record<string, unknown> = {}) {
   return { id: 'venue-1', name: 'Test Venue', location: { lat: 40.7, lng: -74.0, address: '123 Main St' }, city: 'New York', state: 'NY', pulseScore: 75, category: 'Bar', lastPulseAt: new Date().toISOString(), ...overrides }
 }
-function makeUser(overrides: any = {}) {
+function makeUser(overrides: Record<string, unknown> = {}) {
   return { id: 'user-1', username: 'testuser', friends: ['friend-1'], createdAt: new Date().toISOString(), ...overrides }
 }
-function makePulse(overrides: any = {}) {
+function makePulse(overrides: Record<string, unknown> = {}) {
   return { id: 'pulse-1', userId: 'user-1', venueId: 'venue-1', photos: [], energyRating: 'buzzing' as const, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now()+5400000).toISOString(), reactions: { fire: [], eyes: [], skull: [], lightning: [] }, views: 10, ...overrides }
 }
 
@@ -641,7 +644,7 @@ describe('ToastSystem', () => {
 
   it('useToast returns toast and dismiss functions', async () => {
     const { ToastProvider, useToast } = await import('@/components/ToastSystem')
-    let hookValue: any = null
+    let hookValue: unknown = null
     function TestConsumer() {
       hookValue = useToast()
       return <span>consumer</span>
@@ -670,7 +673,7 @@ describe('AccessibilityProvider', () => {
 
   it('useAccessibility returns preferences', async () => {
     const { AccessibilityProvider, useAccessibility } = await import('@/components/AccessibilityProvider')
-    let hookValue: any = null
+    let hookValue: unknown = null
     function TestConsumer() {
       hookValue = useAccessibility()
       return <span>consumer</span>

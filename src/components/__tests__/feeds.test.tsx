@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+type MockProps = { children?: ReactNode; [key: string]: unknown }
+
 
 // ---------------------------------------------------------------------------
 // Standard mocks
@@ -9,8 +12,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
-      return ({ children, ...props }: any) => {
+    get: (_target, _prop) => {
+      return ({ children, ...props }: MockProps) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
           if (!['initial','animate','exit','transition','whileHover','whileTap','whileInView','whileDrag','drag','dragConstraints','dragElastic','layout','layoutId','variants','custom','onAnimationComplete','style','dragSnapToOrigin','onDragEnd'].includes(key)) {
@@ -23,9 +26,9 @@ vi.mock('framer-motion', () => ({
       }
     }
   }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0) }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0) }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
 }))
@@ -33,12 +36,12 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return (props: MockProps) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
 vi.mock('@github/spark/hooks', () => ({
-  useKV: (_key: string, defaultValue: any) => [defaultValue, vi.fn()],
+  useKV: (_key: string, defaultValue: unknown) => [defaultValue, vi.fn()],
 }))
 
 // ---------------------------------------------------------------------------
@@ -46,31 +49,31 @@ vi.mock('@github/spark/hooks', () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@/components/VenueCard', () => ({
-  VenueCard: ({ venue, onClick }: any) => (
+  VenueCard: ({ venue, onClick }: MockProps) => (
     <div data-testid="venue-card" onClick={onClick}>{venue.name}</div>
   ),
 }))
 
 vi.mock('@/components/PulseCard', () => ({
-  PulseCard: ({ pulse }: any) => (
+  PulseCard: ({ pulse }: MockProps) => (
     <div data-testid="pulse-card">{pulse.id}</div>
   ),
 }))
 
 vi.mock('@/components/PulseScore', () => ({
-  PulseScore: ({ score }: any) => (
+  PulseScore: ({ score }: MockProps) => (
     <div data-testid="pulse-score">{score}</div>
   ),
 }))
 
 vi.mock('@/components/NotificationCard', () => ({
-  NotificationCard: ({ notification, onClick }: any) => (
+  NotificationCard: ({ notification, onClick }: MockProps) => (
     <div data-testid="notification-card" onClick={onClick}>{notification.id}</div>
   ),
 }))
 
 vi.mock('@/components/RecommendationCard', () => ({
-  RecommendationCard: ({ recommendation, onClick }: any) => (
+  RecommendationCard: ({ recommendation, onClick }: MockProps) => (
     <div data-testid="recommendation-card" onClick={onClick}>{recommendation.venue.name}</div>
   ),
 }))
@@ -81,17 +84,17 @@ vi.mock('@/components/RecommendationCard', () => ({
 
 const mockGetTrendingSections = vi.fn().mockReturnValue([])
 vi.mock('@/lib/venue-trending', () => ({
-  getTrendingSections: (...args: any[]) => mockGetTrendingSections(...args),
+  getTrendingSections: (...args: unknown[]) => mockGetTrendingSections(...args),
 }))
 
 const mockGetRecommendations = vi.fn().mockReturnValue([])
 vi.mock('@/lib/venue-recommendations', () => ({
-  getRecommendations: (...args: any[]) => mockGetRecommendations(...args),
+  getRecommendations: (...args: unknown[]) => mockGetRecommendations(...args),
 }))
 
 vi.mock('@/lib/promoted-discoveries', () => ({
   isPromotionActive: () => false,
-  sortWithPromotions: (venues: any[]) => venues,
+  sortWithPromotions: (venues: unknown[]) => venues,
 }))
 
 vi.mock('@/lib/time-contextual-scoring', () => ({
@@ -101,31 +104,31 @@ vi.mock('@/lib/time-contextual-scoring', () => ({
 }))
 
 vi.mock('@/lib/contextual-intelligence', () => ({
-  getSmartVenueSort: (venues: any[]) => venues,
+  getSmartVenueSort: (venues: unknown[]) => venues,
 }))
 
 const mockGetPersonalizedVenues = vi.fn().mockReturnValue([])
 vi.mock('@/lib/personalization-engine', () => ({
-  getPersonalizedVenues: (...args: any[]) => mockGetPersonalizedVenues(...args),
+  getPersonalizedVenues: (...args: unknown[]) => mockGetPersonalizedVenues(...args),
   getVenueRecommendationReason: () => 'Great vibe match',
 }))
 
 const mockGroupNotifications = vi.fn().mockReturnValue([])
 vi.mock('@/lib/notification-grouping', () => ({
-  groupNotifications: (...args: any[]) => mockGroupNotifications(...args),
+  groupNotifications: (...args: unknown[]) => mockGroupNotifications(...args),
 }))
 
 const mockGenerateActivityDigest = vi.fn().mockReturnValue({ entries: [] })
 vi.mock('@/lib/social-graph', () => ({
-  generateActivityDigest: (...args: any[]) => mockGenerateActivityDigest(...args),
-  formatSuggestionReason: (reason: any) =>
+  generateActivityDigest: (...args: unknown[]) => mockGenerateActivityDigest(...args),
+  formatSuggestionReason: (reason: unknown) =>
     reason.type === 'mutual_friends'
       ? `${reason.count} mutual friends`
       : 'Seen at same venues',
 }))
 
 vi.mock('@/lib/venue-challenges', () => ({
-  getActiveChallenges: (c: any[]) => c,
+  getActiveChallenges: (c: unknown[]) => c,
   getUserActiveChallenges: () => [],
   getChallengeTimeRemaining: () => ({ days: 1, hours: 5, expired: false }),
 }))
@@ -139,8 +142,8 @@ vi.mock('@/lib/performance-engine', () => ({
 }))
 
 vi.mock('@/lib/stories', () => ({
-  getStoryRings: (stories: any[], currentUserId: string) =>
-    stories.map((s: any) => ({
+  getStoryRings: (stories: unknown[], currentUserId: string) =>
+    stories.map((s: Record<string, unknown>) => ({
       userId: s.userId,
       username: s.username,
       profilePhoto: undefined,
@@ -170,7 +173,7 @@ vi.mock('@/lib/social-coordination', () => ({}))
 // Helper factories
 // ---------------------------------------------------------------------------
 
-function makeVenue(overrides: any = {}) {
+function makeVenue(overrides: Record<string, unknown> = {}) {
   return {
     id: 'venue-1',
     name: 'Test Venue',
@@ -184,7 +187,7 @@ function makeVenue(overrides: any = {}) {
   }
 }
 
-function makeUser(overrides: any = {}) {
+function makeUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user-1',
     username: 'testuser',
@@ -194,7 +197,7 @@ function makeUser(overrides: any = {}) {
   }
 }
 
-function makePulse(overrides: any = {}) {
+function makePulse(overrides: Record<string, unknown> = {}) {
   return {
     id: 'pulse-1',
     userId: 'user-1',
@@ -209,7 +212,7 @@ function makePulse(overrides: any = {}) {
   }
 }
 
-function makePulseWithUser(overrides: any = {}) {
+function _makePulseWithUser(overrides: Record<string, unknown> = {}) {
   const pulse = makePulse(overrides)
   return { ...pulse, user: makeUser(), venue: makeVenue(), ...overrides }
 }
@@ -252,7 +255,7 @@ describe('TrendingTab', () => {
     // They are already mocked above for TrendingSections, MySpotsFeed, etc.
     // But TrendingTab imports them directly, so we mock the ones it uses:
     vi.mock('@/components/TrendingSections', () => ({
-      TrendingSections: ({ sections }: any) => (
+      TrendingSections: ({ sections }: MockProps) => (
         <div data-testid="trending-sections">{sections.length} sections</div>
       ),
     }))
@@ -260,7 +263,7 @@ describe('TrendingTab', () => {
       MySpotsFeed: () => <div data-testid="my-spots-feed">My Spots Feed</div>,
     }))
     vi.mock('@/components/RecommendationsSection', () => ({
-      RecommendationsSection: ({ recommendations }: any) => (
+      RecommendationsSection: ({ recommendations }: MockProps) => (
         <div data-testid="recommendations-section">{recommendations.length} recs</div>
       ),
     }))
@@ -268,7 +271,7 @@ describe('TrendingTab', () => {
       LiveActivityFeed: () => <div data-testid="live-activity-feed">Live Activity</div>,
     }))
     vi.mock('@/components/Favorites', () => ({
-      Favorites: ({ favoriteVenues }: any) => (
+      Favorites: ({ favoriteVenues }: MockProps) => (
         <div data-testid="favorites">{favoriteVenues.length} favorites</div>
       ),
     }))
@@ -504,7 +507,7 @@ describe('ChallengeFeed', () => {
 
     render(
       <ChallengeFeed
-        challenges={challenges as any}
+        challenges={challenges as Parameters<typeof ChallengesTab>[0]["challenges"]}
         venues={[makeVenue()]}
         currentUserId="user-1"
         onBack={vi.fn()}
@@ -532,7 +535,7 @@ describe('RecommendationsSection', () => {
 
     render(
       <RecommendationsSection
-        recommendations={recommendations as any}
+        recommendations={recommendations as Parameters<typeof RecommendationTab>[0]["recommendations"]}
         onVenueClick={vi.fn()}
       />
     )
@@ -625,7 +628,7 @@ describe('StoryRing', () => {
     ]
 
     render(
-      <StoryRing stories={stories as any} currentUserId="me" onStoryClick={vi.fn()} />
+      <StoryRing stories={stories as Parameters<typeof StoryRing>[0]["stories"]} currentUserId="me" onStoryClick={vi.fn()} />
     )
 
     expect(screen.getByText('alice')).toBeDefined()
@@ -663,7 +666,7 @@ describe('StoryViewer', () => {
 
     render(
       <StoryViewer
-        stories={stories as any}
+        stories={stories as Parameters<typeof StoryRing>[0]["stories"]}
         initialIndex={0}
         currentUserId="me"
         onClose={onClose}
@@ -751,7 +754,7 @@ describe('FriendSuggestions', () => {
     const onAddFriend = vi.fn()
 
     render(
-      <FriendSuggestions suggestions={suggestions as any} onAddFriend={onAddFriend} />
+      <FriendSuggestions suggestions={suggestions as Parameters<typeof FriendSuggestions>[0]["suggestions"]} onAddFriend={onAddFriend} />
     )
 
     expect(screen.getByText('charlie')).toBeDefined()

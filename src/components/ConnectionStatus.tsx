@@ -41,7 +41,7 @@ export function ConnectionStatus({ realtimeStatus }: ConnectionStatusProps) {
   )
   const [pendingCount, setPendingCount] = useState(() => getPendingCountSync())
   const [banner, setBanner] = useState<BannerState>('hidden')
-  const autoDismissRef = useRef<ReturnType<typeof setTimeout>>()
+  const autoDismissRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // ── Network listeners ────────────────────────────────────────────────────
 

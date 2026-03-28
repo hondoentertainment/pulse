@@ -25,11 +25,10 @@ if (typeof window !== 'undefined') {
         environment: import.meta.env.MODE,
         release: (import.meta.env.VITE_APP_VERSION as string | undefined) || '0.0.0',
         integrations: [
-          Sentry.browserTracingIntegration({
-            tracePropagationTargets: ['localhost', /^\//],
-          }),
+          Sentry.browserTracingIntegration(),
           Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
         ],
+        tracePropagationTargets: ['localhost', /^\//],
         // Full traces in dev; 10% in prod to control costs
         tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
         replaysSessionSampleRate: 0.1,

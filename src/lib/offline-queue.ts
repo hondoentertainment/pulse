@@ -124,6 +124,8 @@ export async function getLastQueueSyncStatus(): Promise<QueueSyncStatus> {
 async function saveQueueSyncStatus(status: QueueSyncStatus): Promise<void> {
   try {
     await syncStatusStore.setItem(SYNC_STATUS_KEY, status)
+    // Mirror to localStorage so sync shims can read it immediately
+    await persistSyncStatusToCache(status)
   } catch {
     // Non-fatal
   }
@@ -462,6 +464,61 @@ export async function clearDeadLetterQueue(): Promise<void> {
     await deadLetterStore.clear()
   } catch { /* storage error — ignore gracefully */ }
 }
+
+// ── Sync compatibility shims ───────────────────────────────────────────────
+// These synchronous functions read from a localStorage cache maintained by
+// async operations above. They exist for callers that cannot await (e.g.
+// React state initialisers, legacy tests).
+
+const SYNC_STATUS_LS_KEY = 'pulse_queue_sync_status'
+const SYNC_RETRY_LS_KEY = 'pulse_queue_retry_info'
+
+/**
+ * Synchronous alias for pending count (reads from localStorage cache).
+ * @deprecated Prefer getPendingCountSync directly.
+ */
+export function getPendingCount(): number {
+  return getPendingCountSync()
+}
+
+/**
+ * Synchronous snapshot of the last queue sync status.
+ * Async writes keep this cache fresh; reads are always instant.
+ */
+export function getLastQueueSyncStatusSync(): QueueSyncStatus {
+  try {
+    const raw = localStorage.getItem(SYNC_STATUS_LS_KEY)
+    if (!raw) return { lastSyncedCount: 0, lastFailedCount: 0 }
+    return JSON.parse(raw) as QueueSyncStatus
+  } catch {
+    return { lastSyncedCount: 0, lastFailedCount: 0 }
+  }
+}
+
+/**
+ * Synchronous snapshot of queue retry info.
+ * Async writes keep this cache fresh; reads are always instant.
+ */
+export function getQueueRetryInfoSync(): { failedCount: number; nextRetryInMs: number | null } {
+  try {
+    const raw = localStorage.getItem(SYNC_RETRY_LS_KEY)
+    if (!raw) return { failedCount: 0, nextRetryInMs: null }
+    return JSON.parse(raw) as { failedCount: number; nextRetryInMs: number | null }
+  } catch {
+    return { failedCount: 0, nextRetryInMs: null }
+  }
+}
+
+// Keep the async versions but also persist results to LS cache for sync access
+async function persistSyncStatusToCache(status: QueueSyncStatus): Promise<void> {
+  try {
+    localStorage.setItem(SYNC_STATUS_LS_KEY, JSON.stringify(status))
+  } catch { /* localStorage may be full or unavailable */ }
+}
+
+// Exported for testing — allow direct manipulation of queue item states.
+// In production code prefer processQueue which handles these internally.
+export { markSyncing, markFailed }
 
 // ── Internal helpers ───────────────────────────────────────────────────────
 

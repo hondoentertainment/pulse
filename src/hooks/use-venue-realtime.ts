@@ -71,7 +71,7 @@ export function useVenueRealtime(
   const [lastPulseAt, setLastPulseAt] = useState<string | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttemptsRef = useRef(0)
   const isMountedRef = useRef(true)
 
@@ -227,9 +227,9 @@ export function useVenueRealtime(
     // ── Presence: track who is currently at this venue ───────────────────
     channel.on('presence', { event: 'sync' }, () => {
       if (!isMountedRef.current) return
-      const state = channel.presenceState<PresencePayload>()
+      const state = channel.presenceState()
       const users: PresenceUser[] = Object.values(state).flatMap(
-        (presences) => presences.map(p => ({
+        (presences) => (presences as unknown as PresencePayload[]).map(p => ({
           userId: p.userId,
           username: p.username,
           joinedAt: p.joinedAt,
@@ -240,7 +240,7 @@ export function useVenueRealtime(
 
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
       if (!isMountedRef.current) return
-      const joined = (newPresences as PresencePayload[]).map(p => ({
+      const joined = (newPresences as unknown as PresencePayload[]).map(p => ({
         userId: p.userId,
         username: p.username,
         joinedAt: p.joinedAt,
@@ -253,7 +253,7 @@ export function useVenueRealtime(
 
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       if (!isMountedRef.current) return
-      const leftIds = new Set((leftPresences as PresencePayload[]).map(p => p.userId))
+      const leftIds = new Set((leftPresences as unknown as PresencePayload[]).map(p => p.userId))
       setPresenceUsers(prev => prev.filter(u => !leftIds.has(u.userId)))
     })
 

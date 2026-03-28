@@ -14,7 +14,7 @@ import {
 } from '@phosphor-icons/react'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
-import { getPendingCountSync as getPendingCount, clearQueue, getLastQueueSyncStatus, getQueueRetryInfo } from '@/lib/offline-queue'
+import { getPendingCountSync as getPendingCount, clearQueue, getLastQueueSyncStatusSync as getLastQueueSyncStatus, getQueueRetryInfoSync as getQueueRetryInfo } from '@/lib/offline-queue'
 import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
 import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefersReducedMotion } from '@/lib/accessibility'
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
@@ -95,7 +95,7 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
   }
 
   const handleClearOfflineQueue = () => {
-    clearQueue()
+    clearQueue().catch(() => {})
     setOfflineCount(0)
     setQueueRetryInfo(getQueueRetryInfo())
     toast.success('Offline queue cleared')

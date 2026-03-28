@@ -101,7 +101,7 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
 export function useRealtimeSubscription(enabled = true) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttemptsRef = useRef(0)
   const isMountedRef = useRef(true)
 
@@ -275,6 +275,7 @@ export function useRealtimeSubscription(enabled = true) {
       isMountedRef.current = false
       teardown()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]) // intentionally omit connect/teardown to avoid re-subscribing on every render
 
   return { status, reconnect }

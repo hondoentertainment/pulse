@@ -37,10 +37,24 @@ interface StoredCsrfToken {
 // Storage helpers — fail silently if sessionStorage is unavailable
 // ---------------------------------------------------------------------------
 
-function readStored(): StoredCsrfToken | null {
-  if (typeof window === 'undefined') return null;
+/** Resolve sessionStorage from globalThis so the module works in both browser
+ *  and Node/Vitest environments without relying on the bare `window` global. */
+function getSessionStorage(): Storage | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    // Browser: globalThis.window.sessionStorage
+    // Vitest node env with vi.stubGlobal('window', ...): globalThis.window.sessionStorage
+    const ss = (globalThis as Record<string, unknown>)['window'] as { sessionStorage?: Storage } | undefined;
+    return ss?.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readStored(): StoredCsrfToken | null {
+  const ss = getSessionStorage();
+  if (!ss) return null;
+  try {
+    const raw = ss.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as StoredCsrfToken;
   } catch {
@@ -49,18 +63,20 @@ function readStored(): StoredCsrfToken | null {
 }
 
 function writeStored(token: StoredCsrfToken): void {
-  if (typeof window === 'undefined') return;
+  const ss = getSessionStorage();
+  if (!ss) return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(token));
+    ss.setItem(STORAGE_KEY, JSON.stringify(token));
   } catch {
     /* quota exceeded — degrade gracefully */
   }
 }
 
 function clearStored(): void {
-  if (typeof window === 'undefined') return;
+  const ss = getSessionStorage();
+  if (!ss) return;
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    ss.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -76,12 +92,13 @@ function clearStored(): void {
  * only in environments that lack the Web Crypto API (e.g. legacy test runners).
  */
 function generateRawToken(): string {
-  if (
-    typeof window !== 'undefined' &&
-    window.crypto?.getRandomValues
-  ) {
+  // Browser or Vitest (stubbed window.crypto) — preferred path
+  const windowLike = (globalThis as Record<string, unknown>)['window'] as
+    | { crypto?: { getRandomValues?: (b: Uint8Array) => Uint8Array } }
+    | undefined;
+  if (windowLike?.crypto?.getRandomValues) {
     const bytes = new Uint8Array(TOKEN_BYTE_LENGTH);
-    window.crypto.getRandomValues(bytes);
+    windowLike.crypto.getRandomValues(bytes);
     return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   }
 

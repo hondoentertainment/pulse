@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
+type MockProps = { children?: React.ReactNode; [key: string]: unknown }
+
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -10,9 +12,9 @@ import React from 'react'
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
     get: (_target, prop) => {
-      return ({ children, ...props }: any) => {
+      return ({ children, ...props }: MockProps) => {
         const tag = typeof prop === 'string' ? prop : 'div'
-        const Component = tag as any
+        const Component = tag as React.ElementType
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
           if (typeof value !== 'function' || key.startsWith('on')) {
@@ -25,9 +27,9 @@ vi.mock('framer-motion', () => ({
       }
     }
   }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: MockProps) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0), set: () => {}, on: () => () => {} }),
+  useTransform: (_: unknown, fn: ((v: number) => number) | undefined) => ({ get: () => (fn ? fn(0) : 0), set: () => {}, on: () => () => {} }),
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
   useScroll: () => ({ scrollY: { get: () => 0, set: () => {} }, scrollYProgress: { get: () => 0, set: () => {} } }),
@@ -36,22 +38,22 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
-    return ({ size, ...props }: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return ({ size: _size, ...props }: MockProps) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
 vi.mock('@/lib/utils', () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: MockProps) => <button {...props}>{children}</button>,
 }))
 
 vi.mock('@/components/ui/avatar', () => ({
-  Avatar: ({ children, className }: any) => <div className={className}>{children}</div>,
-  AvatarImage: ({ src }: any) => <img src={src} alt="" />,
-  AvatarFallback: ({ children, className }: any) => <span className={className}>{children}</span>,
+  Avatar: ({ children, className }: MockProps) => <div className={className}>{children}</div>,
+  AvatarImage: ({ src }: MockProps) => <img src={src} alt="" />,
+  AvatarFallback: ({ children, className }: MockProps) => <span className={className}>{children}</span>,
 }))
 
 vi.mock('@/lib/pulse-engine', () => ({
@@ -116,7 +118,7 @@ vi.mock('@/lib/haptics', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-const makeVenue = (overrides: Record<string, any> = {}) => ({
+const makeVenue = (overrides: Record<string, unknown> = {}) => ({
   id: 'v1',
   name: 'Test Venue',
   location: { lat: 40.7, lng: -74.0, address: '123 Main St' },
@@ -130,7 +132,7 @@ const makeVenue = (overrides: Record<string, any> = {}) => ({
 // ---------------------------------------------------------------------------
 
 describe('EmptyState', () => {
-  let EmptyState: any
+  let EmptyState: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/EmptyState')
     EmptyState = mod.EmptyState
@@ -171,7 +173,7 @@ describe('EmptyState', () => {
 // ---------------------------------------------------------------------------
 
 describe('AnimatedEmptyState', () => {
-  let AnimatedEmptyState: any
+  let AnimatedEmptyState: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/AnimatedEmptyState')
     AnimatedEmptyState = mod.AnimatedEmptyState
@@ -201,7 +203,7 @@ describe('AnimatedEmptyState', () => {
 // ---------------------------------------------------------------------------
 
 describe('PulseScore', () => {
-  let PulseScore: any
+  let PulseScore: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/PulseScore')
     PulseScore = mod.PulseScore
@@ -223,8 +225,8 @@ describe('PulseScore', () => {
 // ---------------------------------------------------------------------------
 
 describe('StreakBadge', () => {
-  let StreakBadge: any
-  let FirstPulseCelebration: any
+  let StreakBadge: React.ComponentType<Record<string, unknown>>
+  let FirstPulseCelebration: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/StreakBadge')
     StreakBadge = mod.StreakBadge
@@ -253,7 +255,7 @@ describe('StreakBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('GPSIndicator', () => {
-  let GPSIndicator: any
+  let GPSIndicator: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/GPSIndicator')
     GPSIndicator = mod.GPSIndicator
@@ -280,7 +282,7 @@ describe('GPSIndicator', () => {
 // ---------------------------------------------------------------------------
 
 describe('OfflineBanner', () => {
-  let OfflineBanner: any
+  let OfflineBanner: React.ComponentType<Record<string, unknown>>
   const originalOnLine = navigator.onLine
 
   beforeEach(async () => {
@@ -304,7 +306,7 @@ describe('OfflineBanner', () => {
 // ---------------------------------------------------------------------------
 
 describe('TimeContextualLabel', () => {
-  let TimeContextualLabel: any
+  let TimeContextualLabel: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/TimeContextualLabel')
     TimeContextualLabel = mod.TimeContextualLabel
@@ -321,7 +323,7 @@ describe('TimeContextualLabel', () => {
 // ---------------------------------------------------------------------------
 
 describe('WeatherAwareTag', () => {
-  let WeatherAwareTag: any
+  let WeatherAwareTag: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/WeatherAwareTag')
     WeatherAwareTag = mod.WeatherAwareTag
@@ -339,7 +341,7 @@ describe('WeatherAwareTag', () => {
 // ---------------------------------------------------------------------------
 
 describe('SocialProofBadge', () => {
-  let SocialProofBadge: any
+  let SocialProofBadge: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/SocialProofBadge')
     SocialProofBadge = mod.SocialProofBadge
@@ -363,7 +365,7 @@ describe('SocialProofBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('CreatorProfileBadge', () => {
-  let CreatorProfileBadge: any
+  let CreatorProfileBadge: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/CreatorProfileBadge')
     CreatorProfileBadge = mod.CreatorProfileBadge
@@ -389,10 +391,10 @@ describe('CreatorProfileBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReducedMotionWrapper', () => {
-  let ReducedMotionWrapper: any
-  let useReducedMotion: any
-  let getTransition: any
-  let getMotionProps: any
+  let ReducedMotionWrapper: React.ComponentType<Record<string, unknown>>
+  let _useReducedMotion: (() => boolean) | undefined
+  let getTransition: ((r: boolean, c?: unknown) => unknown) | undefined
+  let getMotionProps: ((r: boolean, p: unknown) => unknown) | undefined
 
   beforeEach(async () => {
     const mod = await import('@/components/ReducedMotionWrapper')
@@ -436,7 +438,7 @@ describe('ReducedMotionWrapper', () => {
 // ---------------------------------------------------------------------------
 
 describe('ProgressiveImage', () => {
-  let ProgressiveImage: any
+  let ProgressiveImage: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/ProgressiveImage')
     ProgressiveImage = mod.ProgressiveImage
@@ -454,7 +456,7 @@ describe('ProgressiveImage', () => {
 // ---------------------------------------------------------------------------
 
 describe('FloatingReactions', () => {
-  let FloatingReactions: any
+  let FloatingReactions: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/FloatingReactions')
     FloatingReactions = mod.default
@@ -476,8 +478,8 @@ describe('FloatingReactions', () => {
 // ---------------------------------------------------------------------------
 
 describe('MicroInteractions', () => {
-  let SpringButton: any
-  let AnimatedCounter: any
+  let SpringButton: React.ComponentType<Record<string, unknown>>
+  let AnimatedCounter: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/MicroInteractions')
@@ -501,11 +503,11 @@ describe('MicroInteractions', () => {
 // ---------------------------------------------------------------------------
 
 describe('PageTransition', () => {
-  let PageTransition: any
-  let TabTransition: any
-  let SharedElement: any
-  let StaggeredList: any
-  let OverlayTransition: any
+  let PageTransition: React.ComponentType<Record<string, unknown>>
+  let TabTransition: React.ComponentType<Record<string, unknown>>
+  let _SharedElement: React.ComponentType<Record<string, unknown>> | undefined
+  let StaggeredList: React.ComponentType<Record<string, unknown>>
+  let OverlayTransition: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/PageTransition')
@@ -543,7 +545,7 @@ describe('PageTransition', () => {
 // ---------------------------------------------------------------------------
 
 describe('DirectionalPageTransition', () => {
-  let DirectionalPageTransition: any
+  let DirectionalPageTransition: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/DirectionalPageTransition')
     DirectionalPageTransition = mod.DirectionalPageTransition
@@ -567,7 +569,7 @@ describe('DirectionalPageTransition', () => {
 // ---------------------------------------------------------------------------
 
 describe('ScrollAwareHeader', () => {
-  let ScrollAwareHeader: any
+  let ScrollAwareHeader: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/ScrollAwareHeader')
     ScrollAwareHeader = mod.ScrollAwareHeader
@@ -589,7 +591,7 @@ describe('ScrollAwareHeader', () => {
 // ---------------------------------------------------------------------------
 
 describe('MilestoneAnimation', () => {
-  let MilestoneAnimation: any
+  let MilestoneAnimation: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     vi.useFakeTimers()
     const mod = await import('@/components/MilestoneAnimation')
@@ -617,7 +619,7 @@ describe('MilestoneAnimation', () => {
 // ---------------------------------------------------------------------------
 
 describe('AudioVibePreview', () => {
-  let AudioVibePreview: any
+  let AudioVibePreview: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/AudioVibePreview')
     AudioVibePreview = mod.AudioVibePreview
@@ -644,7 +646,7 @@ describe('AudioVibePreview', () => {
 // ---------------------------------------------------------------------------
 
 describe('LiveCrowdIndicator', () => {
-  let LiveCrowdIndicator: any
+  let LiveCrowdIndicator: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/LiveCrowdIndicator')
     LiveCrowdIndicator = mod.LiveCrowdIndicator
@@ -668,7 +670,7 @@ describe('LiveCrowdIndicator', () => {
 // ---------------------------------------------------------------------------
 
 describe('VibeMatchMeter', () => {
-  let VibeMatchMeter: any
+  let VibeMatchMeter: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/VibeMatchMeter')
     VibeMatchMeter = mod.VibeMatchMeter
@@ -705,7 +707,7 @@ describe('VibeMatchMeter', () => {
 // ---------------------------------------------------------------------------
 
 describe('MoodSelector', () => {
-  let MoodSelector: any
+  let MoodSelector: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/MoodSelector')
     MoodSelector = mod.default
@@ -730,7 +732,7 @@ describe('MoodSelector', () => {
 // ---------------------------------------------------------------------------
 
 describe('EnergySlider', () => {
-  let EnergySlider: any
+  let EnergySlider: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/EnergySlider')
     EnergySlider = mod.EnergySlider
@@ -755,10 +757,10 @@ describe('EnergySlider', () => {
 // ---------------------------------------------------------------------------
 
 describe('SkeletonCard', () => {
-  let VenueCardSkeleton: any
-  let PulseCardSkeleton: any
-  let NotificationCardSkeleton: any
-  let SkeletonList: any
+  let VenueCardSkeleton: React.ComponentType<Record<string, unknown>>
+  let PulseCardSkeleton: React.ComponentType<Record<string, unknown>>
+  let NotificationCardSkeleton: React.ComponentType<Record<string, unknown>>
+  let SkeletonList: React.ComponentType<Record<string, unknown>>
 
   beforeEach(async () => {
     const mod = await import('@/components/SkeletonCard')
@@ -795,7 +797,7 @@ describe('SkeletonCard', () => {
 // ---------------------------------------------------------------------------
 
 describe('SkeletonCascade', () => {
-  let SkeletonCascade: any
+  let SkeletonCascade: React.ComponentType<Record<string, unknown>>
   beforeEach(async () => {
     const mod = await import('@/components/SkeletonCascade')
     SkeletonCascade = mod.SkeletonCascade

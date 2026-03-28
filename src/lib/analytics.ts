@@ -191,7 +191,7 @@ function flushBatch(): void {
   for (const event of batch) {
     try {
       const { type, timestamp, ...properties } = event
-      vercelTrack(type, properties as Record<string, unknown>)
+      vercelTrack(type, properties as Record<string, string | number | boolean | null>)
     } catch {
       // Vercel Analytics is best-effort; never crash on tracking failure
     }

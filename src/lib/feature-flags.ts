@@ -10,7 +10,7 @@
  * - React component: <FeatureGate flag="crews">...</FeatureGate>
  */
 
-import { type ReactNode, createElement, useEffect, useState } from 'react'
+import { type ReactNode, type ReactElement, createElement, useEffect, useState } from 'react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -260,11 +260,11 @@ interface FeatureGateProps {
  *   <CrewPage />
  * </FeatureGate>
  */
-export function FeatureGate({ flag, children, fallback = null }: FeatureGateProps): JSX.Element {
+export function FeatureGate({ flag, children, fallback = null }: FeatureGateProps): ReactElement {
   const enabled = useFeatureFlag(flag)
   return createElement(
     'span',
     { style: { display: 'contents' } },
     enabled ? children : fallback
-  ) as JSX.Element
+  ) as ReactElement
 }
