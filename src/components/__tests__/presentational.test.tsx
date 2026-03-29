@@ -116,7 +116,6 @@ vi.mock('@/lib/haptics', () => ({
 // Static imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { EmptyState } from '@/components/EmptyState'
 import { AnimatedEmptyState } from '@/components/AnimatedEmptyState'
 import { PulseScore } from '@/components/PulseScore'
 import { StreakBadge, FirstPulseCelebration } from '@/components/StreakBadge'
@@ -130,8 +129,7 @@ import { ReducedMotionWrapper, useReducedMotion, getTransition, getMotionProps }
 import { ProgressiveImage } from '@/components/ProgressiveImage'
 import FloatingReactions from '@/components/FloatingReactions'
 import { SpringButton, AnimatedCounter } from '@/components/MicroInteractions'
-import { PageTransition, TabTransition, SharedElement, StaggeredList, OverlayTransition } from '@/components/PageTransition'
-import { DirectionalPageTransition } from '@/components/DirectionalPageTransition'
+import { PageTransition, TabTransition, SharedElement, StaggeredList, OverlayTransition, DirectionalPageTransition } from '@/components/PageTransition'
 import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
 import { MilestoneAnimation } from '@/components/MilestoneAnimation'
 import { AudioVibePreview } from '@/components/AudioVibePreview'
@@ -139,7 +137,6 @@ import { LiveCrowdIndicator } from '@/components/LiveCrowdIndicator'
 import { VibeMatchMeter } from '@/components/VibeMatchMeter'
 import MoodSelector from '@/components/MoodSelector'
 import { EnergySlider } from '@/components/EnergySlider'
-import { VenueCardSkeleton, PulseCardSkeleton, NotificationCardSkeleton, SkeletonList } from '@/components/SkeletonCard'
 import { SkeletonCascade } from '@/components/SkeletonCascade'
 
 // ---------------------------------------------------------------------------
@@ -156,42 +153,7 @@ const makeVenue = (overrides: Record<string, any> = {}) => ({
 })
 
 // ---------------------------------------------------------------------------
-// 1. EmptyState
-// ---------------------------------------------------------------------------
-
-describe('EmptyState', () => {
-  it.each([
-    ['no-pulses', 'No pulses yet'],
-    ['no-notifications', 'All caught up!'],
-    ['no-favorites', 'No favorites yet'],
-    ['no-nearby', 'No venues nearby'],
-    ['offline', "You're offline"],
-  ] as const)('renders title for variant "%s"', (variant, expectedTitle) => {
-    render(<EmptyState variant={variant} />)
-    expect(screen.getByText(expectedTitle)).toBeDefined()
-  })
-
-  it('shows CTA button when onAction provided for "no-pulses"', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-pulses" onAction={onAction} />)
-    expect(screen.getByText('Drop a Pulse')).toBeDefined()
-  })
-
-  it('shows CTA button when onAction provided for "no-favorites"', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-favorites" onAction={onAction} />)
-    expect(screen.getByText('Explore Venues')).toBeDefined()
-  })
-
-  it('does not show CTA for variant without ctaText', () => {
-    const onAction = vi.fn()
-    render(<EmptyState variant="no-notifications" onAction={onAction} />)
-    expect(screen.queryByText('Drop a Pulse')).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// 2. AnimatedEmptyState
+// 1. AnimatedEmptyState (formerly EmptyState, now consolidated)
 // ---------------------------------------------------------------------------
 
 describe('AnimatedEmptyState', () => {
@@ -625,34 +587,7 @@ describe('EnergySlider', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 24. SkeletonCard
-// ---------------------------------------------------------------------------
-
-describe('SkeletonCard', () => {
-  it('VenueCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<VenueCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('PulseCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<PulseCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('NotificationCardSkeleton renders with animate-pulse', () => {
-    const { container } = render(<NotificationCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
-
-  it('SkeletonList renders multiple skeletons', () => {
-    const { container } = render(<SkeletonList count={3} type="venue" />)
-    const pulseElements = container.querySelectorAll('.animate-pulse')
-    expect(pulseElements.length).toBe(3)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// 25. SkeletonCascade
+// 24. SkeletonCascade (SkeletonCard was consolidated)
 // ---------------------------------------------------------------------------
 
 describe('SkeletonCascade', () => {
