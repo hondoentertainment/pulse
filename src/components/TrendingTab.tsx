@@ -103,13 +103,13 @@ export function TrendingTab({
   return (
     <>
       <div className="max-w-2xl mx-auto px-4 pt-4">
-        <div className="flex gap-1 p-1 bg-card/50 rounded-lg border border-border/50">
+        <div className="flex gap-1 p-1 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-lg">
           <button
             onClick={() => onSubTabChange('trending')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all",
+              "flex-1 py-2 px-4 rounded-full text-sm font-semibold transition-all",
               trendingSubTab === 'trending'
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -118,15 +118,15 @@ export function TrendingTab({
           <button
             onClick={() => onSubTabChange('my-spots')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all relative",
+              "flex-1 py-2 px-4 rounded-full text-sm font-semibold transition-all relative",
               trendingSubTab === 'my-spots'
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             My Spots
             {followedVenues.length > 0 && trendingSubTab !== 'my-spots' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E1306C] text-white rounded-full flex items-center justify-center text-[10px] font-bold">
                 {followedVenues.length}
               </span>
             )}
@@ -140,7 +140,7 @@ export function TrendingTab({
           <Button
             variant="outline"
             size="sm"
-            className="w-full border-primary/20 text-primary hover:bg-primary/10"
+            className="w-full border-[#833AB4]/20 text-[#833AB4] hover:bg-[#833AB4]/10"
             onClick={() => {
               onCompareVenues(topVenueIdsForCompare)
             }}
@@ -165,8 +165,8 @@ export function TrendingTab({
             <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Star size={20} weight="fill" className="text-accent" />
-                  <h2 className="text-xl font-bold">Favorites</h2>
+                  <Star size={20} weight="fill" className="text-[#FCAF45]" />
+                  <h2 className="text-xl font-semibold">Favorites</h2>
                 </div>
                 <Favorites
                   favoriteVenues={favoriteVenues}
@@ -228,13 +228,13 @@ export function TrendingTab({
                       onPromotionClick?.(promo.id)
                       onVenueClick(venue)
                     }}
-                    className="w-full p-3 bg-card rounded-xl border border-yellow-500/20 flex items-center gap-3 hover:border-yellow-500/40 transition-colors text-left"
+                    className="w-full p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 flex items-center gap-3 hover:border-[#FCAF45]/40 transition-colors text-left shadow-lg"
                   >
                     <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold truncate">{venue.name}</p>
-                        <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500 flex-shrink-0">
+                        <Badge variant="outline" className="text-[10px] border-[#FCAF45]/40 text-[#FCAF45] flex-shrink-0">
                           <Megaphone size={8} className="mr-0.5" />
                           Sponsored
                         </Badge>

@@ -110,7 +110,7 @@ export function VenuePage({
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
             <button
@@ -120,9 +120,9 @@ export function VenuePage({
               <ArrowLeft size={24} />
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">{venue.name}</h1>
+              <h1 className="text-2xl font-semibold">{venue.name}</h1>
               {venue.pulseScore >= 25 && getContextualLabel(venue) && (
-                <p className="text-sm text-accent font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
+                <p className="text-sm text-[#E1306C] font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 {venue.category && (
@@ -149,7 +149,7 @@ export function VenuePage({
                   <HeartStraight
                     size={24}
                     weight={isFollowed ? "fill" : "regular"}
-                    className={isFollowed ? "text-primary" : "text-muted-foreground"}
+                    className={isFollowed ? "text-[#E1306C]" : "text-muted-foreground"}
                   />
                 </button>
               )}
@@ -167,7 +167,7 @@ export function VenuePage({
                   <HeartStraight
                     size={24}
                     weight={isFollowed ? 'fill' : 'regular'}
-                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+                    className={isFollowed ? 'text-[#E1306C]' : 'text-muted-foreground'}
                   />
                 </button>
               )}
@@ -178,7 +178,7 @@ export function VenuePage({
                 <Star
                   size={24}
                   weight={isFavorite ? 'fill' : 'regular'}
-                  className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
+                  className={isFavorite ? 'text-[#FCAF45]' : 'text-muted-foreground'}
                 />
               </button>
               <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
@@ -189,18 +189,18 @@ export function VenuePage({
               <div className="flex items-center gap-1.5">
                 <MapPin size={12} weight="fill" className={cn(
                   "transition-colors",
-                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
+                  isTracking ? "text-[#E1306C] animate-pulse" : "text-muted-foreground"
                 )} />
                 <span>{locationName}</span>
                 {hasRealtimeLocation && (
-                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
+                  <span className="text-[10px] bg-[#E1306C]/20 text-[#E1306C] px-1.5 py-0.5 rounded-md uppercase font-bold">
                     LIVE
                   </span>
                 )}
               </div>
             )}
             <div className="flex items-center gap-1.5">
-              <Clock size={12} weight="fill" className="text-accent" />
+              <Clock size={12} weight="fill" className="text-[#E1306C]" />
               <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
             </div>
           </div>
@@ -221,12 +221,12 @@ export function VenuePage({
       >
         {(venue.location.address || venue.phone || venue.website || venue.hours) && (
           <>
-            <Card className="p-4 space-y-4 bg-card border-border">
-              <h3 className="text-lg font-bold">Venue Details</h3>
+            <Card className="p-4 space-y-4 bg-card/95 backdrop-blur-xl border-white/10 rounded-2xl shadow-lg">
+              <h3 className="text-lg font-semibold">Venue Details</h3>
 
               {venue.location.address && (
                 <div className="flex items-start gap-3">
-                  <MapPin size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <MapPin size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Address</p>
                     <p className="text-sm">{venue.location.address}</p>
@@ -236,12 +236,12 @@ export function VenuePage({
 
               {venue.phone && (
                 <div className="flex items-start gap-3">
-                  <Phone size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <Phone size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Phone</p>
                     <a
                       href={`tel:${venue.phone}`}
-                      className="text-sm text-primary hover:underline"
+                      className="text-sm text-[#405DE6] hover:underline"
                     >
                       {venue.phone}
                     </a>
@@ -251,14 +251,14 @@ export function VenuePage({
 
               {venue.website && (
                 <div className="flex items-start gap-3">
-                  <Globe size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <Globe size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">Website</p>
                     <a
                       href={venue.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
+                      className="text-sm text-[#405DE6] hover:underline"
                     >
                       {venue.website.replace(/^https?:\/\//, '')}
                     </a>
@@ -268,7 +268,7 @@ export function VenuePage({
 
               {venue.hours && (
                 <div className="flex items-start gap-3">
-                  <Clock size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <Clock size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Hours</p>
                     <div className="space-y-1.5">
@@ -280,7 +280,7 @@ export function VenuePage({
                             key={day}
                             className={cn(
                               "flex justify-between text-sm",
-                              isToday && "font-bold text-accent"
+                              isToday && "font-semibold text-[#E1306C]"
                             )}
                           >
                             <span className="capitalize">{day}</span>
@@ -333,7 +333,7 @@ export function VenuePage({
 
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">Live Energy</h2>
+            <h2 className="text-lg font-semibold">Live Energy</h2>
             {venue.lastPulseAt && (
               <p className="text-sm text-muted-foreground">
                 Last pulse {formatTimeAgo(venue.lastPulseAt)}
@@ -342,7 +342,7 @@ export function VenuePage({
           </div>
           <Button
             onClick={onCreatePulse}
-            className="bg-primary hover:bg-primary/90"
+            className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-white"
           >
             <Plus size={20} weight="bold" className="mr-2" />
             Create Pulse
@@ -353,7 +353,7 @@ export function VenuePage({
           <Button
             variant="outline"
             onClick={onStartCrewCheckIn}
-            className="w-full border-primary/30 text-primary hover:bg-primary/10"
+            className="w-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10"
           >
             <CalendarCheck size={18} weight="bold" className="mr-2" />
             Check In With Crew
@@ -366,18 +366,18 @@ export function VenuePage({
             {onGetTickets && (
               <button
                 onClick={onGetTickets}
-                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20 hover:border-primary/40 transition-colors"
+                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-[#E1306C]/10 to-[#E1306C]/5 rounded-2xl border border-white/10 hover:border-[#E1306C]/40 transition-colors backdrop-blur-xl"
               >
-                <Ticket size={18} weight="fill" className="text-primary" />
+                <Ticket size={18} weight="fill" className="text-[#E1306C]" />
                 <span className="text-sm font-medium">Get Tickets</span>
               </button>
             )}
             {onReserveTable && (
               <button
                 onClick={onReserveTable}
-                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors"
+                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-[#405DE6]/10 to-[#405DE6]/5 rounded-2xl border border-white/10 hover:border-[#405DE6]/40 transition-colors backdrop-blur-xl"
               >
-                <CalendarBlank size={18} weight="fill" className="text-blue-500" />
+                <CalendarBlank size={18} weight="fill" className="text-[#405DE6]" />
                 <span className="text-sm font-medium">Reserve Table</span>
               </button>
             )}
@@ -389,16 +389,16 @@ export function VenuePage({
           <div className="flex gap-2">
             <button
               onClick={onOpenIntegrations}
-              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
+              className="flex-1 flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors"
             >
-              <Car size={18} weight="fill" className="text-primary" />
+              <Car size={18} weight="fill" className="text-[#833AB4]" />
               <span className="text-sm font-medium">Get a Ride</span>
             </button>
             <button
               onClick={onOpenIntegrations}
-              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
+              className="flex-1 flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#405DE6]/30 transition-colors"
             >
-              <CalendarCheck size={18} weight="fill" className="text-blue-500" />
+              <CalendarCheck size={18} weight="fill" className="text-[#405DE6]" />
               <span className="text-sm font-medium">Reserve</span>
             </button>
           </div>
