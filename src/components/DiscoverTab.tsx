@@ -44,12 +44,14 @@ export function DiscoverTab({
   onNavigate
 }: DiscoverTabProps) {
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null)
+  const [showAllForYou, setShowAllForYou] = useState(false)
+  const [showAllEvents, setShowAllEvents] = useState(false)
   const activeStories = getActiveStories(stories)
   const upcomingEvents = getEventsSoon(events, 12).slice(0, 3)
   const suggestions = getPeopleYouMayKnow(currentUser, allUsers, pulses).slice(0, 5)
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
       <div className="flex items-center gap-2">
         <Compass size={24} weight="fill" className="text-[#E1306C]" />
         <h2 className="text-xl font-semibold">Discover</h2>
@@ -84,13 +86,24 @@ export function DiscoverTab({
       />
 
       {/* Phase 4: For You Feed */}
-      <ForYouFeed
-        venues={venues}
-        user={currentUser}
-        pulses={pulses}
-        userLocation={userLocation ?? null}
-        onVenueClick={onVenueClick}
-      />
+      <div>
+        <ForYouFeed
+          venues={venues}
+          user={currentUser}
+          pulses={pulses}
+          userLocation={userLocation ?? null}
+          onVenueClick={onVenueClick}
+          limit={showAllForYou ? undefined : 3}
+        />
+        {!showAllForYou && (
+          <button
+            onClick={() => setShowAllForYou(true)}
+            className="w-full mt-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Show more recommendations
+          </button>
+        )}
+      </div>
 
       <Separator />
 
@@ -106,8 +119,8 @@ export function DiscoverTab({
         </div>
       </button>
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Quick Actions */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 -mx-4 px-4">
         <QuickAction
           icon={<CalendarBlank size={24} weight="fill" />}
           label="Events"
@@ -197,7 +210,7 @@ export function DiscoverTab({
                 See All
               </button>
             </div>
-            {upcomingEvents.map(event => {
+            {(showAllEvents ? upcomingEvents : upcomingEvents.slice(0, 1)).map(event => {
               const venue = venues.find(v => v.id === event.venueId)
               return (
                 <EventCard
@@ -209,6 +222,14 @@ export function DiscoverTab({
                 />
               )
             })}
+            {!showAllEvents && upcomingEvents.length > 1 && (
+              <button
+                onClick={() => setShowAllEvents(true)}
+                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                See all {upcomingEvents.length} events
+              </button>
+            )}
           </div>
         </>
       )}
@@ -249,7 +270,7 @@ function QuickAction({
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`bg-gradient-to-br ${color} rounded-2xl p-4 border ${borderColor} text-left backdrop-blur-xl`}
+      className={`bg-gradient-to-br ${color} rounded-2xl p-4 border ${borderColor} text-left backdrop-blur-xl flex-shrink-0 w-[140px] snap-start`}
     >
       <div className="text-foreground mb-2">{icon}</div>
       <p className="font-semibold text-sm">{label}</p>
