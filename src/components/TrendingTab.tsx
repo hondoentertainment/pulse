@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Venue, PulseWithUser, User } from '@/lib/types'
 import { Favorites } from '@/components/Favorites'
 import { TrendingSections } from '@/components/TrendingSections'
@@ -67,6 +67,7 @@ export function TrendingTab({
   onPromotionClick,
   onCompareVenues,
 }: TrendingTabProps) {
+  const [activeSection, setActiveSection] = useState(0)
   const activePromotions = (promotions || []).filter(isPromotionActive)
   const seenPromotionImpressions = useRef<Set<string>>(new Set())
   const recommended = useMemo(() => {
@@ -100,8 +101,13 @@ export function TrendingTab({
     }
   }, [activePromotions, onPromotionImpression])
 
+  const trendingSections = useMemo(
+    () => getTrendingSections(venues, pulses),
+    [venues, pulses]
+  )
+
   return (
-    <>
+    <div className="pb-24">
       <div className="max-w-2xl mx-auto px-4 pt-4">
         <div className="flex gap-1 p-1 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-lg">
           <button
@@ -201,6 +207,7 @@ export function TrendingTab({
               promotions={activePromotions}
               onPromotionImpression={onPromotionImpression}
               onPromotionClick={onPromotionClick}
+              maxItems={3}
             />
           </div>
 
@@ -212,6 +219,7 @@ export function TrendingTab({
               venues={venues}
               pulses={pulses}
               onVenueClick={onVenueClick}
+              maxItems={5}
             />
           </div>
 
@@ -247,13 +255,39 @@ export function TrendingTab({
             </div>
           )}
 
-          <TrendingSections
-            sections={getTrendingSections(venues, pulses)}
-            userLocation={userLocation}
-            onVenueClick={onVenueClick}
-            isFavorite={isFavorite}
-            onToggleFavorite={onToggleFavorite}
-          />
+          {/* Trending category tabs */}
+          {trendingSections.length > 0 && (
+            <div className="max-w-2xl mx-auto px-4 pt-4">
+              {/* Sticky tab bar */}
+              <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-3 -mx-4 px-4 pt-2">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                  {trendingSections.map((section, idx) => (
+                    <button
+                      key={section.title}
+                      onClick={() => setActiveSection(idx)}
+                      className={cn(
+                        "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
+                        activeSection === idx
+                          ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white rounded-full"
+                          : "bg-card/90 border border-white/10 rounded-full text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {section.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active section content */}
+              <TrendingSections
+                sections={[trendingSections[activeSection]]}
+                userLocation={userLocation}
+                onVenueClick={onVenueClick}
+                isFavorite={isFavorite}
+                onToggleFavorite={onToggleFavorite}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -270,6 +304,6 @@ export function TrendingTab({
           onReport={onReportPulse}
         />
       )}
-    </>
+    </div>
   )
 }
