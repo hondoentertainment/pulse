@@ -9,6 +9,7 @@ import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -42,8 +43,7 @@ function AppContent() {
     setStoryViewerOpen,
   } = state
 
-  // Import handlers lazily to avoid circular deps
-  const { useAppHandlers } = require('@/hooks/use-app-handlers')
+  // Import handlers — top-level import avoids ESM require() crash
   const handlers = useAppHandlers()
 
   const {

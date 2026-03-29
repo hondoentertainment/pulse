@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
-import { MapboxBaseLayer } from '@/components/MapboxBaseLayer'
+import { MapboxBaseLayer, type MapboxBaseLayerHandle } from '@/components/MapboxBaseLayer'
 import {
   MapPin, NavigationArrow, Plus, Minus,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
@@ -70,6 +70,9 @@ export function InteractiveMap({
   const [accessibilityMode, setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
+  // When Mapbox is available, it drives all interactions (Uber-style)
+  const mapboxDrives = hasMapboxToken
+  const mapboxRef = useRef<MapboxBaseLayerHandle>(null)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -505,14 +508,24 @@ export function InteractiveMap({
   const handleZoomIn = () => {
     triggerHapticFeedback('light')
     setExpandedClusterId(null)
-    setZoom((z) => clampZoom(z * ZOOM_STEP))
+    if (mapboxDrives && mapboxRef.current && center) {
+      const newZoom = clampZoom(zoom * ZOOM_STEP)
+      mapboxRef.current.easeTo(center, newZoom, 300)
+    } else {
+      setZoom((z) => clampZoom(z * ZOOM_STEP))
+    }
     setFollowUser(false)
   }
 
   const handleZoomOut = () => {
     triggerHapticFeedback('light')
     setExpandedClusterId(null)
-    setZoom((z) => clampZoom(z / ZOOM_STEP))
+    if (mapboxDrives && mapboxRef.current && center) {
+      const newZoom = clampZoom(zoom / ZOOM_STEP)
+      mapboxRef.current.easeTo(center, newZoom, 300)
+    } else {
+      setZoom((z) => clampZoom(z / ZOOM_STEP))
+    }
     setFollowUser(false)
   }
 
@@ -520,8 +533,17 @@ export function InteractiveMap({
     if (userLocation) {
       triggerHapticFeedback('medium')
       setExpandedClusterId(null)
-      setCenter(userLocation)
-      setZoom(1)
+      if (mapboxDrives && mapboxRef.current) {
+        // Uber-style smooth flyTo with pitch reset
+        mapboxRef.current.flyTo(userLocation, 1, {
+          pitch: 45,
+          bearing: 0,
+          duration: 1500,
+        })
+      } else {
+        setCenter(userLocation)
+        setZoom(1)
+      }
       setFollowUser(true)
     }
   }
@@ -671,7 +693,16 @@ export function InteractiveMap({
     if (hoverClearTimeoutRef.current) clearTimeout(hoverClearTimeoutRef.current)
     triggerHapticFeedback('medium')
     setExpandedClusterId(null)
-    if (center) {
+
+    if (mapboxDrives && mapboxRef.current) {
+      // Uber-style smooth flyTo with zoom-in and slight pitch
+      const targetZoom = clampZoom(Math.max(2.5, zoom * 1.3))
+      mapboxRef.current.flyTo(
+        { lat: venue.location.lat, lng: venue.location.lng },
+        targetZoom,
+        { pitch: 50, duration: 1200 }
+      )
+    } else if (center) {
       setCenter({
         lat: (center.lat + venue.location.lat) / 2,
         lng: (center.lng + venue.location.lng) / 2
@@ -828,30 +859,48 @@ export function InteractiveMap({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {/* Mapbox tile layer rendered behind the canvas when a token is available */}
+      {/* Mapbox tile layer — when available, drives all map interactions (Uber-style) */}
       {hasMapboxToken && center && (
         <MapboxBaseLayer
+          ref={mapboxRef}
           center={center}
           zoom={zoom}
+          interactive={mapboxDrives}
+          pitch={45}
+          bearing={0}
+          onMove={(c) => {
+            if (mapboxDrives) {
+              setCenter(clampCenter(c))
+              setFollowUser(false)
+            }
+          }}
+          onZoom={(z) => {
+            if (mapboxDrives) {
+              setZoom(clampZoom(z))
+            }
+          }}
         />
       )}
 
       <canvas
         ref={canvasRef}
         className={cn(
-          'absolute inset-0 w-full h-full touch-none',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          'absolute inset-0 w-full h-full',
+          mapboxDrives ? 'pointer-events-none' : 'touch-none',
+          !mapboxDrives && (isDragging ? 'cursor-grabbing' : 'cursor-grab')
         )}
-        style={{ zIndex: 1 }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onWheel={handleWheelZoom}
-        onDoubleClick={handleDoubleClick}
+        style={{ zIndex: mapboxDrives ? -1 : 1 }}
+        {...(!mapboxDrives ? {
+          onMouseDown: handleMouseDown,
+          onMouseMove: handleMouseMove,
+          onMouseUp: handleMouseUp,
+          onMouseLeave: handleMouseUp,
+          onTouchStart: handleTouchStart,
+          onTouchMove: handleTouchMove,
+          onTouchEnd: handleTouchEnd,
+          onWheel: handleWheelZoom,
+          onDoubleClick: handleDoubleClick,
+        } : {})}
       />
 
       <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
