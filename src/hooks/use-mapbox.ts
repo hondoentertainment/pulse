@@ -7,6 +7,9 @@ interface UseMapboxOptions {
   zoom: number
   onMove?: (center: { lat: number; lng: number }) => void
   onZoom?: (zoom: number) => void
+  interactive?: boolean
+  pitch?: number
+  bearing?: number
 }
 
 /**
@@ -16,8 +19,20 @@ interface UseMapboxOptions {
  * When no token is present the hook returns `hasToken: false` and the
  * map is never created, allowing the app to fall back to the existing
  * canvas-only renderer.
+ *
+ * When `interactive` is true (default), native Mapbox interactions are
+ * enabled for an Uber-quality pan/zoom/rotate experience.
  */
-export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapboxOptions) {
+export function useMapbox({
+  container,
+  center,
+  zoom,
+  onMove,
+  onZoom,
+  interactive = true,
+  pitch = 45,
+  bearing = 0,
+}: UseMapboxOptions) {
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const [isReady, setIsReady] = useState(false)
   const hasToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
@@ -58,17 +73,60 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
         style: 'mapbox://styles/mapbox/dark-v11',
         center: [center.lng, center.lat],
         zoom: mapboxZoomFromCustom(zoom),
+        pitch: interactive ? pitch : 0,
+        bearing,
         attributionControl: false,
         logoPosition: 'bottom-left',
-        fadeDuration: 0
+        fadeDuration: 0,
+        maxPitch: 60,
+        // Uber-style smooth animations
+        ...(interactive ? {
+          dragRotate: true,
+          touchPitch: true,
+        } : {}),
       })
 
       mapRef.current = map
 
       map.on('load', () => {
-        if (!cancelled) setIsReady(true)
+        if (!cancelled) {
+          setIsReady(true)
+
+          // Add 3D building layer for Uber-like depth
+          if (interactive) {
+            const layers = map.getStyle()?.layers
+            let labelLayerId: string | undefined
+            if (layers) {
+              for (const layer of layers) {
+                if (layer.type === 'symbol' && (layer.layout as any)?.['text-field']) {
+                  labelLayerId = layer.id
+                  break
+                }
+              }
+            }
+
+            map.addLayer(
+              {
+                id: '3d-buildings',
+                source: 'composite',
+                'source-layer': 'building',
+                filter: ['==', 'extrude', 'true'],
+                type: 'fill-extrusion',
+                minzoom: 12,
+                paint: {
+                  'fill-extrusion-color': '#1a1a2e',
+                  'fill-extrusion-height': ['get', 'height'],
+                  'fill-extrusion-base': ['get', 'min_height'],
+                  'fill-extrusion-opacity': 0.6,
+                },
+              },
+              labelLayerId
+            )
+          }
+        }
       })
 
+      // Sync camera state back to parent on move/zoom
       map.on('moveend', () => {
         if (suppressSync.current) return
         const c = map.getCenter()
@@ -80,15 +138,30 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
         onZoomRef.current?.(customZoomFromMapbox(map.getZoom()))
       })
 
-      // Disable Mapbox's own interaction — the parent canvas handles it
-      map.scrollZoom.disable()
-      map.boxZoom.disable()
-      map.dragRotate.disable()
-      map.dragPan.disable()
-      map.keyboard.disable()
-      map.doubleClickZoom.disable()
-      map.touchZoomRotate.disable()
-      map.touchPitch.disable()
+      // Real-time camera sync for smoother overlay tracking during drag
+      map.on('move', () => {
+        if (suppressSync.current) return
+        const c = map.getCenter()
+        onMoveRef.current?.({ lat: c.lat, lng: c.lng })
+      })
+
+      map.on('zoom', () => {
+        if (suppressSync.current) return
+        onZoomRef.current?.(customZoomFromMapbox(map.getZoom()))
+      })
+
+      if (!interactive) {
+        // When not interactive, disable all Mapbox interactions
+        map.scrollZoom.disable()
+        map.boxZoom.disable()
+        map.dragRotate.disable()
+        map.dragPan.disable()
+        map.keyboard.disable()
+        map.doubleClickZoom.disable()
+        map.touchZoomRotate.disable()
+        map.touchPitch.disable()
+      }
+      // When interactive, all interactions are enabled by default
     })
 
     return () => {
@@ -99,9 +172,9 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
     }
     // Only run on mount / container change — center & zoom synced below
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasToken, container])
+  }, [hasToken, container, interactive])
 
-  // Sync center / zoom from parent into Mapbox
+  // Sync center / zoom from parent into Mapbox (only when NOT interactive, or for programmatic moves)
   const syncView = useCallback(
     (c: { lat: number; lng: number }, z: number) => {
       const map = mapRef.current
@@ -109,7 +182,7 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
       suppressSync.current = true
       map.jumpTo({
         center: [c.lng, c.lat],
-        zoom: mapboxZoomFromCustom(z)
+        zoom: mapboxZoomFromCustom(z),
       })
       // Release on next tick so the moveend/zoomend events from jumpTo are swallowed
       requestAnimationFrame(() => {
@@ -119,11 +192,74 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
     []
   )
 
-  useEffect(() => {
-    syncView(center, zoom)
-  }, [center, zoom, syncView])
+  // Smooth flyTo for venue selection — Uber-style camera animation
+  const flyTo = useCallback(
+    (target: { lat: number; lng: number }, targetZoom?: number, options?: {
+      pitch?: number
+      bearing?: number
+      duration?: number
+    }) => {
+      const map = mapRef.current
+      if (!map) return
+      suppressSync.current = true
 
-  return { mapRef, isReady, hasToken }
+      map.flyTo({
+        center: [target.lng, target.lat],
+        zoom: targetZoom !== undefined ? mapboxZoomFromCustom(targetZoom) : map.getZoom(),
+        pitch: options?.pitch ?? map.getPitch(),
+        bearing: options?.bearing ?? map.getBearing(),
+        duration: options?.duration ?? 1200,
+        essential: true,
+        curve: 1.4,
+      })
+
+      // Unsuppress after animation completes
+      const onMoveEnd = () => {
+        suppressSync.current = false
+        const c = map.getCenter()
+        onMoveRef.current?.({ lat: c.lat, lng: c.lng })
+        onZoomRef.current?.(customZoomFromMapbox(map.getZoom()))
+        map.off('moveend', onMoveEnd)
+      }
+      map.once('moveend', onMoveEnd)
+    },
+    []
+  )
+
+  // Ease to a position smoothly
+  const easeTo = useCallback(
+    (target: { lat: number; lng: number }, targetZoom?: number, duration = 600) => {
+      const map = mapRef.current
+      if (!map) return
+      suppressSync.current = true
+
+      map.easeTo({
+        center: [target.lng, target.lat],
+        zoom: targetZoom !== undefined ? mapboxZoomFromCustom(targetZoom) : map.getZoom(),
+        duration,
+        easing: (t: number) => t * (2 - t), // ease-out quadratic
+      })
+
+      const onMoveEnd = () => {
+        suppressSync.current = false
+        const c = map.getCenter()
+        onMoveRef.current?.({ lat: c.lat, lng: c.lng })
+        onZoomRef.current?.(customZoomFromMapbox(map.getZoom()))
+        map.off('moveend', onMoveEnd)
+      }
+      map.once('moveend', onMoveEnd)
+    },
+    []
+  )
+
+  // Only do passive sync when NOT interactive (i.e., canvas drives)
+  useEffect(() => {
+    if (!interactive) {
+      syncView(center, zoom)
+    }
+  }, [center, zoom, syncView, interactive])
+
+  return { mapRef, isReady, hasToken, flyTo, easeTo, syncView }
 }
 
 // ---- Zoom mapping helpers ----
