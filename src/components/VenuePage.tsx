@@ -93,6 +93,9 @@ export function VenuePage({
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
+  const [visiblePulseCount, setVisiblePulseCount] = useState(5)
+  const [showDetails, setShowDetails] = useState(false)
+  const [showInsights, setShowInsights] = useState(false)
 
   const refreshLiveData = useCallback(() => {
     setLiveData(getVenueLiveData(venue.id))
@@ -109,7 +112,7 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
@@ -221,79 +224,96 @@ export function VenuePage({
       >
         {(venue.location.address || venue.phone || venue.website || venue.hours) && (
           <>
-            <Card className="p-4 space-y-4 bg-card/95 backdrop-blur-xl border-white/10 rounded-2xl shadow-lg">
-              <h3 className="text-lg font-semibold">Venue Details</h3>
+            <Card className="p-4 space-y-3 bg-card/95 backdrop-blur-xl border-white/10 rounded-2xl shadow-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Venue Details</h3>
+                <button
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showDetails ? 'Hide' : 'Details'}
+                </button>
+              </div>
 
-              {venue.location.address && (
-                <div className="flex items-start gap-3">
-                  <MapPin size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Address</p>
-                    <p className="text-sm">{venue.location.address}</p>
-                  </div>
-                </div>
-              )}
-
-              {venue.phone && (
-                <div className="flex items-start gap-3">
-                  <Phone size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                    <a
-                      href={`tel:${venue.phone}`}
-                      className="text-sm text-[#405DE6] hover:underline"
-                    >
-                      {venue.phone}
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {venue.website && (
-                <div className="flex items-start gap-3">
-                  <Globe size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Website</p>
-                    <a
-                      href={venue.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-[#405DE6] hover:underline"
-                    >
-                      {venue.website.replace(/^https?:\/\//, '')}
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {venue.hours && (
-                <div className="flex items-start gap-3">
-                  <Clock size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Hours</p>
-                    <div className="space-y-1.5">
-                      {Object.entries(venue.hours).map(([day, hours]) => {
-                        const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-                        const isToday = day === currentDay
-                        return (
-                          <div
-                            key={day}
-                            className={cn(
-                              "flex justify-between text-sm",
-                              isToday && "font-semibold text-[#E1306C]"
-                            )}
-                          >
-                            <span className="capitalize">{day}</span>
-                            <span className={cn(
-                              hours === 'Closed' && "text-muted-foreground"
-                            )}>{hours}</span>
-                          </div>
-                        )
-                      })}
+              <motion.div
+                initial={false}
+                animate={{ height: showDetails ? 'auto' : 0, opacity: showDetails ? 1 : 0 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-4 pt-1">
+                  {venue.location.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Address</p>
+                        <p className="text-sm">{venue.location.address}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {venue.phone && (
+                    <div className="flex items-start gap-3">
+                      <Phone size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                        <a
+                          href={`tel:${venue.phone}`}
+                          className="text-sm text-[#405DE6] hover:underline"
+                        >
+                          {venue.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {venue.website && (
+                    <div className="flex items-start gap-3">
+                      <Globe size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Website</p>
+                        <a
+                          href={venue.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#405DE6] hover:underline"
+                        >
+                          {venue.website.replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {venue.hours && (
+                    <div className="flex items-start gap-3">
+                      <Clock size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Hours</p>
+                        <div className="space-y-1.5">
+                          {Object.entries(venue.hours).map(([day, hours]) => {
+                            const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+                            const isToday = day === currentDay
+                            return (
+                              <div
+                                key={day}
+                                className={cn(
+                                  "flex justify-between text-sm",
+                                  isToday && "font-semibold text-[#E1306C]"
+                                )}
+                              >
+                                <span className="capitalize">{day}</span>
+                                <span className={cn(
+                                  hours === 'Closed' && "text-muted-foreground"
+                                )}>{hours}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </motion.div>
             </Card>
 
             <Separator />
@@ -324,12 +344,6 @@ export function VenuePage({
             onClick={onOpenPresence}
           />
         )}
-
-        {/* Phase 2: Energy Timeline */}
-        <VenueEnergyTimeline
-          venueId={venue.id}
-          currentScore={venue.pulseScore}
-        />
 
         <div className="flex items-center justify-between">
           <div>
@@ -404,15 +418,6 @@ export function VenuePage({
           </div>
         )}
 
-        {/* Live Venue Intelligence Panel */}
-        {liveData && (
-          <VenueLivePanel
-            liveData={liveData}
-            onReport={() => setReportSheetOpen(true)}
-            onRefresh={refreshLiveData}
-          />
-        )}
-
         {/* Phase 2: Quick Actions Bar */}
         <VenueQuickActions
           venue={venue}
@@ -427,9 +432,40 @@ export function VenuePage({
           isSaved={isFavorite}
         />
 
-        <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
+        {/* More Insights: collapsed energy visualizations */}
+        <div>
+          <button
+            onClick={() => setShowInsights(!showInsights)}
+            className="w-full text-center text-sm font-medium px-4 py-2.5 rounded-2xl border border-white/10 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showInsights ? 'Hide insights' : 'More insights'}
+          </button>
+          <motion.div
+            initial={false}
+            animate={{ height: showInsights ? 'auto' : 0, opacity: showInsights ? 1 : 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-6 pt-4">
+              {/* Phase 2: Energy Timeline */}
+              <VenueEnergyTimeline
+                venueId={venue.id}
+                currentScore={venue.pulseScore}
+              />
 
-        {/* Activity stream removed — was displaying fabricated check-ins and arrivals */}
+              {/* Live Venue Intelligence Panel */}
+              {liveData && (
+                <VenueLivePanel
+                  liveData={liveData}
+                  onReport={() => setReportSheetOpen(true)}
+                  onRefresh={refreshLiveData}
+                />
+              )}
+
+              <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
+            </div>
+          </motion.div>
+        </div>
 
         <Separator />
 
@@ -441,7 +477,7 @@ export function VenuePage({
           />
         ) : (
           <div className="space-y-4">
-            {venuePulses.map((pulse) => (
+            {venuePulses.slice(0, visiblePulseCount).map((pulse) => (
               <PulseCard
                 key={pulse.id}
                 pulse={pulse}
@@ -451,6 +487,16 @@ export function VenuePage({
                 onReport={onReportPulse}
               />
             ))}
+            {visiblePulseCount < venuePulses.length && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => setVisiblePulseCount((prev) => prev + 5)}
+                  className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white rounded-full transition-opacity hover:opacity-90"
+                >
+                  Show more ({venuePulses.length - visiblePulseCount} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </motion.div>
