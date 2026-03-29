@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
+import type { TabId } from '@/components/BottomNav'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -18,11 +20,17 @@ const tabMotion = {
   transition: { duration: 0.2 },
 }
 
-export function MainTabRouter() {
+interface MainTabRouterProps {
+  tab?: TabId
+}
+
+export function MainTabRouter({ tab }: MainTabRouterProps) {
+  const navigate = useNavigate()
   const state = useAppState()
   const handlers = useAppHandlers()
+  // Use the tab prop (from the route) if provided, otherwise fall back to state
+  const activeTab = tab ?? state.activeTab
   const {
-    activeTab,
     venues,
     moderatedPulses,
     currentUser,
@@ -34,8 +42,6 @@ export function MainTabRouter() {
     unitSystem,
     trendingSubTab,
     setTrendingSubTab,
-    setSelectedVenue,
-    setSubPage,
     realtimeLocation,
     isTracking,
     promotions,
@@ -56,8 +62,15 @@ export function MainTabRouter() {
     handlePulseReport,
     handlePromotionImpression,
     handlePromotionClick,
-    handleTabChange,
   } = handlers
+
+  const navigateToVenue = (venue: any) => {
+    navigate(`/venue/${venue.id}`)
+  }
+
+  const navigateToSubPage = (page: string) => {
+    navigate(`/${page}`)
+  }
 
   if (!venues || !currentUser) return null
 
@@ -78,7 +91,7 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
               onToggleFavorite={handleToggleFavorite}
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
@@ -101,10 +114,10 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
-              onNavigate={(page) => setSubPage(page)}
+              onNavigate={navigateToSubPage}
             />
           </motion.div>
         )}
@@ -115,7 +128,7 @@ export function MainTabRouter() {
               <InteractiveMap
                 venues={venues}
                 userLocation={userLocation}
-                onVenueClick={setSelectedVenue}
+                onVenueClick={navigateToVenue}
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
@@ -142,18 +155,18 @@ export function MainTabRouter() {
               pulses={moderatedPulses}
               pulsesWithUsers={getPulsesWithUsers()}
               favoriteVenues={favoriteVenues}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => {
                 if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Admin dashboard is currently unavailable')); return }
                 setShowAdminDashboard(true)
               }}
-              onOpenSettings={() => setSubPage('settings')}
+              onOpenSettings={() => navigateToSubPage('settings')}
               onOpenOwnerDashboard={() => {
                 if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Owner dashboard is currently unavailable')); return }
                 setShowAdminDashboard(true)
               }}
-              onOpenModerationQueue={() => setSubPage('moderation')}
+              onOpenModerationQueue={() => navigateToSubPage('moderation')}
             />
           </motion.div>
         )}

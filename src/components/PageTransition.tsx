@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 interface PageTransitionProps {
   children: ReactNode
@@ -152,6 +153,78 @@ export function OverlayTransition({ children, isOpen, onClose }: OverlayTransiti
           </motion.div>
         </>
       )}
+    </AnimatePresence>
+  )
+}
+
+/** Directional page transition with configurable slide direction */
+type TransitionDirection = 'left' | 'right' | 'up' | 'down'
+
+interface DirectionalPageTransitionProps {
+  children: ReactNode
+  direction?: TransitionDirection
+  className?: string
+}
+
+function getDirectionOffset(direction: TransitionDirection): { x?: number; y?: number } {
+  switch (direction) {
+    case 'left':
+      return { x: -60 }
+    case 'right':
+      return { x: 60 }
+    case 'up':
+      return { y: -60 }
+    case 'down':
+      return { y: 60 }
+  }
+}
+
+function buildDirectionalVariants(direction: TransitionDirection) {
+  const offset = getDirectionOffset(direction)
+
+  return {
+    initial: {
+      opacity: 0,
+      x: offset.x ?? 0,
+      y: offset.y ?? 0,
+    },
+    animate: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      transition: springTransition,
+    },
+    exit: {
+      opacity: 0,
+      x: offset.x !== undefined ? -offset.x : 0,
+      y: offset.y !== undefined ? -offset.y : 0,
+      transition: {
+        duration: 0.2,
+      },
+    },
+  }
+}
+
+export function DirectionalPageTransition({
+  children,
+  direction = 'right',
+  className,
+}: DirectionalPageTransitionProps): ReactNode {
+  const v = buildDirectionalVariants(direction)
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={direction}
+        className={cn('will-change-transform', className)}
+        variants={v}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        style={{ overflowAnchor: 'none' }}
+      >
+        {children}
+      </motion.div>
     </AnimatePresence>
   )
 }

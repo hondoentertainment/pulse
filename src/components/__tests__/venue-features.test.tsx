@@ -193,11 +193,28 @@ function makePulse(overrides: any = {}) {
   }
 }
 
+// ── Static imports (after mocks) ──────────────────────────────────────
+
+import { VenueQuickActions } from '@/components/VenueQuickActions'
+import { VenueEnergyTimeline } from '@/components/VenueEnergyTimeline'
+import { VenueHeroCarousel } from '@/components/VenueHeroCarousel'
+import { VenueLivePanel } from '@/components/VenueLivePanel'
+import { VenueActivityStream } from '@/components/VenueActivityStream'
+import { VenueCompareSheet } from '@/components/VenueCompareSheet'
+import { VenueTimelapseGallery } from '@/components/VenueTimelapseGallery'
+import { ParallaxVenueHero } from '@/components/ParallaxVenueHero'
+import { ScoreBreakdown } from '@/components/ScoreBreakdown'
+import { MapVenueSheet } from '@/components/MapVenueSheet'
+import { PresenceSheet } from '@/components/PresenceSheet'
+import { WhoIsHereRow } from '@/components/WhoIsHereRow'
+import { QuickReportSheet } from '@/components/QuickReportSheet'
+import LiveActivityToast from '@/components/LiveActivityToast'
+import { CityHeatmap } from '@/components/CityHeatmap'
+
 // ── 1. VenueQuickActions ─────────────────────────────────────────────
 
 describe('VenueQuickActions', () => {
   it('renders action buttons', async () => {
-    const { VenueQuickActions } = await import('@/components/VenueQuickActions')
     render(
       <VenueQuickActions
         venue={makeVenue()}
@@ -215,7 +232,6 @@ describe('VenueQuickActions', () => {
   })
 
   it('calls onCheckIn when check-in button clicked', async () => {
-    const { VenueQuickActions } = await import('@/components/VenueQuickActions')
     const onCheckIn = vi.fn()
     render(
       <VenueQuickActions
@@ -236,7 +252,6 @@ describe('VenueQuickActions', () => {
 
 describe('VenueEnergyTimeline', () => {
   it('renders with SVG element and "Now" label', async () => {
-    const { VenueEnergyTimeline } = await import('@/components/VenueEnergyTimeline')
     const { container } = render(
       <VenueEnergyTimeline venueId="venue-1" currentScore={75} />
     )
@@ -250,7 +265,6 @@ describe('VenueEnergyTimeline', () => {
 
 describe('VenueHeroCarousel', () => {
   it('renders venue name', async () => {
-    const { VenueHeroCarousel } = await import('@/components/VenueHeroCarousel')
     render(
       <VenueHeroCarousel
         venue={makeVenue()}
@@ -262,7 +276,6 @@ describe('VenueHeroCarousel', () => {
   })
 
   it('calls onBack when back button clicked', async () => {
-    const { VenueHeroCarousel } = await import('@/components/VenueHeroCarousel')
     const onBack = vi.fn()
     render(
       <VenueHeroCarousel
@@ -283,7 +296,6 @@ describe('VenueHeroCarousel', () => {
 
 describe('VenueLivePanel', () => {
   it('renders live data fields', async () => {
-    const { VenueLivePanel } = await import('@/components/VenueLivePanel')
     const liveData = {
       venueId: 'venue-1',
       timestamp: new Date().toISOString(),
@@ -325,7 +337,6 @@ describe('VenueLivePanel', () => {
 
 describe('VenueActivityStream', () => {
   it('renders venue name in heading', async () => {
-    const { VenueActivityStream } = await import('@/components/VenueActivityStream')
     render(
       <VenueActivityStream venueId="venue-1" venueName="Test Venue" />
     )
@@ -337,7 +348,6 @@ describe('VenueActivityStream', () => {
 
 describe('VenueCompareSheet', () => {
   it('when open=true renders compare content with venue names', async () => {
-    const { VenueCompareSheet } = await import('@/components/VenueCompareSheet')
     const venues = [
       makeVenue({ id: 'v1', name: 'Venue Alpha' }),
       makeVenue({ id: 'v2', name: 'Venue Beta', pulseScore: 60 }),
@@ -363,7 +373,6 @@ describe('VenueCompareSheet', () => {
 
 describe('VenueTimelapseGallery', () => {
   it('renders time slots', async () => {
-    const { VenueTimelapseGallery } = await import('@/components/VenueTimelapseGallery')
     const timelapse = [
       { timeOfDay: 'Morning', crowdLevel: 'sparse' as const, energyLabel: 'Chill', description: 'Quiet morning', color: '#22c55e' },
       { timeOfDay: 'Afternoon', crowdLevel: 'moderate' as const, energyLabel: 'Lively', description: 'Getting busy', color: '#eab308' },
@@ -382,7 +391,6 @@ describe('VenueTimelapseGallery', () => {
 
 describe('ParallaxVenueHero', () => {
   it('renders venue name and category', async () => {
-    const { ParallaxVenueHero } = await import('@/components/ParallaxVenueHero')
     render(
       <ParallaxVenueHero
         venue={makeVenue()}
@@ -402,7 +410,6 @@ describe('ParallaxVenueHero', () => {
 
 describe('ScoreBreakdown', () => {
   it('renders breakdown info', async () => {
-    const { ScoreBreakdown } = await import('@/components/ScoreBreakdown')
     const venue = makeVenue()
     const pulses = [makePulse()]
     render(
@@ -416,7 +423,6 @@ describe('ScoreBreakdown', () => {
 
 describe('MapVenueSheet', () => {
   it('renders selected venue name', async () => {
-    const { MapVenueSheet } = await import('@/components/MapVenueSheet')
     const venue = makeVenue({ name: 'Map Venue' })
     render(
       <MapVenueSheet
@@ -437,7 +443,6 @@ describe('MapVenueSheet', () => {
 
 describe('PresenceSheet', () => {
   it('when open renders presence info', async () => {
-    const { PresenceSheet } = await import('@/components/PresenceSheet')
     const presence = {
       venueId: 'venue-1',
       friendsHereNowCount: 3,
@@ -473,7 +478,6 @@ describe('PresenceSheet', () => {
 
 describe('WhoIsHereRow', () => {
   it('renders friend count text', async () => {
-    const { WhoIsHereRow } = await import('@/components/WhoIsHereRow')
     const presence = {
       venueId: 'venue-1',
       friendsHereNowCount: 3,
@@ -495,7 +499,6 @@ describe('WhoIsHereRow', () => {
 
 describe('QuickReportSheet', () => {
   it('when open renders venue name and report fields', async () => {
-    const { QuickReportSheet } = await import('@/components/QuickReportSheet')
     render(
       <QuickReportSheet
         open={true}
@@ -523,8 +526,6 @@ describe('QuickReportSheet', () => {
 
 describe('LiveActivityToast', () => {
   it('renders activity messages', async () => {
-    const mod = await import('@/components/LiveActivityToast')
-    const LiveActivityToast = mod.default
     const activities = [
       { id: 'a1', type: 'checkin' as const, message: 'Alice checked in', timestamp: Date.now() },
       { id: 'a2', type: 'trending' as const, message: 'Venue is trending', timestamp: Date.now() },
@@ -558,7 +559,6 @@ describe('CityHeatmap', () => {
       lineWidth: 1,
     }) as any
 
-    const { CityHeatmap } = await import('@/components/CityHeatmap')
     render(
       <CityHeatmap
         venues={[makeVenue()]}

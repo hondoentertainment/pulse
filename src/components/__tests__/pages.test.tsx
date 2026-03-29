@@ -300,10 +300,6 @@ vi.mock('@/components/PulseScore', () => ({
   PulseScore: () => <div data-testid="pulse-score" />,
 }))
 
-vi.mock('@/components/Settings', () => ({
-  Settings: () => <div data-testid="settings" />,
-}))
-
 vi.mock('@/components/CreatorProfileBadge', () => ({
   CreatorProfileBadge: () => <div data-testid="creator-profile-badge" />,
 }))

@@ -90,7 +90,7 @@ describe('getStageEnergy', () => {
 
     const high = getStageEnergy('s2', 'Side', 90)
     expect(high.energy).toBe('electric')
-    expect(high.crowdLevel).toBe(90)
+    expect(high.crowdLevel).toBe(0) // No longer derived from pulseScore
   })
 })
 
