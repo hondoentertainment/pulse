@@ -156,6 +156,7 @@ export function MapVenueSheet({
 }: MapVenueSheetProps) {
   const { unitSystem } = useUnitPreference()
   const [snap, setSnap] = useState<SheetSnap>('peek')
+  const [showAllNearby, setShowAllNearby] = useState(false)
   const dragControls = useDragControls()
   const sheetRef = useRef<HTMLDivElement>(null)
 
@@ -274,6 +275,7 @@ export function MapVenueSheet({
                 <div className="space-y-1">
                   {nearbyVenues
                     .filter(v => v.venue.id !== venue?.id)
+                    .slice(0, showAllNearby ? undefined : 8)
                     .map(({ venue: v, distance }, i) => {
                       const VIcon = getCategoryIcon(v.category)
                       return (
@@ -313,6 +315,14 @@ export function MapVenueSheet({
                         </motion.button>
                       )
                     })}
+                  {!showAllNearby && nearbyVenues.filter(v => v.venue.id !== venue?.id).length > 8 && (
+                    <button
+                      onClick={() => setShowAllNearby(true)}
+                      className="w-full text-center text-sm text-muted-foreground py-2 hover:text-foreground transition-colors"
+                    >
+                      Show {nearbyVenues.filter(v => v.venue.id !== venue?.id).length - 8} more venues
+                    </button>
+                  )}
                 </div>
               </div>
             )}

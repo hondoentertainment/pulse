@@ -40,6 +40,7 @@ export function ProfileTab({
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [visiblePulseCount, setVisiblePulseCount] = useState(3)
 
   const totalReactions = pulses
     .filter(p => p.userId === currentUser.id)
@@ -67,7 +68,7 @@ export function ProfileTab({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
       <div className="flex items-center gap-4">
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] p-1">
           <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
@@ -157,7 +158,7 @@ export function ProfileTab({
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold">Your Pulses</h3>
-        {userPulses.map((pulse) => (
+        {userPulses.slice(0, visiblePulseCount).map((pulse) => (
           <PulseCard
             key={pulse.id}
             pulse={pulse}
@@ -165,6 +166,14 @@ export function ProfileTab({
             onReaction={(type) => onReaction(pulse.id, type)}
           />
         ))}
+        {userPulses.length > visiblePulseCount && (
+          <button
+            onClick={() => setVisiblePulseCount(prev => prev + 5)}
+            className="w-full rounded-full border border-white/10 text-sm py-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Show more ({userPulses.length - visiblePulseCount} remaining)
+          </button>
+        )}
         {userPulses.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
             No pulses yet. Check into a venue to get started!
@@ -197,60 +206,57 @@ export function ProfileTab({
 
       <Separator />
 
-      {onOpenCreatorDashboard && (
-        <div className="space-y-3">
-          <button
-            onClick={onOpenCreatorDashboard}
-            className="w-full bg-gradient-to-r from-[#833AB4]/10 to-[#FCAF45]/10 rounded-2xl p-4 border border-white/10 flex items-center gap-3 hover:border-[#833AB4]/40 transition-colors backdrop-blur-xl"
-          >
-            <Lightning size={24} weight="fill" className="text-[#833AB4]" />
-            <div className="flex-1 text-left">
-              <p className="font-medium text-sm">Creator Dashboard</p>
-              <p className="text-xs text-muted-foreground">
-                {tierProgress.currentTier
-                  ? `${tierProgress.currentTier.charAt(0).toUpperCase() + tierProgress.currentTier.slice(1)} Creator — View analytics & earnings`
-                  : `${tierProgress.progress}% to Rising Creator`}
-              </p>
-            </div>
-          </button>
-        </div>
-      )}
-
-      <Separator />
-
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Gear size={20} weight="fill" className="text-[#833AB4]" />
-          <h3 className="text-lg font-semibold">Settings</h3>
+          <h3 className="text-lg font-semibold">Account & Tools</h3>
         </div>
-        {onOpenOwnerDashboard && (
-          <button onClick={onOpenOwnerDashboard} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
-            <Storefront size={18} weight="fill" className="text-[#833AB4]" />
-            <span className="text-sm font-medium">Venue Owner Dashboard</span>
-          </button>
-        )}
-        {onOpenModerationQueue && (
-          <button onClick={onOpenModerationQueue} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
-            <ShieldCheck size={18} weight="fill" className="text-[#833AB4]" />
-            <span className="text-sm font-medium">Moderation Queue</span>
-          </button>
-        )}
-        {onOpenSettings ? (
-          <button
-            onClick={onOpenSettings}
-            className="w-full p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
-          >
-            <Gear size={20} className="text-[#833AB4]" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">App Settings</p>
-              <p className="text-xs text-muted-foreground">Notifications, privacy, display</p>
-            </div>
-          </button>
-        ) : (
-          <Settings
-            onOpenSocialPulseDashboard={onOpenSocialPulseDashboard}
-          />
-        )}
+        <div className="flex flex-wrap gap-2">
+          {onOpenCreatorDashboard && (
+            <button
+              onClick={onOpenCreatorDashboard}
+              className="flex-1 min-w-[140px] bg-gradient-to-r from-[#833AB4]/10 to-[#FCAF45]/10 rounded-2xl p-4 border border-white/10 flex items-center gap-3 hover:border-[#833AB4]/40 transition-colors backdrop-blur-xl"
+            >
+              <Lightning size={24} weight="fill" className="text-[#833AB4]" />
+              <div className="flex-1 text-left">
+                <p className="font-medium text-sm">Creator Dashboard</p>
+                <p className="text-xs text-muted-foreground">
+                  {tierProgress.currentTier
+                    ? `${tierProgress.currentTier.charAt(0).toUpperCase() + tierProgress.currentTier.slice(1)} Creator`
+                    : `${tierProgress.progress}% to Rising`}
+                </p>
+              </div>
+            </button>
+          )}
+          {onOpenOwnerDashboard && (
+            <button onClick={onOpenOwnerDashboard} className="flex-1 min-w-[140px] flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors">
+              <Storefront size={18} weight="fill" className="text-[#833AB4]" />
+              <span className="text-sm font-medium">Venue Owner</span>
+            </button>
+          )}
+          {onOpenModerationQueue && (
+            <button onClick={onOpenModerationQueue} className="flex-1 min-w-[140px] flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors">
+              <ShieldCheck size={18} weight="fill" className="text-[#833AB4]" />
+              <span className="text-sm font-medium">Moderation</span>
+            </button>
+          )}
+          {onOpenSettings ? (
+            <button
+              onClick={onOpenSettings}
+              className="flex-1 min-w-[140px] p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
+            >
+              <Gear size={20} className="text-[#833AB4]" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">App Settings</p>
+                <p className="text-xs text-muted-foreground">Notifications, privacy, display</p>
+              </div>
+            </button>
+          ) : (
+            <Settings
+              onOpenSocialPulseDashboard={onOpenSocialPulseDashboard}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
