@@ -15,6 +15,7 @@ import type { ComponentType, ReactNode } from 'react'
 
 type EmptyStateVariant =
   | 'no-venues'
+  | 'no-nearby'
   | 'no-notifications'
   | 'no-favorites'
   | 'no-pulses'
@@ -40,6 +41,22 @@ interface VariantConfig {
 
 const VARIANT_CONFIG: Record<EmptyStateVariant, VariantConfig> = {
   'no-venues': {
+    icon: MapPin,
+    title: 'No venues nearby',
+    description: 'Try expanding your search or changing location',
+    defaultActionLabel: 'Expand Search',
+    gradientFrom: 'from-violet-500/20',
+    gradientTo: 'to-indigo-500/20',
+    iconAnimation: {
+      y: [0, -8, 0],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      },
+    },
+  },
+  'no-nearby': {
     icon: MapPin,
     title: 'No venues nearby',
     description: 'Try expanding your search or changing location',
@@ -234,3 +251,6 @@ export function AnimatedEmptyState({
     </motion.div>
   )
 }
+
+/** @deprecated Use AnimatedEmptyState instead */
+export const EmptyState = AnimatedEmptyState

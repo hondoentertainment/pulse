@@ -348,8 +348,8 @@ export function getStaffingRecommendation(
     const avgPulses = dist?.avgPulseCount ?? 0
     const avgEnergy = dist?.avgEnergy ?? 0
 
-    // Estimate visitors from pulse count (multiply by ~8 since not everyone pulses)
-    const predictedVisitors = Math.round(avgPulses * 8)
+    // Use actual pulse count as activity indicator (no inflated multiplier)
+    const predictedVisitors = Math.round(avgPulses)
 
     let level: StaffingLevel = 'light'
     let recommendedStaff = 2
@@ -419,9 +419,9 @@ export function generateSocialPost(
 
   if (type === 'highlight') {
     if (avgEnergy >= 2.5) {
-      text = `The energy at ${venue.name} is absolutely ELECTRIC tonight! ${recentPulses.length} people are vibing. Come through!`
+      text = `The energy at ${venue.name} is absolutely ELECTRIC tonight! Come through!`
     } else if (avgEnergy >= 1.5) {
-      text = `${venue.name} is buzzing right now with ${recentPulses.length} guests feeling the vibe. Don't miss out!`
+      text = `${venue.name} is buzzing right now. Don't miss out!`
     } else {
       text = `Chill vibes at ${venue.name} tonight. Perfect spot to kick back and relax.`
     }
@@ -478,13 +478,13 @@ export function getRevenueMetrics(
   const energySpend: Record<EnergyRating, number> = { dead: 15, chill: 30, buzzing: 50, electric: 75 }
 
   // Estimate revenue based on energy levels (higher energy = more spend)
-  const visitorMultiplier = 8 // not everyone posts pulses
-  const estimatedVisitors = new Set(periodPulses.map(p => p.userId)).size * visitorMultiplier
+  // Use actual unique pulse users — no inflated multiplier
+  const estimatedVisitors = new Set(periodPulses.map(p => p.userId)).size
 
   const dayRevenue: Record<string, number> = {}
   for (const p of periodPulses) {
     const d = days[new Date(p.createdAt).getDay()]
-    dayRevenue[d] = (dayRevenue[d] ?? 0) + energySpend[p.energyRating] * visitorMultiplier
+    dayRevenue[d] = (dayRevenue[d] ?? 0) + energySpend[p.energyRating]
   }
 
   const totalRevenue = Object.values(dayRevenue).reduce((s, v) => s + v, 0)
