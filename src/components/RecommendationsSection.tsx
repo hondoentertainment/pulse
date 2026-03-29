@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sparkle } from '@phosphor-icons/react'
 import { RecommendationCard } from './RecommendationCard'
 import type { Recommendation } from '@/lib/venue-recommendations'
@@ -12,6 +12,7 @@ interface RecommendationsSectionProps {
   promotions?: PromotedVenue[]
   onPromotionImpression?: (promotionId: string) => void
   onPromotionClick?: (promotionId: string) => void
+  maxItems?: number
 }
 
 export function RecommendationsSection({
@@ -20,7 +21,9 @@ export function RecommendationsSection({
   promotions = [],
   onPromotionImpression,
   onPromotionClick,
+  maxItems,
 }: RecommendationsSectionProps) {
+  const [showAll, setShowAll] = useState(false)
   const promotedByVenueId = useMemo(
     () => new Map(promotions.map(promo => [promo.venueId, promo.id])),
     [promotions]
@@ -55,7 +58,7 @@ export function RecommendationsSection({
       </div>
 
       <div className="grid gap-2">
-        {recommendations.slice(0, 5).map((rec) => (
+        {recommendations.slice(0, !showAll && maxItems ? maxItems : 5).map((rec) => (
           <RecommendationCard
             key={rec.venue.id}
             recommendation={rec}
@@ -68,6 +71,14 @@ export function RecommendationsSection({
           />
         ))}
       </div>
+      {maxItems && !showAll && recommendations.length > maxItems && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full text-center py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          See more
+        </button>
+      )}
     </motion.div>
   )
 }

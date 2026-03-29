@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { User, Venue, Pulse } from '@/lib/types'
 import { generateActivityDigest } from '@/lib/social-graph'
 import { getEnergyLabel } from '@/lib/pulse-engine'
@@ -13,6 +14,7 @@ interface LiveActivityFeedProps {
   venues: Venue[]
   pulses: Pulse[]
   onVenueClick: (venue: Venue) => void
+  maxItems?: number
 }
 
 function formatTimestamp(timestamp: string): string {
@@ -40,7 +42,9 @@ export function LiveActivityFeed({
   venues,
   pulses,
   onVenueClick,
+  maxItems,
 }: LiveActivityFeedProps) {
+  const [showAll, setShowAll] = useState(false)
   const digest = generateActivityDigest(
     currentUser,
     allUsers,
@@ -59,14 +63,26 @@ export function LiveActivityFeed({
     )
   }
 
+  // Flatten entries for counting/limiting
+  const allItems: { entry: typeof digest.entries[0]; venueActivity: typeof digest.entries[0]['venues'][0] }[] = []
+  for (const entry of digest.entries) {
+    for (const venueActivity of entry.venues) {
+      allItems.push({ entry, venueActivity })
+    }
+  }
+  const limit = maxItems && !showAll ? maxItems : allItems.length
+  const visibleItems = allItems.slice(0, limit)
+  const hasMore = maxItems ? allItems.length > maxItems : false
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-3">
         <Users size={20} weight="fill" className="text-primary" />
         <h3 className="text-lg font-bold">Friend Activity</h3>
       </div>
-      {digest.entries.map((entry, i) =>
-        entry.venues.map((venueActivity, j) => {
+      {visibleItems.map(({ entry, venueActivity }, idx) => {
+        const i = idx
+        const j = 0
           const venue = venues.find(v => v.id === venueActivity.venueId)
           if (!venue) return null
           const energyLabel = getEnergyLabel(venue.pulseScore)
@@ -116,7 +132,14 @@ export function LiveActivityFeed({
               </button>
             </motion.div>
           )
-        })
+      })}
+      {hasMore && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full text-center py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          View all activity
+        </button>
       )}
     </div>
   )

@@ -335,7 +335,6 @@ vi.mock('@/hooks/use-app-state', () => ({
     integrationVenue: null,
     integrationsEnabled: false,
     setIntegrationVenue: vi.fn(),
-    setSelectedVenue: vi.fn(),
     setSimulatedLocation: vi.fn(),
     setCurrentUser: vi.fn(),
     setCrews: vi.fn(),
@@ -438,12 +437,30 @@ vi.mock('@/lib/interactive-map', () => ({
 }))
 
 // ==========================================================================
+// Static imports (after mocks)
+// ==========================================================================
+
+import { BottomNav } from '@/components/BottomNav'
+import { MainTabRouter } from '@/components/MainTabRouter'
+import { SubPageRouter } from '@/components/SubPageRouter'
+import { AppHeader } from '@/components/AppHeader'
+import { AdaptiveHomeHeader } from '@/components/AdaptiveHomeHeader'
+import { OnboardingFlow } from '@/components/OnboardingFlow'
+import { CreatePulseDialog } from '@/components/CreatePulseDialog'
+import { ReportDialog } from '@/components/ReportDialog'
+import { ShareSheet } from '@/components/ShareSheet'
+import { GlobalSearch } from '@/components/GlobalSearch'
+import { MapSearch } from '@/components/MapSearch'
+import { MapFilters } from '@/components/MapFilters'
+import { InteractiveMap } from '@/components/InteractiveMap'
+import { SettingsPage } from '@/components/SettingsPage'
+
+// ==========================================================================
 // Tests
 // ==========================================================================
 
 describe('BottomNav', () => {
-  it('renders all 5 tab labels', async () => {
-    const { BottomNav } = await import('@/components/BottomNav')
+  it('renders all 5 tab labels', () => {
     render(
       <BottomNav activeTab="trending" onTabChange={vi.fn()} />
     )
@@ -454,8 +471,7 @@ describe('BottomNav', () => {
     expect(screen.getByText('Profile')).toBeTruthy()
   })
 
-  it('calls onTabChange with correct tab id when clicked', async () => {
-    const { BottomNav } = await import('@/components/BottomNav')
+  it('calls onTabChange with correct tab id when clicked', () => {
     const onTabChange = vi.fn()
     render(
       <BottomNav activeTab="trending" onTabChange={onTabChange} />
@@ -467,8 +483,7 @@ describe('BottomNav', () => {
     expect(onTabChange).toHaveBeenCalledWith('map')
   })
 
-  it('shows notification badge when unreadNotifications > 0', async () => {
-    const { BottomNav } = await import('@/components/BottomNav')
+  it('shows notification badge when unreadNotifications > 0', () => {
     render(
       <BottomNav
         activeTab="trending"
@@ -480,51 +495,24 @@ describe('BottomNav', () => {
   })
 })
 
-describe('EnhancedBottomNav', () => {
-  it('renders tab labels', async () => {
-    const { EnhancedBottomNav } = await import('@/components/EnhancedBottomNav')
-    render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={vi.fn()} />
-    )
-    expect(screen.getByText('Trending')).toBeTruthy()
-    expect(screen.getByText('Discover')).toBeTruthy()
-    expect(screen.getByText('Map')).toBeTruthy()
-    expect(screen.getByText('Alerts')).toBeTruthy()
-    expect(screen.getByText('Profile')).toBeTruthy()
-  })
-
-  it('calls onTabChange when a tab is clicked', async () => {
-    const { EnhancedBottomNav } = await import('@/components/EnhancedBottomNav')
-    const onTabChange = vi.fn()
-    render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={onTabChange} />
-    )
-    fireEvent.click(screen.getByText('Map'))
-    expect(onTabChange).toHaveBeenCalledWith('map')
-  })
-})
+// EnhancedBottomNav was consolidated into BottomNav
 
 describe('MainTabRouter', () => {
-  it('renders without crashing', async () => {
-    const { MainTabRouter } = await import('@/components/MainTabRouter')
+  it('renders without crashing', () => {
     const { container } = render(<MainTabRouter />)
-    // Component renders (may return null if no venues/currentUser, which is fine)
     expect(container).toBeTruthy()
   })
 })
 
 describe('SubPageRouter', () => {
-  it('renders main content area (returns null when subPage is null)', async () => {
-    const { SubPageRouter } = await import('@/components/SubPageRouter')
+  it('renders main content area (returns null when subPage is null)', () => {
     const { container } = render(<SubPageRouter />)
-    // With subPage=null in mock, component returns null
     expect(container).toBeTruthy()
   })
 })
 
 describe('AppHeader', () => {
-  it('renders the Pulse title', async () => {
-    const { AppHeader } = await import('@/components/AppHeader')
+  it('renders the Pulse title', () => {
     render(
       <AppHeader
         locationName="Seattle, WA"
@@ -537,8 +525,7 @@ describe('AppHeader', () => {
     expect(screen.getByText('Pulse')).toBeTruthy()
   })
 
-  it('renders location name', async () => {
-    const { AppHeader } = await import('@/components/AppHeader')
+  it('renders location name', () => {
     render(
       <AppHeader
         locationName="Brooklyn, NY"
@@ -551,8 +538,7 @@ describe('AppHeader', () => {
     expect(screen.getByText('Brooklyn, NY')).toBeTruthy()
   })
 
-  it('shows queued pulse count badge', async () => {
-    const { AppHeader } = await import('@/components/AppHeader')
+  it('shows queued pulse count badge', () => {
     render(
       <AppHeader
         locationName="Seattle"
@@ -569,35 +555,27 @@ describe('AppHeader', () => {
 })
 
 describe('AdaptiveHomeHeader', () => {
-  it('renders greeting with username', async () => {
-    const { AdaptiveHomeHeader } = await import(
-      '@/components/AdaptiveHomeHeader'
-    )
+  it('renders greeting with username', () => {
     render(
       <AdaptiveHomeHeader
         username="Alex"
         date={new Date('2026-03-24T20:00:00')}
       />
     )
-    // getAdaptiveLayout mock returns greeting "Good evening"
     expect(screen.getByText(/Good evening.*Alex/)).toBeTruthy()
   })
 })
 
 describe('OnboardingFlow', () => {
-  it('renders welcome screen with Get Started button', async () => {
-    const { OnboardingFlow } = await import('@/components/OnboardingFlow')
+  it('renders welcome screen with Get Started button', () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
     expect(screen.getByText('Welcome to Pulse')).toBeTruthy()
     expect(screen.getByText(/Get Started/)).toBeTruthy()
   })
 
-  it('advances through steps when Get Started is clicked', async () => {
-    const { OnboardingFlow } = await import('@/components/OnboardingFlow')
+  it('advances through steps when Get Started is clicked', () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
-
     fireEvent.click(screen.getByText(/Get Started/))
-    // Should now be on categories step
     expect(screen.getByText("What's your scene?")).toBeTruthy()
   })
 })
@@ -612,10 +590,7 @@ describe('CreatePulseDialog', () => {
     city: 'NYC',
   } as any
 
-  it('when open, renders dialog with venue name', async () => {
-    const { CreatePulseDialog } = await import(
-      '@/components/CreatePulseDialog'
-    )
+  it('when open, renders dialog with venue name', () => {
     render(
       <CreatePulseDialog
         open={true}
@@ -627,10 +602,7 @@ describe('CreatePulseDialog', () => {
     expect(screen.getByText(/Create Pulse at The Blue Note/)).toBeTruthy()
   })
 
-  it('calls onClose when Cancel is clicked', async () => {
-    const { CreatePulseDialog } = await import(
-      '@/components/CreatePulseDialog'
-    )
+  it('calls onClose when Cancel is clicked', () => {
     const onClose = vi.fn()
     render(
       <CreatePulseDialog
@@ -646,8 +618,7 @@ describe('CreatePulseDialog', () => {
 })
 
 describe('ReportDialog', () => {
-  it('when open, renders reason selection', async () => {
-    const { ReportDialog } = await import('@/components/ReportDialog')
+  it('when open, renders reason selection', () => {
     render(
       <ReportDialog
         open={true}
@@ -675,8 +646,7 @@ describe('ShareSheet', () => {
     url: 'https://pulse.app/venue/v1',
   }
 
-  it('when open with card, renders share options', async () => {
-    const { ShareSheet } = await import('@/components/ShareSheet')
+  it('when open with card, renders share options', () => {
     render(
       <ShareSheet
         open={true}
@@ -712,8 +682,7 @@ describe('GlobalSearch', () => {
     },
   ] as any[]
 
-  it('when open, renders search input', async () => {
-    const { GlobalSearch } = await import('@/components/GlobalSearch')
+  it('when open, renders search input', () => {
     render(
       <GlobalSearch
         open={true}
@@ -728,8 +697,7 @@ describe('GlobalSearch', () => {
     ).toBeTruthy()
   })
 
-  it('filters venues on input', async () => {
-    const { GlobalSearch } = await import('@/components/GlobalSearch')
+  it('filters venues on input', () => {
     render(
       <GlobalSearch
         open={true}
@@ -748,8 +716,7 @@ describe('GlobalSearch', () => {
 })
 
 describe('MapSearch', () => {
-  it('renders search input', async () => {
-    const { MapSearch } = await import('@/components/MapSearch')
+  it('renders search input', () => {
     render(
       <MapSearch
         venues={[]}
@@ -762,8 +729,7 @@ describe('MapSearch', () => {
 })
 
 describe('MapFilters', () => {
-  it('renders filter options', async () => {
-    const { MapFilters } = await import('@/components/MapFilters')
+  it('renders filter options', () => {
     render(
       <MapFilters
         filters={{
@@ -775,14 +741,12 @@ describe('MapFilters', () => {
         availableCategories={['bar', 'club', 'restaurant']}
       />
     )
-    // The filter button should be rendered (collapsed state)
     expect(screen.getByRole('button')).toBeTruthy()
   })
 })
 
 describe('InteractiveMap', () => {
-  it('renders map container div', async () => {
-    const { InteractiveMap } = await import('@/components/InteractiveMap')
+  it('renders map container div', () => {
     const { container } = render(
       <InteractiveMap
         venues={[]}
@@ -794,12 +758,15 @@ describe('InteractiveMap', () => {
   })
 })
 
-describe('Settings', () => {
-  it('renders settings sections', async () => {
-    const { Settings } = await import('@/components/Settings')
-    render(<Settings onOpenSocialPulseDashboard={vi.fn()} />)
-    expect(screen.getByText('Settings')).toBeTruthy()
-    expect(screen.getByText('Notifications')).toBeTruthy()
-    expect(screen.getByText('Distance Units')).toBeTruthy()
+describe('SettingsPage', () => {
+  it('renders settings heading', () => {
+    render(
+      <SettingsPage
+        currentUser={{ id: 'u1', username: 'testuser', friends: [], createdAt: '' } as any}
+        onBack={vi.fn()}
+        onUpdateUser={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Settings Page')).toBeTruthy()
   })
 })

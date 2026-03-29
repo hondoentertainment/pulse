@@ -126,7 +126,7 @@ export function getStageEnergy(stageId: string, stageName: string, pulseScore: n
   return {
     stageId, stageName,
     energy: ENERGY_LABELS[Math.min(3, Math.round(pulseScore / 33))],
-    crowdLevel: Math.min(100, pulseScore),
+    crowdLevel: 0, // No longer derived from pulseScore — requires real crowd data
     updatedAt: new Date().toISOString(),
   }
 }

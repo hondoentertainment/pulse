@@ -36,6 +36,8 @@ interface ForYouFeedProps {
   pulses: Pulse[]
   userLocation: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
+  /** When set, only render this many venue cards (including the featured card). */
+  limit?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +243,7 @@ export default function ForYouFeed({
   pulses,
   userLocation,
   onVenueClick,
+  limit,
 }: ForYouFeedProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -266,7 +269,8 @@ export default function ForYouFeed({
     return <EmptyState />
   }
 
-  const [featured, ...rest] = scoredVenues
+  const limited = limit != null ? scoredVenues.slice(0, limit) : scoredVenues
+  const [featured, ...rest] = limited
 
   return (
     <div className="flex flex-col gap-3">

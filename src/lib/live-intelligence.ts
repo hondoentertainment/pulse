@@ -293,11 +293,11 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     ageRange = { min: avgMin, max: avgMax, average: Math.round((avgMin + avgMax) / 2) }
   }
 
-  // Capacity estimate from crowd level
+  // Capacity: only show percentFull from user-reported crowd level, no fabricated headcount
   const capacity = crowdLevel > 0
     ? {
-        current: Math.round(crowdLevel * 3), // rough estimate
-        max: 300,
+        current: null as number | null,
+        max: null as number | null,
         percentFull: crowdLevel,
       }
     : null
@@ -485,102 +485,11 @@ export function getCityHeatmap(
 }
 
 // --- Seed demo data ---
+// Removed: seedDemoReports was fabricating fake crowd levels, wait times,
+// and other metrics from venue ID hashes. Live data should come from real user reports.
 
-export function seedDemoReports(venueIds: string[]): void {
-  const now = Date.now()
-  const demoUserId = 'demo-reporter'
-
-  for (const venueId of venueIds) {
-    // Seed with varied data to make it interesting
-    const hash = venueId.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-    const crowdBase = 30 + (hash % 60) // 30-90
-    const waitBase = Math.floor((hash % 4) * 5) // 0, 5, 10, 15
-
-    for (let i = 0; i < 3; i++) {
-      const offset = i * 8 * 60 * 1000 // spread reports over ~16 minutes
-      const timestamp = new Date(now - offset).toISOString()
-      const jitter = (Math.random() - 0.5) * 10
-
-      reportStore.push({
-        id: generateId(),
-        venueId,
-        userId: `${demoUserId}-${i}`,
-        type: 'crowd_level',
-        value: Math.max(0, Math.min(100, Math.round(crowdBase + jitter))),
-        createdAt: timestamp,
-      })
-
-      reportStore.push({
-        id: generateId(),
-        venueId,
-        userId: `${demoUserId}-${i}`,
-        type: 'wait_time',
-        value: Math.max(0, waitBase + Math.round(jitter / 3)),
-        createdAt: timestamp,
-      })
-    }
-
-    // One cover charge report
-    const coverAmount = hash % 3 === 0 ? null : (hash % 4 + 1) * 5
-    reportStore.push({
-      id: generateId(),
-      venueId,
-      userId: demoUserId,
-      type: 'cover_charge',
-      value: { amount: coverAmount, note: coverAmount === null ? 'Free all night' : undefined },
-      createdAt: new Date(now - 5 * 60 * 1000).toISOString(),
-    })
-
-    // Dress code
-    const dressOptions: DressCode[] = ['casual', 'smart-casual', 'dressy', 'formal']
-    reportStore.push({
-      id: generateId(),
-      venueId,
-      userId: demoUserId,
-      type: 'dress_code',
-      value: dressOptions[hash % dressOptions.length],
-      createdAt: new Date(now - 10 * 60 * 1000).toISOString(),
-    })
-
-    // Music genre
-    const genres = ['House', 'Hip-Hop', 'Top 40', 'R&B', 'Latin', 'Techno', 'Jazz', 'Rock']
-    reportStore.push({
-      id: generateId(),
-      venueId,
-      userId: demoUserId,
-      type: 'music',
-      value: genres[hash % genres.length],
-      createdAt: new Date(now - 3 * 60 * 1000).toISOString(),
-    })
-
-    // Now playing
-    const tracks = [
-      { track: 'Blinding Lights', artist: 'The Weeknd' },
-      { track: 'Levitating', artist: 'Dua Lipa' },
-      { track: 'Industry Baby', artist: 'Lil Nas X' },
-      { track: 'Heat Waves', artist: 'Glass Animals' },
-      { track: 'Save Your Tears', artist: 'The Weeknd' },
-    ]
-    reportStore.push({
-      id: generateId(),
-      venueId,
-      userId: demoUserId,
-      type: 'now_playing',
-      value: tracks[hash % tracks.length],
-      createdAt: new Date(now - 2 * 60 * 1000).toISOString(),
-    })
-
-    // Age range
-    const ageMin = 21 + (hash % 5)
-    reportStore.push({
-      id: generateId(),
-      venueId,
-      userId: demoUserId,
-      type: 'age_range',
-      value: { min: ageMin, max: ageMin + 10 + (hash % 5) },
-      createdAt: new Date(now - 7 * 60 * 1000).toISOString(),
-    })
-  }
+export function seedDemoReports(_venueIds: string[]): void {
+  // No-op: no longer seeding fake reports
 }
 
 // --- Utility to clear reports (for testing) ---
