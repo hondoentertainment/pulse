@@ -1,10 +1,27 @@
 import { useCallback } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
 import { motion, useAnimation, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 
 export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+
+const TAB_TO_PATH: Record<TabId, string> = {
+  trending: '/',
+  discover: '/discover',
+  map: '/map',
+  notifications: '/notifications',
+  profile: '/profile',
+}
+
+const PATH_TO_TAB: Record<string, TabId> = {
+  '/': 'trending',
+  '/discover': 'discover',
+  '/map': 'map',
+  '/notifications': 'notifications',
+  '/profile': 'profile',
+}
 
 interface BottomNavProps {
   activeTab: TabId
@@ -97,9 +114,13 @@ function TabButton({
   }, [controls, onPress])
 
   return (
-    <button
-      onClick={handlePress}
-      className="flex flex-col items-center justify-center flex-1 h-full relative"
+    <Link
+      to={TAB_TO_PATH[tab.id]}
+      onClick={(e) => {
+        // Let the Link handle navigation; fire haptics + animation
+        handlePress()
+      }}
+      className="flex flex-col items-center justify-center flex-1 h-full relative no-underline"
       aria-label={tab.label}
       aria-current={isActive ? 'page' : undefined}
     >
@@ -174,7 +195,7 @@ function TabButton({
           />
         )}
       </div>
-    </button>
+    </Link>
   )
 }
 
@@ -183,6 +204,11 @@ export function BottomNav({
   onTabChange,
   unreadNotifications = 0,
 }: BottomNavProps) {
+  const location = useLocation()
+
+  // Derive active tab from the URL, falling back to the prop
+  const currentTab = PATH_TO_TAB[location.pathname] ?? activeTab
+
   const tabs: TabConfig[] = [
     { id: 'trending', icon: TrendUp, label: 'Trending' },
     { id: 'discover', icon: Compass, label: 'Discover' },
@@ -210,7 +236,7 @@ export function BottomNav({
           <TabButton
             key={tab.id}
             tab={tab}
-            isActive={activeTab === tab.id}
+            isActive={currentTab === tab.id}
             onPress={() => onTabChange(tab.id)}
           />
         ))}

@@ -1,4 +1,5 @@
 import { queryClient } from '@/lib/query-client'
+import { useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
@@ -24,7 +25,16 @@ import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import type { TabId } from '@/components/BottomNav'
 
+const TAB_TO_PATH: Record<TabId, string> = {
+  trending: '/',
+  discover: '/discover',
+  map: '/map',
+  notifications: '/notifications',
+  profile: '/profile',
+}
+
 export function useAppHandlers() {
+  const navigate = useNavigate()
   const state = useAppState()
   const {
     activeTab,
@@ -214,9 +224,15 @@ export function useAppHandlers() {
   }
 
   const handleNotificationClick = (notification: GroupedNotification) => {
-    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) setSelectedVenue(notification.venue)
-    else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) setSelectedVenue(notification.venue)
-    setActiveTab('trending')
+    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) {
+      navigate(`/venue/${notification.venue.id}`)
+      return
+    }
+    if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) {
+      navigate(`/venue/${notification.venue.id}`)
+      return
+    }
+    navigate('/')
   }
 
   const handleAddFriend = (userId: string) => {
@@ -238,7 +254,7 @@ export function useAppHandlers() {
   }
 
   const handleTabChange = (tab: TabId) => {
-    setActiveTab(tab)
+    navigate(TAB_TO_PATH[tab])
     if (navigator.vibrate) navigator.vibrate([15])
     const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
     announce(`Switched to ${labels[tab]} tab`)

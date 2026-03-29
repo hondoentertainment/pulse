@@ -1,37 +1,33 @@
 import { lazy, Suspense } from 'react'
-import { AppStateProvider, useAppState, ALL_USERS } from '@/hooks/use-app-state'
-import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { AppStateProvider, useAppState } from '@/hooks/use-app-state'
+import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { calculatePresence } from '@/lib/presence-engine'
-import { calculateDistance } from '@/lib/pulse-engine'
 import { BottomNav } from '@/components/BottomNav'
 import { AppHeader } from '@/components/AppHeader'
-import { SubPageRouter } from '@/components/SubPageRouter'
 import { MainTabRouter } from '@/components/MainTabRouter'
+import { SubPageRouter } from '@/components/SubPageRouter'
+import { VenueRoute } from '@/components/VenueRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { Plus } from '@phosphor-icons/react'
-import { toast, Toaster } from 'sonner'
+import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
 const AuthGate = lazy(() => import('@/components/AuthGate').then(m => ({ default: m.AuthGate })))
-const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
 const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboard').then(m => ({ default: m.SocialPulseDashboard })))
-const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => ({ default: m.PresenceSheet })))
 const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
 function AppContent() {
   const state = useAppState()
-  const handlers = useAppHandlers()
+  const { activeTab, navigateToTab } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
-    activeTab, selectedVenue, setSelectedVenue,
-    subPage,
     venues, pulses, currentUser,
     showAdminDashboard, setShowAdminDashboard,
     socialDashboardEnabled,
@@ -39,23 +35,26 @@ function AppContent() {
     venueForPulse,
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, currentTime, queuedPulseCount,
-    userLocation, unitSystem, moderatedPulses,
-    presenceSheetOpen, setPresenceSheetOpen,
-    storyViewerOpen, storyViewerStories,
-    setStoryViewerOpen,
     sortedVenues,
     unreadNotificationCount,
-    isFavorite, isFollowed,
-    integrationsEnabled,
-    setIntegrationVenue, setCurrentUser,
-    getPulsesWithUsers,
+    setCurrentUser,
+    storyViewerOpen, storyViewerStories,
+    setStoryViewerOpen,
   } = state
 
+  // Import handlers lazily to avoid circular deps
+  const { useAppHandlers } = require('@/hooks/use-app-handlers')
+  const handlers = useAppHandlers()
+
   const {
-    handleCreatePulse, handleSubmitPulse, handleReaction,
-    handleStartCrewCheckIn, handleToggleFavorite, handleToggleFollow,
-    handleTabChange, handleStoryReact, handlePulseReport,
+    handleCreatePulse, handleSubmitPulse,
+    handleStoryReact,
   } = handlers
+
+  const handleTabChange = (tab: Parameters<typeof navigateToTab>[0]) => {
+    navigateToTab(tab)
+    if (navigator.vibrate) navigator.vibrate([15])
+  }
 
   // ── Onboarding gate ──────────────────────────────────────
   if (hasCompletedOnboarding === false) {
@@ -96,97 +95,101 @@ function AppContent() {
     )
   }
 
-  // ── Sub-page overlay ─────────────────────────────────────
-  if (subPage) return <SubPageRouter />
-
-  // ── Venue detail page ────────────────────────────────────
-  if (selectedVenue) {
-    const venuePulses = getPulsesWithUsers().filter(p => p.venueId === selectedVenue.id)
-    const distance = userLocation
-      ? calculateDistance(userLocation.lat, userLocation.lng, selectedVenue.location.lat, selectedVenue.location.lng)
-      : undefined
-
-    const presenceData = calculatePresence(selectedVenue.id, {
-      currentUser,
-      allUsers: ALL_USERS,
-      allPulses: pulses || [],
-      venueLocation: selectedVenue.location,
-      userLocations: {
-        'user-2': { lat: selectedVenue.location.lat + 0.00001, lng: selectedVenue.location.lng - 0.00001, lastUpdate: new Date().toISOString() },
-        'user-3': { lat: selectedVenue.location.lat - 0.00001, lng: selectedVenue.location.lng + 0.00001, lastUpdate: new Date().toISOString() },
-        'user-5': { lat: selectedVenue.location.lat + 0.00002, lng: selectedVenue.location.lng + 0.00002, lastUpdate: new Date().toISOString() },
-      },
-    })
-
-    return (
-      <>
-        <Toaster position="top-center" theme="dark" />
-        <Suspense fallback={pageFallback}>
-          <VenuePage
-            venue={selectedVenue}
-            venuePulses={venuePulses}
-            distance={distance}
-            unitSystem={unitSystem}
-            locationName={locationName}
-            currentTime={currentTime}
-            isTracking={isTracking}
-            hasRealtimeLocation={!!realtimeLocation}
-            isFavorite={isFavorite(selectedVenue.id)}
-            isFollowed={isFollowed(selectedVenue.id)}
-            currentUser={currentUser}
-            presenceData={presenceData}
-            onOpenPresence={() => setPresenceSheetOpen(true)}
-            onBack={() => setSelectedVenue(null)}
-            onCreatePulse={() => handleCreatePulse(selectedVenue.id)}
-            onStartCrewCheckIn={() => handleStartCrewCheckIn(selectedVenue.id)}
-            onReaction={handleReaction}
-            onReportPulse={handlePulseReport}
-            onToggleFavorite={() => handleToggleFavorite(selectedVenue.id)}
-            onToggleFollow={() => handleToggleFollow(selectedVenue.id)}
-            onOpenIntegrations={() => {
-              if (!integrationsEnabled) { toast.error('Integrations are currently unavailable'); return }
-              setIntegrationVenue(selectedVenue)
-              setSelectedVenue(null)
-              state.setSubPage('integrations')
-            }}
-          />
-        </Suspense>
-        <Suspense fallback={null}>
-          <PresenceSheet
-            open={presenceSheetOpen}
-            onClose={() => setPresenceSheetOpen(false)}
-            presence={presenceData}
-            currentUser={currentUser}
-            onUpdateSettings={(settings) => {
-              setCurrentUser(prev => {
-                if (!prev) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), presenceSettings: settings }
-                return { ...prev, presenceSettings: settings }
-              })
-            }}
-          />
-        </Suspense>
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
-        <Suspense fallback={null}>
-          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
-        </Suspense>
-      </>
-    )
-  }
-
-  // ── Main shell ───────────────────────────────────────────
+  // ── Main shell with routes ───────────────────────────────
   return (
     <main className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
-      <AppHeader
-        locationName={locationName}
-        isTracking={isTracking}
-        hasRealtimeLocation={!!realtimeLocation}
-        locationPermissionDenied={locationPermissionDenied}
-        currentTime={currentTime}
-        queuedPulseCount={queuedPulseCount}
-      />
 
-      <MainTabRouter />
+      <Routes>
+        {/* Venue detail page */}
+        <Route path="/venue/:venueId" element={<VenueRoute />} />
+
+        {/* Sub-pages */}
+        <Route path="/events" element={<SubPageRouter page="events" />} />
+        <Route path="/crews" element={<SubPageRouter page="crews" />} />
+        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
+        <Route path="/insights" element={<SubPageRouter page="insights" />} />
+        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
+        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
+        <Route path="/settings" element={<SubPageRouter page="settings" />} />
+        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
+        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
+        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
+        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
+        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+
+        {/* Main tabs */}
+        <Route path="/discover" element={
+          <>
+            <AppHeader
+              locationName={locationName}
+              isTracking={isTracking}
+              hasRealtimeLocation={!!realtimeLocation}
+              locationPermissionDenied={locationPermissionDenied}
+              currentTime={currentTime}
+              queuedPulseCount={queuedPulseCount}
+            />
+            <MainTabRouter tab="discover" />
+          </>
+        } />
+        <Route path="/map" element={
+          <>
+            <AppHeader
+              locationName={locationName}
+              isTracking={isTracking}
+              hasRealtimeLocation={!!realtimeLocation}
+              locationPermissionDenied={locationPermissionDenied}
+              currentTime={currentTime}
+              queuedPulseCount={queuedPulseCount}
+            />
+            <MainTabRouter tab="map" />
+          </>
+        } />
+        <Route path="/notifications" element={
+          <>
+            <AppHeader
+              locationName={locationName}
+              isTracking={isTracking}
+              hasRealtimeLocation={!!realtimeLocation}
+              locationPermissionDenied={locationPermissionDenied}
+              currentTime={currentTime}
+              queuedPulseCount={queuedPulseCount}
+            />
+            <MainTabRouter tab="notifications" />
+          </>
+        } />
+        <Route path="/profile" element={
+          <>
+            <AppHeader
+              locationName={locationName}
+              isTracking={isTracking}
+              hasRealtimeLocation={!!realtimeLocation}
+              locationPermissionDenied={locationPermissionDenied}
+              currentTime={currentTime}
+              queuedPulseCount={queuedPulseCount}
+            />
+            <MainTabRouter tab="profile" />
+          </>
+        } />
+
+        {/* Default: trending tab */}
+        <Route path="/" element={
+          <>
+            <AppHeader
+              locationName={locationName}
+              isTracking={isTracking}
+              hasRealtimeLocation={!!realtimeLocation}
+              locationPermissionDenied={locationPermissionDenied}
+              currentTime={currentTime}
+              queuedPulseCount={queuedPulseCount}
+            />
+            <MainTabRouter tab="trending" />
+          </>
+        } />
+
+        {/* Catch-all: redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
       <AnimatePresence>
         {storyViewerOpen && storyViewerStories.length > 0 && (

@@ -80,6 +80,7 @@
         "react-hook-form": "^7.54.2",
         "react-parallax-tilt": "^1.7.320",
         "react-resizable-panels": "^2.1.7",
+        "react-router-dom": "^7.13.2",
         "recharts": "^2.15.1",
         "sonner": "^2.0.1",
         "supercluster": "^8.0.1",

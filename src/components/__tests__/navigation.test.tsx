@@ -346,6 +346,18 @@ vi.mock('@/hooks/use-app-state', () => ({
   ALL_USERS: [],
 }))
 
+vi.mock('@/hooks/use-route-navigation', () => ({
+  useRouteNavigation: () => ({
+    activeTab: 'trending',
+    navigateToTab: vi.fn(),
+    navigateToSubPage: vi.fn(),
+    navigateToVenue: vi.fn(),
+    navigateBack: vi.fn(),
+    navigate: vi.fn(),
+    location: { pathname: '/' },
+  }),
+}))
+
 vi.mock('@/hooks/use-app-handlers', () => ({
   useAppHandlers: () => ({
     handleReaction: vi.fn(),
@@ -441,11 +453,19 @@ vi.mock('@/lib/interactive-map', () => ({
 // Tests
 // ==========================================================================
 
+// Helper to wrap components that use react-router hooks
+const { MemoryRouter } = await import('react-router-dom')
+function RouterWrapper({ children, initialEntries = ['/'] }: { children: React.ReactNode; initialEntries?: string[] }) {
+  return <MemoryRouter initialEntries={initialEntries}>{children}</MemoryRouter>
+}
+
 describe('BottomNav', () => {
   it('renders all 5 tab labels', async () => {
     const { BottomNav } = await import('@/components/BottomNav')
     render(
-      <BottomNav activeTab="trending" onTabChange={vi.fn()} />
+      <RouterWrapper>
+        <BottomNav activeTab="trending" onTabChange={vi.fn()} />
+      </RouterWrapper>
     )
     expect(screen.getByText('Trending')).toBeTruthy()
     expect(screen.getByText('Discover')).toBeTruthy()
@@ -458,7 +478,9 @@ describe('BottomNav', () => {
     const { BottomNav } = await import('@/components/BottomNav')
     const onTabChange = vi.fn()
     render(
-      <BottomNav activeTab="trending" onTabChange={onTabChange} />
+      <RouterWrapper>
+        <BottomNav activeTab="trending" onTabChange={onTabChange} />
+      </RouterWrapper>
     )
     fireEvent.click(screen.getByText('Discover'))
     expect(onTabChange).toHaveBeenCalledWith('discover')
@@ -470,11 +492,13 @@ describe('BottomNav', () => {
   it('shows notification badge when unreadNotifications > 0', async () => {
     const { BottomNav } = await import('@/components/BottomNav')
     render(
-      <BottomNav
-        activeTab="trending"
-        onTabChange={vi.fn()}
-        unreadNotifications={5}
-      />
+      <RouterWrapper>
+        <BottomNav
+          activeTab="trending"
+          onTabChange={vi.fn()}
+          unreadNotifications={5}
+        />
+      </RouterWrapper>
     )
     expect(screen.getByText('5')).toBeTruthy()
   })
@@ -507,7 +531,7 @@ describe('BottomNav (consolidated from EnhancedBottomNav)', () => {
 describe('MainTabRouter', () => {
   it('renders without crashing', async () => {
     const { MainTabRouter } = await import('@/components/MainTabRouter')
-    const { container } = render(<MainTabRouter />)
+    const { container } = render(<RouterWrapper><MainTabRouter /></RouterWrapper>)
     // Component renders (may return null if no venues/currentUser, which is fine)
     expect(container).toBeTruthy()
   })
@@ -516,7 +540,7 @@ describe('MainTabRouter', () => {
 describe('SubPageRouter', () => {
   it('renders main content area (returns null when subPage is null)', async () => {
     const { SubPageRouter } = await import('@/components/SubPageRouter')
-    const { container } = render(<SubPageRouter />)
+    const { container } = render(<RouterWrapper><SubPageRouter /></RouterWrapper>)
     // With subPage=null in mock, component returns null
     expect(container).toBeTruthy()
   })
