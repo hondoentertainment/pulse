@@ -1,4 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
+vi.mock('@vercel/analytics', () => ({
+  track: vi.fn(),
+}))
+
+vi.mock('@sentry/react', () => ({
+  captureMessage: vi.fn(),
+  captureException: vi.fn(),
+}))
+
 import {
   trackEvent,
   getEvents,

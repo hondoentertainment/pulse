@@ -192,30 +192,11 @@ function generatePatternSuggestions(
 }
 
 function generateSocialSuggestions(
-  venues: Venue[],
-  user: User,
+  _venues: Venue[],
+  _user: User,
 ): Suggestion[] {
-  const suggestions: Suggestion[] = []
-
-  // Simulate friends at nearby venues based on friend count
-  if (user.friends.length >= 3) {
-    // Pick a simulated count based on friend list size
-    const friendCount = Math.min(
-      Math.floor(user.friends.length * 0.3),
-      5,
-    )
-
-    if (friendCount > 0) {
-      suggestions.push({
-        id: `social-friends-nearby`,
-        text: `${friendCount} of your friends are at venues nearby.`,
-        actionLabel: 'See where',
-        type: 'social',
-      })
-    }
-  }
-
-  return suggestions
+  // Social suggestions require real presence data — no simulated counts
+  return []
 }
 
 // ---------------------------------------------------------------------------
