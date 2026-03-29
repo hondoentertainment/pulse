@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
-import { Settings } from '@/components/Settings'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck } from '@phosphor-icons/react'
@@ -70,16 +69,16 @@ export function ProfileTab({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent p-1">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] p-1">
           <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
             <span className="text-2xl font-bold">{currentUser.username.slice(0, 2).toUpperCase()}</span>
           </div>
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold">{currentUser.username}</h2>
+            <h2 className="text-2xl font-semibold">{currentUser.username}</h2>
             {currentUser.postStreak && currentUser.postStreak >= 2 && (
-              <Badge className="bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border-orange-500/30 text-xs py-0 h-5">
+              <Badge className="bg-[#F77737]/20 text-[#F77737] hover:bg-[#F77737]/30 border-[#F77737]/30 text-xs py-0 h-5">
                 🔥 {currentUser.postStreak} Day Streak
               </Badge>
             )}
@@ -102,8 +101,8 @@ export function ProfileTab({
         <>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Star size={20} weight="fill" className="text-accent" />
-              <h3 className="text-lg font-bold">Favorite Venues</h3>
+              <Star size={20} weight="fill" className="text-[#FCAF45]" />
+              <h3 className="text-lg font-semibold">Favorite Venues</h3>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {favoriteVenues.map((venue) => {
@@ -116,7 +115,7 @@ export function ProfileTab({
                   <button
                     key={venue.id}
                     onClick={() => onVenueClick(venue)}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-all group"
+                    className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 hover:border-[#E1306C]/40 transition-all group shadow-lg"
                   >
                     {latestPulse?.photos?.[0] ? (
                       <img
@@ -144,7 +143,7 @@ export function ProfileTab({
               {Array.from({ length: Math.max(0, 4 - favoriteVenues.length) }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
-                  className="aspect-square rounded-lg border border-dashed border-border bg-muted/30 flex items-center justify-center"
+                  className="aspect-square rounded-2xl border border-dashed border-white/10 bg-muted/30 flex items-center justify-center"
                 >
                   <Star size={20} className="text-muted-foreground/50" />
                 </div>
@@ -157,7 +156,7 @@ export function ProfileTab({
       )}
 
       <div className="space-y-3">
-        <h3 className="text-lg font-bold">Your Pulses</h3>
+        <h3 className="text-lg font-semibold">Your Pulses</h3>
         {userPulses.map((pulse) => (
           <PulseCard
             key={pulse.id}
@@ -177,17 +176,17 @@ export function ProfileTab({
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <UserPlus size={20} weight="fill" className="text-accent" />
-          <h3 className="text-lg font-bold">Invite Friends</h3>
+          <UserPlus size={20} weight="fill" className="text-[#E1306C]" />
+          <h3 className="text-lg font-semibold">Invite Friends</h3>
         </div>
         <button
           onClick={handleInviteFriends}
-          className="w-full p-4 bg-card rounded-xl border border-border hover:border-accent/30 transition-colors text-left flex items-center gap-3"
+          className="w-full p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#E1306C]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
         >
           {inviteCopied ? (
-            <Check size={20} weight="bold" className="text-accent" />
+            <Check size={20} weight="bold" className="text-[#E1306C]" />
           ) : (
-            <Link size={20} className="text-accent" />
+            <Link size={20} className="text-[#E1306C]" />
           )}
           <div className="flex-1">
             <p className="text-sm font-medium">{inviteCopied ? 'Link Copied!' : 'Copy Invite Link'}</p>
@@ -202,9 +201,9 @@ export function ProfileTab({
         <div className="space-y-3">
           <button
             onClick={onOpenCreatorDashboard}
-            className="w-full bg-gradient-to-r from-purple-500/10 to-yellow-500/10 rounded-xl p-4 border border-purple-500/20 flex items-center gap-3 hover:border-purple-500/40 transition-colors"
+            className="w-full bg-gradient-to-r from-[#833AB4]/10 to-[#FCAF45]/10 rounded-2xl p-4 border border-white/10 flex items-center gap-3 hover:border-[#833AB4]/40 transition-colors backdrop-blur-xl"
           >
-            <Lightning size={24} weight="fill" className="text-purple-400" />
+            <Lightning size={24} weight="fill" className="text-[#833AB4]" />
             <div className="flex-1 text-left">
               <p className="font-medium text-sm">Creator Dashboard</p>
               <p className="text-xs text-muted-foreground">
@@ -221,27 +220,27 @@ export function ProfileTab({
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Gear size={20} weight="fill" className="text-primary" />
-          <h3 className="text-lg font-bold">Settings</h3>
+          <Gear size={20} weight="fill" className="text-[#833AB4]" />
+          <h3 className="text-lg font-semibold">Settings</h3>
         </div>
         {onOpenOwnerDashboard && (
-          <button onClick={onOpenOwnerDashboard} className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors w-full">
-            <Storefront size={18} weight="fill" className="text-primary" />
+          <button onClick={onOpenOwnerDashboard} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
+            <Storefront size={18} weight="fill" className="text-[#833AB4]" />
             <span className="text-sm font-medium">Venue Owner Dashboard</span>
           </button>
         )}
         {onOpenModerationQueue && (
-          <button onClick={onOpenModerationQueue} className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors w-full">
-            <ShieldCheck size={18} weight="fill" className="text-primary" />
+          <button onClick={onOpenModerationQueue} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
+            <ShieldCheck size={18} weight="fill" className="text-[#833AB4]" />
             <span className="text-sm font-medium">Moderation Queue</span>
           </button>
         )}
         {onOpenSettings ? (
           <button
             onClick={onOpenSettings}
-            className="w-full p-4 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors text-left flex items-center gap-3"
+            className="w-full p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
           >
-            <Gear size={20} className="text-primary" />
+            <Gear size={20} className="text-[#833AB4]" />
             <div className="flex-1">
               <p className="text-sm font-medium">App Settings</p>
               <p className="text-xs text-muted-foreground">Notifications, privacy, display</p>

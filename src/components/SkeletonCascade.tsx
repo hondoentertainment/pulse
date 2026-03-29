@@ -150,3 +150,12 @@ export function SkeletonCascade({
     </>
   )
 }
+
+/** @deprecated Use SkeletonCascade instead */
+export function SkeletonList({ count = 3, type }: { count?: number; type: SkeletonVariant }) {
+  return <SkeletonCascade count={count} variant={type} />
+}
+
+export { VenueSkeleton as VenueCardSkeleton }
+export { PulseSkeleton as PulseCardSkeleton }
+export { NotificationSkeleton as NotificationCardSkeleton }
