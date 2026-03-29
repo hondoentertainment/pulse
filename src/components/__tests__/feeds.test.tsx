@@ -167,26 +167,6 @@ vi.mock('@/hooks/use-notification-settings', () => ({
 vi.mock('@/lib/social-coordination', () => ({}))
 
 // ---------------------------------------------------------------------------
-// Static imports (after mocks)
-// ---------------------------------------------------------------------------
-
-import { TrendingSections } from '@/components/TrendingSections'
-import { NotificationFeed } from '@/components/NotificationFeed'
-import { MySpotsFeed } from '@/components/MySpotsFeed'
-import { LiveActivityFeed } from '@/components/LiveActivityFeed'
-import { FriendActivityTimeline } from '@/components/FriendActivityTimeline'
-import { ChallengeFeed } from '@/components/ChallengeFeed'
-import { RecommendationsSection } from '@/components/RecommendationsSection'
-import { Favorites } from '@/components/Favorites'
-import { StoryRing } from '@/components/StoryRing'
-import { StoryViewer } from '@/components/StoryViewer'
-import { VirtualizedList } from '@/components/VirtualizedList'
-import { PullToRefresh } from '@/components/PullToRefresh'
-import { FriendSuggestions } from '@/components/FriendSuggestions'
-import ForYouFeed from '@/components/ForYouFeed'
-import { TrendingTab } from '@/components/TrendingTab'
-
-// ---------------------------------------------------------------------------
 // Helper factories
 // ---------------------------------------------------------------------------
 
@@ -240,6 +220,7 @@ function makePulseWithUser(overrides: any = {}) {
 
 describe('TrendingSections', () => {
   it('renders section titles', async () => {
+    const { TrendingSections } = await import('@/components/TrendingSections')
 
     const sections = [
       { title: 'Trending Now', venues: [makeVenue()], description: 'Hot spots', updatedAt: new Date().toISOString() },
@@ -292,6 +273,7 @@ describe('TrendingTab', () => {
       ),
     }))
 
+    const { TrendingTab } = await import('@/components/TrendingTab')
 
     render(
       <TrendingTab
@@ -329,6 +311,7 @@ describe('NotificationFeed', () => {
       { id: 'n1', type: 'friend_pulse', read: false, createdAt: new Date().toISOString(), pulseId: 'p1', venueId: 'v1' },
     ])
 
+    const { NotificationFeed } = await import('@/components/NotificationFeed')
 
     render(
       <NotificationFeed
@@ -354,6 +337,8 @@ describe('ForYouFeed', () => {
       { venue: makeVenue(), personalScore: 0.9, reasons: ['Great vibe'], distance: 0.5 },
     ])
 
+    const mod = await import('@/components/ForYouFeed')
+    const ForYouFeed = mod.default
 
     render(
       <ForYouFeed
@@ -375,6 +360,7 @@ describe('ForYouFeed', () => {
 
 describe('MySpotsFeed', () => {
   it('renders followed venues', async () => {
+    const { MySpotsFeed } = await import('@/components/MySpotsFeed')
 
     const venues = [makeVenue(), makeVenue({ id: 'venue-2', name: 'Lounge B' })]
 
@@ -396,6 +382,7 @@ describe('MySpotsFeed', () => {
   })
 
   it('shows empty state when no venues', async () => {
+    const { MySpotsFeed } = await import('@/components/MySpotsFeed')
 
     render(
       <MySpotsFeed
@@ -435,6 +422,7 @@ describe('LiveActivityFeed', () => {
       ],
     })
 
+    const { LiveActivityFeed } = await import('@/components/LiveActivityFeed')
 
     render(
       <LiveActivityFeed
@@ -456,6 +444,7 @@ describe('LiveActivityFeed', () => {
 
 describe('FriendActivityTimeline', () => {
   it('renders timeline entries with usernames', async () => {
+    const { FriendActivityTimeline } = await import('@/components/FriendActivityTimeline')
 
     const entries = [
       {
@@ -492,6 +481,7 @@ describe('FriendActivityTimeline', () => {
 
 describe('ChallengeFeed', () => {
   it('renders heading and challenge list', async () => {
+    const { ChallengeFeed } = await import('@/components/ChallengeFeed')
 
     const challenges = [
       {
@@ -533,6 +523,7 @@ describe('ChallengeFeed', () => {
 
 describe('RecommendationsSection', () => {
   it('renders You Might Like heading', async () => {
+    const { RecommendationsSection } = await import('@/components/RecommendationsSection')
 
     const recommendations = [
       { venue: makeVenue(), score: 0.85, reasons: ['Popular with friends'] },
@@ -556,6 +547,7 @@ describe('RecommendationsSection', () => {
 
 describe('Favorites', () => {
   it('renders favorite venue names', async () => {
+    const { Favorites } = await import('@/components/Favorites')
 
     const venues = [
       makeVenue({ id: 'v1', name: 'Favorite Bar' }),
@@ -577,6 +569,7 @@ describe('Favorites', () => {
   })
 
   it('shows empty state when no favorites', async () => {
+    const { Favorites } = await import('@/components/Favorites')
 
     render(
       <Favorites
@@ -598,6 +591,7 @@ describe('Favorites', () => {
 
 describe('StoryRing', () => {
   it('renders story rings with usernames', async () => {
+    const { StoryRing } = await import('@/components/StoryRing')
 
     const stories = [
       {
@@ -645,6 +639,7 @@ describe('StoryRing', () => {
 
 describe('StoryViewer', () => {
   it('renders story viewer with close mechanism', async () => {
+    const { StoryViewer } = await import('@/components/StoryViewer')
 
     const stories = [
       {
@@ -693,6 +688,7 @@ describe('StoryViewer', () => {
 
 describe('VirtualizedList', () => {
   it('renders visible items', async () => {
+    const { VirtualizedList } = await import('@/components/VirtualizedList')
 
     const items = Array.from({ length: 20 }, (_, i) => `Item ${i}`)
 
@@ -719,6 +715,7 @@ describe('VirtualizedList', () => {
 
 describe('PullToRefresh', () => {
   it('renders children', async () => {
+    const { PullToRefresh } = await import('@/components/PullToRefresh')
 
     render(
       <PullToRefresh onRefresh={async () => {}}>
@@ -736,6 +733,7 @@ describe('PullToRefresh', () => {
 
 describe('FriendSuggestions', () => {
   it('renders suggestion list with usernames and Add button', async () => {
+    const { FriendSuggestions } = await import('@/components/FriendSuggestions')
 
     const suggestions = [
       {

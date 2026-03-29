@@ -335,36 +335,11 @@ function makePulse(overrides: any = {}) {
   return { id: 'pulse-1', userId: 'user-1', venueId: 'venue-1', photos: [], energyRating: 'buzzing' as const, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now()+5400000).toISOString(), reactions: { fire: [], eyes: [], skull: [], lightning: [] }, views: 10, ...overrides }
 }
 
-// ---- Static imports (after mocks) ----
-
-import { TableBookingSheet } from '@/components/TableBookingSheet'
-import { TicketPurchaseSheet } from '@/components/TicketPurchaseSheet'
-import { TipSheet } from '@/components/TipSheet'
-import { GroupPollSheet } from '@/components/GroupPollSheet'
-import { MeetUpSuggestion } from '@/components/MeetUpSuggestion'
-import { LivePlanTracker } from '@/components/LivePlanTracker'
-import { CrewPanel } from '@/components/CrewPanel'
-import { HashtagManager } from '@/components/HashtagManager'
-import { GuestCRM } from '@/components/GuestCRM'
-import { StaffScheduler } from '@/components/StaffScheduler'
-import { CompetitorBenchmark } from '@/components/CompetitorBenchmark'
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard'
-import { SocialPulseDashboard } from '@/components/SocialPulseDashboard'
-import { SocialPulseGraph } from '@/components/SocialPulseGraph'
-import { CorrelationInsights } from '@/components/CorrelationInsights'
-import { CorrelationOverlayChart } from '@/components/CorrelationOverlayChart'
-import { ToastProvider, useToast } from '@/components/ToastSystem'
-import { AccessibilityProvider, useAccessibility } from '@/components/AccessibilityProvider'
-import FriendMapDots from '@/components/FriendMapDots'
-import { StreakCalendar } from '@/components/StreakCalendar'
-import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
-import { ContextualSearchSuggestions } from '@/components/ContextualSearchSuggestions'
-import { VenuePage } from '@/components/VenuePage'
-
 // ---- Tests ----
 
 describe('TableBookingSheet', () => {
   it('renders booking form with venue name when open', async () => {
+    const { TableBookingSheet } = await import('@/components/TableBookingSheet')
     render(
       <TableBookingSheet
         open={true}
@@ -381,6 +356,7 @@ describe('TableBookingSheet', () => {
 
 describe('TicketPurchaseSheet', () => {
   it('renders event title when open', async () => {
+    const { TicketPurchaseSheet } = await import('@/components/TicketPurchaseSheet')
     const event = {
       id: 'event-1',
       venueId: 'venue-1',
@@ -403,6 +379,7 @@ describe('TicketPurchaseSheet', () => {
 
 describe('TipSheet', () => {
   it('renders tip UI with creator username when open', async () => {
+    const { TipSheet } = await import('@/components/TipSheet')
     render(
       <TipSheet
         open={true}
@@ -417,6 +394,7 @@ describe('TipSheet', () => {
 
 describe('GroupPollSheet', () => {
   it('renders poll creation UI when open', async () => {
+    const { GroupPollSheet } = await import('@/components/GroupPollSheet')
     render(
       <GroupPollSheet
         open={true}
@@ -432,6 +410,7 @@ describe('GroupPollSheet', () => {
 
 describe('MeetUpSuggestion', () => {
   it('renders Meet in the Middle heading and venue suggestions', async () => {
+    const { MeetUpSuggestion } = await import('@/components/MeetUpSuggestion')
     render(
       <MeetUpSuggestion
         suggestions={[makeVenue()]}
@@ -446,6 +425,7 @@ describe('MeetUpSuggestion', () => {
 
 describe('LivePlanTracker', () => {
   it('renders plan stops', async () => {
+    const { LivePlanTracker } = await import('@/components/LivePlanTracker')
     const plan = {
       id: 'plan-1',
       name: 'Friday Night',
@@ -469,6 +449,7 @@ describe('LivePlanTracker', () => {
 
 describe('CrewPanel', () => {
   it('renders crew name and members', async () => {
+    const { CrewPanel } = await import('@/components/CrewPanel')
     const crew = {
       id: 'crew-1',
       name: 'Night Owls',
@@ -493,6 +474,7 @@ describe('CrewPanel', () => {
 
 describe('HashtagManager', () => {
   it('renders hashtag input and list', async () => {
+    const { HashtagManager } = await import('@/components/HashtagManager')
     const tracked = [
       { id: 'h1', tag: '#nightlife', active: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     ]
@@ -512,6 +494,7 @@ describe('HashtagManager', () => {
 
 describe('GuestCRM', () => {
   it('renders guest list', async () => {
+    const { GuestCRM } = await import('@/components/GuestCRM')
     render(
       <GuestCRM
         venueId="venue-1"
@@ -526,6 +509,7 @@ describe('GuestCRM', () => {
 
 describe('StaffScheduler', () => {
   it('renders schedule view', async () => {
+    const { StaffScheduler } = await import('@/components/StaffScheduler')
     render(
       <StaffScheduler
         venueId="venue-1"
@@ -538,6 +522,7 @@ describe('StaffScheduler', () => {
 
 describe('CompetitorBenchmark', () => {
   it('renders benchmark view', async () => {
+    const { CompetitorBenchmark } = await import('@/components/CompetitorBenchmark')
     render(
       <CompetitorBenchmark
         venue={makeVenue()}
@@ -554,6 +539,7 @@ describe('CompetitorBenchmark', () => {
 
 describe('AnalyticsDashboard', () => {
   it('renders dashboard heading', async () => {
+    const { AnalyticsDashboard } = await import('@/components/AnalyticsDashboard')
     render(<AnalyticsDashboard />)
     expect(screen.getByText('Seeded Content Analytics')).toBeDefined()
   })
@@ -561,6 +547,7 @@ describe('AnalyticsDashboard', () => {
 
 describe('SocialPulseDashboard', () => {
   it('renders dashboard heading', async () => {
+    const { SocialPulseDashboard } = await import('@/components/SocialPulseDashboard')
     render(
       <SocialPulseDashboard
         venues={[makeVenue()]}
@@ -572,6 +559,7 @@ describe('SocialPulseDashboard', () => {
   })
 
   it('calls onBack when back button clicked', async () => {
+    const { SocialPulseDashboard } = await import('@/components/SocialPulseDashboard')
     const onBack = vi.fn()
     render(
       <SocialPulseDashboard
@@ -588,6 +576,7 @@ describe('SocialPulseDashboard', () => {
 
 describe('SocialPulseGraph', () => {
   it('renders graph with hashtag', async () => {
+    const { SocialPulseGraph } = await import('@/components/SocialPulseGraph')
     const windows = [
       { id: 'w1', hashtag: '#party', postCount: 10, totalEngagement: 50, normalizedScore: 80, startTime: new Date(Date.now() - 60000).toISOString(), endTime: new Date().toISOString(), windowSize: '5min' },
       { id: 'w2', hashtag: '#party', postCount: 15, totalEngagement: 70, normalizedScore: 90, startTime: new Date().toISOString(), endTime: new Date(Date.now() + 60000).toISOString(), windowSize: '5min' },
@@ -605,6 +594,7 @@ describe('SocialPulseGraph', () => {
 
 describe('CorrelationInsights', () => {
   it('renders correlation cards', async () => {
+    const { CorrelationInsights } = await import('@/components/CorrelationInsights')
     const correlations = [
       { venueId: 'venue-1', windowSize: '60min', correlationCoefficient: 0.8, lag: 30, strength: 'strong', socialPulseScore: 85, venuePulseScore: 75 },
     ]
@@ -620,6 +610,7 @@ describe('CorrelationInsights', () => {
 
 describe('CorrelationOverlayChart', () => {
   it('renders SVG chart', async () => {
+    const { CorrelationOverlayChart } = await import('@/components/CorrelationOverlayChart')
     const socialWindows = [
       { id: 'sw1', hashtag: '#fun', postCount: 5, totalEngagement: 30, normalizedScore: 60, startTime: new Date(Date.now() - 60000).toISOString(), endTime: new Date().toISOString(), windowSize: '5min' },
     ]
@@ -639,6 +630,7 @@ describe('CorrelationOverlayChart', () => {
 
 describe('ToastSystem', () => {
   it('ToastProvider renders children', async () => {
+    const { ToastProvider } = await import('@/components/ToastSystem')
     render(
       <ToastProvider>
         <span>child content</span>
@@ -648,6 +640,7 @@ describe('ToastSystem', () => {
   })
 
   it('useToast returns toast and dismiss functions', async () => {
+    const { ToastProvider, useToast } = await import('@/components/ToastSystem')
     let hookValue: any = null
     function TestConsumer() {
       hookValue = useToast()
@@ -666,6 +659,7 @@ describe('ToastSystem', () => {
 
 describe('AccessibilityProvider', () => {
   it('renders children', async () => {
+    const { AccessibilityProvider } = await import('@/components/AccessibilityProvider')
     render(
       <AccessibilityProvider>
         <span>accessible child</span>
@@ -675,6 +669,7 @@ describe('AccessibilityProvider', () => {
   })
 
   it('useAccessibility returns preferences', async () => {
+    const { AccessibilityProvider, useAccessibility } = await import('@/components/AccessibilityProvider')
     let hookValue: any = null
     function TestConsumer() {
       hookValue = useAccessibility()
@@ -693,6 +688,7 @@ describe('AccessibilityProvider', () => {
 
 describe('FriendMapDots', () => {
   it('renders SVG friend dots', async () => {
+    const FriendMapDots = (await import('@/components/FriendMapDots')).default
     const friends = [
       { id: 'f1', username: 'alice', avatar: '', lat: 40.7, lng: -74.0, checkedIn: true },
     ]
@@ -710,6 +706,7 @@ describe('FriendMapDots', () => {
 
 describe('StreakCalendar', () => {
   it('renders calendar grid and streak count', async () => {
+    const { StreakCalendar } = await import('@/components/StreakCalendar')
     const streak = {
       currentStreak: 5,
       longestStreak: 10,
@@ -732,6 +729,7 @@ describe('StreakCalendar', () => {
 
 describe('PredictiveSurgePanel', () => {
   it('renders panel heading', async () => {
+    const { PredictiveSurgePanel } = await import('@/components/PredictiveSurgePanel')
     render(
       <PredictiveSurgePanel
         venues={[makeVenue()]}
@@ -745,6 +743,7 @@ describe('PredictiveSurgePanel', () => {
 
 describe('ContextualSearchSuggestions', () => {
   it('renders suggestion text', async () => {
+    const { ContextualSearchSuggestions } = await import('@/components/ContextualSearchSuggestions')
     render(
       <ContextualSearchSuggestions
         venues={[makeVenue()]}
@@ -761,6 +760,7 @@ describe('ContextualSearchSuggestions', () => {
 
 describe('VenuePage', () => {
   it('renders venue name and back button', async () => {
+    const { VenuePage } = await import('@/components/VenuePage')
     const venue = makeVenue()
     render(
       <VenuePage

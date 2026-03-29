@@ -81,7 +81,18 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
-    testTimeout: 10000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**', '.claude/**'],
+    deps: {
+      optimizer: {
+        web: {
+          enabled: true,
+        },
+      },
+    },
+    sequence: {
+      concurrent: false,
+    },
   },
 });

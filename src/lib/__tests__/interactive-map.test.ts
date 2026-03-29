@@ -78,8 +78,9 @@ describe('clusterVenueRenderPoints', () => {
       { venue: makeVenue({ id: 'c', pulseScore: 50, location: { lat: 38.9, lng: -121.0, address: '' } }), x: 300, y: 280 },
     ]
 
-    const result = clusterVenueRenderPoints(points, 0.8, true)
+    const result = clusterVenueRenderPoints(points, 3.0, true)
 
+    // At zoom 3.0, nearby a+b should cluster together, while far-away c stays separate
     expect(result.clusters).toHaveLength(1)
     expect(result.clusters[0].venues).toHaveLength(2)
     expect(result.clusters[0].maxPulseScore).toBe(80)

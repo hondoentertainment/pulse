@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
@@ -113,33 +113,6 @@ vi.mock('@/lib/haptics', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Static imports (after mocks)
-// ---------------------------------------------------------------------------
-
-import { AnimatedEmptyState } from '@/components/AnimatedEmptyState'
-import { PulseScore } from '@/components/PulseScore'
-import { StreakBadge, FirstPulseCelebration } from '@/components/StreakBadge'
-import { GPSIndicator } from '@/components/GPSIndicator'
-import { OfflineBanner } from '@/components/OfflineBanner'
-import { TimeContextualLabel } from '@/components/TimeContextualLabel'
-import { WeatherAwareTag } from '@/components/WeatherAwareTag'
-import { SocialProofBadge } from '@/components/SocialProofBadge'
-import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
-import { ReducedMotionWrapper, useReducedMotion, getTransition, getMotionProps } from '@/components/ReducedMotionWrapper'
-import { ProgressiveImage } from '@/components/ProgressiveImage'
-import FloatingReactions from '@/components/FloatingReactions'
-import { SpringButton, AnimatedCounter } from '@/components/MicroInteractions'
-import { PageTransition, TabTransition, SharedElement, StaggeredList, OverlayTransition, DirectionalPageTransition } from '@/components/PageTransition'
-import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
-import { MilestoneAnimation } from '@/components/MilestoneAnimation'
-import { AudioVibePreview } from '@/components/AudioVibePreview'
-import { LiveCrowdIndicator } from '@/components/LiveCrowdIndicator'
-import { VibeMatchMeter } from '@/components/VibeMatchMeter'
-import MoodSelector from '@/components/MoodSelector'
-import { EnergySlider } from '@/components/EnergySlider'
-import { SkeletonCascade } from '@/components/SkeletonCascade'
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -153,12 +126,19 @@ const makeVenue = (overrides: Record<string, any> = {}) => ({
 })
 
 // ---------------------------------------------------------------------------
-// 1. AnimatedEmptyState (formerly EmptyState, now consolidated)
+// 1. AnimatedEmptyState (consolidated from EmptyState + AnimatedEmptyState)
 // ---------------------------------------------------------------------------
 
 describe('AnimatedEmptyState', () => {
+  let AnimatedEmptyState: any
+  beforeEach(async () => {
+    const mod = await import('@/components/AnimatedEmptyState')
+    AnimatedEmptyState = mod.AnimatedEmptyState
+  })
+
   it.each([
     ['no-venues', 'No venues nearby'],
+    ['no-nearby', 'No venues nearby'],
     ['no-notifications', 'All caught up!'],
     ['no-favorites', 'No favorites yet'],
     ['no-pulses', 'No pulses yet'],
@@ -174,6 +154,18 @@ describe('AnimatedEmptyState', () => {
     render(<AnimatedEmptyState variant="no-venues" onAction={onAction} actionLabel="Go" />)
     expect(screen.getByText('Go')).toBeDefined()
   })
+
+  it('shows default CTA label when onAction provided for "no-pulses"', () => {
+    const onAction = vi.fn()
+    render(<AnimatedEmptyState variant="no-pulses" onAction={onAction} />)
+    expect(screen.getByText('Drop a Pulse')).toBeDefined()
+  })
+
+  it('shows default CTA label when onAction provided for "no-favorites"', () => {
+    const onAction = vi.fn()
+    render(<AnimatedEmptyState variant="no-favorites" onAction={onAction} />)
+    expect(screen.getByText('Discover Venues')).toBeDefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -181,6 +173,12 @@ describe('AnimatedEmptyState', () => {
 // ---------------------------------------------------------------------------
 
 describe('PulseScore', () => {
+  let PulseScore: any
+  beforeEach(async () => {
+    const mod = await import('@/components/PulseScore')
+    PulseScore = mod.PulseScore
+  })
+
   it('renders label when showLabel is true', () => {
     render(<PulseScore score={85} showLabel={true} />)
     expect(screen.getByText('Buzzing')).toBeDefined()
@@ -197,6 +195,14 @@ describe('PulseScore', () => {
 // ---------------------------------------------------------------------------
 
 describe('StreakBadge', () => {
+  let StreakBadge: any
+  let FirstPulseCelebration: any
+  beforeEach(async () => {
+    const mod = await import('@/components/StreakBadge')
+    StreakBadge = mod.StreakBadge
+    FirstPulseCelebration = mod.FirstPulseCelebration
+  })
+
   it('returns null when streak < 1', () => {
     const { container } = render(<StreakBadge streak={0} />)
     expect(container.innerHTML).toBe('')
@@ -219,6 +225,12 @@ describe('StreakBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('GPSIndicator', () => {
+  let GPSIndicator: any
+  beforeEach(async () => {
+    const mod = await import('@/components/GPSIndicator')
+    GPSIndicator = mod.GPSIndicator
+  })
+
   it('shows LIVE when tracking', () => {
     render(<GPSIndicator isTracking={true} />)
     expect(screen.getByText('LIVE')).toBeDefined()
@@ -240,7 +252,13 @@ describe('GPSIndicator', () => {
 // ---------------------------------------------------------------------------
 
 describe('OfflineBanner', () => {
+  let OfflineBanner: any
   const originalOnLine = navigator.onLine
+
+  beforeEach(async () => {
+    const mod = await import('@/components/OfflineBanner')
+    OfflineBanner = mod.OfflineBanner
+  })
 
   afterEach(() => {
     Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true, writable: true })
@@ -258,6 +276,12 @@ describe('OfflineBanner', () => {
 // ---------------------------------------------------------------------------
 
 describe('TimeContextualLabel', () => {
+  let TimeContextualLabel: any
+  beforeEach(async () => {
+    const mod = await import('@/components/TimeContextualLabel')
+    TimeContextualLabel = mod.TimeContextualLabel
+  })
+
   it('renders the label', () => {
     render(<TimeContextualLabel venue={makeVenue()} />)
     expect(screen.getByText('Happy Hour')).toBeDefined()
@@ -269,6 +293,12 @@ describe('TimeContextualLabel', () => {
 // ---------------------------------------------------------------------------
 
 describe('WeatherAwareTag', () => {
+  let WeatherAwareTag: any
+  beforeEach(async () => {
+    const mod = await import('@/components/WeatherAwareTag')
+    WeatherAwareTag = mod.WeatherAwareTag
+  })
+
   it('renders tag label text', () => {
     const weatherTag = { type: 'indoor' as const, weatherSafe: true, label: 'Cozy Indoor' }
     render(<WeatherAwareTag weatherTag={weatherTag} conditions="rain" />)
@@ -281,6 +311,12 @@ describe('WeatherAwareTag', () => {
 // ---------------------------------------------------------------------------
 
 describe('SocialProofBadge', () => {
+  let SocialProofBadge: any
+  beforeEach(async () => {
+    const mod = await import('@/components/SocialProofBadge')
+    SocialProofBadge = mod.SocialProofBadge
+  })
+
   it('renders proof label', () => {
     const proof = { friendVisitsThisWeek: 3, isFavoriteInCircle: false, trendingInCircle: false, label: '3 friends visited' }
     render(<SocialProofBadge proof={proof} avatars={[]} />)
@@ -299,6 +335,12 @@ describe('SocialProofBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('CreatorProfileBadge', () => {
+  let CreatorProfileBadge: any
+  beforeEach(async () => {
+    const mod = await import('@/components/CreatorProfileBadge')
+    CreatorProfileBadge = mod.CreatorProfileBadge
+  })
+
   it.each([
     ['rising', 'Rising'],
     ['verified', 'Verified'],
@@ -319,6 +361,19 @@ describe('CreatorProfileBadge', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReducedMotionWrapper', () => {
+  let ReducedMotionWrapper: any
+  let useReducedMotion: any
+  let getTransition: any
+  let getMotionProps: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/ReducedMotionWrapper')
+    ReducedMotionWrapper = mod.ReducedMotionWrapper
+    useReducedMotion = mod.useReducedMotion
+    getTransition = mod.getTransition
+    getMotionProps = mod.getMotionProps
+  })
+
   it('renders children with reducedMotion value', () => {
     render(
       <ReducedMotionWrapper forceReducedMotion={false}>
@@ -353,6 +408,12 @@ describe('ReducedMotionWrapper', () => {
 // ---------------------------------------------------------------------------
 
 describe('ProgressiveImage', () => {
+  let ProgressiveImage: any
+  beforeEach(async () => {
+    const mod = await import('@/components/ProgressiveImage')
+    ProgressiveImage = mod.ProgressiveImage
+  })
+
   it('renders with alt text via aria-label', () => {
     render(<ProgressiveImage src="/img.jpg" alt="A cool venue" />)
     const el = screen.getByRole('img')
@@ -365,6 +426,12 @@ describe('ProgressiveImage', () => {
 // ---------------------------------------------------------------------------
 
 describe('FloatingReactions', () => {
+  let FloatingReactions: any
+  beforeEach(async () => {
+    const mod = await import('@/components/FloatingReactions')
+    FloatingReactions = mod.default
+  })
+
   it('renders reactions', () => {
     const reactions = [
       { id: 'r1', emoji: '🔥', timestamp: 1 },
@@ -381,6 +448,15 @@ describe('FloatingReactions', () => {
 // ---------------------------------------------------------------------------
 
 describe('MicroInteractions', () => {
+  let SpringButton: any
+  let AnimatedCounter: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/MicroInteractions')
+    SpringButton = mod.SpringButton
+    AnimatedCounter = mod.AnimatedCounter
+  })
+
   it('SpringButton renders children', () => {
     render(<SpringButton>Click Me</SpringButton>)
     expect(screen.getByText('Click Me')).toBeDefined()
@@ -397,6 +473,21 @@ describe('MicroInteractions', () => {
 // ---------------------------------------------------------------------------
 
 describe('PageTransition', () => {
+  let PageTransition: any
+  let TabTransition: any
+  let SharedElement: any
+  let StaggeredList: any
+  let OverlayTransition: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/PageTransition')
+    PageTransition = mod.PageTransition
+    TabTransition = mod.TabTransition
+    SharedElement = mod.SharedElement
+    StaggeredList = mod.StaggeredList
+    OverlayTransition = mod.OverlayTransition
+  })
+
   it('PageTransition renders children', () => {
     render(<PageTransition pageKey="home"><div>Page Content</div></PageTransition>)
     expect(screen.getByText('Page Content')).toBeDefined()
@@ -420,10 +511,16 @@ describe('PageTransition', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 16. DirectionalPageTransition
+// 16. DirectionalPageTransition (consolidated into PageTransition module)
 // ---------------------------------------------------------------------------
 
 describe('DirectionalPageTransition', () => {
+  let DirectionalPageTransition: any
+  beforeEach(async () => {
+    const mod = await import('@/components/PageTransition')
+    DirectionalPageTransition = mod.DirectionalPageTransition
+  })
+
   it('renders children', () => {
     render(<DirectionalPageTransition><div>Hello</div></DirectionalPageTransition>)
     expect(screen.getByText('Hello')).toBeDefined()
@@ -442,6 +539,12 @@ describe('DirectionalPageTransition', () => {
 // ---------------------------------------------------------------------------
 
 describe('ScrollAwareHeader', () => {
+  let ScrollAwareHeader: any
+  beforeEach(async () => {
+    const mod = await import('@/components/ScrollAwareHeader')
+    ScrollAwareHeader = mod.ScrollAwareHeader
+  })
+
   it('renders children and locationName', () => {
     render(
       <ScrollAwareHeader isScrolled={false} scrollDirection={null} locationName="Brooklyn">
@@ -458,8 +561,11 @@ describe('ScrollAwareHeader', () => {
 // ---------------------------------------------------------------------------
 
 describe('MilestoneAnimation', () => {
-  beforeEach(() => {
+  let MilestoneAnimation: any
+  beforeEach(async () => {
     vi.useFakeTimers()
+    const mod = await import('@/components/MilestoneAnimation')
+    MilestoneAnimation = mod.MilestoneAnimation
   })
 
   afterEach(() => {
@@ -483,6 +589,12 @@ describe('MilestoneAnimation', () => {
 // ---------------------------------------------------------------------------
 
 describe('AudioVibePreview', () => {
+  let AudioVibePreview: any
+  beforeEach(async () => {
+    const mod = await import('@/components/AudioVibePreview')
+    AudioVibePreview = mod.AudioVibePreview
+  })
+
   it('renders genre text', () => {
     render(<AudioVibePreview genre="Jazz" ambiance="Smooth vibes" volumeLevel="moderate" />)
     expect(screen.getByText('Jazz')).toBeDefined()
@@ -504,6 +616,12 @@ describe('AudioVibePreview', () => {
 // ---------------------------------------------------------------------------
 
 describe('LiveCrowdIndicator', () => {
+  let LiveCrowdIndicator: any
+  beforeEach(async () => {
+    const mod = await import('@/components/LiveCrowdIndicator')
+    LiveCrowdIndicator = mod.LiveCrowdIndicator
+  })
+
   it('renders count and trend info', () => {
     render(<LiveCrowdIndicator count={42} trend="rising" />)
     expect(screen.getByText('people here now')).toBeDefined()
@@ -522,6 +640,12 @@ describe('LiveCrowdIndicator', () => {
 // ---------------------------------------------------------------------------
 
 describe('VibeMatchMeter', () => {
+  let VibeMatchMeter: any
+  beforeEach(async () => {
+    const mod = await import('@/components/VibeMatchMeter')
+    VibeMatchMeter = mod.VibeMatchMeter
+  })
+
   it('renders match score and verdict', () => {
     const match = {
       overall: 82,
@@ -553,6 +677,12 @@ describe('VibeMatchMeter', () => {
 // ---------------------------------------------------------------------------
 
 describe('MoodSelector', () => {
+  let MoodSelector: any
+  beforeEach(async () => {
+    const mod = await import('@/components/MoodSelector')
+    MoodSelector = mod.default
+  })
+
   it('renders mood options', () => {
     render(<MoodSelector onMoodSelect={vi.fn()} selectedMood={null} />)
     expect(screen.getByText('Chill')).toBeDefined()
@@ -572,6 +702,12 @@ describe('MoodSelector', () => {
 // ---------------------------------------------------------------------------
 
 describe('EnergySlider', () => {
+  let EnergySlider: any
+  beforeEach(async () => {
+    const mod = await import('@/components/EnergySlider')
+    EnergySlider = mod.EnergySlider
+  })
+
   it('renders energy label', () => {
     render(
       <EnergySlider
@@ -587,10 +723,25 @@ describe('EnergySlider', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 24. SkeletonCascade (SkeletonCard was consolidated)
+// 24. SkeletonCascade (consolidated from SkeletonCard + SkeletonCascade)
 // ---------------------------------------------------------------------------
 
 describe('SkeletonCascade', () => {
+  let SkeletonCascade: any
+  let VenueCardSkeleton: any
+  let PulseCardSkeleton: any
+  let NotificationCardSkeleton: any
+  let SkeletonList: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/SkeletonCascade')
+    SkeletonCascade = mod.SkeletonCascade
+    VenueCardSkeleton = mod.VenueCardSkeleton
+    PulseCardSkeleton = mod.PulseCardSkeleton
+    NotificationCardSkeleton = mod.NotificationCardSkeleton
+    SkeletonList = mod.SkeletonList
+  })
+
   it('renders correct number of items', () => {
     const { container } = render(<SkeletonCascade count={4} variant="venue" />)
     const items = container.querySelectorAll('.rounded-xl')
@@ -599,8 +750,28 @@ describe('SkeletonCascade', () => {
 
   it('defaults to 5 items', () => {
     const { container } = render(<SkeletonCascade variant="pulse" />)
-    // Each pulse skeleton has a .rounded-xl wrapper
     const items = container.querySelectorAll('.rounded-xl')
     expect(items.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('VenueCardSkeleton renders', () => {
+    const { container } = render(<VenueCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('PulseCardSkeleton renders', () => {
+    const { container } = render(<PulseCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('NotificationCardSkeleton renders', () => {
+    const { container } = render(<NotificationCardSkeleton />)
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
+  })
+
+  it('SkeletonList renders multiple skeletons via SkeletonCascade', () => {
+    const { container } = render(<SkeletonList count={3} type="venue" />)
+    const items = container.querySelectorAll('.rounded-xl')
+    expect(items.length).toBeGreaterThanOrEqual(3)
   })
 })

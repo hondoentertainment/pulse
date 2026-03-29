@@ -335,6 +335,7 @@ vi.mock('@/hooks/use-app-state', () => ({
     integrationVenue: null,
     integrationsEnabled: false,
     setIntegrationVenue: vi.fn(),
+    setSelectedVenue: vi.fn(),
     setSimulatedLocation: vi.fn(),
     setCurrentUser: vi.fn(),
     setCrews: vi.fn(),
@@ -343,6 +344,18 @@ vi.mock('@/hooks/use-app-state', () => ({
     setContentReports: vi.fn(),
   }),
   ALL_USERS: [],
+}))
+
+vi.mock('@/hooks/use-route-navigation', () => ({
+  useRouteNavigation: () => ({
+    activeTab: 'trending',
+    navigateToTab: vi.fn(),
+    navigateToSubPage: vi.fn(),
+    navigateToVenue: vi.fn(),
+    navigateBack: vi.fn(),
+    navigate: vi.fn(),
+    location: { pathname: '/' },
+  }),
 }))
 
 vi.mock('@/hooks/use-app-handlers', () => ({
@@ -437,32 +450,22 @@ vi.mock('@/lib/interactive-map', () => ({
 }))
 
 // ==========================================================================
-// Static imports (after mocks)
-// ==========================================================================
-
-import { BottomNav } from '@/components/BottomNav'
-import { MainTabRouter } from '@/components/MainTabRouter'
-import { SubPageRouter } from '@/components/SubPageRouter'
-import { AppHeader } from '@/components/AppHeader'
-import { AdaptiveHomeHeader } from '@/components/AdaptiveHomeHeader'
-import { OnboardingFlow } from '@/components/OnboardingFlow'
-import { CreatePulseDialog } from '@/components/CreatePulseDialog'
-import { ReportDialog } from '@/components/ReportDialog'
-import { ShareSheet } from '@/components/ShareSheet'
-import { GlobalSearch } from '@/components/GlobalSearch'
-import { MapSearch } from '@/components/MapSearch'
-import { MapFilters } from '@/components/MapFilters'
-import { InteractiveMap } from '@/components/InteractiveMap'
-import { SettingsPage } from '@/components/SettingsPage'
-
-// ==========================================================================
 // Tests
 // ==========================================================================
 
+// Helper to wrap components that use react-router hooks
+const { MemoryRouter } = await import('react-router-dom')
+function RouterWrapper({ children, initialEntries = ['/'] }: { children: React.ReactNode; initialEntries?: string[] }) {
+  return <MemoryRouter initialEntries={initialEntries}>{children}</MemoryRouter>
+}
+
 describe('BottomNav', () => {
-  it('renders all 5 tab labels', () => {
+  it('renders all 5 tab labels', async () => {
+    const { BottomNav } = await import('@/components/BottomNav')
     render(
-      <BottomNav activeTab="trending" onTabChange={vi.fn()} />
+      <RouterWrapper>
+        <BottomNav activeTab="trending" onTabChange={vi.fn()} />
+      </RouterWrapper>
     )
     expect(screen.getByText('Trending')).toBeTruthy()
     expect(screen.getByText('Discover')).toBeTruthy()
@@ -471,10 +474,13 @@ describe('BottomNav', () => {
     expect(screen.getByText('Profile')).toBeTruthy()
   })
 
-  it('calls onTabChange with correct tab id when clicked', () => {
+  it('calls onTabChange with correct tab id when clicked', async () => {
+    const { BottomNav } = await import('@/components/BottomNav')
     const onTabChange = vi.fn()
     render(
-      <BottomNav activeTab="trending" onTabChange={onTabChange} />
+      <RouterWrapper>
+        <BottomNav activeTab="trending" onTabChange={onTabChange} />
+      </RouterWrapper>
     )
     fireEvent.click(screen.getByText('Discover'))
     expect(onTabChange).toHaveBeenCalledWith('discover')
@@ -483,36 +489,66 @@ describe('BottomNav', () => {
     expect(onTabChange).toHaveBeenCalledWith('map')
   })
 
-  it('shows notification badge when unreadNotifications > 0', () => {
+  it('shows notification badge when unreadNotifications > 0', async () => {
+    const { BottomNav } = await import('@/components/BottomNav')
     render(
-      <BottomNav
-        activeTab="trending"
-        onTabChange={vi.fn()}
-        unreadNotifications={5}
-      />
+      <RouterWrapper>
+        <BottomNav
+          activeTab="trending"
+          onTabChange={vi.fn()}
+          unreadNotifications={5}
+        />
+      </RouterWrapper>
     )
     expect(screen.getByText('5')).toBeTruthy()
   })
 })
 
-// EnhancedBottomNav was consolidated into BottomNav
+describe('BottomNav (consolidated from EnhancedBottomNav)', () => {
+  it('renders tab labels', async () => {
+    const { BottomNav } = await import('@/components/BottomNav')
+    render(
+      <BottomNav activeTab="trending" onTabChange={vi.fn()} />
+    )
+    expect(screen.getByText('Trending')).toBeTruthy()
+    expect(screen.getByText('Discover')).toBeTruthy()
+    expect(screen.getByText('Map')).toBeTruthy()
+    expect(screen.getByText('Alerts')).toBeTruthy()
+    expect(screen.getByText('Profile')).toBeTruthy()
+  })
+
+  it('calls onTabChange when a tab is clicked', async () => {
+    const { BottomNav } = await import('@/components/BottomNav')
+    const onTabChange = vi.fn()
+    render(
+      <BottomNav activeTab="trending" onTabChange={onTabChange} />
+    )
+    fireEvent.click(screen.getByText('Map'))
+    expect(onTabChange).toHaveBeenCalledWith('map')
+  })
+})
 
 describe('MainTabRouter', () => {
-  it('renders without crashing', () => {
-    const { container } = render(<MainTabRouter />)
+  it('renders without crashing', async () => {
+    const { MainTabRouter } = await import('@/components/MainTabRouter')
+    const { container } = render(<RouterWrapper><MainTabRouter /></RouterWrapper>)
+    // Component renders (may return null if no venues/currentUser, which is fine)
     expect(container).toBeTruthy()
   })
 })
 
 describe('SubPageRouter', () => {
-  it('renders main content area (returns null when subPage is null)', () => {
-    const { container } = render(<SubPageRouter />)
+  it('renders main content area (returns null when subPage is null)', async () => {
+    const { SubPageRouter } = await import('@/components/SubPageRouter')
+    const { container } = render(<RouterWrapper><SubPageRouter /></RouterWrapper>)
+    // With subPage=null in mock, component returns null
     expect(container).toBeTruthy()
   })
 })
 
 describe('AppHeader', () => {
-  it('renders the Pulse title', () => {
+  it('renders the Pulse title', async () => {
+    const { AppHeader } = await import('@/components/AppHeader')
     render(
       <AppHeader
         locationName="Seattle, WA"
@@ -525,7 +561,8 @@ describe('AppHeader', () => {
     expect(screen.getByText('Pulse')).toBeTruthy()
   })
 
-  it('renders location name', () => {
+  it('renders location name', async () => {
+    const { AppHeader } = await import('@/components/AppHeader')
     render(
       <AppHeader
         locationName="Brooklyn, NY"
@@ -538,7 +575,8 @@ describe('AppHeader', () => {
     expect(screen.getByText('Brooklyn, NY')).toBeTruthy()
   })
 
-  it('shows queued pulse count badge', () => {
+  it('shows queued pulse count badge', async () => {
+    const { AppHeader } = await import('@/components/AppHeader')
     render(
       <AppHeader
         locationName="Seattle"
@@ -555,27 +593,35 @@ describe('AppHeader', () => {
 })
 
 describe('AdaptiveHomeHeader', () => {
-  it('renders greeting with username', () => {
+  it('renders greeting with username', async () => {
+    const { AdaptiveHomeHeader } = await import(
+      '@/components/AdaptiveHomeHeader'
+    )
     render(
       <AdaptiveHomeHeader
         username="Alex"
         date={new Date('2026-03-24T20:00:00')}
       />
     )
+    // getAdaptiveLayout mock returns greeting "Good evening"
     expect(screen.getByText(/Good evening.*Alex/)).toBeTruthy()
   })
 })
 
 describe('OnboardingFlow', () => {
-  it('renders welcome screen with Get Started button', () => {
+  it('renders welcome screen with Get Started button', async () => {
+    const { OnboardingFlow } = await import('@/components/OnboardingFlow')
     render(<OnboardingFlow onComplete={vi.fn()} />)
     expect(screen.getByText('Welcome to Pulse')).toBeTruthy()
     expect(screen.getByText(/Get Started/)).toBeTruthy()
   })
 
-  it('advances through steps when Get Started is clicked', () => {
+  it('advances through steps when Get Started is clicked', async () => {
+    const { OnboardingFlow } = await import('@/components/OnboardingFlow')
     render(<OnboardingFlow onComplete={vi.fn()} />)
+
     fireEvent.click(screen.getByText(/Get Started/))
+    // Should now be on categories step
     expect(screen.getByText("What's your scene?")).toBeTruthy()
   })
 })
@@ -590,7 +636,10 @@ describe('CreatePulseDialog', () => {
     city: 'NYC',
   } as any
 
-  it('when open, renders dialog with venue name', () => {
+  it('when open, renders dialog with venue name', async () => {
+    const { CreatePulseDialog } = await import(
+      '@/components/CreatePulseDialog'
+    )
     render(
       <CreatePulseDialog
         open={true}
@@ -602,7 +651,10 @@ describe('CreatePulseDialog', () => {
     expect(screen.getByText(/Create Pulse at The Blue Note/)).toBeTruthy()
   })
 
-  it('calls onClose when Cancel is clicked', () => {
+  it('calls onClose when Cancel is clicked', async () => {
+    const { CreatePulseDialog } = await import(
+      '@/components/CreatePulseDialog'
+    )
     const onClose = vi.fn()
     render(
       <CreatePulseDialog
@@ -618,7 +670,8 @@ describe('CreatePulseDialog', () => {
 })
 
 describe('ReportDialog', () => {
-  it('when open, renders reason selection', () => {
+  it('when open, renders reason selection', async () => {
+    const { ReportDialog } = await import('@/components/ReportDialog')
     render(
       <ReportDialog
         open={true}
@@ -646,7 +699,8 @@ describe('ShareSheet', () => {
     url: 'https://pulse.app/venue/v1',
   }
 
-  it('when open with card, renders share options', () => {
+  it('when open with card, renders share options', async () => {
+    const { ShareSheet } = await import('@/components/ShareSheet')
     render(
       <ShareSheet
         open={true}
@@ -682,7 +736,8 @@ describe('GlobalSearch', () => {
     },
   ] as any[]
 
-  it('when open, renders search input', () => {
+  it('when open, renders search input', async () => {
+    const { GlobalSearch } = await import('@/components/GlobalSearch')
     render(
       <GlobalSearch
         open={true}
@@ -697,7 +752,8 @@ describe('GlobalSearch', () => {
     ).toBeTruthy()
   })
 
-  it('filters venues on input', () => {
+  it('filters venues on input', async () => {
+    const { GlobalSearch } = await import('@/components/GlobalSearch')
     render(
       <GlobalSearch
         open={true}
@@ -716,7 +772,8 @@ describe('GlobalSearch', () => {
 })
 
 describe('MapSearch', () => {
-  it('renders search input', () => {
+  it('renders search input', async () => {
+    const { MapSearch } = await import('@/components/MapSearch')
     render(
       <MapSearch
         venues={[]}
@@ -729,7 +786,8 @@ describe('MapSearch', () => {
 })
 
 describe('MapFilters', () => {
-  it('renders filter options', () => {
+  it('renders filter options', async () => {
+    const { MapFilters } = await import('@/components/MapFilters')
     render(
       <MapFilters
         filters={{
@@ -741,12 +799,14 @@ describe('MapFilters', () => {
         availableCategories={['bar', 'club', 'restaurant']}
       />
     )
+    // The filter button should be rendered (collapsed state)
     expect(screen.getByRole('button')).toBeTruthy()
   })
 })
 
 describe('InteractiveMap', () => {
-  it('renders map container div', () => {
+  it('renders map container div', async () => {
+    const { InteractiveMap } = await import('@/components/InteractiveMap')
     const { container } = render(
       <InteractiveMap
         venues={[]}
@@ -758,15 +818,11 @@ describe('InteractiveMap', () => {
   })
 })
 
-describe('SettingsPage', () => {
-  it('renders settings heading', () => {
-    render(
-      <SettingsPage
-        currentUser={{ id: 'u1', username: 'testuser', friends: [], createdAt: '' } as any}
-        onBack={vi.fn()}
-        onUpdateUser={vi.fn()}
-      />
-    )
+describe('SettingsPage (consolidated from Settings)', () => {
+  it('renders settings page (mocked)', async () => {
+    const { SettingsPage } = await import('@/components/SettingsPage')
+    const mockUser = { id: 'u1', username: 'testuser', profilePhoto: '', friends: [], favoriteVenues: [], followedVenues: [], createdAt: '', venueCheckInHistory: {} }
+    render(<SettingsPage currentUser={mockUser as any} onBack={vi.fn()} onUpdateUser={vi.fn()} />)
     expect(screen.getByText('Settings Page')).toBeTruthy()
   })
 })

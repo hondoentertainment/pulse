@@ -135,24 +135,6 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }))
 
-// ── Static imports (after mocks) ──────────────────────────────
-
-import { PulseCard } from '@/components/PulseCard'
-import { VenueCard } from '@/components/VenueCard'
-import { NotificationCard } from '@/components/NotificationCard'
-import { EventCard } from '@/components/EventCard'
-import { RecommendationCard } from '@/components/RecommendationCard'
-import { NightRecapCard } from '@/components/NightRecapCard'
-import { DailyDiscoveryDrop } from '@/components/DailyDiscoveryDrop'
-import { PromotedVenueCard } from '@/components/PromotedVenueCard'
-import { ShareableVenueCard } from '@/components/ShareableVenueCard'
-import VenueMemoryCard from '@/components/VenueMemoryCard'
-import { VenueNarrativeCard } from '@/components/VenueNarrativeCard'
-import { SwipeableCard, QuickReactions } from '@/components/SwipeableCard'
-import { AchievementBadge } from '@/components/AchievementBadge'
-import PredictiveSuggestion from '@/components/PredictiveSuggestion'
-import HappeningNowBanner from '@/components/HappeningNowBanner'
-
 // ── Helper factories ──────────────────────────────────────────
 
 function makeVenue(overrides: Partial<import('@/lib/types').Venue> = {}): import('@/lib/types').Venue {
@@ -208,6 +190,13 @@ function makePulse(overrides: Partial<import('@/lib/types').PulseWithUser> = {})
 // ── 1. PulseCard ──────────────────────────────────────────────
 
 describe('PulseCard', () => {
+  let PulseCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/PulseCard')
+    PulseCard = mod.PulseCard
+  })
+
   it('renders username, energy badge, caption, and reaction counts', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
@@ -255,6 +244,13 @@ describe('PulseCard', () => {
 // ── 2. VenueCard ──────────────────────────────────────────────
 
 describe('VenueCard', () => {
+  let VenueCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/VenueCard')
+    VenueCard = mod.VenueCard
+  })
+
   it('renders venue name and category', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} />)
@@ -294,6 +290,13 @@ describe('VenueCard', () => {
 // ── 3. NotificationCard ───────────────────────────────────────
 
 describe('NotificationCard', () => {
+  let NotificationCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/NotificationCard')
+    NotificationCard = mod.NotificationCard
+  })
+
   it('renders friend_pulse notification with username and venue name', () => {
     const notification = {
       id: 'n1',
@@ -346,6 +349,13 @@ describe('NotificationCard', () => {
 // ── 4. EventCard ──────────────────────────────────────────────
 
 describe('EventCard', () => {
+  let EventCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/EventCard')
+    EventCard = mod.EventCard
+  })
+
   it('renders event title and venue name', () => {
     const event = {
       id: 'evt-1',
@@ -405,6 +415,13 @@ describe('EventCard', () => {
 // ── 5. RecommendationCard ─────────────────────────────────────
 
 describe('RecommendationCard', () => {
+  let RecommendationCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/RecommendationCard')
+    RecommendationCard = mod.RecommendationCard
+  })
+
   it('renders venue name and energy level', () => {
     const recommendation = {
       venue: makeVenue({ name: 'Recommended Spot', pulseScore: 80 }),
@@ -424,6 +441,13 @@ describe('RecommendationCard', () => {
 // ── 6. NightRecapCard ─────────────────────────────────────────
 
 describe('NightRecapCard', () => {
+  let NightRecapCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/NightRecapCard')
+    NightRecapCard = mod.NightRecapCard
+  })
+
   it('renders date and venue list', () => {
     const recap = {
       date: '2025-12-20',
@@ -448,6 +472,13 @@ describe('NightRecapCard', () => {
 // ── 7. DailyDiscoveryDrop ─────────────────────────────────────
 
 describe('DailyDiscoveryDrop', () => {
+  let DailyDiscoveryDrop: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/DailyDiscoveryDrop')
+    DailyDiscoveryDrop = mod.DailyDiscoveryDrop
+  })
+
   it('renders teaser text', () => {
     const drop = {
       id: 'drop-1',
@@ -468,6 +499,13 @@ describe('DailyDiscoveryDrop', () => {
 // ── 8. PromotedVenueCard ──────────────────────────────────────
 
 describe('PromotedVenueCard', () => {
+  let PromotedVenueCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/PromotedVenueCard')
+    PromotedVenueCard = mod.PromotedVenueCard
+  })
+
   it('renders venue name and "Sponsored" label', () => {
     const venue = makeVenue({ name: 'Promo Place' })
     const promotion = {
@@ -504,6 +542,13 @@ describe('PromotedVenueCard', () => {
 // ── 9. ShareableVenueCard ─────────────────────────────────────
 
 describe('ShareableVenueCard', () => {
+  let ShareableVenueCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/ShareableVenueCard')
+    ShareableVenueCard = mod.ShareableVenueCard
+  })
+
   it('renders venue name and share button', () => {
     const venue = makeVenue({ name: 'Share This Place', pulseScore: 80 })
 
@@ -523,6 +568,13 @@ describe('ShareableVenueCard', () => {
 // ── 10. VenueMemoryCard ───────────────────────────────────────
 
 describe('VenueMemoryCard', () => {
+  let VenueMemoryCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/VenueMemoryCard')
+    VenueMemoryCard = mod.default
+  })
+
   it('renders memory info when user has history', () => {
     const venue = makeVenue()
     const user = makeUser({
@@ -553,6 +605,13 @@ describe('VenueMemoryCard', () => {
 // ── 11. VenueNarrativeCard ────────────────────────────────────
 
 describe('VenueNarrativeCard', () => {
+  let VenueNarrativeCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/VenueNarrativeCard')
+    VenueNarrativeCard = mod.VenueNarrativeCard
+  })
+
   it('renders narrative text and venue name', () => {
     // Component takes narrative as a string prop, not an object
     render(
@@ -571,6 +630,13 @@ describe('VenueNarrativeCard', () => {
 // ── 12. SwipeableCard & QuickReactions ────────────────────────
 
 describe('SwipeableCard', () => {
+  let SwipeableCard: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/SwipeableCard')
+    SwipeableCard = mod.SwipeableCard
+  })
+
   it('renders children', () => {
     render(
       <SwipeableCard>
@@ -583,6 +649,13 @@ describe('SwipeableCard', () => {
 })
 
 describe('QuickReactions', () => {
+  let QuickReactions: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/SwipeableCard')
+    QuickReactions = mod.QuickReactions
+  })
+
   it('renders reaction buttons', () => {
     const onReact = vi.fn()
     const reactions = {
@@ -604,6 +677,13 @@ describe('QuickReactions', () => {
 // ── 13. AchievementBadge & AchievementShowcase ────────────────
 
 describe('AchievementBadge', () => {
+  let AchievementBadge: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/AchievementBadge')
+    AchievementBadge = mod.AchievementBadge
+  })
+
   it('renders badge', () => {
     const userAchievement = {
       achievementId: 'explorer_10' as const,
@@ -623,6 +703,13 @@ describe('AchievementBadge', () => {
 // ── 14. PredictiveSuggestion ──────────────────────────────────
 
 describe('PredictiveSuggestion', () => {
+  let PredictiveSuggestion: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/PredictiveSuggestion')
+    PredictiveSuggestion = mod.default
+  })
+
   it('renders suggestion text for time-based suggestion', () => {
     // Create a venue that matches evening bar suggestion criteria
     const venue = makeVenue({
@@ -657,6 +744,13 @@ describe('PredictiveSuggestion', () => {
 // ── 15. HappeningNowBanner ────────────────────────────────────
 
 describe('HappeningNowBanner', () => {
+  let HappeningNowBanner: any
+
+  beforeEach(async () => {
+    const mod = await import('@/components/HappeningNowBanner')
+    HappeningNowBanner = mod.default
+  })
+
   it('renders banner with qualifying venues', () => {
     // Venues need pulseScore >= 60 and be within 5 miles of user location
     const venues = [
