@@ -1,5 +1,4 @@
 import { User } from '@/lib/types'
-import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +9,7 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import {
   ArrowLeft, Bell, Eye, EyeSlash, Ruler, Shield, Palette,
   Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash,
-  Translate, DownloadSimple, Eyeglasses, MapPin,
+  Translate, DownloadSimple, Eyeglasses, MapPin, CaretDown, CaretUp,
 } from '@phosphor-icons/react'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
@@ -18,14 +17,66 @@ import { getPendingCount, clearQueue, getLastQueueSyncStatus, getQueueRetryInfo 
 import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
 import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefersReducedMotion } from '@/lib/accessibility'
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, type ReactNode } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface SettingsPageProps {
   currentUser: User
   onBack: () => void
   onUpdateUser: (user: User) => void
   onCityChange?: (location: { lat: number; lng: number }) => void
+}
+
+function CollapsibleSection({
+  id,
+  icon,
+  title,
+  subtitle,
+  isExpanded,
+  onToggle,
+  children,
+}: {
+  id: string
+  icon: ReactNode
+  title: string
+  subtitle: string
+  isExpanded: boolean
+  onToggle: (id: string) => void
+  children: ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-card/95 backdrop-blur-xl overflow-hidden">
+      <button
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/30 transition-colors"
+      >
+        <div className="flex-shrink-0">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold">{title}</p>
+          <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+        </div>
+        <div className="flex-shrink-0 text-muted-foreground">
+          {isExpanded ? <CaretUp size={16} weight="bold" /> : <CaretDown size={16} weight="bold" />}
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            key={`content-${id}`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }: SettingsPageProps) {
@@ -51,6 +102,17 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
     }, 2000)
     return () => clearInterval(intervalId)
   }, [])
+
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['notifications']))
+
+  const toggleSection = (id: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const presenceSettings = currentUser.presenceSettings ?? {
     enabled: true,
@@ -113,15 +175,17 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
         {/* Notifications */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Bell size={18} weight="fill" className="text-accent" />
-              <Label className="font-bold">Notifications</Label>
-            </div>
-
+          <CollapsibleSection
+            id="notifications"
+            icon={<Bell size={18} weight="fill" className="text-accent" />}
+            title="Notifications"
+            subtitle="Push notifications, friend activity"
+            isExpanded={expandedSections.has('notifications')}
+            onToggle={toggleSection}
+          >
             <SettingRow
               icon={<UsersFour size={16} weight="fill" className="text-primary" />}
               label="Friend Pulses"
@@ -181,17 +245,19 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 className="data-[state=checked]:bg-primary"
               />
             </SettingRow>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Privacy & Presence */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Shield size={18} weight="fill" className="text-primary" />
-              <Label className="font-bold">Privacy & Presence</Label>
-            </div>
-
+          <CollapsibleSection
+            id="privacy"
+            icon={<Shield size={18} weight="fill" className="text-primary" />}
+            title="Privacy & Presence"
+            subtitle="Location sharing, visibility controls"
+            isExpanded={expandedSections.has('privacy')}
+            onToggle={toggleSection}
+          >
             <SettingRow
               icon={presenceSettings.enabled ? <Eye size={16} weight="fill" className="text-green-500" /> : <EyeSlash size={16} weight="fill" className="text-muted-foreground" />}
               label="Show Presence"
@@ -245,17 +311,19 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 Your exact location is never shared. Only general presence at venues is shown.
               </p>
             </div>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Display */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Palette size={18} weight="fill" className="text-primary" />
-              <Label className="font-bold">Display</Label>
-            </div>
-
+          <CollapsibleSection
+            id="display"
+            icon={<Palette size={18} weight="fill" className="text-primary" />}
+            title="Display"
+            subtitle="Distance units, appearance"
+            isExpanded={expandedSections.has('display')}
+            onToggle={toggleSection}
+          >
             <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
               <div className="flex items-center gap-3">
                 <Ruler size={16} weight="fill" className="text-primary" />
@@ -276,17 +344,20 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 <span className={`text-xs ${!isImperial ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>km</span>
               </div>
             </div>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* City */}
         {onCityChange && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}>
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <MapPin size={18} weight="fill" className="text-accent" />
-                <Label className="font-bold">City</Label>
-              </div>
+            <CollapsibleSection
+              id="city"
+              icon={<MapPin size={18} weight="fill" className="text-accent" />}
+              title="City"
+              subtitle="Simulate being in a different city"
+              isExpanded={expandedSections.has('city')}
+              onToggle={toggleSection}
+            >
               <p className="text-xs text-muted-foreground">Simulate being in a different city to explore venues nationwide.</p>
               <div className="flex flex-wrap gap-2">
                 {(['nyc', 'la', 'miami', 'chicago', 'austin', 'nashville', 'sf', 'vegas'] as const).map(key => {
@@ -304,20 +375,20 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                   )
                 })}
               </div>
-            </Card>
+            </CollapsibleSection>
           </motion.div>
         )}
 
         {/* Language */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Translate size={18} weight="fill" className="text-primary" />
-              <Label className="font-bold">Language</Label>
-              <Badge variant="outline" className="text-xs">
-                {getAvailableLocales().find(l => l.code === currentLocale)?.name || 'English'}
-              </Badge>
-            </div>
+          <CollapsibleSection
+            id="language"
+            icon={<Translate size={18} weight="fill" className="text-primary" />}
+            title="Language"
+            subtitle={getAvailableLocales().find(l => l.code === currentLocale)?.name || 'English'}
+            isExpanded={expandedSections.has('language')}
+            onToggle={toggleSection}
+          >
             <div className="flex flex-wrap gap-2">
               {getAvailableLocales().map(locale => (
                 <button
@@ -337,22 +408,19 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 </button>
               ))}
             </div>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Accessibility */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Eyeglasses size={18} weight="fill" className="text-primary" />
-              <Label className="font-bold">Accessibility</Label>
-              {contrastMode !== 'off' && (
-                <Badge variant="outline" className="text-xs">
-                  {contrastMode === 'high' ? 'High contrast' : 'Increased contrast'}
-                </Badge>
-              )}
-            </div>
-
+          <CollapsibleSection
+            id="accessibility"
+            icon={<Eyeglasses size={18} weight="fill" className="text-primary" />}
+            title="Accessibility"
+            subtitle={contrastMode !== 'off' ? (contrastMode === 'high' ? 'High contrast' : 'Increased contrast') : 'Contrast, reduced motion'}
+            isExpanded={expandedSections.has('accessibility')}
+            onToggle={toggleSection}
+          >
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Contrast mode</p>
               <div className="flex gap-2">
@@ -394,17 +462,20 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 System
               </Badge>
             </div>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Install App */}
         {(canInstallPwa || !installState.isInstalled) && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-            <Card className="p-4 space-y-3 border-primary/20">
-              <div className="flex items-center gap-2">
-                <DownloadSimple size={18} weight="fill" className="text-primary" />
-                <Label className="font-bold">Install App</Label>
-              </div>
+            <CollapsibleSection
+              id="install"
+              icon={<DownloadSimple size={18} weight="fill" className="text-primary" />}
+              title="Install App"
+              subtitle="Install for offline support"
+              isExpanded={expandedSections.has('install')}
+              onToggle={toggleSection}
+            >
               {canInstallPwa ? (
                 <>
                   <p className="text-xs text-muted-foreground">
@@ -436,20 +507,20 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                     : 'Use your browser menu to install this app.'}
                 </p>
               )}
-            </Card>
+            </CollapsibleSection>
           </motion.div>
         )}
 
         {/* Offline Queue */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card className="p-4 space-y-3 border-yellow-500/30">
-            <div className="flex items-center gap-2">
-              <WifiSlash size={18} weight="fill" className="text-yellow-500" />
-              <Label className="font-bold">Offline Queue</Label>
-              <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500/30">
-                {offlineCount} pending
-              </Badge>
-            </div>
+          <CollapsibleSection
+            id="offline"
+            icon={<WifiSlash size={18} weight="fill" className="text-yellow-500" />}
+            title="Offline Queue"
+            subtitle={`${offlineCount} pending items`}
+            isExpanded={expandedSections.has('offline')}
+            onToggle={toggleSection}
+          >
             <p className="text-xs text-muted-foreground">
               Pulses queued while offline will sync when you're back online.
             </p>
@@ -469,17 +540,19 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
               <Trash size={14} className="mr-1" />
               Clear Queue
             </Button>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Data & Account */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Export size={18} weight="fill" className="text-primary" />
-              <Label className="font-bold">Data & Account</Label>
-            </div>
-
+          <CollapsibleSection
+            id="data"
+            icon={<Export size={18} weight="fill" className="text-primary" />}
+            title="Data & Account"
+            subtitle="Export data, account info"
+            isExpanded={expandedSections.has('data')}
+            onToggle={toggleSection}
+          >
             <Button variant="outline" className="w-full justify-start" onClick={handleExportData}>
               <Export size={16} className="mr-2" />
               Export My Data
@@ -501,7 +574,7 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 <span className="font-mono">{currentUser.favoriteVenues?.length ?? 0}</span>
               </p>
             </div>
-          </Card>
+          </CollapsibleSection>
         </motion.div>
       </div>
     </div>
