@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { AppStateProvider, useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { calculatePresence } from '@/lib/presence-engine'
 import { calculateDistance } from '@/lib/pulse-engine'
 import { BottomNav } from '@/components/BottomNav'
@@ -13,6 +14,7 @@ import { toast, Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
+const AuthGate = lazy(() => import('@/components/AuthGate').then(m => ({ default: m.AuthGate })))
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
 const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboard').then(m => ({ default: m.SocialPulseDashboard })))
@@ -24,6 +26,7 @@ const pageFallback = <div className="min-h-screen bg-background flex items-cente
 function AppContent() {
   const state = useAppState()
   const handlers = useAppHandlers()
+  const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -66,6 +69,15 @@ function AppContent() {
             setHasCompletedOnboarding(true)
           }}
         />
+      </Suspense>
+    )
+  }
+
+  // ── Auth gate (only when real Supabase credentials are configured) ──
+  if (!isPlaceholder && !session && !authLoading && hasCompletedOnboarding) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <AuthGate />
       </Suspense>
     )
   }
