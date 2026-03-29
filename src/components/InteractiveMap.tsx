@@ -4,6 +4,7 @@ import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
+import { MapboxBaseLayer } from '@/components/MapboxBaseLayer'
 import {
   MapPin, NavigationArrow, Plus, Minus,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
@@ -68,6 +69,7 @@ export function InteractiveMap({
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
   const [accessibilityMode, setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
+  const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -396,16 +398,19 @@ export function InteractiveMap({
   ) => {
     ctx.clearRect(0, 0, dims.width, dims.height)
 
-    // Instagram-style clean dark background with warm vignette
-    const bgGradient = ctx.createRadialGradient(
-      dims.width / 2, dims.height / 2, 0,
-      dims.width / 2, dims.height / 2, Math.max(dims.width, dims.height) * 0.75
-    )
-    bgGradient.addColorStop(0, '#1a1a2e')
-    bgGradient.addColorStop(0.6, '#16132b')
-    bgGradient.addColorStop(1, '#0d0d1a')
-    ctx.fillStyle = bgGradient
-    ctx.fillRect(0, 0, dims.width, dims.height)
+    // When Mapbox tiles are active the canvas is a transparent overlay;
+    // otherwise draw the Instagram-style dark gradient background.
+    if (!hasMapboxToken) {
+      const bgGradient = ctx.createRadialGradient(
+        dims.width / 2, dims.height / 2, 0,
+        dims.width / 2, dims.height / 2, Math.max(dims.width, dims.height) * 0.75
+      )
+      bgGradient.addColorStop(0, '#1a1a2e')
+      bgGradient.addColorStop(0.6, '#16132b')
+      bgGradient.addColorStop(1, '#0d0d1a')
+      ctx.fillStyle = bgGradient
+      ctx.fillRect(0, 0, dims.width, dims.height)
+    }
 
     if (!offscreenCanvasRef.current) {
       offscreenCanvasRef.current = document.createElement('canvas')
@@ -823,12 +828,21 @@ export function InteractiveMap({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
+      {/* Mapbox tile layer rendered behind the canvas when a token is available */}
+      {hasMapboxToken && center && (
+        <MapboxBaseLayer
+          center={center}
+          zoom={zoom}
+        />
+      )}
+
       <canvas
         ref={canvasRef}
         className={cn(
           'absolute inset-0 w-full h-full touch-none',
           isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
+        style={{ zIndex: 1 }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -840,7 +854,7 @@ export function InteractiveMap({
         onDoubleClick={handleDoubleClick}
       />
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
         {/* Instagram-style gradient definitions */}
         <defs>
           <linearGradient id="ig-gradient-hot" x1="0%" y1="0%" x2="100%" y2="100%">
