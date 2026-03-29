@@ -14,7 +14,7 @@ import { useMapbox } from '@/hooks/use-mapbox'
  */
 
 // Import Mapbox CSS — tree-shaken when component is never rendered
-import 'mapbox-gl/dist/mapbox-gl.css'
+// CSS is loaded dynamically in use-mapbox.ts when the token is present
 
 interface MapboxBaseLayerProps {
   center: { lat: number; lng: number }

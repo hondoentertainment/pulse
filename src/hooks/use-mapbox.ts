@@ -36,6 +36,15 @@ export function useMapbox({ container, center, zoom, onMove, onZoom }: UseMapbox
 
     let cancelled = false
 
+    // Inject Mapbox CSS via <link> so Vite doesn't try to resolve it at build time
+    if (!document.getElementById('mapbox-gl-css')) {
+      const link = document.createElement('link')
+      link.id = 'mapbox-gl-css'
+      link.rel = 'stylesheet'
+      link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css'
+      document.head.appendChild(link)
+    }
+
     // Dynamic import so mapbox-gl is never bundled when the token is absent
     import('mapbox-gl').then((mapboxglModule) => {
       if (cancelled) return
