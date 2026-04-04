@@ -6,7 +6,12 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics'
-import * as Sentry from '@sentry/react'
+
+// Lazy-load Sentry to avoid pulling ~257 KB into the initial bundle.
+// The module is cached after first import so subsequent calls are ~free.
+function getSentry() {
+  return import('@sentry/react')
+}
 
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
@@ -331,12 +336,14 @@ export function trackError(error: Error | string, context?: string): void {
     context,
   })
 
-  // Broadcast to Sentry
-  if (typeof error === 'string') {
-    Sentry.captureMessage(error, { extra: { context } })
-  } else {
-    Sentry.captureException(error, { extra: { context } })
-  }
+  // Broadcast to Sentry (lazy-loaded)
+  getSentry().then(Sentry => {
+    if (typeof error === 'string') {
+      Sentry.captureMessage(error, { extra: { context } })
+    } else {
+      Sentry.captureException(error, { extra: { context } })
+    }
+  })
 }
 
 /**

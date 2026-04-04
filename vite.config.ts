@@ -19,17 +19,20 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
+            // @sentry is lazy-loaded after first render — let Rollup auto-chunk dynamic imports
+            // Must be checked before 'react' since @sentry/react contains 'react' in its path
+            if (id.includes('@sentry/')) return;
+            // three.js is lazy-loaded only when 3D features are accessed — no manual chunk needed
+            if (id.includes('/three/')) return;
             if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
             if (id.includes('framer-motion')) return 'framer-motion';
             if (id.includes('recharts') || id.includes('d3')) return 'charts';
-            if (id.includes('three')) return 'three';
             if (id.includes('@radix-ui/')) return 'radix';
             if (id.includes('sonner')) return 'sonner';
             if (id.includes('@tanstack/react-query')) return 'tanstack-query';
             if (id.includes('@phosphor-icons')) return 'phosphor';
             if (id.includes('octokit') || id.includes('@octokit')) return 'octokit';
             if (id.includes('@supabase/')) return 'supabase';
-            if (id.includes('@sentry/')) return 'sentry';
             if (id.includes('@vercel/')) return 'vercel';
           }
         },

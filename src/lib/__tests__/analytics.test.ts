@@ -7,6 +7,10 @@ vi.mock('@vercel/analytics', () => ({
 vi.mock('@sentry/react', () => ({
   captureMessage: vi.fn(),
   captureException: vi.fn(),
+  default: {
+    captureMessage: vi.fn(),
+    captureException: vi.fn(),
+  },
 }))
 
 import {
