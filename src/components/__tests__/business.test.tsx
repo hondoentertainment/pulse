@@ -194,6 +194,18 @@ vi.mock('@/lib/analytics', () => ({
   getIntegrationActionSummary: () => ({ total: 0 }),
 }))
 
+vi.mock('@/hooks/use-venue-state', () => ({
+  useVenueState: () => ({ contentReports: [], setContentReports: vi.fn(), setPulses: vi.fn() }),
+}))
+
+vi.mock('@/hooks/use-social-state', () => ({
+  useSocialState: () => ({ crews: [], crewCheckIns: [], setCrews: vi.fn(), setCrewCheckIns: vi.fn(), currentUser: undefined, setCurrentUser: vi.fn() }),
+}))
+
+vi.mock('@/hooks/use-ui-state', () => ({
+  useUIState: () => ({ activeTab: 'trending', setActiveTab: vi.fn() }),
+}))
+
 vi.mock('@/hooks/use-app-state', () => ({
   useAppState: () => ({ state: {}, dispatch: vi.fn() }),
 }))

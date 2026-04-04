@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAppState } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useUIState } from '@/hooks/use-ui-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { BottomNav } from '@/components/BottomNav'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
@@ -13,13 +14,13 @@ export function VenueRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
   const { activeTab, navigateToTab } = useRouteNavigation()
-  const state = useAppState()
+  const venueState = useVenueState()
+  const uiState = useUIState()
   const handlers = useAppHandlers()
 
   const {
     venues,
     currentUser,
-    moderatedPulses: _moderatedPulses,
     unitSystem,
     locationName,
     currentTime,
@@ -29,13 +30,15 @@ export function VenueRoute() {
     unreadNotificationCount,
     isFavorite,
     isFollowed,
-    integrationsEnabled,
     getPulsesWithUsers,
+  } = venueState
+  const {
+    integrationsEnabled,
     presenceSheetOpen: _presenceSheetOpen,
     setPresenceSheetOpen,
     setIntegrationVenue,
     setSubPage: _setSubPage,
-  } = state
+  } = uiState
 
   const {
     handleCreatePulse,

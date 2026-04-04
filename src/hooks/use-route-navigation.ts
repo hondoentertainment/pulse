@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCallback } from 'react'
 import type { TabId } from '@/components/BottomNav'
-import type { SubPage } from '@/hooks/use-app-state'
+import type { SubPage } from '@/hooks/use-ui-state'
 import type { Venue } from '@/lib/types'
 
 const TAB_TO_PATH: Record<TabId, string> = {

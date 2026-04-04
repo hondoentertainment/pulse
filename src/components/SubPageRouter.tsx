@@ -1,6 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
+import { ALL_USERS } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useSocialState } from '@/hooks/use-social-state'
+import { useUIState, type SubPage } from '@/hooks/use-ui-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { BottomNav } from '@/components/BottomNav'
@@ -25,17 +28,26 @@ interface SubPageRouterProps {
 export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
   const navigate = useNavigate()
   const { activeTab, navigateToTab } = useRouteNavigation()
-  const state = useAppState()
+  const venueState = useVenueState()
+  const socialState = useSocialState()
+  const uiState = useUIState()
   const { handleEventsUpdate } = useAppHandlers()
   const {
-    subPage, unreadNotificationCount,
-    currentUser, moderatedPulses, venues, crews, crewCheckIns,
+    unreadNotificationCount,
+    currentUser, moderatedPulses, venues,
     events, playlists, pulses, contentReports,
-    userLocation, integrationVenue, setIntegrationVenue,
-    integrationsEnabled, setSimulatedLocation,
-    setCurrentUser, setCrews, setCrewCheckIns, setPlaylists,
+    userLocation, setSimulatedLocation,
+    setCurrentUser, setPlaylists,
     setContentReports,
-  } = state
+  } = venueState
+  const {
+    crews, crewCheckIns,
+    setCrews, setCrewCheckIns,
+  } = socialState
+  const {
+    subPage, integrationVenue, setIntegrationVenue,
+    integrationsEnabled,
+  } = uiState
 
   // Use the page prop from the route if provided, otherwise fall back to state
   const page = pageProp ?? subPage

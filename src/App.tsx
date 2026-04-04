@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AppStateProvider, useAppState } from '@/hooks/use-app-state'
+import { AppStateProvider } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useUIState } from '@/hooks/use-ui-state'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'
@@ -23,25 +25,29 @@ const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').th
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
 function AppContent() {
-  const state = useAppState()
+  const venueState = useVenueState()
+  const uiState = useUIState()
   const { activeTab, navigateToTab } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
 
   const {
-    hasCompletedOnboarding, setHasCompletedOnboarding,
     venues, pulses, currentUser,
+    locationName, isTracking, realtimeLocation,
+    locationPermissionDenied, currentTime,
+    sortedVenues,
+    unreadNotificationCount,
+    setCurrentUser,
+  } = venueState
+  const {
+    hasCompletedOnboarding, setHasCompletedOnboarding,
     showAdminDashboard, setShowAdminDashboard,
     socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
     venueForPulse,
-    locationName, isTracking, realtimeLocation,
-    locationPermissionDenied, currentTime, queuedPulseCount,
-    sortedVenues,
-    unreadNotificationCount,
-    setCurrentUser,
+    queuedPulseCount,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
-  } = state
+  } = uiState
 
   // Import handlers — top-level import avoids ESM require() crash
   const handlers = useAppHandlers()

@@ -1,6 +1,9 @@
 import { queryClient } from '@/lib/query-client'
 import { useNavigate } from 'react-router-dom'
-import { useAppState } from '@/hooks/use-app-state'
+import { ALL_USERS } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useSocialState } from '@/hooks/use-social-state'
+import { useUIState } from '@/hooks/use-ui-state'
 import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 import type { VenueEvent } from '@/lib/events'
@@ -34,14 +37,13 @@ const TAB_TO_PATH: Record<TabId, string> = {
 
 export function useAppHandlers() {
   const navigate = useNavigate()
-  const state = useAppState()
+  const venueState = useVenueState()
+  const socialState = useSocialState()
+  const uiState = useUIState()
   const {
-    activeTab: _activeTab,
     venues,
     pulses,
     currentUser,
-    setActiveTab: _setActiveTab,
-    setSelectedVenue: _setSelectedVenue,
     setPulses,
     setVenues,
     setCurrentUser,
@@ -49,15 +51,25 @@ export function useAppHandlers() {
     setHashtags,
     setStories,
     setEvents,
-    setCrews: _setCrews,
-    setCrewCheckIns,
-    setPlaylists: _setPlaylists,
     setPromotions,
     setContentReports,
+    notificationSettings,
+  } = venueState
+  const {
+    crews,
+    crewCheckIns,
+    setCrews,
+    setCrewCheckIns,
+  } = socialState
+  const {
+    activeTab,
+    setActiveTab,
+    setSelectedVenue,
     venueForPulse,
     setVenueForPulse,
     createDialogOpen: _createDialogOpen,
     setCreateDialogOpen,
+<<<<<<< HEAD
     notificationSettings,
     crewCheckIns,
     crews,
@@ -68,6 +80,15 @@ export function useAppHandlers() {
     socialDashboardEnabled: _socialDashboardEnabled,
     setShowAdminDashboard: _setShowAdminDashboard,
   } = state
+=======
+    setQueuedPulseCount,
+    setSubPage,
+    setIntegrationVenue,
+    integrationsEnabled,
+    socialDashboardEnabled,
+    setShowAdminDashboard,
+  } = uiState
+>>>>>>> 53ebe46 (refactor: split monolithic useAppState into domain-specific contexts (venue, social, UI))
 
   const handleCreatePulse = (venueId: string) => {
     if (!venues || !currentUser || !pulses) return
