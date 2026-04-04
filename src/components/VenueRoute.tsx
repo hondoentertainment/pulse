@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
+import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { BottomNav } from '@/components/BottomNav'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
@@ -19,7 +19,7 @@ export function VenueRoute() {
   const {
     venues,
     currentUser,
-    moderatedPulses,
+    moderatedPulses: _moderatedPulses,
     unitSystem,
     locationName,
     currentTime,
@@ -31,10 +31,10 @@ export function VenueRoute() {
     isFollowed,
     integrationsEnabled,
     getPulsesWithUsers,
-    presenceSheetOpen,
+    presenceSheetOpen: _presenceSheetOpen,
     setPresenceSheetOpen,
     setIntegrationVenue,
-    setSubPage,
+    setSubPage: _setSubPage,
   } = state
 
   const {

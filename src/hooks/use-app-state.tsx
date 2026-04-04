@@ -32,7 +32,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
-import { trackEvent, trackPerformance } from '@/lib/analytics'
+import { trackEvent } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'

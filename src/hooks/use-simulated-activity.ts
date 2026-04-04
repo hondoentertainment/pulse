@@ -10,7 +10,7 @@ export interface Activity {
   timestamp: number
 }
 
-const FRIEND_NAMES = [
+const _FRIEND_NAMES = [
   "Sarah",
   "Mike",
   "Alex",

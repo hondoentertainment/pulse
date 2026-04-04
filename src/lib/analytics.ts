@@ -93,8 +93,8 @@ export function trackEvent(event: AnalyticsEvent): void {
   }
   
   // Broadcast to Vercel Analytics
-  const { type, timestamp, ...properties } = event
-  vercelTrack(type, properties as Record<string, any>)
+  const { type, timestamp: _timestamp, ...properties } = event
+  vercelTrack(type, properties as Record<string, string | number | boolean>)
 }
 /**
  * Get all tracked events, optionally filtered by type.

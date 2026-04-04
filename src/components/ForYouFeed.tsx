@@ -6,7 +6,6 @@ import {
   MapPin,
   Lightning,
   TrendUp,
-  Heart,
   Star,
   Question,
   ArrowDown,

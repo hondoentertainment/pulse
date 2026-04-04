@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
-import { MapFilters, MapFiltersState } from '@/components/MapFilters'
+import { MapFilters, MapFiltersState, type EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import { MapboxBaseLayer, type MapboxBaseLayerHandle } from '@/components/MapboxBaseLayer'
@@ -67,7 +67,7 @@ export function InteractiveMap({
   const [tipIndex, setTipIndex] = useState(0)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
-  const [accessibilityMode, setAccessibilityMode] = useState(false)
+  const [accessibilityMode, _setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
   // When Mapbox is available, it drives all interactions (Uber-style)
@@ -187,7 +187,7 @@ export function InteractiveMap({
     return ((θ * 180) / Math.PI + 360) % 360
   }
 
-  const getEnergyLevelFromScore = (score: number): string => {
+  const getEnergyLevelFromScore = (score: number): EnergyFilter => {
     if (score >= 80) return 'electric'
     if (score >= 60) return 'buzzing'
     if (score >= 30) return 'chill'
@@ -227,7 +227,7 @@ export function InteractiveMap({
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
         const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as any)) {
+        if (!filters.energyLevels.includes(energyLevel)) {
           return false
         }
       }

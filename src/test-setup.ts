@@ -1,4 +1,5 @@
 // Browser API polyfills for jsdom test environment
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { vi } from 'vitest'
 
 // IntersectionObserver

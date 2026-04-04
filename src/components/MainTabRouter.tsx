@@ -64,7 +64,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     handlePromotionClick,
   } = handlers
 
-  const navigateToVenue = (venue: any) => {
+  const navigateToVenue = (venue: { id: string }) => {
     navigate(`/venue/${venue.id}`)
   }
 

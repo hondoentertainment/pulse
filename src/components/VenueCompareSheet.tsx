@@ -39,7 +39,7 @@ function MetricRow({
   icon,
   values,
   bestIndex,
-  formatter,
+  formatter: _formatter,
 }: {
   label: string
   icon: React.ReactNode

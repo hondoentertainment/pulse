@@ -13,7 +13,6 @@ import {
 } from '@/lib/ticketing'
 import {
   TableReservation,
-  TABLE_LOCATION_CONFIG,
   getUpcomingReservations,
   getPastReservations,
   cancelReservation,

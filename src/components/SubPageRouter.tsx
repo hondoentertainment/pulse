@@ -44,7 +44,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
 
   const goBack = () => navigate(-1)
 
-  const navigateToVenue = (venue: any) => {
+  const navigateToVenue = (venue: { id: string }) => {
     navigate(`/venue/${venue.id}`)
   }
 
