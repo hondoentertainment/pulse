@@ -34,8 +34,10 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
+    if (typeof prop === 'symbol' || prop === 'then') return undefined
     return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
-  }
+  },
+  has: () => true,
 }))
 
 vi.mock('@github/spark/hooks', () => ({

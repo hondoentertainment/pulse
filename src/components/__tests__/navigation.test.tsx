@@ -65,10 +65,12 @@ vi.mock('@phosphor-icons/react', () =>
     {
       get: (_target, prop) => {
         if (prop === '__esModule') return true
+        if (typeof prop === 'symbol' || prop === 'then') return undefined
         return (props: any) => (
           <span data-testid={`icon-${String(prop)}`} {...props} />
         )
       },
+      has: () => true,
     }
   )
 )
