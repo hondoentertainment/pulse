@@ -69,18 +69,6 @@ export function useAppHandlers() {
     setVenueForPulse,
     createDialogOpen: _createDialogOpen,
     setCreateDialogOpen,
-<<<<<<< HEAD
-    notificationSettings,
-    crewCheckIns,
-    crews,
-    setQueuedPulseCount: _setQueuedPulseCount,
-    setSubPage: _setSubPage,
-    setIntegrationVenue: _setIntegrationVenue,
-    integrationsEnabled: _integrationsEnabled,
-    socialDashboardEnabled: _socialDashboardEnabled,
-    setShowAdminDashboard: _setShowAdminDashboard,
-  } = state
-=======
     setQueuedPulseCount,
     setSubPage,
     setIntegrationVenue,
@@ -88,7 +76,6 @@ export function useAppHandlers() {
     socialDashboardEnabled,
     setShowAdminDashboard,
   } = uiState
->>>>>>> 53ebe46 (refactor: split monolithic useAppState into domain-specific contexts (venue, social, UI))
 
   const handleCreatePulse = (venueId: string) => {
     if (!venues || !currentUser || !pulses) return
