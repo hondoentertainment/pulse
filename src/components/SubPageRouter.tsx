@@ -18,6 +18,9 @@ const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => 
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
+const NightPlannerPage = lazy(() => import('@/components/NightPlannerPage').then(m => ({ default: m.NightPlannerPage })))
+const MyTicketsPage = lazy(() => import('@/components/MyTicketsPage').then(m => ({ default: m.MyTicketsPage })))
+const ChallengeFeed = lazy(() => import('@/components/ChallengeFeed').then(m => ({ default: m.ChallengeFeed })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -129,6 +132,30 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
       <>
         <Suspense fallback={pageFallback}>
           <ModerationQueuePage reports={contentReports || []} onBack={goBack} onUpdateReports={setContentReports} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    'night-planner': () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <NightPlannerPage currentUser={currentUser} allUsers={ALL_USERS} venues={venues} pulses={moderatedPulses} crews={crews || []} userLocation={userLocation} onBack={goBack} onVenueClick={navigateToVenue} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    'my-tickets': () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <MyTicketsPage currentUserId={currentUser.id} tickets={[]} reservations={[]} events={events || []} venues={venues} onBack={goBack} onTicketsUpdate={() => {}} onReservationsUpdate={() => {}} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    challenges: () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <ChallengeFeed challenges={[]} venues={venues} currentUserId={currentUser.id} onBack={goBack} onJoinChallenge={() => {}} />
         </Suspense>
         {nav}
       </>

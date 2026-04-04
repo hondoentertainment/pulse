@@ -7,9 +7,10 @@ import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'
 import { AppHeader } from '@/components/AppHeader'
-import { MainTabRouter } from '@/components/MainTabRouter'
-import { SubPageRouter } from '@/components/SubPageRouter'
-import { VenueRoute } from '@/components/VenueRoute'
+
+const MainTabRouter = lazy(() => import('@/components/MainTabRouter').then(m => ({ default: m.MainTabRouter })))
+const SubPageRouter = lazy(() => import('@/components/SubPageRouter').then(m => ({ default: m.SubPageRouter })))
+const VenueRoute = lazy(() => import('@/components/VenueRoute').then(m => ({ default: m.VenueRoute })))
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { Plus } from '@phosphor-icons/react'
@@ -108,21 +109,21 @@ function AppContent() {
 
       <Routes>
         {/* Venue detail page */}
-        <Route path="/venue/:venueId" element={<VenueRoute />} />
+        <Route path="/venue/:venueId" element={<Suspense fallback={pageFallback}><VenueRoute /></Suspense>} />
 
         {/* Sub-pages */}
-        <Route path="/events" element={<SubPageRouter page="events" />} />
-        <Route path="/crews" element={<SubPageRouter page="crews" />} />
-        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
-        <Route path="/insights" element={<SubPageRouter page="insights" />} />
-        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
-        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
-        <Route path="/settings" element={<SubPageRouter page="settings" />} />
-        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
-        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
-        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        <Route path="/events" element={<Suspense fallback={pageFallback}><SubPageRouter page="events" /></Suspense>} />
+        <Route path="/crews" element={<Suspense fallback={pageFallback}><SubPageRouter page="crews" /></Suspense>} />
+        <Route path="/achievements" element={<Suspense fallback={pageFallback}><SubPageRouter page="achievements" /></Suspense>} />
+        <Route path="/insights" element={<Suspense fallback={pageFallback}><SubPageRouter page="insights" /></Suspense>} />
+        <Route path="/neighborhoods" element={<Suspense fallback={pageFallback}><SubPageRouter page="neighborhoods" /></Suspense>} />
+        <Route path="/playlists" element={<Suspense fallback={pageFallback}><SubPageRouter page="playlists" /></Suspense>} />
+        <Route path="/settings" element={<Suspense fallback={pageFallback}><SubPageRouter page="settings" /></Suspense>} />
+        <Route path="/integrations" element={<Suspense fallback={pageFallback}><SubPageRouter page="integrations" /></Suspense>} />
+        <Route path="/moderation" element={<Suspense fallback={pageFallback}><SubPageRouter page="moderation" /></Suspense>} />
+        <Route path="/challenges" element={<Suspense fallback={pageFallback}><SubPageRouter page="challenges" /></Suspense>} />
+        <Route path="/my-tickets" element={<Suspense fallback={pageFallback}><SubPageRouter page="my-tickets" /></Suspense>} />
+        <Route path="/night-planner" element={<Suspense fallback={pageFallback}><SubPageRouter page="night-planner" /></Suspense>} />
 
         {/* Main tabs */}
         <Route path="/discover" element={
@@ -135,7 +136,9 @@ function AppContent() {
               currentTime={currentTime}
               queuedPulseCount={queuedPulseCount}
             />
-            <MainTabRouter tab="discover" />
+            <Suspense fallback={pageFallback}>
+              <MainTabRouter tab="discover" />
+            </Suspense>
           </>
         } />
         <Route path="/map" element={
@@ -148,7 +151,9 @@ function AppContent() {
               currentTime={currentTime}
               queuedPulseCount={queuedPulseCount}
             />
-            <MainTabRouter tab="map" />
+            <Suspense fallback={pageFallback}>
+              <MainTabRouter tab="map" />
+            </Suspense>
           </>
         } />
         <Route path="/notifications" element={
@@ -161,7 +166,9 @@ function AppContent() {
               currentTime={currentTime}
               queuedPulseCount={queuedPulseCount}
             />
-            <MainTabRouter tab="notifications" />
+            <Suspense fallback={pageFallback}>
+              <MainTabRouter tab="notifications" />
+            </Suspense>
           </>
         } />
         <Route path="/profile" element={
@@ -174,7 +181,9 @@ function AppContent() {
               currentTime={currentTime}
               queuedPulseCount={queuedPulseCount}
             />
-            <MainTabRouter tab="profile" />
+            <Suspense fallback={pageFallback}>
+              <MainTabRouter tab="profile" />
+            </Suspense>
           </>
         } />
 
@@ -189,7 +198,9 @@ function AppContent() {
               currentTime={currentTime}
               queuedPulseCount={queuedPulseCount}
             />
-            <MainTabRouter tab="trending" />
+            <Suspense fallback={pageFallback}>
+              <MainTabRouter tab="trending" />
+            </Suspense>
           </>
         } />
 
