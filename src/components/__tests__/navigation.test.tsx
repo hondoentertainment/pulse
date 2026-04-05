@@ -481,6 +481,24 @@ vi.mock('@/lib/haptics', () => ({
   triggerHapticFeedback: vi.fn(),
 }))
 
+vi.mock('react-router-dom', () => ({
+  Link: ({ children, to, onClick, ...props }: any) => (
+    <a href={to} onClick={(e: any) => { e.preventDefault(); onClick?.(e) }} {...props}>{children}</a>
+  ),
+  useLocation: () => ({ pathname: '/' }),
+  useNavigate: () => vi.fn(),
+  useParams: () => ({}),
+}))
+
+vi.mock('@/hooks/use-route-navigation', () => ({
+  useRouteNavigation: () => ({
+    activeTab: 'trending',
+    navigateToTab: vi.fn(),
+    navigateToSubPage: vi.fn(),
+    navigateBack: vi.fn(),
+  }),
+}))
+
 vi.mock('@/lib/units', () => ({
   formatDistance: (d: number) => `${d.toFixed(1)} mi`,
 }))
@@ -500,7 +518,6 @@ vi.mock('@/lib/interactive-map', () => ({
 // ==========================================================================
 
 import { BottomNav } from '@/components/BottomNav'
-import { EnhancedBottomNav } from '@/components/EnhancedBottomNav'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { AppHeader } from '@/components/AppHeader'
@@ -513,7 +530,7 @@ import { GlobalSearch } from '@/components/GlobalSearch'
 import { MapSearch } from '@/components/MapSearch'
 import { MapFilters } from '@/components/MapFilters'
 import { InteractiveMap } from '@/components/InteractiveMap'
-import { Settings } from '@/components/Settings'
+import { SettingsPage } from '@/components/SettingsPage'
 
 // ==========================================================================
 // Tests
@@ -527,7 +544,7 @@ describe('BottomNav', () => {
     expect(screen.getByText('Trending')).toBeTruthy()
     expect(screen.getByText('Discover')).toBeTruthy()
     expect(screen.getByText('Map')).toBeTruthy()
-    expect(screen.getByText('Notifications')).toBeTruthy()
+    expect(screen.getByText('Alerts')).toBeTruthy()
     expect(screen.getByText('Profile')).toBeTruthy()
   })
 
@@ -552,28 +569,6 @@ describe('BottomNav', () => {
       />
     )
     expect(screen.getByText('5')).toBeTruthy()
-  })
-})
-
-describe('EnhancedBottomNav', () => {
-  it('renders tab labels', () => {
-    render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={vi.fn()} />
-    )
-    expect(screen.getByText('Trending')).toBeTruthy()
-    expect(screen.getByText('Discover')).toBeTruthy()
-    expect(screen.getByText('Map')).toBeTruthy()
-    expect(screen.getByText('Alerts')).toBeTruthy()
-    expect(screen.getByText('Profile')).toBeTruthy()
-  })
-
-  it('calls onTabChange when a tab is clicked', () => {
-    const onTabChange = vi.fn()
-    render(
-      <EnhancedBottomNav activeTab="trending" onTabChange={onTabChange} />
-    )
-    fireEvent.click(screen.getByText('Map'))
-    expect(onTabChange).toHaveBeenCalledWith('map')
   })
 })
 
@@ -735,7 +730,7 @@ describe('ShareSheet', () => {
       />
     )
     expect(screen.getByText('Great Venue')).toBeTruthy()
-    expect(screen.getByText(/Share/)).toBeTruthy()
+    expect(screen.getAllByText(/Share/).length).toBeGreaterThan(0)
     expect(screen.getByText('Copy Link')).toBeTruthy()
     expect(screen.getByText('Message')).toBeTruthy()
     expect(screen.getByText('Story')).toBeTruthy()
@@ -838,11 +833,16 @@ describe('InteractiveMap', () => {
   })
 })
 
-describe('Settings', () => {
-  it('renders settings sections', () => {
-    render(<Settings onOpenSocialPulseDashboard={vi.fn()} />)
-    expect(screen.getByText('Settings')).toBeTruthy()
-    expect(screen.getByText('Notifications')).toBeTruthy()
-    expect(screen.getByText('Distance Units')).toBeTruthy()
+describe('SettingsPage', () => {
+  it('renders settings page', () => {
+    render(
+      <SettingsPage
+        currentUser={{ id: 'u1', username: 'testuser', profilePhoto: '', friends: [], favoriteVenues: [], followedVenues: [], createdAt: '', venueCheckInHistory: {} } as any}
+        onBack={vi.fn()}
+        onUpdateUser={vi.fn()}
+        onCityChange={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('settings-page')).toBeTruthy()
   })
 })

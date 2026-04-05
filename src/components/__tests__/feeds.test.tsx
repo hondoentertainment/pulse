@@ -270,32 +270,6 @@ describe('TrendingSections', () => {
 
 describe('TrendingTab', () => {
   it('renders Trending and My Spots tabs', async () => {
-    // TrendingTab imports child components; we need to mock them as modules
-    // They are already mocked above for TrendingSections, MySpotsFeed, etc.
-    // But TrendingTab imports them directly, so we mock the ones it uses:
-    vi.mock('@/components/TrendingSections', () => ({
-      TrendingSections: ({ sections }: any) => (
-        <div data-testid="trending-sections">{sections.length} sections</div>
-      ),
-    }))
-    vi.mock('@/components/MySpotsFeed', () => ({
-      MySpotsFeed: () => <div data-testid="my-spots-feed">My Spots Feed</div>,
-    }))
-    vi.mock('@/components/RecommendationsSection', () => ({
-      RecommendationsSection: ({ recommendations }: any) => (
-        <div data-testid="recommendations-section">{recommendations.length} recs</div>
-      ),
-    }))
-    vi.mock('@/components/LiveActivityFeed', () => ({
-      LiveActivityFeed: () => <div data-testid="live-activity-feed">Live Activity</div>,
-    }))
-    vi.mock('@/components/Favorites', () => ({
-      Favorites: ({ favoriteVenues }: any) => (
-        <div data-testid="favorites">{favoriteVenues.length} favorites</div>
-      ),
-    }))
-
-
     render(
       <TrendingTab
         venues={[]}

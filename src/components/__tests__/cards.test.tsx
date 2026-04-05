@@ -244,13 +244,11 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Fire button is the first reaction button; find by the count text
-    const fireCount = screen.getByText('2')
-    const fireButton = fireCount.closest('div[class]')?.parentElement
-    if (fireButton) {
-      fireEvent.click(fireButton)
-      expect(onReaction).toHaveBeenCalledWith('fire')
-    }
+    // Fire icon is rendered inside the mocked motion.button (rendered as <div>)
+    const fireIcon = screen.getByTestId('icon-Fire')
+    const fireButton = fireIcon.closest('div[class]')!
+    fireEvent.click(fireButton)
+    expect(onReaction).toHaveBeenCalledWith('fire')
   })
 })
 
@@ -676,7 +674,8 @@ describe('HappeningNowBanner', () => {
       />
     )
 
-    expect(screen.getByText('Hot Spot A')).toBeTruthy()
-    expect(screen.getByText('Hot Spot B')).toBeTruthy()
+    // Venues are duplicated in the DOM for seamless scrolling, so use getAllByText
+    expect(screen.getAllByText('Hot Spot A').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Hot Spot B').length).toBeGreaterThanOrEqual(1)
   })
 })

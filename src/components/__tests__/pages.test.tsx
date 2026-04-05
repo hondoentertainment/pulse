@@ -63,12 +63,13 @@ vi.mock('@/lib/personal-insights', () => ({
     uniqueVenues: 0,
     topVenues: [],
     favoriteTimeSlot: 'evening',
-    energyContributed: {},
+    energyContributed: { dead: 0, chill: 0, buzzing: 0, electric: 0 },
+    milesExplored: 0,
     weekStart: new Date().toISOString(),
     weekEnd: new Date().toISOString(),
   }),
   determineVibeType: () => ({ type: 'Explorer', emoji: '🧭', description: 'Test' }),
-  generateActivityHeatmap: () => [],
+  generateActivityHeatmap: () => ({ cells: [] }),
   getInsightHighlights: () => [],
 }))
 
@@ -133,10 +134,15 @@ vi.mock('@/lib/analytics', () => ({
 }))
 
 vi.mock('@/lib/creator-economy', () => ({
-  getCreatorStats: () => ({ totalPulses: 0, totalReactions: 0, totalViews: 0 }),
+  getCreatorStats: () => ({ totalPulses: 0, totalReactions: 0, totalViews: 0, reach: 0, attributedVenueVisits: 0, topPerformingPulses: [] }),
   getCreatorTierProgress: () => ({ currentTier: 'bronze', nextTier: 'silver', progress: 0, requirements: {} }),
   buildCreatorProfile: () => ({}),
-  CREATOR_TIER_REQUIREMENTS: {},
+  CREATOR_TIER_REQUIREMENTS: {
+    bronze: { minPulses: 0, minReactions: 0 },
+    silver: { minPulses: 10, minReactions: 50 },
+    gold: { minPulses: 50, minReactions: 200 },
+    platinum: { minPulses: 200, minReactions: 1000 },
+  },
 }))
 
 vi.mock('@/lib/venue-challenges', () => ({
@@ -174,22 +180,23 @@ vi.mock('@/lib/venue-analytics-pro', () => ({
 
 vi.mock('@/lib/venue-platform', () => ({
   PLAN_CONFIG: {
-    free: { name: 'Free' },
-    starter: { name: 'Starter' },
-    pro: { name: 'Pro' },
-    enterprise: { name: 'Enterprise' },
+    free: { name: 'Free', maxTeamMembers: 1, price: 0, description: 'Basic features', features: ['analytics'] },
+    starter: { name: 'Starter', maxTeamMembers: 3, price: 29, description: 'Growing venues', features: ['analytics', 'campaigns'] },
+    pro: { name: 'Pro', maxTeamMembers: 10, price: 79, description: 'Professional tools', features: ['analytics', 'campaigns', 'crm'] },
+    enterprise: { name: 'Enterprise', maxTeamMembers: 50, price: 199, description: 'Full platform', features: ['analytics', 'campaigns', 'crm', 'api'] },
   },
   createPlatformAccount: () => ({
     id: 'acct-1',
     venueId: 'venue-1',
     plan: 'pro',
     team: [],
+    teamMembers: [],
     createdAt: new Date().toISOString(),
   }),
   addTeamMember: () => ({}),
   removeTeamMember: () => ({}),
   isPlanFeatureAvailable: () => true,
-  getRevenueMetrics: () => ({ revenue: 0, transactions: 0, averageOrder: 0 }),
+  getRevenueMetrics: () => ({ revenue: 0, transactions: 0, averageOrder: 0, estimatedTotalRevenue: 0, estimatedTicketRevenue: 0, estimatedTableRevenue: 0, promoROI: 0, revenueByDay: [] }),
   createCampaign: () => ({}),
   getCampaignROI: () => 0,
   getCampaignCTR: () => 0,
@@ -214,8 +221,8 @@ vi.mock('@/lib/us-venues', () => ({
 vi.mock('@/lib/offline-queue', () => ({
   getPendingCount: () => 0,
   clearQueue: vi.fn(),
-  getLastQueueSyncStatus: () => null,
-  getQueueRetryInfo: () => null,
+  getLastQueueSyncStatus: () => ({ lastAttemptAt: null, lastSyncedCount: 0, lastFailedCount: 0 }),
+  getQueueRetryInfo: () => ({ failedCount: 0, nextRetryInMs: null }),
 }))
 
 vi.mock('@/lib/i18n', () => ({
@@ -411,9 +418,9 @@ describe('EventsPage', () => {
   it('renders filter tabs', () => {
     render(<EventsPage {...defaultProps} />)
     expect(screen.getByText('Events')).toBeInTheDocument()
-    expect(screen.getByText('All')).toBeInTheDocument()
-    expect(screen.getByText('Soon')).toBeInTheDocument()
-    expect(screen.getByText('Mine')).toBeInTheDocument()
+    expect(screen.getByText('Upcoming')).toBeInTheDocument()
+    expect(screen.getByText('Happening Soon')).toBeInTheDocument()
+    expect(screen.getByText('My Events')).toBeInTheDocument()
   })
 
   it('calls onBack when back button is clicked', () => {

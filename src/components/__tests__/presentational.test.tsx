@@ -22,13 +22,17 @@ vi.mock('framer-motion', () => ({
             }
           }
         }
-        return <Component {...filteredProps}>{children}</Component>
+        // Unwrap mock motion values when used as children
+        const resolvedChildren = (children != null && typeof children === 'object' && children._isMotionValue)
+          ? children._value
+          : children
+        return <Component {...filteredProps}>{resolvedChildren}</Component>
       }
     }
   }),
   AnimatePresence: ({ children }: any) => <>{children}</>,
   useSpring: (v: number) => ({ get: () => v, set: () => {} }),
-  useTransform: (_: any, fn: any) => ({ get: () => (fn ? fn(0) : 0), set: () => {}, on: () => () => {} }),
+  useTransform: (_: any, fn: any) => { const v = fn ? fn(0) : 0; return { get: () => v, set: () => {}, on: () => () => {}, _isMotionValue: true, _value: v } },
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
   useInView: () => true,
   useScroll: () => ({ scrollY: { get: () => 0, set: () => {} }, scrollYProgress: { get: () => 0, set: () => {} } }),
@@ -119,8 +123,7 @@ vi.mock('@/lib/haptics', () => ({
 // Static imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { EmptyState } from '@/components/EmptyState'
-import { AnimatedEmptyState } from '@/components/AnimatedEmptyState'
+import { EmptyState, AnimatedEmptyState } from '@/components/AnimatedEmptyState'
 import { PulseScore } from '@/components/PulseScore'
 import { StreakBadge, FirstPulseCelebration } from '@/components/StreakBadge'
 import { GPSIndicator } from '@/components/GPSIndicator'
@@ -134,7 +137,7 @@ import { ProgressiveImage } from '@/components/ProgressiveImage'
 import FloatingReactions from '@/components/FloatingReactions'
 import { SpringButton, AnimatedCounter } from '@/components/MicroInteractions'
 import { PageTransition, TabTransition, StaggeredList, OverlayTransition } from '@/components/PageTransition'
-import { DirectionalPageTransition } from '@/components/DirectionalPageTransition'
+import { DirectionalPageTransition } from '@/components/PageTransition'
 import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
 import { MilestoneAnimation } from '@/components/MilestoneAnimation'
 import { AudioVibePreview } from '@/components/AudioVibePreview'
@@ -142,7 +145,7 @@ import { LiveCrowdIndicator } from '@/components/LiveCrowdIndicator'
 import { VibeMatchMeter } from '@/components/VibeMatchMeter'
 import MoodSelector from '@/components/MoodSelector'
 import { EnergySlider } from '@/components/EnergySlider'
-import { VenueCardSkeleton, PulseCardSkeleton, NotificationCardSkeleton, SkeletonList } from '@/components/SkeletonCard'
+import { VenueCardSkeleton, PulseCardSkeleton, NotificationCardSkeleton, SkeletonList } from '@/components/SkeletonCascade'
 import { SkeletonCascade } from '@/components/SkeletonCascade'
 
 // ---------------------------------------------------------------------------
@@ -183,7 +186,7 @@ describe('EmptyState', () => {
   it('shows CTA button when onAction provided for "no-favorites"', () => {
     const onAction = vi.fn()
     render(<EmptyState variant="no-favorites" onAction={onAction} />)
-    expect(screen.getByText('Explore Venues')).toBeDefined()
+    expect(screen.getByText('Discover Venues')).toBeDefined()
   })
 
   it('does not show CTA for variant without ctaText', () => {
@@ -632,25 +635,25 @@ describe('EnergySlider', () => {
 // ---------------------------------------------------------------------------
 
 describe('SkeletonCard', () => {
-  it('VenueCardSkeleton renders with animate-pulse', () => {
+  it('VenueCardSkeleton renders with rounded-xl card', () => {
     const { container } = render(<VenueCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
   })
 
-  it('PulseCardSkeleton renders with animate-pulse', () => {
+  it('PulseCardSkeleton renders with rounded-xl card', () => {
     const { container } = render(<PulseCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
   })
 
-  it('NotificationCardSkeleton renders with animate-pulse', () => {
+  it('NotificationCardSkeleton renders with rounded-xl card', () => {
     const { container } = render(<NotificationCardSkeleton />)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+    expect(container.querySelector('.rounded-xl')).not.toBeNull()
   })
 
   it('SkeletonList renders multiple skeletons', () => {
     const { container } = render(<SkeletonList count={3} type="venue" />)
-    const pulseElements = container.querySelectorAll('.animate-pulse')
-    expect(pulseElements.length).toBe(3)
+    const skeletonElements = container.querySelectorAll('.rounded-xl')
+    expect(skeletonElements.length).toBe(3)
   })
 })
 
