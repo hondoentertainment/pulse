@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Venue } from '@/lib/types'
 import { VenueEvent } from '@/lib/events'
 import {
@@ -36,6 +36,7 @@ import {
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { renderQrDataUrl } from '@/lib/qr'
 
 interface MyTicketsPageProps {
   currentUserId: string
@@ -64,6 +65,27 @@ export function MyTicketsPage({
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [showTransferDialog, setShowTransferDialog] = useState<string | null>(null)
   const [transferToUser, setTransferToUser] = useState('')
+  const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    // Render a QR for whichever ticket is currently expanded. We lazily load
+    // the qrcode module on first demand (keeps it off the main bundle).
+    if (!expandedTicketId) return
+    if (qrDataUrls[expandedTicketId]) return
+    const ticket = tickets.find(t => t.id === expandedTicketId)
+    if (!ticket?.qrCode) return
+    let cancelled = false
+    renderQrDataUrl(ticket.qrCode)
+      .then(url => {
+        if (!cancelled) setQrDataUrls(prev => ({ ...prev, [ticket.id]: url }))
+      })
+      .catch(() => {
+        /* leave placeholder in place */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [expandedTicketId, tickets, qrDataUrls])
 
   const eventMap = useMemo(() => {
     const map = new Map<string, VenueEvent>()
@@ -259,10 +281,18 @@ export function MyTicketsPage({
                         >
                           <Separator />
                           <div className="p-4 space-y-4">
-                            {/* QR Code placeholder */}
+                            {/* QR Code (real when qrcode lib has rendered, placeholder otherwise) */}
                             <div className="flex flex-col items-center py-4">
-                              <div className="w-40 h-40 bg-white rounded-xl flex items-center justify-center">
-                                <QrCode size={120} className="text-black" />
+                              <div className="w-40 h-40 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+                                {qrDataUrls[ticket.id] ? (
+                                  <img
+                                    src={qrDataUrls[ticket.id]}
+                                    alt="Ticket QR code"
+                                    className="w-full h-full"
+                                  />
+                                ) : (
+                                  <QrCode size={120} className="text-black" />
+                                )}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2 font-mono">
                                 {ticket.qrCode.slice(0, 20)}...

@@ -21,6 +21,9 @@ import { formatPrice, createPaymentIntent, processPayment } from '@/lib/payment-
 import { Ticket as TicketIcon, Users, Minus, Plus, Lightning, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { featureFlags } from '@/lib/feature-flags'
+import { confirmTicket, purchaseTicket } from '@/lib/ticketing-client'
+import { loadStripe } from '@/lib/stripe-loader'
 
 interface TicketPurchaseSheetProps {
   open: boolean
@@ -44,6 +47,8 @@ export function TicketPurchaseSheet({
   const [splitWithCrew, setSplitWithCrew] = useState(false)
   const [selectedCrewMembers, setSelectedCrewMembers] = useState<string[]>([])
   const [purchasing, setPurchasing] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [apiSuccess, setApiSuccess] = useState(false)
 
   const tiers = useMemo(() => {
     if (!event) return []
@@ -88,6 +93,39 @@ export function TicketPurchaseSheet({
   const handlePurchase = async () => {
     if (!event || !selectedTier || !dynamicPricing) return
     setPurchasing(true)
+    setApiError(null)
+    setApiSuccess(false)
+
+    // ── New Stripe Connect path (feature-flagged) ────────────
+    if (featureFlags.ticketing) {
+      try {
+        const result = await purchaseTicket({ event_id: event.id, ticket_type: selectedType })
+        if (!result.ok) {
+          setApiError(result.error)
+          return
+        }
+        // Lazily load Stripe.js; in the interim, mark the success UI.
+        // Card confirmation is done by Stripe Elements in follow-up work; the
+        // confirm endpoint is called here to close the loop if the client
+        // already holds a confirmed PaymentIntent (e.g. via Payment Request API).
+        await loadStripe().catch(() => null)
+        if (result.data.payment_intent_id) {
+          await confirmTicket({
+            ticket_id: result.data.ticket_id,
+            payment_intent_id: result.data.payment_intent_id,
+          })
+        }
+        setApiSuccess(true)
+        onPurchase([])
+        onOpenChange(false)
+        return
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : 'Purchase failed')
+        return
+      } finally {
+        setPurchasing(false)
+      }
+    }
 
     try {
       // Simulate brief processing delay
@@ -405,6 +443,20 @@ export function TicketPurchaseSheet({
               <div className="flex items-center justify-between text-primary">
                 <span>Your share</span>
                 <span className="font-bold">{formatPrice(perPersonPrice)}</span>
+              </div>
+            )}
+
+            {apiError && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+              >
+                {apiError}
+              </div>
+            )}
+            {apiSuccess && (
+              <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400">
+                Purchase complete — check My Tickets.
               </div>
             )}
 
