@@ -97,7 +97,15 @@ function AppContent() {
 
   // ── Main shell with routes ───────────────────────────────
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <>
+      {/* Skip-to-content link for keyboard users. Visible only on focus. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:bg-background focus:text-foreground focus:px-4 focus:py-2 focus:rounded-md focus:ring-2 focus:ring-accent"
+      >
+        Skip to main content
+      </a>
+    <main id="main-content" className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
 
       <Routes>
@@ -213,12 +221,14 @@ function AppContent() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}
+        aria-label="Create a new pulse"
         className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
         style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
       >
         <Plus size={28} weight="bold" />
       </motion.button>
     </main>
+    </>
   )
 }
 

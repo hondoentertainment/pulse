@@ -186,6 +186,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 }
                 onReaction?.('fire')
               }}
+              aria-label={`Fire reaction, ${pulse.reactions.fire.length}${currentUserId && pulse.reactions.fire.includes(currentUserId) ? ', you reacted' : ''}`}
+              aria-pressed={!!currentUserId && pulse.reactions.fire.includes(currentUserId)}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.fire.includes(currentUserId)
@@ -206,6 +208,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 }
                 onReaction?.('lightning')
               }}
+              aria-label={`Lightning reaction, ${pulse.reactions.lightning.length}${currentUserId && pulse.reactions.lightning.includes(currentUserId) ? ', you reacted' : ''}`}
+              aria-pressed={!!currentUserId && pulse.reactions.lightning.includes(currentUserId)}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.lightning.includes(currentUserId)
@@ -226,6 +230,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 }
                 onReaction?.('eyes')
               }}
+              aria-label={`Eyes reaction, ${pulse.reactions.eyes.length}${currentUserId && pulse.reactions.eyes.includes(currentUserId) ? ', you reacted' : ''}`}
+              aria-pressed={!!currentUserId && pulse.reactions.eyes.includes(currentUserId)}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.eyes.includes(currentUserId)
@@ -246,6 +252,8 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 }
                 onReaction?.('skull')
               }}
+              aria-label={`Skull reaction, ${pulse.reactions.skull.length}${currentUserId && pulse.reactions.skull.includes(currentUserId) ? ', you reacted' : ''}`}
+              aria-pressed={!!currentUserId && pulse.reactions.skull.includes(currentUserId)}
               className={cn(
                 "flex items-center gap-1.5 transition-colors",
                 currentUserId && pulse.reactions.skull.includes(currentUserId)
@@ -291,6 +299,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
               }}
               className="text-muted-foreground hover:text-accent transition-colors"
               title="Share"
+              aria-label="Share pulse"
             >
               <ShareNetwork size={16} />
             </button>
@@ -299,6 +308,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 onClick={() => setShowReport(true)}
                 className="text-muted-foreground hover:text-destructive transition-colors"
                 title="Report"
+                aria-label="Report pulse"
               >
                 <Flag size={16} />
               </button>
