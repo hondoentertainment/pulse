@@ -4,6 +4,7 @@ import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { BottomNav } from '@/components/BottomNav'
+import { PageSkeleton } from '@/components/PageSkeleton'
 import { toast } from 'sonner'
 
 const AchievementsPage = lazy(() => import('@/components/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
@@ -16,7 +17,7 @@ const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <PageSkeleton />
 
 interface SubPageRouterProps {
   page?: NonNullable<SubPage>

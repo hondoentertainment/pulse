@@ -6,7 +6,34 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics'
-import * as Sentry from '@sentry/react'
+
+/**
+ * Lazily forward an error/message to Sentry if and when the SDK is available.
+ *
+ * We intentionally avoid `import * as Sentry from '@sentry/react'` at module
+ * scope — that pulls the 250 KB SDK into every bundle that touches analytics
+ * (i.e. almost the whole app). Instead we dynamic-import the SDK only after
+ * `AppBootstrap` has scheduled `Sentry.init()`, so at runtime the module is
+ * already cached and the call is synchronous-ish (single microtask).
+ */
+async function forwardToSentry(
+  payload: Error | string,
+  context?: string,
+): Promise<void> {
+  try {
+    // `sentry-lazy` re-exports only the narrow surface the app uses
+    // (init / capture{Message,Exception}) so Rollup can tree-shake the
+    // rest of the SDK from the async chunk.
+    const lazy = await import('./sentry-lazy')
+    if (typeof payload === 'string') {
+      lazy.reportMessage(payload, context)
+    } else {
+      lazy.reportException(payload, context)
+    }
+  } catch {
+    /* Sentry is an optional dependency at runtime — swallow. */
+  }
+}
 
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
@@ -331,12 +358,9 @@ export function trackError(error: Error | string, context?: string): void {
     context,
   })
 
-  // Broadcast to Sentry
-  if (typeof error === 'string') {
-    Sentry.captureMessage(error, { extra: { context } })
-  } else {
-    Sentry.captureException(error, { extra: { context } })
-  }
+  // Fire-and-forget: the SDK is dynamically imported so this never blocks the
+  // synchronous `trackError` contract that callers rely on.
+  void forwardToSentry(error, context)
 }
 
 /**
