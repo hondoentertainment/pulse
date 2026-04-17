@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
-import type { HTMLAttributes, PropsWithChildren } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
+    get: (_target, _prop) => {
       return ({ children, ...props }: any) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
@@ -55,11 +54,11 @@ vi.mock('@/lib/sharing', () => ({
 }))
 
 vi.mock('@/components/ReportDialog', () => ({
-  ReportDialog: (props: any) => <div data-testid="report-dialog" />,
+  ReportDialog: (_props: any) => <div data-testid="report-dialog" />,
 }))
 
 vi.mock('@/components/ShareSheet', () => ({
-  ShareSheet: (props: any) => <div data-testid="share-sheet" />,
+  ShareSheet: (_props: any) => <div data-testid="share-sheet" />,
 }))
 
 vi.mock('@/hooks/use-unit-preference', () => ({

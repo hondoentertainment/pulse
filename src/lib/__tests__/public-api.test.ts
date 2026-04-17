@@ -125,7 +125,7 @@ describe('formatVenueResponse', () => {
       id: 'v1', name: 'Bar A', location: { lat: 40.7, lng: -74.0, address: '123 Main' },
       pulseScore: 80, city: 'NYC', state: 'NY', category: 'bar',
     }
-    const resp = formatVenueResponse(venue)
+    const resp = formatVenueResponse(venue) as Record<string, any>
     expect(resp.id).toBe('v1')
     expect(resp.name).toBe('Bar A')
     expect(resp.location.lat).toBe(40.7)
@@ -139,7 +139,7 @@ describe('formatVenueResponse', () => {
       createdAt: new Date().toISOString(), expiresAt: new Date().toISOString(),
       reactions: { fire: [], eyes: [], skull: [], lightning: [] }, views: 10,
     }]
-    const resp = formatVenueResponse(venue, pulses)
+    const resp = formatVenueResponse(venue, pulses) as Record<string, any>
     expect(resp.recentPulses).toHaveLength(1)
     expect(resp.recentPulses[0].id).toBe('p1')
   })

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -252,6 +253,9 @@ export function CreatePulseDialog({
           <DialogTitle className="text-2xl">
             Create Pulse at {venue?.name}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Share the current energy, add a caption, photos, video, and hashtags.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -283,6 +287,7 @@ export function CreatePulseDialog({
                 </video>
                 <button
                   onClick={removeVideo}
+                  aria-label="Remove video"
                   className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
                 >
                   <X size={16} weight="bold" className="text-white" />
@@ -342,18 +347,20 @@ export function CreatePulseDialog({
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label htmlFor="create-pulse-caption" className="text-sm font-medium">
               Caption <span className="text-muted-foreground">(optional)</span>
             </label>
             <Textarea
+              id="create-pulse-caption"
               placeholder="What's the vibe?"
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, 140))}
               maxLength={140}
               rows={3}
               className="resize-none"
+              aria-describedby="create-pulse-caption-count"
             />
-            <p className="text-xs text-muted-foreground text-right">
+            <p id="create-pulse-caption-count" className="text-xs text-muted-foreground text-right">
               {caption.length}/140
             </p>
           </div>

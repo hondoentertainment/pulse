@@ -17,7 +17,6 @@ import {
   reactionBatcher,
   presenceBatcher,
   pulseBatcher,
-  type BatchEvent,
   type BatchFlush,
 } from '@/lib/realtime-batcher'
 import type { Pulse } from '@/lib/types'

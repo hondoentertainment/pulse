@@ -4,10 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
-  ArrowLeft, ChartBar, Users, Megaphone, GearSix, Lightning,
-  TrendUp, TrendDown, Minus, Crown, CurrencyDollar, CalendarBlank,
-  UserCirclePlus, Trash, Share, Copy, Check,
-  ClockCountdown, Fire, UsersThree,
+  ArrowLeft, ChartBar, Users, Megaphone, Lightning,
+  TrendUp, TrendDown, Minus, Crown, CurrencyDollar,
+  Trash, Share, Copy, Check,
+  Fire, UsersThree,
 } from '@phosphor-icons/react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -18,7 +18,7 @@ import type { Venue, Pulse, EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { buildOwnerDashboard } from '@/lib/venue-owner'
 import {
-  type VenuePlatformAccount, type PlanTier, type TeamMember,
+  type VenuePlatformAccount, type PlanTier,
   type Campaign, type SocialContent,
   PLAN_CONFIG, createPlatformAccount, addTeamMember, removeTeamMember,
   isPlanFeatureAvailable, getRevenueMetrics, createCampaign,

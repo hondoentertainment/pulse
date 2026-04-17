@@ -14,8 +14,8 @@ import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { ContentReport, UserBlock, UserMute, filterModeratedPulses } from '@/lib/content-moderation'
-import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
-import { US_EXPANSION_VENUES } from '@/lib/us-venues'
+import { loadMockVenueFixtures, getSimulatedLocation } from '@/lib/mock-data'
+import { loadUSVenueFixtures } from '@/lib/us-venues'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -32,7 +32,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
-import { trackEvent, trackPerformance } from '@/lib/analytics'
+import { trackEvent } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'
@@ -212,19 +212,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     if (supabaseProfile) setCurrentUser(supabaseProfile)
   }, [supabaseProfile, setCurrentUser])
 
-  const launchedCitySet = new Set(
-    (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
-      .split(',')
-      .map((city: string) => city.trim().toLowerCase())
-      .filter(Boolean)
-  )
-  const initialVenues = [...MOCK_VENUES, ...US_EXPANSION_VENUES].filter((venue) => {
-    if (launchedCitySet.size === 0) return true
-    return launchedCitySet.has((venue.city ?? '').toLowerCase())
-  })
-
+  // In production, `MOCK_VENUES` / `US_EXPANSION_VENUES` are empty stubs — real
+  // venues arrive via Supabase (see `fetchVenuesFromSupabase` below). In
+  // development we lazy-load the full fixture tables from `__fixtures__/` so
+  // they never end up in the production bundle. The useKV seed therefore
+  // starts empty and is hydrated asynchronously in a dev-only effect.
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
-  const [venues, setVenues] = useKV<Venue[]>('venues', initialVenues)
+  const [venues, setVenues] = useKV<Venue[]>('venues', [])
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [stories, setStories] = useKV<PulseStory[]>('stories', [])
@@ -247,6 +241,38 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => { initHighContrast() }, [])
+
+  // Dev-only: seed the venue KV with the fixture catalog so the app has
+  // something to display before (or when) Supabase is unreachable. The
+  // fixture modules aren't statically imported anywhere — Rollup drops
+  // them from the production bundle entirely.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    if (venues && venues.length > 0) return
+    let cancelled = false
+    void (async () => {
+      const [{ MOCK_VENUES }, us] = await Promise.all([
+        loadMockVenueFixtures(),
+        loadUSVenueFixtures(),
+      ])
+      if (cancelled) return
+      const launchedCitySet = new Set(
+        (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
+          .split(',')
+          .map((city: string) => city.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      const combined = [...MOCK_VENUES, ...us].filter((venue) => {
+        if (launchedCitySet.size === 0) return true
+        return launchedCitySet.has((venue.city ?? '').toLowerCase())
+      })
+      if (combined.length > 0) setVenues(combined)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Seed demo events / promotions
   useEffect(() => {

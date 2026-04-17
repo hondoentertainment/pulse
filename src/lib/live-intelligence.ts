@@ -22,7 +22,7 @@ export interface VenueLiveData {
   musicGenre: string | null
   nowPlaying: NowPlaying | null
   ageRange: { min: number; max: number; average: number } | null
-  capacity: { current: number; max: number; percentFull: number } | null
+  capacity: { current: number | null; max: number | null; percentFull: number } | null
   lastUpdated: string
   confidence: Record<string, ConfidenceLevel>
 }

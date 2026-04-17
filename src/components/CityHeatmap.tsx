@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { X, MapPin } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { getCityHeatmap, type HeatmapCell } from '@/lib/live-intelligence'
 
 interface CityHeatmapProps {
