@@ -858,7 +858,38 @@ export function InteractiveMap({
       className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      role="application"
+      aria-label="Interactive venue map. Use arrow keys to pan, plus and minus to zoom."
     >
+      {/* Keyboard/screen-reader-accessible venue list. Visually hidden,
+          but provides a linear way to discover venues for AT users who
+          cannot interact with the canvas/WebGL map. */}
+      <ul
+        className="sr-only"
+        aria-label={`Venues on map, ${filteredVenues.length} total`}
+      >
+        {filteredVenues.slice(0, 50).map((venue) => {
+          const distance = userLocation
+            ? calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                venue.location.lat,
+                venue.location.lng
+              )
+            : undefined
+          return (
+            <li key={`sr-${venue.id}`}>
+              <button
+                type="button"
+                onClick={() => onVenueClick(venue)}
+                aria-label={`${venue.name}${venue.category ? `, ${venue.category}` : ''}, pulse score ${venue.pulseScore} out of 100${distance !== undefined ? `, ${formatDistance(distance, unitSystem)} away` : ''}`}
+              >
+                {venue.name}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
       {/* Mapbox tile layer — when available, drives all map interactions (Uber-style) */}
       {hasMapboxToken && center && (
         <MapboxBaseLayer
@@ -1236,6 +1267,7 @@ export function InteractiveMap({
                 triggerHapticFeedback('medium')
                 onVenueClick(venue)
               }}
+              aria-label={`${venue.name}${venue.category ? `, ${venue.category}` : ''}, pulse score ${venue.pulseScore}`}
             >
               <div className="w-10 h-10" />
             </button>
@@ -1427,6 +1459,8 @@ export function InteractiveMap({
             <button
               key={label}
               onClick={() => { triggerHapticFeedback('light'); toggle() }}
+              aria-pressed={active}
+              aria-label={`Filter: ${label}`}
               className={cn(
                 "flex-shrink-0 flex items-center gap-1.5 px-4 h-9 rounded-full text-[13px] font-medium transition-all touch-manipulation active:scale-[0.96]",
                 active
@@ -1509,6 +1543,7 @@ export function InteractiveMap({
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
+                  aria-label={`Open ${point.venue.name}${point.venue.category ? `, ${point.venue.category}` : ''}, pulse score ${point.venue.pulseScore}`}
                   className={cn(
                     "pointer-events-auto snap-start flex-shrink-0 w-[180px] text-left transition-all active:scale-[0.96]",
                     "rounded-2xl overflow-hidden",

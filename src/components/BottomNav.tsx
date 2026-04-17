@@ -116,12 +116,16 @@ function TabButton({
   return (
     <Link
       to={TAB_TO_PATH[tab.id]}
-      onClick={(e) => {
+      onClick={() => {
         // Let the Link handle navigation; fire haptics + animation
         handlePress()
       }}
       className="flex flex-col items-center justify-center flex-1 h-full relative no-underline"
-      aria-label={tab.label}
+      aria-label={
+        tab.badge !== undefined && tab.badge > 0
+          ? `${tab.label}, ${tab.badge} unread`
+          : tab.label
+      }
       aria-current={isActive ? 'page' : undefined}
     >
       <div className="relative z-10 flex flex-col items-center gap-1">
@@ -224,6 +228,7 @@ export function BottomNav({
 
   return (
     <nav
+      aria-label="Primary"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50',
         'bg-card/80 backdrop-blur-xl',

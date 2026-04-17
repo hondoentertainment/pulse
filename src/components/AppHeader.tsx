@@ -22,7 +22,7 @@ export function AppHeader({
   onSearchClick,
 }: AppHeaderProps) {
   return (
-    <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
+    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -85,6 +85,6 @@ export function AppHeader({
           )}
         </div>
       </div>
-    </div>
+    </header>
   )
 }
