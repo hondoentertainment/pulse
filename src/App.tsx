@@ -13,6 +13,7 @@ import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { USE_SUPABASE_BACKEND } from '@/lib/data'
 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
 const AuthGate = lazy(() => import('@/components/AuthGate').then(m => ({ default: m.AuthGate })))
@@ -99,6 +100,15 @@ function AppContent() {
   return (
     <main className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
+
+      {import.meta.env.DEV && !USE_SUPABASE_BACKEND && (
+        <div
+          role="status"
+          className="sticky top-0 z-50 w-full bg-amber-500/90 text-black text-center text-xs font-mono uppercase tracking-wider py-1 px-3"
+        >
+          Mock data mode — set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY to use Supabase backend
+        </div>
+      )}
 
       <Routes>
         {/* Venue detail page */}
