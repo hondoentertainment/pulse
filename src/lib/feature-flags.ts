@@ -1,4 +1,4 @@
-export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap'
+export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap' | 'safetyKit'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -14,12 +14,14 @@ const defaults: FeatureFlagMap = {
   integrations: true,
   socialDashboard: true,
   smartMap: true,
+  safetyKit: true,
 }
 
 export const featureFlags: FeatureFlagMap = {
   integrations: parseFlag(import.meta.env.VITE_FF_ENABLE_INTEGRATIONS, defaults.integrations),
   socialDashboard: parseFlag(import.meta.env.VITE_FF_ENABLE_SOCIAL_DASHBOARD, defaults.socialDashboard),
   smartMap: parseFlag(import.meta.env.VITE_FF_ENABLE_SMART_MAP, defaults.smartMap),
+  safetyKit: parseFlag(import.meta.env.VITE_SAFETY_KIT_ENABLED, defaults.safetyKit),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {

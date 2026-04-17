@@ -31,5 +31,11 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/safety/cron/check-expired",
+      "schedule": "*/1 * * * *"
+    }
   ]
 }
