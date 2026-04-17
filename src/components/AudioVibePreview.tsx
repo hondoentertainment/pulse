@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Play, Pause, SpeakerSimpleHigh, SpeakerSimpleLow, SpeakerSimpleNone, SpeakerSimpleSlash } from '@phosphor-icons/react'
+import { Play, Pause, SpeakerSimpleHigh, SpeakerSimpleLow, SpeakerSimpleNone } from '@phosphor-icons/react'
 import type { VolumeLevel } from '@/lib/venue-storytelling'
 
 interface AudioVibePreviewProps {

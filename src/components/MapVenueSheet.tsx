@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getEnergyLabel } from '@/lib/pulse-engine'
-import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
+import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 import { useState, useRef } from 'react'
 import {
-  MapPin, NavigationArrow, Users, Lightning, Fire,
+  MapPin, Users, Lightning, Fire,
   X, ArrowRight, Clock, CaretUp, CaretDown,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti
 } from '@phosphor-icons/react'
@@ -156,7 +156,6 @@ export function MapVenueSheet({
 }: MapVenueSheetProps) {
   const { unitSystem } = useUnitPreference()
   const [snap, setSnap] = useState<SheetSnap>('peek')
-  const dragControls = useDragControls()
   const sheetRef = useRef<HTMLDivElement>(null)
 
   // Get nearby venues sorted by distance then score

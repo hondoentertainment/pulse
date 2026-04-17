@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Venue } from '@/lib/types'
-import { VenueEvent, getUpcomingEvents, getUserEvents, rsvpToEvent, predictEventSurge, getEventsSoon, RSVPStatus } from '@/lib/events'
+import { VenueEvent, getUserEvents, rsvpToEvent, predictEventSurge, getEventsSoon, RSVPStatus } from '@/lib/events'
 import { EventCard } from '@/components/EventCard'
-import { CaretLeft, CalendarBlank, Lightning } from '@phosphor-icons/react'
+import { CaretLeft, CalendarBlank } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 

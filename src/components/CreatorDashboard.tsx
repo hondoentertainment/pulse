@@ -1,12 +1,9 @@
 import { useMemo } from 'react'
 import { User, Pulse, Venue } from '@/lib/types'
 import {
-  CreatorProfile,
-  CreatorStats,
   TipJar,
   getCreatorStats,
   getCreatorTierProgress,
-  buildCreatorProfile,
   CREATOR_TIER_REQUIREMENTS,
   Attribution,
 } from '@/lib/creator-economy'

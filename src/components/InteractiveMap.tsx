@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
@@ -67,7 +67,7 @@ export function InteractiveMap({
   const [tipIndex, setTipIndex] = useState(0)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
-  const [accessibilityMode, setAccessibilityMode] = useState(false)
+  const [accessibilityMode, _setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
   // When Mapbox is available, it drives all interactions (Uber-style)

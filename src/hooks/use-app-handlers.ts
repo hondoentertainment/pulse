@@ -1,10 +1,9 @@
 import { queryClient } from '@/lib/query-client'
 import { useNavigate } from 'react-router-dom'
-import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
+import { useAppState } from '@/hooks/use-app-state'
 import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 import type { VenueEvent } from '@/lib/events'
-import { PulseStory } from '@/lib/stories'
 import { calculateUserCredibility } from '@/lib/credibility'
 import { checkUserRateLimit, detectAbuse } from '@/lib/rate-limiter'
 import { announce } from '@/lib/accessibility'
@@ -37,12 +36,12 @@ export function useAppHandlers() {
   const navigate = useNavigate()
   const state = useAppState()
   const {
-    activeTab,
+    activeTab: _activeTab,
     venues,
     pulses,
     currentUser,
-    setActiveTab,
-    setSelectedVenue,
+    setActiveTab: _setActiveTab,
+    setSelectedVenue: _setSelectedVenue,
     setPulses,
     setVenues,
     setCurrentUser,
@@ -50,24 +49,24 @@ export function useAppHandlers() {
     setHashtags,
     setStories,
     setEvents,
-    setCrews,
+    setCrews: _setCrews,
     setCrewCheckIns,
-    setPlaylists,
+    setPlaylists: _setPlaylists,
     setPromotions,
     setContentReports,
     venueForPulse,
     setVenueForPulse,
-    createDialogOpen,
+    createDialogOpen: _createDialogOpen,
     setCreateDialogOpen,
     notificationSettings,
     crewCheckIns,
     crews,
-    setQueuedPulseCount,
-    setSubPage,
-    setIntegrationVenue,
-    integrationsEnabled,
-    socialDashboardEnabled,
-    setShowAdminDashboard,
+    setQueuedPulseCount: _setQueuedPulseCount,
+    setSubPage: _setSubPage,
+    setIntegrationVenue: _setIntegrationVenue,
+    integrationsEnabled: _integrationsEnabled,
+    socialDashboardEnabled: _socialDashboardEnabled,
+    setShowAdminDashboard: _setShowAdminDashboard,
   } = state
 
   const handleCreatePulse = (venueId: string) => {

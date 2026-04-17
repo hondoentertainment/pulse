@@ -116,7 +116,7 @@ function TabButton({
   return (
     <Link
       to={TAB_TO_PATH[tab.id]}
-      onClick={(e) => {
+      onClick={() => {
         // Let the Link handle navigation; fire haptics + animation
         handlePress()
       }}

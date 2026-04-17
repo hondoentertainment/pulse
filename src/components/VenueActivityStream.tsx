@@ -95,7 +95,7 @@ function generateActivity(venueId: string, index: number): ActivityItem {
   }
 }
 
-export function VenueActivityStream({ venueId, venueName }: VenueActivityStreamProps) {
+export function VenueActivityStream({ venueId, venueName: _venueName }: VenueActivityStreamProps) {
   const maxVisible = 4
   const activityCounter = useRef(0)
 
