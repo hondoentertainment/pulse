@@ -83,5 +83,31 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     testTimeout: 10000,
     exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      provider: 'v8',
+      // Scope coverage to library code (pure logic); UI components, data stubs,
+      // auth/observability/a11y shims, and fixtures are excluded because they
+      // require DOM/network or are Supabase-dependent.
+      include: ['src/lib/**'],
+      exclude: [
+        'src/lib/__tests__/**',
+        'src/lib/__fixtures__/**',
+        'src/lib/data/**',
+        'src/lib/auth/**',
+        'src/lib/observability/**',
+        'src/lib/a11y/**',
+      ],
+      reporter: ['text', 'text-summary', 'json-summary'],
+      reportOnFailure: true,
+      // Wave 2b actuals (April 2026): stmts 58.4 / branches 53.6 / funcs 61.5 / lines 58.3.
+      // Thresholds below are set ~2% under the actuals so small legitimate
+      // refactors don't trip CI while still guarding against regressions.
+      thresholds: {
+        statements: 56,
+        branches: 51,
+        functions: 59,
+        lines: 56,
+      },
+    },
   },
 });

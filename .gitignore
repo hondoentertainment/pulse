@@ -37,6 +37,7 @@ pids
 .claude/
 playwright-report/
 test-results/
+coverage/
 .env*.local
 
 # Debug & CI artifacts
