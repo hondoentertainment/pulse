@@ -1,4 +1,4 @@
-export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap'
+export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap' | 'aiConcierge'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -14,12 +14,15 @@ const defaults: FeatureFlagMap = {
   integrations: true,
   socialDashboard: true,
   smartMap: true,
+  // AI Night Concierge ships dark. Flip VITE_AI_CONCIERGE_ENABLED=true to turn on.
+  aiConcierge: false,
 }
 
 export const featureFlags: FeatureFlagMap = {
   integrations: parseFlag(import.meta.env.VITE_FF_ENABLE_INTEGRATIONS, defaults.integrations),
   socialDashboard: parseFlag(import.meta.env.VITE_FF_ENABLE_SOCIAL_DASHBOARD, defaults.socialDashboard),
   smartMap: parseFlag(import.meta.env.VITE_FF_ENABLE_SMART_MAP, defaults.smartMap),
+  aiConcierge: parseFlag(import.meta.env.VITE_AI_CONCIERGE_ENABLED, defaults.aiConcierge),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
