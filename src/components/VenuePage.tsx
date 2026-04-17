@@ -9,7 +9,8 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank, CurrencyDollar, Heart } from '@phosphor-icons/react'
+import { ACCESSIBILITY_LABELS } from '@/components/filters/AccessibilityFilter'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
@@ -62,6 +63,15 @@ interface VenuePageProps {
   onOpenIntegrations?: () => void
   onGetTickets?: () => void
   onReserveTable?: () => void
+}
+
+const DRESS_CODE_DISPLAY: Record<string, string> = {
+  casual: 'Casual',
+  smart_casual: 'Smart casual',
+  upscale: 'Upscale',
+  formal: 'Formal',
+  costume_required: 'Costume required',
+  no_code: 'No dress code',
 }
 
 export function VenuePage({
@@ -298,6 +308,63 @@ export function VenuePage({
 
             <Separator />
           </>
+        )}
+
+        {(venue.dressCode ||
+          typeof venue.coverChargeCents === 'number' ||
+          venue.coverChargeNote ||
+          (venue.accessibilityFeatures && venue.accessibilityFeatures.length > 0)) && (
+          <Card className="p-4 space-y-4 bg-card/95 backdrop-blur-xl border-white/10 rounded-2xl shadow-lg">
+            <h3 className="text-lg font-semibold">Details</h3>
+            {venue.dressCode && (
+              <div className="flex items-start gap-3">
+                <Star size={20} weight="fill" className="text-[#833AB4] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Dress code</p>
+                  <p className="text-sm">{DRESS_CODE_DISPLAY[venue.dressCode] ?? venue.dressCode}</p>
+                </div>
+              </div>
+            )}
+            {(typeof venue.coverChargeCents === 'number' || venue.coverChargeNote) && (
+              <div className="flex items-start gap-3">
+                <CurrencyDollar size={20} weight="fill" className="text-[#FCAF45] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Cover</p>
+                  <p className="text-sm">
+                    {typeof venue.coverChargeCents === 'number'
+                      ? venue.coverChargeCents === 0
+                        ? 'No cover'
+                        : `$${(venue.coverChargeCents / 100).toFixed(2)}`
+                      : null}
+                    {venue.coverChargeNote ? (
+                      <span className="text-muted-foreground">
+                        {typeof venue.coverChargeCents === 'number' ? ' · ' : ''}
+                        {venue.coverChargeNote}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
+            )}
+            {venue.accessibilityFeatures && venue.accessibilityFeatures.length > 0 && (
+              <div className="flex items-start gap-3">
+                <Heart size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Accessibility</p>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {venue.accessibilityFeatures.map((f) => (
+                      <li
+                        key={f}
+                        className="text-xs px-2 py-0.5 rounded-full border border-[#E1306C]/40 text-foreground"
+                      >
+                        {ACCESSIBILITY_LABELS[f] ?? f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </Card>
         )}
 
         {/* Phase 2: Live Crowd Indicator — only show with real presence data */}

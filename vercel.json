@@ -31,5 +31,11 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/wait-time/recompute",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }

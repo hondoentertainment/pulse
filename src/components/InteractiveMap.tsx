@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
+import { venuePassesAccessibilityFilter } from '@/components/filters/AccessibilityFilter'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import { MapboxBaseLayer, type MapboxBaseLayerHandle } from '@/components/MapboxBaseLayer'
@@ -258,6 +259,13 @@ export function InteractiveMap({
           venue.location.lng
         )
         if (distance > 0.5) {
+          return false
+        }
+      }
+
+      // Accessibility filter: venue must advertise every selected feature.
+      if (filters.accessibilityFeatures && filters.accessibilityFeatures.length > 0) {
+        if (!venuePassesAccessibilityFilter(venue.accessibilityFeatures, filters.accessibilityFeatures)) {
           return false
         }
       }
