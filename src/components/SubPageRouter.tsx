@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
@@ -57,7 +57,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     />
   )
 
-  const config: Record<string, () => JSX.Element> = {
+  const config: Record<string, () => ReactElement> = {
     achievements: () => (
       <>
         <Suspense fallback={pageFallback}>
@@ -123,7 +123,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
       </>
     ),
     integrations: () => {
-      if (!integrationVenue || !integrationsEnabled) return null as unknown as JSX.Element
+      if (!integrationVenue || !integrationsEnabled) return null as unknown as ReactElement
       return (
         <>
           <Suspense fallback={pageFallback}>

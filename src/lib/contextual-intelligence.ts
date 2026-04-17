@@ -3,6 +3,7 @@ import {
   type TimeOfDay,
   type DayType,
   getPeakConfig,
+  getPeakCategories,
   normalizeCategoryKeyPublic,
 } from './time-contextual-scoring'
 import { buildCategoryPreferences } from './venue-recommendations'

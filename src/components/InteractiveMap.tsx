@@ -108,7 +108,7 @@ export function InteractiveMap({
 
   useEffect(() => {
     // If no location after 3s, default to first venue or SF
-    loadingTimeoutRef.current = window.setTimeout(() => {
+    loadingTimeoutRef.current = setTimeout(() => {
       if (!center && !userLocation && venues.length > 0) {
         setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
         setFollowUser(false)
@@ -145,7 +145,7 @@ export function InteractiveMap({
   useEffect(() => {
     setIsCameraMoving(true)
     if (cameraSettleTimeoutRef.current) clearTimeout(cameraSettleTimeoutRef.current)
-    cameraSettleTimeoutRef.current = window.setTimeout(() => {
+    cameraSettleTimeoutRef.current = setTimeout(() => {
       setIsCameraMoving(false)
     }, isDragging ? 260 : 140)
   }, [center, zoom, isDragging])
@@ -708,7 +708,7 @@ export function InteractiveMap({
         lng: (center.lng + venue.location.lng) / 2
       })
       setZoom((z) => clampZoom(Math.max(0.9, Math.min(1.4, z))))
-      venueSelectTimeoutRef.current = window.setTimeout(() => {
+      venueSelectTimeoutRef.current = setTimeout(() => {
         setCenter({ lat: venue.location.lat, lng: venue.location.lng })
         setZoom((z) => clampZoom(Math.max(2.1, z * 1.1)))
       }, 170)
@@ -717,9 +717,9 @@ export function InteractiveMap({
       setZoom(2.1)
     }
     setFollowUser(false)
-    window.setTimeout(() => {
+    setTimeout(() => {
       setHoveredVenue(venue)
-      hoverClearTimeoutRef.current = window.setTimeout(() => {
+      hoverClearTimeoutRef.current = setTimeout(() => {
         setHoveredVenue(null)
       }, 2500)
     }, 220)

@@ -68,12 +68,12 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick }: Neigh
   }, [neighborhoods.length])
 
   const handleVenueClick = (venue: Venue) => {
-    const neighborhood = assignVenueToNeighborhood(venue, neighborhoods)
-    if (neighborhood) {
+    const neighborhoodId = assignVenueToNeighborhood(venue, neighborhoods)
+    if (neighborhoodId) {
       trackEvent({
         type: 'neighborhood_venue_click',
         timestamp: Date.now(),
-        neighborhoodId: neighborhood.id,
+        neighborhoodId,
         venueId: venue.id,
       })
     }
