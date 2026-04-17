@@ -42,6 +42,16 @@ export function handleOptions(req: RequestLike, res: ResponseLike): boolean {
   return false
 }
 
+/** CORS preflight handler that also sets CORS headers in one call. */
+export function handlePreflight(req: RequestLike, res: ResponseLike): boolean {
+  setCors(res)
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return true
+  }
+  return false
+}
+
 export function methodNotAllowed(res: ResponseLike, allowed: string[]): void {
   res.setHeader('Allow', allowed.join(', '))
   res.status(405).json({ error: 'Method not allowed' })
@@ -82,6 +92,24 @@ export function serverError(
   res.status(500).json(payload)
 }
 
+/** Success envelope: `{ data }`. */
+export function ok<T>(res: ResponseLike, data: T, status: number = 200): void {
+  res.status(status).json({ data })
+}
+
+/** Error envelope: `{ error: { code, message, ...extra } }`. */
+export function fail(
+  res: ResponseLike,
+  status: number,
+  code: string,
+  message: string,
+  extra?: Record<string, unknown>
+): void {
+  res.status(status).json({
+    error: { code, message, ...(extra ?? {}) },
+  })
+}
+
 export function getHeader(
   req: RequestLike,
   name: string
@@ -93,6 +121,14 @@ export function getHeader(
     headers[name.toUpperCase()]
   if (Array.isArray(value)) return value[0]
   return value
+}
+
+/** Alias of getHeader used by Wave 2 moderation/pulse endpoints. */
+export function readHeader(
+  req: RequestLike,
+  name: string
+): string | undefined {
+  return getHeader(req, name)
 }
 
 export async function readJson<T = unknown>(req: RequestLike): Promise<T> {

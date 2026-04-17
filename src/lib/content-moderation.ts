@@ -1,9 +1,32 @@
+/**
+ * =============================================================================
+ * CLIENT-SIDE ONLY — DO NOT RELY ON THIS FOR ENFORCEMENT.
+ * =============================================================================
+ *
+ * The functions in this file run in the user's browser and can be trivially
+ * bypassed by a malicious client (disable JS, edit the bundle, call the API
+ * directly, etc.). They exist purely for instant UX feedback such as red
+ * borders, inline warnings, and disabled submit buttons.
+ *
+ * The authoritative, enforceable moderation check lives server-side in
+ *   api/_lib/moderation.ts        (shared logic)
+ *   api/moderation/check.ts       (public endpoint)
+ *   api/pulses/create.ts          (called inline before persistence)
+ *
+ * Client code that submits user-generated content MUST route through
+ * `src/lib/moderation-client.ts` (`moderateServer`) before writing to the
+ * backend. This file's `screenContent` may be used additionally for immediate
+ * feedback while typing, but its verdict is advisory only.
+ * =============================================================================
+ */
+
 import type { Pulse } from './types'
 
 /**
- * Content Moderation Engine
+ * Content Moderation Engine (client-side previews + report/block/mute state).
  *
- * Handles flag/report flows, user blocking/muting, and basic content screening.
+ * Handles flag/report flows, user blocking/muting, and basic content screening
+ * for INSTANT UX FEEDBACK ONLY. See the header comment above.
  */
 
 export type ReportReason =
