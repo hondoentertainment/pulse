@@ -83,5 +83,31 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     testTimeout: 10000,
     exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'json-summary'],
+      // Scope to src/lib for now — our strongest coverage area.
+      // Expand in a future wave as we add tests for components/hooks.
+      include: ['src/lib/**'],
+      exclude: [
+        'src/lib/**/__tests__/**',
+        'src/lib/**/*.test.ts',
+        'src/lib/**/*.test.tsx',
+      ],
+      // Starting thresholds: realistic lower bound today, with a TODO to
+      // raise them as coverage improves. Do NOT auto-update on green runs —
+      // any regression should fail CI and be noticed.
+      thresholdAutoUpdate: false,
+      thresholds: {
+        // Starting floor based on today's actual src/lib coverage:
+        // stmts 37.5%, branches 35.7%, funcs 44.7%, lines 36.6%.
+        // Set ~2% below current to allow small legitimate refactors.
+        // TODO(wave-2d): raise to 50%+ once more lib modules gain tests.
+        statements: 35,
+        branches: 33,
+        functions: 42,
+        lines: 34,
+      },
+    },
   },
 });

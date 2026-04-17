@@ -3,8 +3,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
-  Users, MagnifyingGlass, Star, UserCircle, CalendarBlank,
-  CurrencyDollar, Tag, NotePencil, X, CaretDown, CaretUp,
+  Users, MagnifyingGlass, UserCircle, CalendarBlank,
+  CurrencyDollar, Tag, NotePencil, CaretDown,
   Crown, Warning, UserPlus, Heart,
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'

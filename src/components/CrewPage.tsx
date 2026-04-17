@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { User, Venue } from '@/lib/types'
-import { Crew, CrewCheckIn, createCrew, getUserCrews, getActiveCrewCheckIns, initiateCrewCheckIn, confirmCrewCheckIn, buildCrewActivityFeed } from '@/lib/crew-mode'
+import { Crew, CrewCheckIn, createCrew, getUserCrews, confirmCrewCheckIn, buildCrewActivityFeed } from '@/lib/crew-mode'
 import { CrewPanel } from '@/components/CrewPanel'
 import { CaretLeft, UsersThree, Plus } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'

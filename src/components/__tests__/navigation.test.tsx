@@ -10,7 +10,7 @@ vi.mock('framer-motion', () => ({
   motion: new Proxy(
     {},
     {
-      get: (_target, prop) => {
+      get: (_target, _prop) => {
         return ({ children, ...props }: any) => {
           const filteredProps: Record<string, unknown> = {}
           for (const [key, value] of Object.entries(props)) {
@@ -62,7 +62,7 @@ vi.mock('@phosphor-icons/react', () =>
   new Proxy(
     {},
     {
-      get: (_target, prop) => {
+      get: (_target, _prop) => {
         if (prop === '__esModule') return true
         return (props: any) => (
           <span data-testid={`icon-${String(prop)}`} {...props} />
@@ -121,7 +121,7 @@ vi.mock('@/components/ui/drawer', () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, asChild, ...props }: any) => (
+  Button: ({ children, asChild: _asChild, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
 }))

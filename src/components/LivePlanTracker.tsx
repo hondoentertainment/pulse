@@ -3,7 +3,7 @@ import type { Venue, Pulse, User, EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import type { NightPlan, SwapSuggestion } from '@/lib/night-planner'
 import { getCurrentStopIndex, adaptPlan, swapStop } from '@/lib/night-planner'
-import { CaretLeft, MapPin, Clock, Lightning, ArrowRight, Warning, CheckCircle, Car, PersonSimpleWalk } from '@phosphor-icons/react'
+import { CaretLeft, MapPin, Clock, Lightning, Warning, CheckCircle, Car, PersonSimpleWalk } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
@@ -307,7 +307,7 @@ export function LivePlanTracker({
 function TrackerStopCard({
   stop,
   isCurrent,
-  isCompleted,
+  isCompleted: _isCompleted,
   liveEnergy,
   formatTime,
   onVenueClick,

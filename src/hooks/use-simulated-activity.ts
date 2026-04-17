@@ -10,18 +10,6 @@ export interface Activity {
   timestamp: number
 }
 
-const FRIEND_NAMES = [
-  "Sarah",
-  "Mike",
-  "Alex",
-  "Jordan",
-  "Taylor",
-  "Casey",
-  "Riley",
-  "Morgan",
-  "Jamie",
-  "Sam",
-]
 
 const ENERGY_LEVELS = ["Buzzing", "Electric"] as const
 

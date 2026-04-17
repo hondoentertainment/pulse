@@ -36,7 +36,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => {
     if (prop === '__esModule') return true
-    return ({ size, ...props }: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+    return ({ size: _size, ...props }: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
   }
 }))
 
@@ -126,11 +126,11 @@ import { TimeContextualLabel } from '@/components/TimeContextualLabel'
 import { WeatherAwareTag } from '@/components/WeatherAwareTag'
 import { SocialProofBadge } from '@/components/SocialProofBadge'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
-import { ReducedMotionWrapper, useReducedMotion, getTransition, getMotionProps } from '@/components/ReducedMotionWrapper'
+import { ReducedMotionWrapper, getTransition, getMotionProps } from '@/components/ReducedMotionWrapper'
 import { ProgressiveImage } from '@/components/ProgressiveImage'
 import FloatingReactions from '@/components/FloatingReactions'
 import { SpringButton, AnimatedCounter } from '@/components/MicroInteractions'
-import { PageTransition, TabTransition, SharedElement, StaggeredList, OverlayTransition } from '@/components/PageTransition'
+import { PageTransition, TabTransition, StaggeredList, OverlayTransition } from '@/components/PageTransition'
 import { DirectionalPageTransition } from '@/components/DirectionalPageTransition'
 import { ScrollAwareHeader } from '@/components/ScrollAwareHeader'
 import { MilestoneAnimation } from '@/components/MilestoneAnimation'

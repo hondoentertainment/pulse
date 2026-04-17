@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, {
-    get: (_target, prop) => {
+    get: (_target, _prop) => {
       return ({ children, ...props }: any) => {
         const filteredProps: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(props)) {
@@ -98,7 +98,7 @@ vi.mock('@/components/PulseScore', () => ({
 }))
 
 vi.mock('@/lib/pulse-engine', () => ({
-  formatTimeAgo: (d: string) => 'just now',
+  formatTimeAgo: (_d: string) => 'just now',
   calculateDistance: () => 1.5,
   getEnergyLabel: (score: number) => {
     if (score >= 80) return 'Electric'

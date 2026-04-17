@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Venue } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ArrowLeft } from '@phosphor-icons/react'
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion'
+import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion'
 
 interface VenueHeroCarouselProps {
   venue: Venue
