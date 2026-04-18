@@ -16,6 +16,10 @@ import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { ContentReport, UserBlock, UserMute, filterModeratedPulses } from '@/lib/content-moderation'
 import { loadMockVenueFixtures, getSimulatedLocation } from '@/lib/mock-data'
 import { loadUSVenueFixtures } from '@/lib/us-venues'
+import { loadGlobalVenueFixtures } from '@/lib/global-venues'
+import { USE_SUPABASE_BACKEND, warnIfUsingMockBackend, VenueData, PulseData } from '@/lib/data'
+import { AuthRequiredError } from '@/lib/auth/require-auth'
+import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -328,10 +332,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       // Fallback path: legacy Supabase endpoint → mock fixtures.
       const legacy = await fetchVenuesFromSupabase().catch(() => null)
       if (legacy && legacy.length > 0) return legacy
+      const [mockRes, usMock, globalRes] = await Promise.all([
+        loadMockVenueFixtures(),
+        loadUSVenueFixtures(),
+        loadGlobalVenueFixtures(),
+      ])
       const devMock = [
-        ...loadMockVenueFixtures(),
-        ...loadUSVenueFixtures(),
-        ...loadGlobalVenueFixtures(),
+        ...mockRes.MOCK_VENUES,
+        ...usMock,
+        ...globalRes.GLOBAL_EXPANSION_VENUES,
       ]
       return devMock.length > 0 ? devMock : null
     },

@@ -57,7 +57,7 @@ export interface EventRegistry {
   }
   onboarding_completed: {
     durationMs?: number
-    stepsCompleted?: OnboardingStep[]
+    stepsCompleted?: OnboardingStep[] | number
   }
 
   // --- Core loop ---------------------------------------------------------
@@ -355,8 +355,9 @@ export function track<E extends EventName>(name: E, props: EventProps<E>): void 
   })
 }
 
-export function identify(userId: string, traits?: Record<string, unknown>): void {
-  setSuperProps({ userId })
+export function identify(userId: string | null, traits?: Record<string, unknown>): void {
+  setSuperProps({ userId: userId ?? undefined })
+  if (userId === null) return
   try {
     currentAdapter.identify?.(userId, traits)
   } catch {

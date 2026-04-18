@@ -6,6 +6,8 @@ export type FeatureFlag =
   | 'waitTime'
   | 'accessibilityFilter'
   | 'safetyKit'
+  | 'ticketing'
+  | 'aiConcierge'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -28,6 +30,9 @@ const defaults: FeatureFlagMap = {
   // Safety kit — default on in dev via env.example; in prod it's gated on
   // having Twilio env vars.
   safetyKit: true,
+  // Ticketing & AI concierge — default OFF (require env configuration).
+  ticketing: false,
+  aiConcierge: false,
 }
 
 export const featureFlags: FeatureFlagMap = {
@@ -41,6 +46,8 @@ export const featureFlags: FeatureFlagMap = {
     defaults.accessibilityFilter,
   ),
   safetyKit: parseFlag(import.meta.env.VITE_SAFETY_KIT_ENABLED, defaults.safetyKit),
+  ticketing: parseFlag(import.meta.env.VITE_TICKETING_ENABLED, defaults.ticketing),
+  aiConcierge: parseFlag(import.meta.env.VITE_AI_CONCIERGE_ENABLED, defaults.aiConcierge),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {

@@ -32,12 +32,12 @@ interface PulseCardProps {
   onReport?: (report: ContentReport) => void
   venueName?: string
   /** Feed surface this card is rendered in (for analytics). */
-  feed?: string
+  feed?: 'trending' | 'venue' | 'home' | 'friends'
   /** Zero-based position within the feed (for analytics). */
   position?: number
 }
 
-export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName, feed = 'unknown', position = 0 }: PulseCardProps) {
+export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName, feed, position = 0 }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [showReport, setShowReport] = useState(false)

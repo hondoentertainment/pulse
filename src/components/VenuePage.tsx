@@ -122,8 +122,8 @@ export function VenuePage({
   // router state (e.g. `{ source: 'map' | 'trending' | 'search' }`) and fall
   // back to `'direct'` for deep links / direct navigation.
   useEffect(() => {
-    const state = routerLocation.state as { source?: string } | null
-    const source = state?.source ?? 'direct'
+    const state = routerLocation.state as { source?: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity' } | null
+    const source = state?.source ?? 'deeplink'
     track('venue_viewed', { venueId: venue.id, source })
   }, [venue.id, routerLocation.state])
 

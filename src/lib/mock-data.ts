@@ -60,12 +60,3 @@ export function getSimulatedLocation(): Promise<GeolocationPosition> {
   })
 }
 
-/**
- * DEV-only loader for the seeded mock venue catalogue. Returns an empty
- * array in production so the bundle doesn't ship demo data. Use via
- * `src/lib/data` when `USE_SUPABASE_BACKEND` is off.
- */
-export function loadMockVenueFixtures(): Venue[] {
-  if (!import.meta.env.DEV) return []
-  return MOCK_VENUES
-}
