@@ -62,3 +62,23 @@ export const createUserClient = (userJwt: string): SupabaseClient => {
     },
   })
 }
+
+/**
+ * Build a Supabase client using the service-role key.
+ *
+ * CAUTION — this client bypasses RLS. Use ONLY from:
+ *   - Stripe / other webhook handlers where the event is signature-verified
+ *   - Internal cron jobs
+ *   - Admin-only migrations/backfills
+ *
+ * Never from a user-facing endpoint. Returns `null` if the service key isn't
+ * configured so callers can degrade gracefully in dev/preview.
+ */
+export const getServiceSupabase = (): SupabaseClient | null => {
+  const url = readEnv('SUPABASE_URL', 'VITE_SUPABASE_URL')
+  const key = readEnv('SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !key) return null
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}

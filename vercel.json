@@ -40,6 +40,10 @@
     {
       "path": "/api/safety/cron/check-expired",
       "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/ticketing/expire-pending",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
