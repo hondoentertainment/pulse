@@ -89,3 +89,4 @@ export function getNearestCity(lat: number, lng: number): { key: string; name: s
 
   return nearest
 }
+

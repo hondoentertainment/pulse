@@ -1,0 +1,61 @@
+// PulseWidgetProvider.kt — TEMPLATE
+// Rename to .kt and register in AndroidManifest.xml. See README.md.
+//
+// TODO(widget): once the Android project is materialized, update the package
+// statement if the Capacitor CLI chose a different bundle id.
+
+package com.pulse.nightlife.widget
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.RemoteViews
+import org.json.JSONArray
+import org.json.JSONObject
+
+class PulseWidgetProvider : AppWidgetProvider() {
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
+        appWidgetIds.forEach { id ->
+            val views = RemoteViews(context.packageName, R.layout.pulse_widget_layout)
+            val payload = readTrendingPayload(context)
+            views.setTextViewText(R.id.widget_title, "Trending in ${payload.neighborhood}")
+            // TODO(widget): populate up to 3 rows with venue name + score.
+
+            // Tap opens the app at the trending tab.
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("pulse://trending"))
+            val pi = PendingIntent.getActivity(
+                context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, pi)
+
+            appWidgetManager.updateAppWidget(id, views)
+        }
+    }
+
+    private fun readTrendingPayload(context: Context): TrendingPayload {
+        val prefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+        val raw = prefs.getString("widget:trending", null) ?: return TrendingPayload("Nearby", emptyList())
+        return try {
+            val obj = JSONObject(raw)
+            val arr = obj.optJSONArray("venues") ?: JSONArray()
+            val venues = (0 until arr.length()).map {
+                val v = arr.getJSONObject(it)
+                TrendingVenue(v.getString("name"), v.getDouble("score"))
+            }
+            TrendingPayload(obj.optString("neighborhood", "Nearby"), venues)
+        } catch (_: Exception) {
+            TrendingPayload("Nearby", emptyList())
+        }
+    }
+
+    data class TrendingPayload(val neighborhood: String, val venues: List<TrendingVenue>)
+    data class TrendingVenue(val name: String, val score: Double)
+}

@@ -32,3 +32,4 @@ export async function loadGlobalVenueFixtures(): Promise<{
     GLOBAL_CITY_LOCATIONS: mod.GLOBAL_CITY_LOCATIONS,
   }
 }
+

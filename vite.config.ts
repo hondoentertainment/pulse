@@ -24,7 +24,6 @@ const isVitest = process.env.VITEST === 'true'
 function manualChunks(id: string): string | undefined {
   if (!id.includes('node_modules')) return
 
-  // --- highly-used vendor chunks we want to isolate so they cache well ---
   if (id.includes('@sentry/')) return 'sentry';
   if (id.includes('@supabase/')) return 'supabase';
   if (id.includes('@tanstack/')) return 'tanstack-query';
@@ -43,7 +42,6 @@ function manualChunks(id: string): string | undefined {
   if (id.includes('zod') || id.includes('@hookform') || id.includes('react-hook-form')) return 'forms';
   if (id.includes('@github/spark')) return 'spark';
 
-  // --- React runtime (narrow matcher — only the React packages themselves) ---
   if (
     id.includes('/node_modules/react/') ||
     id.includes('/node_modules/react-dom/') ||
@@ -53,109 +51,110 @@ function manualChunks(id: string): string | undefined {
     return 'react-vendor';
   }
 
-  // --- Router sits on top of React and changes rarely; keep separate ---
   if (id.includes('react-router')) return 'router';
   if (id.includes('react-error-boundary')) return 'error-boundary';
 
-  // Everything else (mostly tiny utility deps) lands in the default chunk.
   return undefined;
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  build: {
-    cssCodeSplit: true,
-    rollupOptions: {
-      output: {
-        manualChunks,
+export default defineConfig(({ command }) => {
+  const isDev = command === 'serve'
+  return {
+    build: {
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          manualChunks,
+        },
       },
+      chunkSizeWarningLimit: 300,
     },
-    // Tight ceiling so that accidentally ballooning a chunk is loud in CI.
-    // Lifted to 300 kB because mapbox + react-vendor legitimately land near
-    // the 250-kB line; anything over 300 kB is a regression worth a PR
-    // comment.
-    chunkSizeWarningLimit: 300,
-  },
-  plugins: [
-    !isVitest && react(),
-    tailwindcss(),
-    // DO NOT REMOVE
-    createIconImportProxy() as PluginOption,
-    sparkPlugin() as PluginOption,
-    ViteImageOptimizer({
-      jpg: { quality: 75 },
-      png: { quality: 80 },
-      webp: { quality: 80 },
-    }) as PluginOption,
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      manifest: false, // Utilizing existing public/manifest.json
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Don't let the service worker precache the giant mapbox bundle —
-        // it's lazy-loaded on demand inside `useMapbox` and only needed on
-        // the /map route, so aggressive precaching just wastes storage.
-        // Match the actual rollup chunk names emitted by `manualChunks`
-        // above (e.g. `mapbox-DN9f7LrJ.js`). Skipping these from the
-        // precache keeps the PWA install payload lean — the heavy
-        // libraries are lazy-loaded on demand.
-        globIgnores: ['**/mapbox-*.js', '**/three-*.js', '**/sentry-*.js'],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB cap
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
-            handler: 'NetworkOnly',
-            method: 'POST',
-            options: {
-              backgroundSync: {
-                name: 'pulse-sync-queue',
-                options: {
-                  maxRetentionTime: 24 * 60, // Retry for max 24 hours
+    plugins: [
+      !isVitest && react(),
+      tailwindcss(),
+      // Dev-only: the icon proxy rewrites imports for non-existent icons to a
+      // fallback (`Question`). Not needed in production.
+      isDev ? (createIconImportProxy() as PluginOption) : null,
+      // Dev-only: `sparkPlugin()` emits a 1.5 MB `proxy.js` runtime wrapper
+      // into `dist/` and only makes sense inside the GitHub Spark workbench.
+      isDev ? (sparkPlugin() as PluginOption) : null,
+      ViteImageOptimizer({
+        jpg: { quality: 75 },
+        png: { quality: 80 },
+        webp: { quality: 80 },
+      }) as PluginOption,
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        manifest: false,
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          globIgnores: [
+            '**/proxy.js',
+            '**/mapbox-*.js',
+            '**/mapbox-gl-*.js',
+            '**/maplibre-gl-*.js',
+            '**/three-*.js',
+            '**/sentry-*.js',
+            '**/*.map',
+          ],
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
+              handler: 'NetworkOnly',
+              method: 'POST',
+              options: {
+                backgroundSync: {
+                  name: 'pulse-sync-queue',
+                  options: {
+                    maxRetentionTime: 24 * 60,
+                  },
                 },
               },
             },
-          },
+          ],
+        },
+      }) as PluginOption,
+    ].filter(Boolean) as PluginOption[],
+    resolve: {
+      alias: {
+        '@': resolve(projectRoot, 'src'),
+      },
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test-setup.ts'],
+      testTimeout: 10000,
+      exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**', '.claude/worktrees/**'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'text-summary', 'lcov', 'json-summary'],
+        reportOnFailure: true,
+        // Scope coverage to library code (pure logic); UI components, data stubs,
+        // auth/observability/a11y shims, and fixtures are excluded because they
+        // require DOM/network or are Supabase-dependent.
+        include: ['src/lib/**'],
+        exclude: [
+          'src/lib/__tests__/**',
+          'src/lib/__fixtures__/**',
+          'src/lib/data/**',
+          'src/lib/auth/**',
+          'src/lib/observability/**',
+          'src/lib/a11y/**',
         ],
-      },
-    }) as PluginOption,
-  ].filter(Boolean) as PluginOption[],
-  resolve: {
-    alias: {
-      '@': resolve(projectRoot, 'src'),
-    },
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
-    testTimeout: 10000,
-    exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**', '.claude/worktrees/**'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov', 'json-summary'],
-      // Scope to src/lib for now — our strongest coverage area.
-      // Expand in a future wave as we add tests for components/hooks.
-      include: ['src/lib/**'],
-      exclude: [
-        'src/lib/**/__tests__/**',
-        'src/lib/**/*.test.ts',
-        'src/lib/**/*.test.tsx',
-      ],
-      // Starting thresholds: realistic lower bound today, with a TODO to
-      // raise them as coverage improves. Do NOT auto-update on green runs —
-      // any regression should fail CI and be noticed.
-      thresholdAutoUpdate: false,
-      thresholds: {
-        // Starting floor based on today's actual src/lib coverage:
-        // stmts 37.5%, branches 35.7%, funcs 44.7%, lines 36.6%.
-        // Set ~2% below current to allow small legitimate refactors.
-        // TODO(wave-2d): raise to 50%+ once more lib modules gain tests.
-        statements: 35,
-        branches: 33,
-        functions: 42,
-        lines: 34,
+        thresholdAutoUpdate: false,
+        thresholds: {
+          // Wave 3e actuals (April 2026): stmts 58.4 / branches 53.6 / funcs 61.5 / lines 58.3.
+          // Set ~2% below actuals to allow small legitimate refactors.
+          statements: 56,
+          branches: 51,
+          functions: 59,
+          lines: 56,
+        },
       },
     },
-  },
+  }
 });

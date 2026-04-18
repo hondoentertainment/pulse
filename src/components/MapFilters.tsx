@@ -4,11 +4,13 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Faders, X, Lightning, Fire, MapPin, Microphone, MicrophoneSlash } from '@phosphor-icons/react'
+import { Faders, X, Lightning, Fire, MapPin, Microphone, MicrophoneSlash, Heart, CaretDown } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useVoiceFilter } from '@/hooks/use-voice-filter'
+import { AccessibilityFilter } from '@/components/filters/AccessibilityFilter'
+import type { AccessibilityFeature } from '@/lib/types'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
 export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
@@ -17,6 +19,19 @@ export interface MapFiltersState {
   energyLevels: EnergyFilter[]
   categories: string[]
   maxDistance: DistanceFilter
+  accessibilityFeatures?: AccessibilityFeature[]
+}
+
+function accessibilityFilterFlagOn(): boolean {
+  try {
+    const raw = (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+      ?.VITE_ACCESSIBILITY_FILTER_ENABLED
+    if (typeof raw !== 'string') return true
+    const n = raw.trim().toLowerCase()
+    return !['0', 'false', 'no', 'off'].includes(n)
+  } catch {
+    return true
+  }
 }
 
 interface MapFiltersProps {
@@ -42,7 +57,10 @@ const DISTANCE_OPTIONS_MILES = [
 
 export function MapFilters({ filters, onChange, availableCategories }: MapFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [accessibilityOpen, setAccessibilityOpen] = useState(false)
   const { unitSystem } = useUnitPreference()
+  const a11yEnabled = accessibilityFilterFlagOn()
+  const selectedAccessibility = filters.accessibilityFeatures ?? []
   const {
     isListening,
     transcript,
@@ -92,14 +110,16 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
     onChange({
       energyLevels: [],
       categories: [],
-      maxDistance: Infinity
+      maxDistance: Infinity,
+      accessibilityFeatures: []
     })
   }
 
   const activeFilterCount =
     filters.energyLevels.length +
     filters.categories.length +
-    (filters.maxDistance !== Infinity ? 1 : 0)
+    (filters.maxDistance !== Infinity ? 1 : 0) +
+    selectedAccessibility.length
 
   const handleVoiceToggle = () => {
     if (isListening) {
@@ -333,6 +353,52 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                         ))}
                       </div>
                     </div>
+
+                    {a11yEnabled && (
+                      <>
+                        <Separator />
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => setAccessibilityOpen((v) => !v)}
+                            aria-expanded={accessibilityOpen}
+                            aria-controls="map-filters-accessibility-panel"
+                            className="flex items-center justify-between w-full"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Heart size={16} weight="fill" className="text-[#833AB4]" />
+                              <h4 className="font-semibold text-sm">Accessibility</h4>
+                              {selectedAccessibility.length > 0 && (
+                                <Badge className="h-5 px-1.5 bg-[#833AB4]/20 text-[#833AB4] border-0 text-[10px]">
+                                  {selectedAccessibility.length}
+                                </Badge>
+                              )}
+                            </div>
+                            <CaretDown
+                              size={14}
+                              weight="bold"
+                              className={cn(
+                                'text-muted-foreground transition-transform',
+                                accessibilityOpen && 'rotate-180'
+                              )}
+                            />
+                          </button>
+                          {accessibilityOpen && (
+                            <div id="map-filters-accessibility-panel">
+                              <AccessibilityFilter
+                                selected={selectedAccessibility}
+                                onChange={(next) =>
+                                  onChange({
+                                    ...filters,
+                                    accessibilityFeatures: next,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
               </div>

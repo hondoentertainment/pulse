@@ -17,6 +17,8 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
 import { screenContent } from '@/lib/content-moderation'
+import { moderateServer } from '@/lib/moderation-client'
+import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
 
@@ -56,6 +58,7 @@ export function CreatePulseDialog({
   const [originalSize, setOriginalSize] = useState<number>(0)
   const [compressedSize, setCompressedSize] = useState<number>(0)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const hasSubmittedFirstPulse = useRef<boolean>(false)
   const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
 
@@ -92,9 +95,9 @@ export function CreatePulseDialog({
 
   const handleSubmit = async () => {
     if (!venue) return
-    
+
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
-    
+
     const contentIssues = screenContent(caption)
     if (contentIssues.length > 0) {
       toast.error(contentIssues[0])
@@ -102,13 +105,38 @@ export function CreatePulseDialog({
     }
 
     setIsSubmitting(true)
+
+    // Authoritative server-side moderation check before persisting.
+    if (caption && caption.trim().length > 0) {
+      const verdict = await moderateServer(caption, 'pulse')
+      if (!verdict.allowed) {
+        setIsSubmitting(false)
+        const reason = verdict.reasons[0] ?? 'Content cannot be posted'
+        toast.error('Pulse blocked by moderation', {
+          description: verdict.reasons.join(' · ') || reason,
+        })
+        return
+      }
+    }
+
     await onSubmit({
-      energyRating, 
-      caption, 
-      photos, 
+      energyRating,
+      caption,
+      photos,
       video: video || undefined,
       hashtags: selectedHashtags
     })
+
+    track('pulse_created', {
+      pulseId: `pulse-${Date.now()}`,
+      venueId: venue.id,
+      hasPhoto: photos.length > 0,
+      hashtagCount: selectedHashtags.length,
+      energyRating,
+      isFirstPulse: !hasSubmittedFirstPulse.current,
+    })
+    hasSubmittedFirstPulse.current = true
+
     setIsSubmitting(false)
     
     setEnergyRating('chill')

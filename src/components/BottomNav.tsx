@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
+import { TrendUp, MapTrifold, User, Bell, Compass, VideoCamera } from '@phosphor-icons/react'
 import { motion, useAnimation, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
+import { isVideoFeedEnabled } from '@/lib/video-feature-flag'
 
-export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile' | 'video'
 
 const TAB_TO_PATH: Record<TabId, string> = {
   trending: '/',
@@ -13,6 +14,7 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
+  video: '/video',
 }
 
 const PATH_TO_TAB: Record<string, TabId> = {
@@ -21,6 +23,7 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/map': 'map',
   '/notifications': 'notifications',
   '/profile': 'profile',
+  '/video': 'video',
 }
 
 interface BottomNavProps {
@@ -213,10 +216,13 @@ export function BottomNav({
   // Derive active tab from the URL, falling back to the prop
   const currentTab = PATH_TO_TAB[location.pathname] ?? activeTab
 
+  const showVideoTab = isVideoFeedEnabled()
+
   const tabs: TabConfig[] = [
     { id: 'trending', icon: TrendUp, label: 'Trending' },
     { id: 'discover', icon: Compass, label: 'Discover' },
     { id: 'map', icon: MapTrifold, label: 'Map' },
+    ...(showVideoTab ? [{ id: 'video' as const, icon: VideoCamera, label: 'Video' }] : []),
     {
       id: 'notifications',
       icon: Bell,

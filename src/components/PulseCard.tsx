@@ -8,13 +8,14 @@ import { formatTimeAgo } from '@/lib/pulse-engine'
 import { getUserTrustBadges, TrustBadge } from '@/lib/credibility'
 import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning, Flag, ShareNetwork } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ReportDialog } from '@/components/ReportDialog'
 import { ShareSheet } from '@/components/ShareSheet'
 import type { ContentReport } from '@/lib/content-moderation'
 import { getPulseDeepLink } from '@/lib/sharing'
 import type { ShareCard } from '@/lib/sharing'
+import { track } from '@/lib/observability/analytics'
 import {
   Tooltip,
   TooltipContent,
@@ -30,19 +31,79 @@ interface PulseCardProps {
   currentUserId?: string
   onReport?: (report: ContentReport) => void
   venueName?: string
+  /** Feed surface this card is rendered in (for analytics). */
+  feed?: 'trending' | 'venue' | 'home' | 'friends'
+  /** Zero-based position within the feed (for analytics). */
+  position?: number
 }
 
-export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName }: PulseCardProps) {
+export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName, feed, position = 0 }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const viewTrackedRef = useRef(false)
 
   const trustBadges = getUserTrustBadges(pulse.user, pulse.venueId, allPulses)
 
+  const fireReaction = (type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate([10])
+    }
+    track('reaction_added', { pulseId: pulse.id, reactionType: type })
+    onReaction?.(type)
+  }
+
+  // Track `pulse_viewed` when the card is at least 50% visible for 500ms.
+  useEffect(() => {
+    const node = cardRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+    if (viewTrackedRef.current) return
+
+    let enteredAt: number | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            if (enteredAt === null) enteredAt = Date.now()
+            if (timer) clearTimeout(timer)
+            timer = setTimeout(() => {
+              if (viewTrackedRef.current) return
+              viewTrackedRef.current = true
+              track('pulse_viewed', {
+                pulseId: pulse.id,
+                feed,
+                position,
+                dwellMs: enteredAt ? Date.now() - enteredAt : 500,
+              })
+              observer.disconnect()
+            }, 500)
+          } else {
+            enteredAt = null
+            if (timer) {
+              clearTimeout(timer)
+              timer = null
+            }
+          }
+        }
+      },
+      { threshold: [0, 0.5, 1] },
+    )
+
+    observer.observe(node)
+    return () => {
+      if (timer) clearTimeout(timer)
+      observer.disconnect()
+    }
+  }, [pulse.id, feed, position])
+
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}

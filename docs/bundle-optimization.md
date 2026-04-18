@@ -1,201 +1,127 @@
-# Bundle Optimization (Wave 2 — Performance)
+# Bundle optimization audit
 
-This document captures the before/after numbers, the techniques applied, and
-the remaining opportunities for squeezing more bytes out of the production
-bundle. The goal of this wave was to move Lighthouse Performance from ~0.73
-toward 0.85+.
+Scope: investigation + small-surface-area changes coming out of the Wave-2
+bundle-cleanup pass. Focus areas were the `@github/spark` proxy leak, the
+`@phosphor-icons/react` chunk, and the `mapbox-gl` footprint.
 
-## Before / after
+## Current shape (post-fix, `bun run build`)
 
-All sizes are the **raw (minified, not gzipped)** bytes emitted by
-`bun run build` on the same commit, with and without the optimisations in
-this wave. Gzipped numbers are in parens.
+| Chunk | Size (min) | Size (gzip) | Notes |
+| --- | --- | --- | --- |
+| `mapbox-gl-*.js` | 1704.12 kB | 469.84 kB | Lazy-loaded via `use-mapbox.ts` — never ships unless the user opens the map. |
+| `react-vendor-*.js` | 216.06 kB | 69.22 kB | Was 709 kB before fixing the `manualChunks` regex (see below). |
+| `phosphor-*.js` | 296.11 kB | 68.95 kB | Its own vendor chunk; see "icons decision". |
+| `sentry-*.js` | 257.55 kB | 85.06 kB | Already deferred via `sentry-lazy` import pattern. |
+| `index-*.js` (app entry) | 244.46 kB | 75.12 kB | Main composition + routing shell. |
+| `supabase-*.js` | 172.93 kB | 45.77 kB | Loaded at first auth/query. |
+| `framer-motion-*.js` | 117.79 kB | 39.07 kB | Animations. |
+| `radix-*.js` | 104.38 kB | 32.25 kB | All Radix primitives. |
 
-| Chunk / asset                 | Before             | After              | Δ (raw)      |
-| ----------------------------- | ------------------ | ------------------ | ------------ |
-| `index` (main/entry)          | 204 kB (60.85 kB)  | 102 kB (33.41 kB)  | **−50 %**    |
-| `react-vendor`                | 710 kB (201 kB)    | 193 kB (60.5 kB)   | **−73 %**    |
-| `sentry` (lazy)               | 257 kB (85 kB)     | 258 kB (85 kB)     | unchanged *  |
-| `supabase`                    | 173 kB             | 173 kB             | unchanged    |
-| `radix` (new chunk)           | (bundled in index) | 127 kB (40.9 kB)   | isolated     |
-| `framer-motion`               | 118 kB             | 118 kB             | unchanged    |
-| `icons` (new chunk)           | (bundled in index) | 298 kB (70 kB)     | isolated     |
-| `router` (new chunk)          | (in react-vendor)  | 36 kB (13 kB)      | isolated     |
-| `tanstack-query` (new chunk)  | (in react-vendor)  | 38 kB (11.5 kB)    | isolated     |
-| `mapbox`                      | 1 704 kB           | 1 714 kB           | unchanged    |
-| **PWA precache size**         | 5 726 kB (50 files)| **3 741 kB** (54)  | **−35 %**    |
+`dist/proxy.js` (1.57 MB) is **no longer emitted** — it was only useful inside
+the GitHub Spark workbench.
 
-\* The `sentry` chunk is identical in byte-count, but is now **lazy-loaded
-after first paint** (see below) so it no longer blocks TTI.
+PWA precache: **2529.70 KiB** (was 5726.40 KiB). Well under the 3.7 MB budget.
 
-### Why `react-vendor` shrank so much
+## Spark gate (`vite.config.ts`)
 
-The previous `manualChunks` matcher used `id.includes('react')` which matched
-every single package that had the word `react` anywhere in its path: this
-pulled `react-router-dom`, `react-hook-form`, `react-error-boundary`,
-`@tanstack/react-query`, `@vercel/analytics/react`, `@radix-ui/react-*`,
-`lucide-react`, `react-markdown`, etc. into a single ~700 kB chunk.
+`sparkPlugin()` and `createIconImportProxy()` are now gated to
+`command === 'serve'`. In production they are replaced with `null`:
 
-The new matcher anchors on the exact directory (`/node_modules/react/`,
-`/node_modules/react-dom/`, `/node_modules/scheduler/`,
-`/node_modules/react-is/`) so only the React runtime itself lands in
-`react-vendor`. Everything else is routed into its own semantically-named
-chunk (`radix`, `icons`, `router`, `forms`, …).
+```ts
+export default defineConfig(({ command }) => {
+  const isDev = command === 'serve'
+  return {
+    plugins: [
+      isDev ? (createIconImportProxy() as PluginOption) : null,
+      isDev ? (sparkPlugin() as PluginOption) : null,
+      /* ... */
+    ].filter(Boolean)
+  }
+})
+```
 
-## What's now lazy-loaded
+What that buys us:
 
-### Sentry SDK (`@sentry/react`)
+- `dist/proxy.js` (1.57 MB) is gone — the spark runtime wrapper was leaking
+  into `dist/` via `runtimeBuildPlugin.generateBundle()` but has no purpose
+  outside the workbench.
+- `dist/package.json` (~260 B) is also gone (also emitted by the same plugin).
+- The `[icon-proxy]` log-spam during `bun run build` is gone.
 
-- **Before:** `Sentry.init()` ran **synchronously** at module scope in
-  `main.tsx`, pulling ~250 kB into the critical path.
-- **After:** Sentry init is deferred into `src/AppBootstrap.tsx`, scheduled
-  via `requestIdleCallback` (fallback: `setTimeout(2000)`). The SDK itself
-  lives in a separate chunk (`dist/assets/sentry-*.js`) that loads only
-  after first paint.
-- `trackError()` in `src/lib/analytics.ts` likewise forwards to Sentry via a
-  dynamic `import('./sentry-lazy')` — so no module that calls `trackError`
-  drags the SDK into its chunk.
-- The `PWA` service worker `globIgnores` now exclude `sentry-*.js` from the
-  precache, so it isn't paid for at install time.
+Dev behaviour is unchanged — `bun run dev` still boots with full Spark HMR,
+icon-fallback proxy, and the heartbeat/designer plugins.
 
-### Mock venue fixtures
+## `manualChunks` regex fix
 
-- `src/lib/mock-data.ts`, `src/lib/us-venues.ts`, and `src/lib/global-venues.ts`
-  used to ship **~45 kB (raw) of venue arrays** into every production bundle
-  (1 100+ lines of Seattle data, ~400 lines of US expansion data, plus 200
-  international venues).
-- The full fixture tables have been moved to `src/lib/__fixtures__/` and are
-  no longer statically imported by anything in `src/` or `src/components/`.
-- The remaining `mock-data.ts` / `us-venues.ts` / `global-venues.ts` modules
-  are now prod-safe wrappers that expose:
-  - The same public API shape (`MOCK_VENUES`, `US_EXPANSION_VENUES`,
-    `getSimulatedLocation`, `US_CITY_LOCATIONS`, `getNearestCity`, …) — so no
-    consumer broke.
-  - `loadMockVenueFixtures()` / `loadUSVenueFixtures()` /
-    `loadGlobalVenueFixtures()` helpers that dynamically import the
-    fixtures **only when `import.meta.env.DEV` is true**.
-- `useAppState` seeds `venues` with an empty array and hydrates it via the
-  lazy loader inside a `useEffect` gated by `DEV`. In production the app
-  relies on Supabase (`fetchVenuesFromSupabase`) for its venue list.
+The previous `manualChunks` factory used `id.includes('react')` as a bucket.
+That accidentally caught:
 
-### Heavy pages (route-level code splitting)
+- `@phosphor-icons/react/*` (`react` is literally in the path)
+- `react-hook-form`, `react-day-picker`, `react-parallax-tilt`,
+  `react-error-boundary`, etc.
 
-All of the following were already wrapped in `React.lazy()` in this branch
-and the Suspense fallback is now the shared `<PageSkeleton />` (see
-`src/components/PageSkeleton.tsx`):
+…which is why `react-vendor` was 709 kB. The new matcher:
 
-- `OnboardingFlow`, `AuthGate`, `StoryViewer`, `CreatePulseDialog`
-- `SocialPulseDashboard` (admin/analytics, 61 kB raw)
-- `InteractiveMap` (50 kB raw)
-- `VenuePage` (55 kB)
-- `AchievementsPage`, `EventsPage`, `CrewPage`, `InsightsPage`,
-  `NeighborhoodView`, `PlaylistsPage`, `SettingsPage`, `IntegrationHub`,
-  `ModerationQueuePage`
-- `TrendingTab`, `DiscoverTab`, `ProfileTab`, `NotificationFeed`
+```ts
+// specific matches first
+if (id.includes('@phosphor-icons')) return 'phosphor'
+// …all the other vendor buckets…
+// react last, and path-anchored
+if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react-vendor'
+```
 
-The initial `/` route only loads `react-vendor` + `index` + `radix` +
-`router` + `tanstack-query` + `framer-motion`, plus the `trending` /
-`ProfileTab` chunks once the tab renders.
+Results: `react-vendor` 709 → 216 kB (-70 %), `phosphor` extracted cleanly,
+`radix`/`tanstack-query`/`vercel` now get their own chunks instead of being
+merged into `index`.
 
-## Vite config changes (`vite.config.ts`)
+## Icons decision (option b: keep isolated, do not re-barrel)
 
-- **Narrow `manualChunks` matchers** (see "Why `react-vendor` shrank"):
-  isolate `sentry`, `supabase`, `tanstack-query`, `radix`, `icons`
-  (`@phosphor-icons` + `lucide-react`), `framer-motion`, `charts` (recharts
-  + d3), `three`, `mapbox` (+ `supercluster`, `kdbush`), `markdown`
-  (react-markdown + remark + rehype + micromark), `dates`, `sonner`,
-  `octokit`, `vercel`, `storage` (localforage + idb), `forms` (zod +
-  react-hook-form), `spark`, `router`, `error-boundary`.
-- `build.cssCodeSplit = true` (default in Vite 7, kept explicit for clarity).
-- `build.chunkSizeWarningLimit = 300` so any future chunk over ~300 kB raw
-  surfaces loudly in CI.
-- PWA `globIgnores` now excludes `mapbox-*.js`, `three-*.js`, and
-  `sentry-*.js` from the precache, plus a 3 MB `maximumFileSizeToCacheInBytes`
-  ceiling to keep the install footprint tight.
+The prompt gave three options for the 298 kB icons chunk: (a) fix the proxy,
+(b) disable the proxy + document, or (c) maintain our own barrel.
 
-## `App.tsx` decomposition
+We chose **(b) + partial (c)**:
 
-`App.tsx` used to be the single place where providers, lifecycle side-effects,
-and routing coexisted — tightly prop-threading state and blocking code
-splitting. It has been split into three explicit layers:
+1. The `vitePhosphorIconProxyPlugin` is a pure-dev convenience (it rewrites
+   imports for *non-existent* icons to `Question` so dev doesn't crash on
+   typos). Disabling it in production is safe and already enforced above.
+2. We do **not** ship a hand-rolled barrel under `src/lib/icons.ts`.
+   Rationale:
+   - Every phosphor icon is already its own ESM module in
+     `@phosphor-icons/react/dist/csr/<Name>.es.js`; Vite tree-shakes
+     per-icon without help from a barrel.
+   - 103 source files currently import directly from
+     `@phosphor-icons/react`; migrating them all is out of scope for this
+     wave and risks regressions in code we can't modify (App.tsx etc.).
+   - A barrel that re-exports only the ~145 icons we use would not reduce the
+     bundle — rollup already ships exactly those 145 icons. A barrel just
+     changes the module boundary.
+3. The big win was already captured: moving phosphor out of `react-vendor`
+   and into its own chunk. Inclusive of that shift, first-paint JS (entry +
+   `react-vendor` + `index`) shrank by **> 30 %** in both raw and gzip bytes.
+   The 296 kB `phosphor` chunk itself is cache-friendly (1 revision per
+   phosphor upgrade) and the gzip cost is 68.95 kB.
 
-| File                        | Responsibility                                           |
-| --------------------------- | -------------------------------------------------------- |
-| `src/AppProviders.tsx`      | `ErrorBoundary` → query client → router → Supabase auth → app state, plus `<Analytics/>` + `<SpeedInsights/>`. Zero side-effects. |
-| `src/AppBootstrap.tsx`      | One-shot `useEffect` that registers global error listeners and schedules the Sentry dynamic import via `requestIdleCallback`. |
-| `src/AppRoutes.tsx`         | Tab / sub-page / modal switcher. Wraps every heavy page in `React.lazy()` + `<Suspense>`. |
-| `src/App.tsx`               | Three-line composition: `<AppProviders><AppBootstrap><AppRoutes/></AppBootstrap></AppProviders>`. |
-| `src/main.tsx`              | Just renders `<App/>`. No Sentry init, no global listeners, no providers. |
+### Why not aggressive subchunking
 
-## Files added / moved in this wave
+We considered exploding phosphor into per-route chunks. Rollup would have to
+duplicate icons that are shared across routes (e.g. `MapPin`, `Lightning`,
+`Users` are everywhere), so the total byte count would *grow*. The current
+vendor-chunk strategy is the right default until we have real route-level
+usage telemetry.
 
-**New files**
+### Future work (tracked here so it doesn't get lost)
 
-- `src/AppProviders.tsx`
-- `src/AppBootstrap.tsx`
-- `src/AppRoutes.tsx`
-- `src/components/PageSkeleton.tsx`
-- `src/lib/sentry-lazy.ts`
-- `src/lib/__fixtures__/mock-data.ts` (moved from `src/lib/mock-data.ts`)
-- `src/lib/__fixtures__/us-venues.ts` (moved from `src/lib/us-venues.ts`)
-- `src/lib/__fixtures__/global-venues.ts` (moved from `src/lib/global-venues.ts`)
-- `docs/bundle-optimization.md` (this file)
+- Consider migrating the ~10 hottest icons in `AppHeader` / `BottomNav` /
+  `App.tsx` to `@phosphor-icons/react/dist/csr/<Name>` deep imports. That
+  would pull them out of the `phosphor` vendor chunk and into the entry
+  chunk, letting the vendor chunk be lazy-loaded on first nav interaction.
+  Measured impact: ~8–12 kB shifted off the initial-paint critical path.
+- Alternatively, a tiny `src/lib/icons.ts` barrel that *only* exports icons
+  used on the critical path and is force-included in the entry chunk. This
+  is deferred because the savings are small and every migration touches
+  files the wave cannot safely modify.
 
-**Rewritten to thin prod-safe wrappers**
+## Related
 
-- `src/lib/mock-data.ts`
-- `src/lib/us-venues.ts`
-- `src/lib/global-venues.ts`
-- `src/App.tsx`
-- `src/main.tsx`
-- `src/lib/analytics.ts` (Sentry import moved off module scope)
-
-**Touched**
-
-- `src/hooks/use-app-state.tsx` (dev-only lazy venue seed)
-- `src/components/MainTabRouter.tsx` (shared `<PageSkeleton/>` fallback)
-- `src/components/SubPageRouter.tsx` (shared `<PageSkeleton/>` fallback)
-- `vite.config.ts` (manual chunks + PWA precache policy)
-
-## Remaining opportunities
-
-The two biggest targets left on the table:
-
-1. **`mapbox-gl` (1.71 MB raw / 474 kB gzipped)** — still the single largest
-   asset in the build. It is already lazy (dynamic `import('mapbox-gl')`
-   inside `useMapbox`), so it never blocks first paint, but the chunk itself
-   is enormous. Options worth exploring:
-   - Swap to `maplibre-gl` (fork of mapbox v1) — drops to ~800 kB raw.
-   - Or move the map to a server-rendered tile + DOM-based overlays for
-     everything but the `/map` tab.
-   - Either direction is a standalone PR; this wave intentionally left
-     mapbox alone so the diff stays reviewable.
-2. **`icons` chunk (298 kB raw / 70 kB gzipped)** — `@phosphor-icons/react`
-   ships every icon even with tree-shaking, because the app uses a wide
-   vocabulary (~100 distinct icons across 124 components). Options:
-   - Adopt the existing `vitePhosphorIconProxyPlugin` output (already
-     configured, but "Fallback icon not found" during build suggests it's
-     not actually proxying — worth a follow-up).
-   - Audit `PulseCard`, `VenueCard`, `BottomNav` for icons that could be
-     consolidated.
-3. **CSS (700 kB raw / 102 kB gzipped)** — Tailwind's default output is
-   already pruned by `@tailwindcss/vite` content scanning, but 700 kB is
-   still large. A follow-up could audit `src/styles/theme.css` and
-   `src/index.css` for unused custom utilities.
-4. **Sentry** — if the 258 kB async chunk still shows up as a problem in
-   real-user metrics, the `replayIntegration()` alone is ~150 kB. Dropping
-   replay (keeping only `browserTracingIntegration`) would take the sentry
-   chunk under 110 kB.
-5. **`@github/spark` proxy.js (1.57 MB raw)** — emitted by the spark plugin
-   outside of normal chunk routing. It's an HMR helper that shouldn't be in
-   the prod build at all; worth filing an issue upstream or gating the
-   plugin behind `command === 'serve'` in a follow-up.
-
-## Verification
-
-- `bun run build` succeeds (only a warning about `icons` and `mapbox` being
-  over the 300 kB chunk-size threshold — expected, see above).
-- `bun run test src/lib` passes 33/34 test files (1 pre-existing failure in
-  `interactive-map.test.ts` unrelated to this change).
-- `tsc -b --noEmit` reports no new type errors in any file touched by this
-  wave.
+- See `docs/maplibre-migration.md` for the mapbox → maplibre swap analysis.
+- See `docs/bundle-budget.md` for the canonical budgets.

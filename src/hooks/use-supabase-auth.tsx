@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { User as AuthUser, Session, Provider } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { identify } from '@/lib/observability/analytics'
 import type { User as PulseUser } from '@/lib/types'
 
 /**
@@ -44,8 +45,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
+        identify(session.user.id, {
+          email: session.user.email ?? undefined,
+          createdAt: session.user.created_at,
+        })
         ensureProfile(session.user)
       } else {
+        identify(null)
         setIsLoading(false)
       }
     }).catch(() => {
@@ -56,8 +62,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
+        identify(session.user.id, {
+          email: session.user.email ?? undefined,
+          createdAt: session.user.created_at,
+        })
         ensureProfile(session.user)
       } else {
+        identify(null)
         setProfile(null)
         setIsLoading(false)
       }

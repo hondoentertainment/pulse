@@ -19,6 +19,10 @@ import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 import { postEventToApi } from '@/lib/server-api'
 import { uploadPulseToSupabase } from '@/lib/supabase-api'
 import { trackEvent } from '@/lib/analytics'
+import { track } from '@/lib/observability/analytics'
+import { USE_SUPABASE_BACKEND, ReactionData } from '@/lib/data'
+import { AuthRequiredError } from '@/lib/auth/require-auth'
+import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
 import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
@@ -30,6 +34,7 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
+  video: '/video',
 }
 
 export function useAppHandlers() {
@@ -209,16 +214,57 @@ export function useAppHandlers() {
     if (!rateCheck.allowed) return
     trackEvent({ type: 'pulse_reaction', timestamp: Date.now(), pulseId, reactionType: type })
     if (navigator.vibrate) navigator.vibrate([10])
+
+    // Optimistic UI — flip the reaction locally first so feedback is instant.
+    let wasReacted = false
     setPulses(current => {
       if (!current) return []
       const next = current.map(p => {
         if (p.id !== pulseId) return p
         const reactions = p.reactions[type]
-        const hasReacted = reactions.includes(currentUser.id)
-        return { ...p, reactions: { ...p.reactions, [type]: hasReacted ? reactions.filter(id => id !== currentUser.id) : [...reactions, currentUser.id] } }
+        wasReacted = reactions.includes(currentUser.id)
+        return {
+          ...p,
+          reactions: {
+            ...p.reactions,
+            [type]: wasReacted
+              ? reactions.filter(id => id !== currentUser.id)
+              : [...reactions, currentUser.id],
+          },
+        }
       })
       queryClient.setQueryData(['pulses'], next)
       return next
+    })
+
+    if (!USE_SUPABASE_BACKEND) return
+
+    // Persist through the data layer. On failure, roll back the optimistic
+    // update and surface an auth-aware toast.
+    ReactionData.toggleReaction(pulseId, type).catch((error: unknown) => {
+      setPulses(current => {
+        if (!current) return []
+        return current.map(p => {
+          if (p.id !== pulseId) return p
+          const reactions = p.reactions[type]
+          return {
+            ...p,
+            reactions: {
+              ...p.reactions,
+              [type]: wasReacted
+                ? [...reactions, currentUser.id]
+                : reactions.filter(id => id !== currentUser.id),
+            },
+          }
+        })
+      })
+      if (error instanceof AuthRequiredError) {
+        toast.error('Sign in to react', { description: error.message })
+      } else if (error instanceof RlsDeniedError) {
+        toast.error('Reaction blocked', { description: error.message })
+      } else {
+        console.warn('[pulse] toggleReaction failed', error)
+      }
     })
   }
 
@@ -236,7 +282,7 @@ export function useAppHandlers() {
 
   const handleAddFriend = (userId: string) => {
     if (!currentUser) return
-    trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
+    track('friend_added', { friendUserId: userId, method: 'suggestion' })
     setCurrentUser(prev => { if (!prev) return prev!; if (prev.friends.includes(userId)) return prev; return { ...prev, friends: [...prev.friends, userId] } })
     toast.success('Friend added!')
     if (navigator.vibrate) navigator.vibrate([30])
@@ -255,7 +301,7 @@ export function useAppHandlers() {
   const handleTabChange = (tab: TabId) => {
     navigate(TAB_TO_PATH[tab])
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
+    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile', video: 'Video' }
     announce(`Switched to ${labels[tab]} tab`)
   }
 

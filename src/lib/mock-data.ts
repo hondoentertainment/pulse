@@ -59,3 +59,4 @@ export function getSimulatedLocation(): Promise<GeolocationPosition> {
     }, 100)
   })
 }
+
