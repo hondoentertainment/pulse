@@ -8,6 +8,7 @@ export type FeatureFlag =
   | 'safetyKit'
   | 'ticketing'
   | 'aiConcierge'
+  | 'creatorEconomy'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -33,6 +34,7 @@ const defaults: FeatureFlagMap = {
   // Ticketing & AI concierge — default OFF (require env configuration).
   ticketing: false,
   aiConcierge: false,
+  creatorEconomy: false,
 }
 
 export const featureFlags: FeatureFlagMap = {
@@ -48,6 +50,7 @@ export const featureFlags: FeatureFlagMap = {
   safetyKit: parseFlag(import.meta.env.VITE_SAFETY_KIT_ENABLED, defaults.safetyKit),
   ticketing: parseFlag(import.meta.env.VITE_TICKETING_ENABLED, defaults.ticketing),
   aiConcierge: parseFlag(import.meta.env.VITE_AI_CONCIERGE_ENABLED, defaults.aiConcierge),
+  creatorEconomy: parseFlag(import.meta.env.VITE_CREATOR_ECONOMY_ENABLED, defaults.creatorEconomy),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {

@@ -69,6 +69,9 @@ export interface ConfirmPaymentParams {
  */
 export async function confirmPayment(params: ConfirmPaymentParams): Promise<ConfirmPaymentResult> {
   const { stripe, elements, returnUrl, redirectIfRequired = true } = params
+  if (!stripe.confirmPayment) {
+    return { error: { message: 'Stripe.confirmPayment unavailable in this SDK version' } }
+  }
   const result = await stripe.confirmPayment({
     elements,
     confirmParams: returnUrl ? { return_url: returnUrl } : {},

@@ -21,7 +21,6 @@ import {
 } from '@/lib/brand-partnerships'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
 import { PayoutOnboarding } from '@/components/ticketing/PayoutOnboarding'
-import { isFeatureEnabled } from '@/lib/feature-flags'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import {

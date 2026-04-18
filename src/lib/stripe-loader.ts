@@ -10,12 +10,29 @@
 
 const STRIPE_SRC = 'https://js.stripe.com/v3/'
 
-export interface StripeLike {
-  // Intentionally unknown shape — callers treat the returned object as opaque.
+export interface StripePaymentElement {
+  mount: (selector: string | HTMLElement) => void
+  unmount: () => void
+  on: (event: string, handler: (...args: unknown[]) => void) => void
+  destroy?: () => void
+}
+
+export interface StripeElements {
+  create: (type: string, opts?: unknown) => StripePaymentElement
+  update?: (opts: unknown) => void
+  submit?: () => Promise<{ error?: { message?: string } }>
+  getElement?: (type: string) => StripePaymentElement | null
+}
+
+export interface StripeInstance {
   confirmCardPayment?: (clientSecret: string, data?: unknown) => Promise<unknown>
-  elements?: (opts?: unknown) => unknown
+  elements: (opts?: unknown) => StripeElements
+  confirmPayment?: (opts: unknown) => Promise<{ error?: { message?: string }; paymentIntent?: { status: string; id: string } }>
   redirectToCheckout?: (opts: { sessionId: string }) => Promise<unknown>
 }
+
+/** Back-compat alias — older callers used `StripeLike`. */
+export type StripeLike = StripeInstance
 
 let stripePromise: Promise<StripeLike | null> | null = null
 

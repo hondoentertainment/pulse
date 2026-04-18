@@ -55,9 +55,10 @@ export function PaymentElementMount({
         setReady(true)
         onReady?.(ctx)
       })
-      pe.on('change', event => {
+      pe.on('change', (...args: unknown[]) => {
         if (cancelled) return
-        onValidationChange?.(event.error?.message ?? null)
+        const event = args[0] as { error?: { message?: string } } | undefined
+        onValidationChange?.(event?.error?.message ?? null)
       })
     })()
 
@@ -65,7 +66,7 @@ export function PaymentElementMount({
       cancelled = true
       try {
         mountedEl?.unmount()
-        mountedEl?.destroy()
+        mountedEl?.destroy?.()
       } catch {
         // ignore cleanup errors
       }
