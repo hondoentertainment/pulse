@@ -211,3 +211,13 @@ export const requireAuth = (req: RequestLike): AuthSuccess | AuthError => {
     context: { token, claims, userId: claims.sub },
   }
 }
+
+/**
+ * Convenience wrapper that returns just the user id (or null) for endpoints
+ * that only need to key a row by user and don't want to dispatch on an
+ * AuthError object. Used by push register/unregister and other scaffolding.
+ */
+export function getAuthenticatedUserId(req: RequestLike): string | null {
+  const result = requireAuth(req)
+  return result.ok ? result.context.userId : null
+}
