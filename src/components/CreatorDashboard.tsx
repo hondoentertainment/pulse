@@ -21,6 +21,8 @@ import {
   getActivePartnerships,
 } from '@/lib/brand-partnerships'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
+import { PayoutOnboarding } from '@/components/ticketing/PayoutOnboarding'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -169,6 +171,11 @@ export function CreatorDashboard({
             color="text-purple-400"
           />
         </div>
+
+        {/* Payouts (ticketing flag only) */}
+        {isFeatureEnabled('ticketing') && (
+          <PayoutOnboarding venueId={venues[0]?.id ?? null} />
+        )}
 
         {/* Tier Progress */}
         <div className="bg-card rounded-xl p-4 border border-border space-y-3">

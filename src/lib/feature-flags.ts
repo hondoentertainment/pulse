@@ -1,4 +1,4 @@
-export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap'
+export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap' | 'ticketing'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -14,12 +14,15 @@ const defaults: FeatureFlagMap = {
   integrations: true,
   socialDashboard: true,
   smartMap: true,
+  // Ticketing: default off. Enabling requires Stripe keys + staff migration applied.
+  ticketing: false,
 }
 
 export const featureFlags: FeatureFlagMap = {
   integrations: parseFlag(import.meta.env.VITE_FF_ENABLE_INTEGRATIONS, defaults.integrations),
   socialDashboard: parseFlag(import.meta.env.VITE_FF_ENABLE_SOCIAL_DASHBOARD, defaults.socialDashboard),
   smartMap: parseFlag(import.meta.env.VITE_FF_ENABLE_SMART_MAP, defaults.smartMap),
+  ticketing: parseFlag(import.meta.env.VITE_FF_ENABLE_TICKETING, defaults.ticketing),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {

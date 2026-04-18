@@ -16,6 +16,11 @@ describe('isFeatureEnabled', () => {
     const result = isFeatureEnabled('smartMap')
     expect(typeof result).toBe('boolean')
   })
+
+  it('returns a boolean for ticketing flag', () => {
+    const result = isFeatureEnabled('ticketing')
+    expect(typeof result).toBe('boolean')
+  })
 })
 
 describe('featureFlags defaults', () => {
@@ -23,13 +28,16 @@ describe('featureFlags defaults', () => {
     expect(featureFlags).toHaveProperty('integrations')
     expect(featureFlags).toHaveProperty('socialDashboard')
     expect(featureFlags).toHaveProperty('smartMap')
+    expect(featureFlags).toHaveProperty('ticketing')
   })
 
-  it('defaults to true for all flags when no env vars override', () => {
+  it('defaults to expected values when no env vars override', () => {
     // In test environment, no VITE_FF_ env vars are set,
-    // so parseFlag falls back to defaults which are all true
+    // so parseFlag falls back to defaults.
     expect(featureFlags.integrations).toBe(true)
     expect(featureFlags.socialDashboard).toBe(true)
     expect(featureFlags.smartMap).toBe(true)
+    // Ticketing is default-off until Stripe + staff migration are wired.
+    expect(featureFlags.ticketing).toBe(false)
   })
 })
