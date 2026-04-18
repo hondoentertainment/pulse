@@ -31,6 +31,7 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
+  video: '/video',
 }
 
 export function useAppHandlers() {
@@ -256,7 +257,7 @@ export function useAppHandlers() {
   const handleTabChange = (tab: TabId) => {
     navigate(TAB_TO_PATH[tab])
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
+    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile', video: 'Video' }
     announce(`Switched to ${labels[tab]} tab`)
   }
 
