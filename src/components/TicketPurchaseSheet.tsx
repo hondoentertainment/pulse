@@ -29,6 +29,12 @@ interface TicketPurchaseSheetProps {
   currentUser: User
   allUsers: User[]
   onPurchase: (tickets: Ticket[], groupOrder?: GroupOrder) => void
+  /**
+   * Optional slot rendered above the Purchase button. Used by the creator
+   * economy feature to inject a referral-code input without coupling the
+   * checkout sheet to creator APIs.  Default: not rendered.
+   */
+  referralSlot?: React.ReactNode
 }
 
 export function TicketPurchaseSheet({
@@ -38,6 +44,7 @@ export function TicketPurchaseSheet({
   currentUser,
   allUsers,
   onPurchase,
+  referralSlot,
 }: TicketPurchaseSheetProps) {
   const [selectedType, setSelectedType] = useState<TicketType>('general_admission')
   const [quantity, setQuantity] = useState(1)
@@ -394,6 +401,12 @@ export function TicketPurchaseSheet({
           </div>
 
           <Separator />
+
+          {referralSlot && (
+            <div className="pt-2" data-testid="referral-slot">
+              {referralSlot}
+            </div>
+          )}
 
           {/* Total and Purchase */}
           <div className="space-y-4">
