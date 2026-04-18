@@ -36,18 +36,59 @@ Key files:
 
 ## Tool surface
 
-| Tool                 | Status v1 | Proxies to                               |
-|----------------------|-----------|------------------------------------------|
-| `search_venues`      | Stub      | Planned: server-side `listVenues`         |
-| `build_plan`         | Stub      | Planned: `generateNightPlan`              |
-| `estimate_rideshare` | Stub      | Planned: `api/integrations/{uber,lyft}`   |
-| `check_surge`        | Stub      | Planned: `predictSurge`                   |
-| `check_moderation`   | Stub      | Planned: `screenContent` / moderation API |
+| Tool                 | Status   | Proxies to                               |
+|----------------------|----------|------------------------------------------|
+| `search_venues`      | Live     | Supabase `venues` via `createUserClient` |
+| `build_plan`         | Live     | `generateNightPlan` in `src/lib/night-planner` |
+| `estimate_rideshare` | Live     | `api/integrations/{uber,lyft}` handlers  |
+| `check_surge`        | Live     | `analyzeVenuePatterns` + `predictSurge`  |
+| `check_moderation`   | Live     | `checkContent` in `api/_lib/moderation`  |
 
-Each stub returns a structured JSON shape tagged `{ stub: true, note }`
-so the Claude loop exercises end-to-end in dev without blowing through
-backend capacity. Replace each one-by-one as the backends harden; the
-stubs document their own wiring targets.
+Dispatch lives in `api/_lib/concierge-tools.ts` — `executeToolCall(name,
+input, ctx)`. The chat handler wraps it in a `try` so any thrown error
+surfaces to the model as `{ error: { code, message } }` content
+(`isError: true`) rather than crashing the loop.
+
+### Tool backends
+
+Each tool is a single in-process call, with the following characteristics:
+
+- **`search_venues`** — RLS-scoped `SELECT` on `venues` + client-side
+  ranking by `pulse_score − distance×2` from `ctx.userContext.location`.
+  Top 10 rows. Typical latency p50 ≈ 80ms, p99 ≈ 250ms. Failure modes:
+  RLS denial, missing `deleted_at` column in older envs, or Supabase
+  timeouts — all surface as `{ error: { code: 'db_error', ... } }`.
+  *Follow-up:* migrate to a SQL-side `venues_ranked` RPC once the
+  backend team adds `price_tier` / `vibes` columns; current price-tier
+  filter approximates via `cover_charge_cents`.
+- **`build_plan`** — Fetches up to 200 venues + 500 recent pulses, then
+  calls `generateNightPlan` (pure engine — no DOM, no network). Returns
+  the full `NightPlan` shape. Latency dominated by the two Supabase
+  reads (p50 ≈ 150ms). Failure modes: empty venue pool
+  (`code: 'no_venues'`), planner exception (`code: 'planner_error'`).
+- **`estimate_rideshare`** — Invokes the existing `api/integrations/uber`
+  and `api/integrations/lyft` default handlers directly with a
+  synthesised `RequestLike` / `ResponseLike` pair and normalises the
+  outputs into a shared `{ lowEstimate, highEstimate, eta, currency? }`
+  shape. Each provider is independent; one provider returning an error
+  object does not fail the whole call. Latency is upstream-bound (Uber
+  + Lyft in parallel, typical p50 ≈ 400ms). *Follow-up:* stream the
+  first-back provider to the client while the other is still in flight.
+- **`check_surge`** — Queries pulses `WHERE venue_id = ?` (up to 300
+  rows) then runs `analyzeVenuePatterns` + `predictSurge`. Returns
+  `{ predictedEnergy, confidence, predictedPeakTime, sampleSize, ... }`.
+  Confidence is a function of pattern strength and sample size; if
+  `sampleSize < 10` expect confidence ≤ 0.3. Latency p50 ≈ 60ms.
+- **`check_moderation`** — Pure in-process call to `checkContent` (no
+  I/O). Sub-millisecond. Never returns an error — even malformed input
+  gets a safe default result.
+
+When a tool throws, the dispatcher returns
+`{ error: { code, message } }` as the tool-result content with
+`isError: true`. Errors are logged via `console.error`
+(`component: 'concierge'`) — the `src/lib/observability/logger` module
+is client-bundled (uses `import.meta.env` + Sentry) and so is not
+importable from Edge; revisit once a shared server logger lands.
 
 ## Prompt caching strategy
 
@@ -123,9 +164,15 @@ ticket). Must hold:
 
 ## Follow-up tickets
 
-- Wire real tool backends (`search_venues`, `build_plan`, …).
+- DB-level venue ranking: move `search_venues` ranking into a PostGIS
+  RPC (`venues_ranked(lat, lng, limit)`) once `price_tier` / `vibes`
+  columns land on the `venues` table.
+- Rideshare streaming: stream first-back provider to the client rather
+  than awaiting both.
 - Token-level SSE streaming (`content_block_delta`) — v1 emits one
   `message` event.
+- Shared server logger so tools can emit structured Sentry breadcrumbs
+  without pulling in the browser `import.meta.env` path.
 - Eval harness: golden dataset of 50 briefs → fixture plans.
 - Prompt versioning: tag `CONCIERGE_SYSTEM_PROMPT_VERSION`, persist on
   every session row.

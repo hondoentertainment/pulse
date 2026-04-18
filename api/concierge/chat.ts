@@ -2,29 +2,30 @@
  * POST /api/concierge/chat
  *
  * Authenticated, rate-limited (5 msgs/min/user). Accepts a conversation,
- * runs the Anthropic tool-use loop, returns a JSON blob with the final
- * assistant text plus any structured tool outputs. SSE streaming is
- * stubbed for v1 — see docs/ai-concierge.md "Future migration" for the
- * token-level streaming plan.
+ * runs the Anthropic tool-use loop, returns a JSON blob (or SSE envelope)
+ * with the final assistant text plus structured tool outputs.
+ *
+ * Tool calls dispatch to real backend implementations via
+ * `api/_lib/concierge-tools` — see `docs/ai-concierge.md` for the
+ * backend contracts.
  *
  * Env vars:
  *   - ANTHROPIC_API_KEY             (required)
  *   - CONCIERGE_MODEL               (default: "claude-sonnet-4-6")
  *   - CONCIERGE_SESSION_CENTS_CAP   (default: 20)
- *   - SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (for auth + persistence)
+ *   - SUPABASE_URL / SUPABASE_ANON_KEY (for auth + persistence)
  */
 import {
-  jsonError,
+  fail,
   methodNotAllowed,
   readHeader,
   setCors,
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http'
-import { requireUser } from '../_lib/auth'
+import { requireAuth } from '../_lib/auth'
 import { rateLimit } from '../_lib/rate-limit'
-import { byteLength, isObject, isString, requireArray, requireString } from '../_lib/validate'
-import { getServerSupabase } from '../_lib/supabase-server'
+import { createUserClient } from '../_lib/supabase-server'
 import {
   callClaude,
   estimateCostCents,
@@ -33,6 +34,7 @@ import {
   type ToolCallResult,
 } from '../_lib/anthropic'
 import { CONCIERGE_TOOLS, buildSystemBlocks } from '../_lib/concierge-prompts'
+import { executeToolCall, type ConciergeToolContext } from '../_lib/concierge-tools'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 const DEFAULT_CAP_CENTS = 20
@@ -49,118 +51,73 @@ interface ConciergeRequestBody {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Local validation helpers                                                   */
+/* -------------------------------------------------------------------------- */
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+const isString = (v: unknown): v is string => typeof v === 'string'
+
+function byteLength(s: string): number {
+  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(s).byteLength
+  // Fallback for runtimes without TextEncoder.
+  let bytes = 0
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i)
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : 3
+  }
+  return bytes
+}
+
 function parseBody(value: unknown): { ok: true; value: ConciergeRequestBody } | { ok: false; error: string } {
   if (!isObject(value)) return { ok: false, error: 'body must be a JSON object' }
-  const sessionId = requireString(value.sessionId, 'sessionId', 64)
-  if (!sessionId.ok) return sessionId
+  if (!isString(value.sessionId) || value.sessionId.trim().length === 0 || value.sessionId.length > 64) {
+    return { ok: false, error: 'sessionId must be a non-empty string up to 64 chars' }
+  }
+  if (!Array.isArray(value.messages)) {
+    return { ok: false, error: 'messages must be an array' }
+  }
+  if (value.messages.length === 0 || value.messages.length > MAX_MESSAGES) {
+    return { ok: false, error: `messages must contain between 1 and ${MAX_MESSAGES} entries` }
+  }
+  const parsedMessages: AnthropicMessage[] = []
+  for (let i = 0; i < value.messages.length; i++) {
+    const raw = value.messages[i]
+    if (!isObject(raw)) return { ok: false, error: `messages[${i}] must be an object` }
+    if (raw.role !== 'user' && raw.role !== 'assistant') {
+      return { ok: false, error: `messages[${i}].role must be 'user' or 'assistant'` }
+    }
+    if (isString(raw.content)) {
+      if (byteLength(raw.content) > MAX_MESSAGE_BYTES) {
+        return { ok: false, error: `messages[${i}].content exceeds ${MAX_MESSAGE_BYTES} bytes` }
+      }
+      parsedMessages.push({ role: raw.role, content: raw.content })
+      continue
+    }
+    if (Array.isArray(raw.content)) {
+      const serialized = JSON.stringify(raw.content)
+      if (byteLength(serialized) > MAX_MESSAGE_BYTES) {
+        return { ok: false, error: `messages[${i}].content exceeds ${MAX_MESSAGE_BYTES} bytes` }
+      }
+      parsedMessages.push({ role: raw.role, content: raw.content as AnthropicMessage['content'] })
+      continue
+    }
+    return { ok: false, error: `messages[${i}].content must be string or array` }
+  }
 
-  const messages = requireArray(
-    value.messages,
-    'messages',
-    MAX_MESSAGES,
-    (v, idx) => {
-      if (!isObject(v)) return { ok: false as const, error: `messages[${idx}] must be an object` }
-      if (v.role !== 'user' && v.role !== 'assistant') {
-        return { ok: false as const, error: `messages[${idx}].role must be 'user' or 'assistant'` }
-      }
-      // Content can be a plain string or an array of content blocks.
-      if (isString(v.content)) {
-        if (byteLength(v.content) > MAX_MESSAGE_BYTES) {
-          return { ok: false as const, error: `messages[${idx}].content exceeds ${MAX_MESSAGE_BYTES} bytes` }
-        }
-        return { ok: true as const, value: { role: v.role, content: v.content } as AnthropicMessage }
-      }
-      if (Array.isArray(v.content)) {
-        const serialized = JSON.stringify(v.content)
-        if (byteLength(serialized) > MAX_MESSAGE_BYTES) {
-          return { ok: false as const, error: `messages[${idx}].content exceeds ${MAX_MESSAGE_BYTES} bytes` }
-        }
-        return { ok: true as const, value: { role: v.role, content: v.content } as AnthropicMessage }
-      }
-      return { ok: false as const, error: `messages[${idx}].content must be string or array` }
-    },
-  )
-  if (!messages.ok) return messages
+  const userContext = isObject(value.userContext)
+    ? (value.userContext as ConciergeRequestBody['userContext'])
+    : undefined
 
   return {
     ok: true,
     value: {
-      sessionId: sessionId.value,
-      messages: messages.value,
-      userContext: isObject(value.userContext)
-        ? (value.userContext as ConciergeRequestBody['userContext'])
-        : undefined,
+      sessionId: value.sessionId,
+      messages: parsedMessages,
+      userContext,
     },
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Tool dispatch                                                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Tool implementations proxy into the existing engines. Kept intentionally
- * minimal and defensive — these run server-side where we trust the data
- * layer but never the model's input.
- *
- * For v1 many handlers return stubs marked `{ stub: true }` so the loop
- * is exercised end-to-end; they are wired to the real engines in
- * follow-up tickets. See docs/ai-concierge.md.
- */
-async function handleToolCall(ctx: ToolCallContext): Promise<ToolCallResult> {
-  try {
-    switch (ctx.name) {
-      case 'search_venues':
-        return okJson({
-          stub: true,
-          note: 'wired to server-side listVenues in follow-up',
-          filters: ctx.input,
-          results: [],
-        })
-      case 'build_plan':
-        return okJson({
-          stub: true,
-          note: 'wired to generateNightPlan in follow-up',
-          brief: ctx.input,
-          plan: null,
-        })
-      case 'estimate_rideshare':
-        return okJson({
-          stub: true,
-          note: 'wired to uber/lyft integrations in follow-up',
-          pickup: ctx.input.pickup,
-          dropoff: ctx.input.dropoff,
-          estimateUsd: null,
-          etaMinutes: null,
-        })
-      case 'check_surge':
-        return okJson({
-          stub: true,
-          note: 'wired to predictSurge in follow-up',
-          venueId: ctx.input.venueId,
-          atTime: ctx.input.atTime,
-          surge: null,
-        })
-      case 'check_moderation':
-        return okJson({
-          stub: true,
-          note: 'wired to checkContent in follow-up',
-          content: ctx.input.content,
-          flagged: false,
-        })
-      default:
-        return { content: JSON.stringify({ error: `Unknown tool: ${ctx.name}` }), isError: true }
-    }
-  } catch (err) {
-    return {
-      content: JSON.stringify({ error: (err as Error).message }),
-      isError: true,
-    }
-  }
-}
-
-function okJson(payload: unknown): ToolCallResult {
-  return { content: JSON.stringify(payload) }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -172,8 +129,12 @@ interface SessionState {
   capCents: number
 }
 
-async function loadOrCreateSession(sessionId: string, userId: string): Promise<SessionState> {
-  const supa = getServerSupabase()
+async function loadOrCreateSession(
+  sessionId: string,
+  userId: string,
+  jwt: string,
+): Promise<SessionState> {
+  const supa = createUserClient(jwt)
   const capCents = parseInt(process.env.CONCIERGE_SESSION_CENTS_CAP ?? '', 10) || DEFAULT_CAP_CENTS
   try {
     const { data } = await supa
@@ -184,9 +145,7 @@ async function loadOrCreateSession(sessionId: string, userId: string): Promise<S
     if (data) {
       return { totalCostCents: Number(data.total_cost_cents ?? 0), capCents }
     }
-    await supa
-      .from('concierge_sessions')
-      .insert({ id: sessionId, user_id: userId })
+    await supa.from('concierge_sessions').insert({ id: sessionId, user_id: userId })
     return { totalCostCents: 0, capCents }
   } catch {
     // Supabase may be unconfigured in local/dev; fail open with a fresh bucket.
@@ -201,8 +160,9 @@ async function persistTurn(args: {
   costCents: number
   tokensIn: number
   tokensOut: number
+  jwt: string
 }): Promise<void> {
-  const supa = getServerSupabase()
+  const supa = createUserClient(args.jwt)
   try {
     const rows = args.turnMessages.map((m) => ({
       session_id: args.sessionId,
@@ -230,6 +190,12 @@ async function persistTurn(args: {
 /* Handler                                                                    */
 /* -------------------------------------------------------------------------- */
 
+// Vercel Node runtime exposes `res.write` on the underlying ServerResponse
+// but ResponseLike does not model it — cast narrowly when streaming SSE.
+type WritableResponse = ResponseLike & {
+  write?: (chunk: string) => void
+}
+
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   setCors(res)
   if (req.method === 'OPTIONS') {
@@ -243,32 +209,35 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    jsonError(res, 500, 'ANTHROPIC_API_KEY is not configured')
+    fail(res, 500, 'not_configured', 'ANTHROPIC_API_KEY is not configured')
     return
   }
 
-  const user = await requireUser(req)
-  if (!user) {
-    jsonError(res, 401, 'Authentication required')
+  const auth = requireAuth(req)
+  if (!auth.ok) {
+    fail(res, auth.status, auth.code, auth.message)
     return
   }
+  const { userId, token: userJwt } = auth.context
 
-  const rl = rateLimit(`concierge:${user.id}`, 5, 60_000)
+  const rl = rateLimit(`concierge:${userId}`, 5, 60_000)
   if (!rl.allowed) {
-    res.setHeader('Retry-After', Math.ceil((rl.resetAtMs - Date.now()) / 1000).toString())
-    jsonError(res, 429, 'Too many messages — slow down')
+    if (rl.retryAfterSeconds !== undefined) {
+      res.setHeader('Retry-After', String(rl.retryAfterSeconds))
+    }
+    fail(res, 429, 'rate_limited', 'Too many messages — slow down')
     return
   }
 
   const parsed = parseBody(req.body)
   if (!parsed.ok) {
-    jsonError(res, 400, parsed.error)
+    fail(res, 400, 'bad_request', parsed.error)
     return
   }
 
-  const session = await loadOrCreateSession(parsed.value.sessionId, user.id)
+  const session = await loadOrCreateSession(parsed.value.sessionId, userId, userJwt)
   if (session.totalCostCents >= session.capCents) {
-    jsonError(res, 402, 'Session spend cap reached', {
+    fail(res, 402, 'cap_reached', 'Session spend cap reached', {
       capCents: session.capCents,
       spentCents: session.totalCostCents,
     })
@@ -279,6 +248,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const acceptHeader = readHeader(req, 'accept') ?? ''
   const wantsSse = acceptHeader.includes('text/event-stream')
 
+  const toolContext: ConciergeToolContext = {
+    userId,
+    userJwt,
+    userContext: parsed.value.userContext,
+  }
+
+  const onToolCall = async (ctx: ToolCallContext): Promise<ToolCallResult> => {
+    return executeToolCall(ctx.name, ctx.input, toolContext)
+  }
+
   try {
     const result = await callClaude({
       apiKey,
@@ -287,17 +266,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       tools: CONCIERGE_TOOLS,
       messages: parsed.value.messages,
       maxTokens: 2048,
-      onToolCall: handleToolCall,
+      onToolCall,
     })
 
     const costCents = estimateCostCents(result.totalUsage, model) + session.totalCostCents
     await persistTurn({
       sessionId: parsed.value.sessionId,
-      userId: user.id,
+      userId,
       turnMessages: result.messages,
       costCents,
       tokensIn: result.totalUsage.input_tokens,
       tokensOut: result.totalUsage.output_tokens,
+      jwt: userJwt,
     })
 
     const payload = {
@@ -319,15 +299,21 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       res.setHeader('Cache-Control', 'no-cache, no-transform')
       res.setHeader('Connection', 'keep-alive')
       res.status(200)
-      res.write(`event: message\ndata: ${JSON.stringify(payload)}\n\n`)
-      res.write('event: done\ndata: {}\n\n')
-      res.end()
+      const streamRes = res as WritableResponse
+      if (typeof streamRes.write === 'function') {
+        streamRes.write(`event: message\ndata: ${JSON.stringify(payload)}\n\n`)
+        streamRes.write('event: done\ndata: {}\n\n')
+        res.end()
+        return
+      }
+      // Fallback: runtime does not support chunked writes — degrade to JSON.
+      res.json(payload)
       return
     }
 
     res.status(200).json(payload)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    jsonError(res, 502, 'Concierge upstream error', { detail: message })
+    fail(res, 502, 'upstream_error', 'Concierge upstream error', { detail: message })
   }
 }

@@ -89,8 +89,13 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
   {
     name: 'search_venues',
     description:
-      'Search the Pulse venue catalog. Returns up to 20 venues matching the filters. ' +
-      'Prefer this over guessing venue names. All filters are optional; omit to broaden.',
+      'Search the Pulse venue catalog. Queries the Supabase `venues` table under the ' +
+      'caller JWT (RLS-scoped) and ranks up to 10 candidates by pulse score minus a ' +
+      "distance penalty from the caller's location. Returns real venue ids usable in " +
+      'subsequent `build_plan` / `check_surge` calls. All filters are optional; omit to ' +
+      'broaden. Shape: { count: number, results: Array<{ id, name, category, ' +
+      'location: { lat, lng, address, city }, pulseScore, distanceMi, priceTier?, ' +
+      'vibes? }> }',
     input_schema: {
       type: 'object',
       properties: {
@@ -121,7 +126,12 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
     name: 'build_plan',
     description:
       'Generate a complete multi-stop itinerary using the deterministic Night Planner ' +
-      'engine. Call this once you have a coherent brief; returns stops, timing, and budget.',
+      'engine. Loads venues + recent pulses from Supabase and calls generateNightPlan. ' +
+      'Returns the full plan so you can summarise its stops back to the user. ' +
+      'Shape: { plan: { id, stops: Array<{ venueId, venueName, arrivalTime, ' +
+      'departureTime, purpose, estimatedSpend, transitMode, transitDuration, ' +
+      'energyPrediction }>, budget: { total, perPerson }, startTime, endTime, ... }, ' +
+      'stopCount, totalBudgetPerPerson }',
     input_schema: {
       type: 'object',
       properties: {
@@ -162,7 +172,12 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
   {
     name: 'estimate_rideshare',
     description:
-      'Estimate rideshare fare & ETA between two points via Uber/Lyft deep-link providers.',
+      'Estimate rideshare fare & ETA between two points. Proxies to the real Uber and ' +
+      'Lyft server APIs (credentials live in env vars on the Edge runtime). Returns a ' +
+      'normalised low/high price range and ETA per provider. Either provider may return ' +
+      'an error object when its token is missing. Shape: { pickup, dropoff, ' +
+      'uber: { lowEstimate, highEstimate, eta, currency? } | { error }, lyft: ' +
+      '{ lowEstimate, highEstimate, eta, currency? } | { error } }',
     input_schema: {
       type: 'object',
       properties: {
@@ -186,7 +201,11 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
   {
     name: 'check_surge',
     description:
-      'Predict whether a venue will be surging (high crowd / high energy) at a given time.',
+      'Predict the energy level / surge at a venue for a given time. Loads recent ' +
+      'pulses at that venue and runs analyzeVenuePatterns + predictSurge from the ' +
+      'predictive-surge engine. Confidence reflects sample size and pattern strength. ' +
+      'Shape: { venueId, atTime, predictedEnergy: "dead" | "chill" | "buzzing" | ' +
+      '"electric", predictedPeakTime, confidence: number, label, basedOn, sampleSize }',
     input_schema: {
       type: 'object',
       properties: {
@@ -200,11 +219,21 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
   {
     name: 'check_moderation',
     description:
-      'Run moderation on free text. Call BEFORE echoing user-provided text publicly.',
+      'Run the server-side moderation engine (api/_lib/moderation.checkContent) on ' +
+      'free text. Call BEFORE echoing user-provided text that will be published. If ' +
+      '`allowed` is false or severity is med/high, refuse and explain; never read the ' +
+      'reasons back verbatim as they may contain the flagged text. Shape: ' +
+      '{ allowed: boolean, reasons: string[], severity: "low" | "med" | "high", ' +
+      'sanitized?: string }',
     input_schema: {
       type: 'object',
       properties: {
         content: { type: 'string' },
+        kind: {
+          type: 'string',
+          enum: ['pulse', 'comment', 'profile_bio', 'venue_description'],
+          description: 'Content kind; defaults to "comment".',
+        },
       },
       required: ['content'],
       additionalProperties: false,
