@@ -1,0 +1,611 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-18",
+  "briefs": [
+    {
+      "id": "nyc-001",
+      "brief": "Me plus one, Thursday night 7pm, Nolita. Want a chill wine bar and a late-night dessert spot. $120 total.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Nolita" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["date", "catch_up"],
+      "min_stops": 2,
+      "max_cost": 120
+    },
+    {
+      "id": "nyc-002",
+      "brief": "Four friends, Saturday, East Village, wild night out. Budget $300. Start with cocktails.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "East Village" },
+        "friends": 3,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["night_out", "birthday"],
+      "min_stops": 3,
+      "max_cost": 300
+    },
+    {
+      "id": "nyc-003",
+      "brief": "Solo coffee crawl in Williamsburg, weekday morning. $30 cap.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Williamsburg" },
+        "friends": 0,
+        "preferences": { "vibe": "chill", "time": "morning" }
+      },
+      "acceptable_purposes": ["solo", "work"],
+      "min_stops": 2,
+      "max_cost": 30
+    },
+    {
+      "id": "nyc-004",
+      "brief": "Date night, she's vegetarian. Financial District or Tribeca. $180 for dinner + one stop after.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Tribeca" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "dinner", "dietary": "vegetarian" }
+      },
+      "acceptable_purposes": ["date"],
+      "min_stops": 2,
+      "max_cost": 180
+    },
+    {
+      "id": "nyc-005",
+      "brief": "Six-person birthday, mix of ages 25-40. Midtown West. Vegan-friendly. $450.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Midtown West" },
+        "friends": 5,
+        "preferences": { "vibe": "birthday", "time": "dinner", "dietary": "vegan" }
+      },
+      "acceptable_purposes": ["birthday", "group_dinner"],
+      "min_stops": 2,
+      "max_cost": 450
+    },
+    {
+      "id": "nyc-006",
+      "brief": "Two friends, wheelchair accessible only. Chelsea gallery crawl + dinner. $200.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Chelsea" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "accessibility": "wheelchair" }
+      },
+      "acceptable_purposes": ["culture", "date"],
+      "min_stops": 2,
+      "max_cost": 200
+    },
+    {
+      "id": "nyc-007",
+      "brief": "Ten-person bachelorette, LES, Saturday, late-night. Budget $500.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Lower East Side" },
+        "friends": 9,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["birthday", "bachelorette"],
+      "min_stops": 3,
+      "max_cost": 500
+    },
+    {
+      "id": "nyc-008",
+      "brief": "Three friends, halal. Astoria, Friday dinner. $150.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Astoria" },
+        "friends": 2,
+        "preferences": { "vibe": "chill", "time": "dinner", "dietary": "halal" }
+      },
+      "acceptable_purposes": ["group_dinner"],
+      "min_stops": 1,
+      "max_cost": 150
+    },
+    {
+      "id": "nyc-009",
+      "brief": "Pre-theater dinner in Midtown, two people, 6pm sharp, show at 8. $140.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Midtown" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["date", "pre_event"],
+      "min_stops": 1,
+      "max_cost": 140
+    },
+    {
+      "id": "nyc-010",
+      "brief": "Rainy Sunday, low-sensory environment, two introverts, Brooklyn Heights. $90.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Brooklyn Heights" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "accessibility": "low-sensory" }
+      },
+      "acceptable_purposes": ["solo", "catch_up"],
+      "min_stops": 2,
+      "max_cost": 90
+    },
+    {
+      "id": "nyc-011",
+      "brief": "Networking drinks for 5 in Flatiron at 6pm. Quiet enough to talk. $200.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Flatiron" },
+        "friends": 4,
+        "preferences": { "vibe": "networking", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["networking"],
+      "min_stops": 1,
+      "max_cost": 200
+    },
+    {
+      "id": "nyc-012",
+      "brief": "Two people, gluten-free, late-night pizza alternative in West Village. $80.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "West Village" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "late-night", "dietary": "gluten-free" }
+      },
+      "acceptable_purposes": ["snack", "night_cap"],
+      "min_stops": 1,
+      "max_cost": 80
+    },
+    {
+      "id": "nyc-013",
+      "brief": "Surge high everywhere — give me three backup options in Greenpoint for a Saturday night. $250 for 4.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Greenpoint" },
+        "friends": 3,
+        "preferences": { "vibe": "wild", "time": "late-night", "surge": "high" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 3,
+      "max_cost": 250
+    },
+    {
+      "id": "nyc-014",
+      "brief": "Plan avoiding The Dead Rabbit — heard it moved. Financial District. Two for drinks. $100.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Financial District" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "must_not_venues": ["The Dead Rabbit"],
+      "acceptable_purposes": ["catch_up"],
+      "min_stops": 1,
+      "max_cost": 100
+    },
+    {
+      "id": "nyc-015",
+      "brief": "Must include Employees Only. West Village. Four friends. $260.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "West Village" },
+        "friends": 3,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "must_have_venues": ["Employees Only"],
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 2,
+      "max_cost": 260
+    },
+    {
+      "id": "nyc-016",
+      "brief": "Brunch for 3 in Park Slope on a Sunday. Vegan option required. $90.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Park Slope" },
+        "friends": 2,
+        "preferences": { "vibe": "chill", "time": "brunch", "dietary": "vegan" }
+      },
+      "acceptable_purposes": ["brunch"],
+      "min_stops": 1,
+      "max_cost": 90
+    },
+    {
+      "id": "nyc-017",
+      "brief": "Kid-friendly nursing room needed. Mom + friend, Upper West Side lunch. $60.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Upper West Side" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "accessibility": "nursing-friendly", "time": "lunch" }
+      },
+      "acceptable_purposes": ["catch_up", "family"],
+      "min_stops": 1,
+      "max_cost": 60
+    },
+    {
+      "id": "nyc-018",
+      "brief": "Jazz lover's crawl in Harlem, couple, date night. $180.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Harlem" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "late-night" }
+      },
+      "acceptable_purposes": ["date", "culture"],
+      "min_stops": 2,
+      "max_cost": 180
+    },
+    {
+      "id": "nyc-019",
+      "brief": "Closed day — it's Monday. Bushwick, 3 friends, beer and a slice. $60.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Bushwick" },
+        "friends": 2,
+        "preferences": { "vibe": "chill", "time": "late-night", "day": "Monday" }
+      },
+      "acceptable_purposes": ["casual"],
+      "min_stops": 2,
+      "max_cost": 60
+    },
+    {
+      "id": "nyc-020",
+      "brief": "Corporate offsite happy hour, 8 people, Midtown East. $320.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Midtown East" },
+        "friends": 7,
+        "preferences": { "vibe": "networking", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["networking", "group_dinner"],
+      "min_stops": 1,
+      "max_cost": 320
+    },
+    {
+      "id": "nyc-021",
+      "brief": "Solo artist hunt: cocktails and a gallery, Chelsea, Friday. $70.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Chelsea" },
+        "friends": 0,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["solo", "culture"],
+      "min_stops": 2,
+      "max_cost": 70
+    },
+    {
+      "id": "nyc-022",
+      "brief": "Two friends, LES, dinner then karaoke. $140.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Lower East Side" },
+        "friends": 1,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 2,
+      "max_cost": 140
+    },
+    {
+      "id": "nyc-023",
+      "brief": "Rooftop bar for 4, sunset, Williamsburg. $180.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Williamsburg" },
+        "friends": 3,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["date", "group_dinner"],
+      "min_stops": 1,
+      "max_cost": 180
+    },
+    {
+      "id": "nyc-024",
+      "brief": "Dumbo picnic prep — wine shop, cheese, park. Two friends, $50.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Dumbo" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["date", "catch_up"],
+      "min_stops": 2,
+      "max_cost": 50
+    },
+    {
+      "id": "nyc-025",
+      "brief": "Bar crawl with 6 friends, Saturday, any borough, $380.",
+      "context": {
+        "location": { "city": "New York", "neighborhood": "Any" },
+        "friends": 5,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 3,
+      "max_cost": 380
+    },
+    {
+      "id": "sf-001",
+      "brief": "Two-person date, Mission, pre-dinner cocktails + dinner. $160. She's vegan.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Mission" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "pre-dinner", "dietary": "vegan" }
+      },
+      "acceptable_purposes": ["date"],
+      "min_stops": 2,
+      "max_cost": 160
+    },
+    {
+      "id": "sf-002",
+      "brief": "Three friends, SoMa, casual weekday happy hour. $90.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "SoMa" },
+        "friends": 2,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["catch_up"],
+      "min_stops": 1,
+      "max_cost": 90
+    },
+    {
+      "id": "sf-003",
+      "brief": "Solo dim sum lunch in Chinatown, $25 budget.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Chinatown" },
+        "friends": 0,
+        "preferences": { "vibe": "chill", "time": "lunch" }
+      },
+      "acceptable_purposes": ["solo"],
+      "min_stops": 1,
+      "max_cost": 25
+    },
+    {
+      "id": "sf-004",
+      "brief": "Birthday for 5 in the Castro. Late-night. Drag-friendly. $350.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Castro" },
+        "friends": 4,
+        "preferences": { "vibe": "birthday", "time": "late-night" }
+      },
+      "acceptable_purposes": ["birthday", "night_out"],
+      "min_stops": 2,
+      "max_cost": 350
+    },
+    {
+      "id": "sf-005",
+      "brief": "Two-person gluten-free brunch + walk in Dolores Park area. $50.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Mission" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "brunch", "dietary": "gluten-free" }
+      },
+      "acceptable_purposes": ["brunch", "date"],
+      "min_stops": 1,
+      "max_cost": 50
+    },
+    {
+      "id": "sf-006",
+      "brief": "Four friends, Marina, pre-game drinks before Chase Center. $140.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Marina" },
+        "friends": 3,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["pre_event", "catch_up"],
+      "min_stops": 1,
+      "max_cost": 140
+    },
+    {
+      "id": "sf-007",
+      "brief": "Hayes Valley date, pre-opera, wheelchair accessible restaurant. $130.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Hayes Valley" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "pre-dinner", "accessibility": "wheelchair" }
+      },
+      "acceptable_purposes": ["date", "pre_event"],
+      "min_stops": 1,
+      "max_cost": 130
+    },
+    {
+      "id": "sf-008",
+      "brief": "Halal dinner for 4 in Tenderloin. $100.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Tenderloin" },
+        "friends": 3,
+        "preferences": { "vibe": "chill", "time": "dinner", "dietary": "halal" }
+      },
+      "acceptable_purposes": ["group_dinner"],
+      "min_stops": 1,
+      "max_cost": 100
+    },
+    {
+      "id": "sf-009",
+      "brief": "Must include Zuni Café. Two people, dinner. $180.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Hayes Valley" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "dinner" }
+      },
+      "must_have_venues": ["Zuni Café"],
+      "acceptable_purposes": ["date"],
+      "min_stops": 1,
+      "max_cost": 180
+    },
+    {
+      "id": "sf-010",
+      "brief": "Three techies after-work in Mission Bay. Low-sensory, space to talk shop. $90.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Mission Bay" },
+        "friends": 2,
+        "preferences": { "vibe": "networking", "accessibility": "low-sensory" }
+      },
+      "acceptable_purposes": ["networking"],
+      "min_stops": 1,
+      "max_cost": 90
+    },
+    {
+      "id": "sf-011",
+      "brief": "Surge high — Saturday Mission, backup plan for dinner. 2 people. $120.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Mission" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "dinner", "surge": "high" }
+      },
+      "acceptable_purposes": ["date", "catch_up"],
+      "min_stops": 2,
+      "max_cost": 120
+    },
+    {
+      "id": "sf-012",
+      "brief": "Solo coffee + bookstore, North Beach, Sunday. $20.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "North Beach" },
+        "friends": 0,
+        "preferences": { "vibe": "chill", "time": "morning" }
+      },
+      "acceptable_purposes": ["solo"],
+      "min_stops": 2,
+      "max_cost": 20
+    },
+    {
+      "id": "sf-013",
+      "brief": "Inner Richmond, 4 friends, vegetarian dim sum + tea. $70.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Inner Richmond" },
+        "friends": 3,
+        "preferences": { "vibe": "chill", "time": "lunch", "dietary": "vegetarian" }
+      },
+      "acceptable_purposes": ["group_dinner"],
+      "min_stops": 2,
+      "max_cost": 70
+    },
+    {
+      "id": "sf-014",
+      "brief": "Avoid The Interval (heard it moved). Fort Mason area drinks for 3. $90.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "Fort Mason" },
+        "friends": 2,
+        "preferences": { "vibe": "chill", "time": "pre-dinner" }
+      },
+      "must_not_venues": ["The Interval at Long Now"],
+      "acceptable_purposes": ["catch_up"],
+      "min_stops": 1,
+      "max_cost": 90
+    },
+    {
+      "id": "sf-015",
+      "brief": "Seven-person engagement party, SoMa rooftop, $480.",
+      "context": {
+        "location": { "city": "San Francisco", "neighborhood": "SoMa" },
+        "friends": 6,
+        "preferences": { "vibe": "birthday", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["birthday", "group_dinner"],
+      "min_stops": 2,
+      "max_cost": 480
+    },
+    {
+      "id": "la-001",
+      "brief": "Date, Silver Lake, rooftop cocktails + taco stand. $90.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Silver Lake" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "time": "pre-dinner" }
+      },
+      "acceptable_purposes": ["date"],
+      "min_stops": 2,
+      "max_cost": 90
+    },
+    {
+      "id": "la-002",
+      "brief": "Four friends, Echo Park, wild Saturday night. $280.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Echo Park" },
+        "friends": 3,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 3,
+      "max_cost": 280
+    },
+    {
+      "id": "la-003",
+      "brief": "Solo brunch in Venice, vegan. $30.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Venice" },
+        "friends": 0,
+        "preferences": { "vibe": "chill", "time": "brunch", "dietary": "vegan" }
+      },
+      "acceptable_purposes": ["solo", "brunch"],
+      "min_stops": 1,
+      "max_cost": 30
+    },
+    {
+      "id": "la-004",
+      "brief": "Birthday dinner for 8 in West Hollywood, loud, fun. $500.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "West Hollywood" },
+        "friends": 7,
+        "preferences": { "vibe": "birthday", "time": "dinner" }
+      },
+      "acceptable_purposes": ["birthday", "group_dinner"],
+      "min_stops": 2,
+      "max_cost": 500
+    },
+    {
+      "id": "la-005",
+      "brief": "Three friends, DTLA, speakeasy crawl. $200.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Downtown LA" },
+        "friends": 2,
+        "preferences": { "vibe": "wild", "time": "late-night" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 3,
+      "max_cost": 200
+    },
+    {
+      "id": "la-006",
+      "brief": "Quiet, wheelchair accessible date in Pasadena. $150.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Pasadena" },
+        "friends": 1,
+        "preferences": { "vibe": "date", "accessibility": "wheelchair" }
+      },
+      "acceptable_purposes": ["date"],
+      "min_stops": 2,
+      "max_cost": 150
+    },
+    {
+      "id": "la-007",
+      "brief": "Halal tacos hunt, 2 friends, Koreatown. $50.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Koreatown" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "dinner", "dietary": "halal" }
+      },
+      "acceptable_purposes": ["casual", "date"],
+      "min_stops": 1,
+      "max_cost": 50
+    },
+    {
+      "id": "la-008",
+      "brief": "Low-sensory, Arts District, two introverts, Saturday afternoon. $60.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Arts District" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "accessibility": "low-sensory", "time": "afternoon" }
+      },
+      "acceptable_purposes": ["catch_up", "culture"],
+      "min_stops": 2,
+      "max_cost": 60
+    },
+    {
+      "id": "la-009",
+      "brief": "Must include Bestia. DTLA, 4 friends, dinner. $400.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Downtown LA" },
+        "friends": 3,
+        "preferences": { "vibe": "birthday", "time": "dinner" }
+      },
+      "must_have_venues": ["Bestia"],
+      "acceptable_purposes": ["group_dinner", "birthday"],
+      "min_stops": 1,
+      "max_cost": 400
+    },
+    {
+      "id": "la-010",
+      "brief": "Surge high — Saturday Venice boardwalk area, 2 people late-night. $100.",
+      "context": {
+        "location": { "city": "Los Angeles", "neighborhood": "Venice" },
+        "friends": 1,
+        "preferences": { "vibe": "chill", "time": "late-night", "surge": "high" }
+      },
+      "acceptable_purposes": ["night_out"],
+      "min_stops": 2,
+      "max_cost": 100
+    }
+  ]
+}
