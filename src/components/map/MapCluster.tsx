@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Venue } from '@/lib/types'
-import { triggerHapticFeedback } from '@/lib/haptics'
-import { getEnergyColor, ZOOM_STEP, type VenueCluster, type VenueRenderPoint } from './shared'
+import { getEnergyColor, type VenueCluster, type VenueRenderPoint } from './shared'
 
 interface MapClusterSVGProps {
   clusters: VenueCluster[]
@@ -96,9 +95,9 @@ interface MapClusterHitAreasProps {
 
 export function MapClusterHitAreas({
   clusters,
-  expandedClusterId,
+  expandedClusterId: _expandedClusterId,
   expandedClusterNodes,
-  zoom,
+  zoom: _zoom,
   isCameraMoving,
   onClusterClick,
   onExpandedVenueClick,
@@ -157,6 +156,7 @@ export function MapClusterHitAreas({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useExpandedClusterNodes(expandedCluster: VenueCluster | null) {
   return useMemo(() => {
     if (!expandedCluster) return [] as Array<VenueRenderPoint & { sx: number; sy: number }>

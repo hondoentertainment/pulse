@@ -26,6 +26,7 @@ export type AnalyticsEvent =
   | { type: 'engagement_pulses_per_session'; timestamp: number; sessionId: string; count: number }
   | { type: 'engagement_venues_viewed'; timestamp: number; sessionId: string; count: number }
   | { type: 'engagement_checkins_completed'; timestamp: number; sessionId: string; count: number }
+  | { type: 'engagement_reactions_per_session'; timestamp: number; sessionId: string; count: number }
   | { type: 'funnel_step'; timestamp: number; funnel: string; step: 'app_open' | 'venue_view' | 'check_in' | 'pulse_creation'; sessionId: string }
   | { type: 'session_start'; timestamp: number; sessionId: string }
   | { type: 'session_end'; timestamp: number; sessionId: string; durationMs: number }
@@ -102,6 +103,16 @@ export function getEvents(type?: AnalyticsEvent['type']): AnalyticsEvent[] {
  */
 export function clearEvents(): void {
   eventLog.length = 0
+}
+
+/**
+ * Flush all buffered analytics events and return them.
+ * In a production setup, call this on a timer (e.g. every 30 s) or on
+ * `visibilitychange` to send events to your analytics backend.
+ * The in-memory log is cleared after flushing.
+ */
+export function flushAnalytics(): AnalyticsEvent[] {
+  return eventLog.splice(0, eventLog.length)
 }
 
 export function getIntegrationActionSummary(events: AnalyticsEvent[]): IntegrationActionSummary {
@@ -318,6 +329,7 @@ let sessionStartTimestamp: number | null = null
 let sessionPulseCount = 0
 let sessionVenueViewCount = 0
 let sessionCheckinCount = 0
+let sessionReactionCount = 0
 
 /**
  * Generate a short unique session ID.
@@ -336,6 +348,7 @@ export function startSession(): string {
   sessionPulseCount = 0
   sessionVenueViewCount = 0
   sessionCheckinCount = 0
+  sessionReactionCount = 0
 
   trackEvent({ type: 'session_start', timestamp: Date.now(), sessionId })
   return sessionId
@@ -354,6 +367,7 @@ export function endSession(): void {
   trackEvent({ type: 'engagement_pulses_per_session', timestamp: Date.now(), sessionId, count: sessionPulseCount })
   trackEvent({ type: 'engagement_venues_viewed', timestamp: Date.now(), sessionId, count: sessionVenueViewCount })
   trackEvent({ type: 'engagement_checkins_completed', timestamp: Date.now(), sessionId, count: sessionCheckinCount })
+  trackEvent({ type: 'engagement_reactions_per_session', timestamp: Date.now(), sessionId, count: sessionReactionCount })
 
   currentSessionId = null
   sessionStartTimestamp = null
@@ -412,6 +426,13 @@ export function recordSessionPulse(): void {
  */
 export function recordSessionCheckin(): void {
   sessionCheckinCount++
+}
+
+/**
+ * Record that the user submitted a reaction (emoji, etc.) during this session.
+ */
+export function recordSessionReaction(): void {
+  sessionReactionCount++
 }
 
 // ---------------------------------------------------------------------------

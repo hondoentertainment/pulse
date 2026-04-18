@@ -18,9 +18,11 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
+            if (id.includes('scheduler')) return 'react-vendor';
+            if (id.includes('react-dom')) return 'react-vendor';
+            if (id.includes('/react/')) return 'react-vendor';
             if (id.includes('framer-motion')) return 'framer-motion';
-            if (id.includes('recharts') || id.includes('d3')) return 'charts';
+            if (id.includes('recharts') || id.includes('/d3') || id.includes('d3-') || id.includes('visx')) return 'charts';
             if (id.includes('three')) return 'three';
             if (id.includes('@radix-ui/')) return 'radix';
             if (id.includes('sonner')) return 'sonner';

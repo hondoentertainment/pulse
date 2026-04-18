@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { HTMLAttributes } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { GoingTonightButton } from '../GoingTonightButton'
@@ -9,8 +8,8 @@ import type { VenueRSVP } from '@/lib/going-tonight'
 
 vi.mock('framer-motion', () => ({
   motion: {
-    button: ({ children, whileTap, initial, animate, transition, exit, ...props }: Record<string, unknown>) => <button {...props}>{children as React.ReactNode}</button>,
-    div: ({ children, whileTap, initial, animate, transition, exit, variants, ...props }: Record<string, unknown>) => <div {...props}>{children as React.ReactNode}</div>,
+    button: ({ children, whileTap: _whileTap, initial: _initial, animate: _animate, transition: _transition, exit: _exit, ...props }: Record<string, unknown>) => <button {...props}>{children as React.ReactNode}</button>,
+    div: ({ children, whileTap: _whileTap, initial: _initial, animate: _animate, transition: _transition, exit: _exit, variants: _variants, ...props }: Record<string, unknown>) => <div {...props}>{children as React.ReactNode}</div>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useReducedMotion: () => false,

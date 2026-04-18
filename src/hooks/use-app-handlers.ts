@@ -1,7 +1,6 @@
 import {
   Venue,
   Pulse,
-  User,
   EnergyRating,
   Notification,
   GroupedNotification,
@@ -21,11 +20,12 @@ import { logger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn } from '@/lib/venue-trending'
+import { detectSpam, isDuplicateContent } from '@/lib/spam-detection'
 import type { AppState } from '@/hooks/use-app-state'
 
 export function useAppHandlers(state: AppState) {
   const {
-    activeTab,
+    activeTab: _activeTab,
     setActiveTab,
     setSelectedVenue,
     setSubPage,
@@ -82,6 +82,25 @@ export function useAppHandlers(state: AppState) {
     const rateCheck = checkUserRateLimit(currentUser.id, 'pulse_create')
     if (!rateCheck.allowed) {
       toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` })
+      return
+    }
+
+    // Spam detection on caption
+    if (data.caption) {
+      const spamResult = detectSpam(data.caption)
+      if (spamResult.isSpam) {
+        toast.error('Content flagged', {
+          description: `Your caption may violate our guidelines: ${spamResult.reasons[0]}`,
+        })
+        return
+      }
+    }
+
+    // Duplicate-content guard (same caption within 5 minutes)
+    if (data.caption && isDuplicateContent(currentUser.id, data.caption)) {
+      toast.error('Duplicate content', {
+        description: 'You already posted the same caption recently. Try something different!',
+      })
       return
     }
 
@@ -238,7 +257,13 @@ export function useAppHandlers(state: AppState) {
   const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
     if (!currentUser) return
     const reactionRate = checkUserRateLimit(currentUser.id, 'reaction')
-    if (!reactionRate.allowed) return
+    if (!reactionRate.allowed) {
+      const waitSecs = Math.ceil(reactionRate.retryAfterMs / 1000)
+      toast.error('Too many reactions', {
+        description: `Slow down! Try again in ${waitSecs}s`,
+      })
+      return
+    }
     trackEvent({ type: 'pulse_reaction', timestamp: Date.now(), pulseId, reactionType: type })
     setPulses((current) => {
       if (!current) return []

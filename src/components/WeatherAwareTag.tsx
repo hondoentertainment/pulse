@@ -6,7 +6,6 @@ import {
   Snowflake,
   ThermometerHot,
   House,
-  Umbrella,
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 

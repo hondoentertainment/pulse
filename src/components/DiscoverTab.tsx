@@ -18,6 +18,7 @@ import { useTonightsPick } from '@/hooks/use-tonights-pick'
 import { cn } from '@/lib/utils'
 import type { MoodType } from '@/lib/personalization-engine'
 import { useState } from 'react'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 interface DiscoverTabProps {
   venues: Venue[]
@@ -126,27 +127,31 @@ export function DiscoverTab({
             className="space-y-6"
           >
             {/* Tonight's Pick Hero Card */}
-            <TonightsPickCard
-              pick={pick}
-              isLoading={pickLoading}
-              showAlternates={showAlternates}
-              onLetsGo={onVenueClick}
-              onDismiss={dismissPick}
-              onToggleAlternates={toggleAlternates}
-              onAlternateClick={onVenueClick}
-            />
+            <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+              <TonightsPickCard
+                pick={pick}
+                isLoading={pickLoading}
+                showAlternates={showAlternates}
+                onLetsGo={onVenueClick}
+                onDismiss={dismissPick}
+                onToggleAlternates={toggleAlternates}
+                onAlternateClick={onVenueClick}
+              />
+            </ErrorBoundary>
 
             {/* Live Activity Feed */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Live Activity</h3>
-              <LiveActivityFeed
-                venues={venues}
-                pulses={pulses}
-                onVenueTap={(venueId) => {
-                  const venue = venues.find(v => v.id === venueId)
-                  if (venue) onVenueClick(venue)
-                }}
-              />
+              <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+                <LiveActivityFeed
+                  venues={venues}
+                  pulses={pulses}
+                  onVenueTap={(venueId) => {
+                    const venue = venues.find(v => v.id === venueId)
+                    if (venue) onVenueClick(venue)
+                  }}
+                />
+              </ErrorBoundary>
             </div>
 
             {/* Stories */}

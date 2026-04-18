@@ -8,10 +8,6 @@ import type {
 } from '@/lib/neighborhood-walkthrough'
 import {
   generateWalkthrough,
-  advanceToNext as advanceStop,
-  reorderRoute,
-  addStopToRoute,
-  removeStopFromRoute,
   getAvailableThemes,
 } from '@/lib/neighborhood-walkthrough'
 

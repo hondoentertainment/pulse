@@ -6,10 +6,6 @@ import type { User } from '@/lib/types'
 import type { Streak, StreakType, LeaderboardEntry, StreakReward } from '@/lib/streak-rewards'
 import {
   STREAK_DEFINITIONS,
-  isAtRisk,
-  getAchievedMilestones,
-  getNextMilestone,
-  getProgressToNextMilestone,
 } from '@/lib/streak-rewards'
 import { StreakCounter } from './StreakCounter'
 
@@ -206,7 +202,7 @@ function MilestoneTimeline({ milestones }: { milestones: StreakReward[] }) {
 }
 
 export function StreakDashboard({
-  currentUser,
+  currentUser: _currentUser,
   allStreaks,
   activeStreaks,
   atRiskStreaks,

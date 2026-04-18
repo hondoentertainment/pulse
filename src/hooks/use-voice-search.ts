@@ -201,6 +201,7 @@ export function useVoiceSearch() {
       }
       clearListenTimeout()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const clearListenTimeout = useCallback(() => {

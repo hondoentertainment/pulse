@@ -169,7 +169,7 @@ export function useOfflineCache(
     if (isOnline && queuedActions.length > 0) {
       processQueuedActions()
     }
-  }, [isOnline, processQueuedActions])
+  }, [isOnline, processQueuedActions, queuedActions.length])
 
   // Auto-prefetch on mount
   useEffect(() => {

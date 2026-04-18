@@ -1,6 +1,6 @@
 import type { Venue, User } from './types'
-import { calculateDistance, getEnergyLabel } from './pulse-engine'
-import { normalizeCategoryKeyPublic, getPeakConfig, getTimeOfDay } from './time-contextual-scoring'
+import { calculateDistance } from './pulse-engine'
+import { getPeakConfig } from './time-contextual-scoring'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,7 +81,7 @@ function scorePulseAndTrending(venue: Venue): { score: number; reason: string | 
 function scoreUserPreference(
   venue: Venue,
   user: User,
-  allVenues: Venue[],
+  _allVenues: Venue[],
 ): { score: number; reason: string | null } {
   let score = 0
   let reason: string | null = null

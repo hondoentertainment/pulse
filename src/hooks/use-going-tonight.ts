@@ -131,7 +131,7 @@ export function useGoingTonight(
     [currentUserId, setRsvps]
   )
 
-  const currentRsvps = rsvps ?? []
+  const currentRsvps = useMemo(() => rsvps ?? [], [rsvps])
 
   const getMyStatus = useCallback(
     (venueId: string): VenueRSVP | null => {

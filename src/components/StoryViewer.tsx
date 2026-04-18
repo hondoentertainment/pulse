@@ -156,7 +156,7 @@ function DoubleTapBurst({
 export function StoryViewer({
   stories,
   initialIndex = 0,
-  currentUserId,
+  currentUserId: _currentUserId,
   onClose,
   onReact,
 }: StoryViewerProps) {

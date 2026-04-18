@@ -2,7 +2,7 @@
 
 import type { HTMLAttributes } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { TonightsPickCard } from '../TonightsPickCard'
 import type { Venue } from '@/lib/types'
 import type { TonightsPick } from '@/lib/tonights-pick'
@@ -12,7 +12,7 @@ import type { TonightsPick } from '@/lib/tonights-pick'
 // ---------------------------------------------------------------------------
 
 const { MockIcon } = vi.hoisted(() => {
-  const MockIcon = (props: Record<string, unknown>) => null
+  const MockIcon = (_props: Record<string, unknown>) => null
   return { MockIcon }
 })
 
@@ -40,7 +40,7 @@ vi.mock('framer-motion', () => ({
       children,
       ...props
     }: HTMLAttributes<HTMLButtonElement> & { whileHover?: unknown; whileTap?: unknown }) => {
-      const { whileHover, whileTap, ...rest } = props as Record<string, unknown>
+      const { whileHover: _whileHover, whileTap: _whileTap, ...rest } = props as Record<string, unknown>
       return <button {...(rest as HTMLAttributes<HTMLButtonElement>)}>{children}</button>
     },
     circle: (props: Record<string, unknown>) => <circle {...(props as React.SVGProps<SVGCircleElement>)} />,

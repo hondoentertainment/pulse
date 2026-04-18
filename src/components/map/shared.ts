@@ -2,7 +2,6 @@ import { Venue } from '@/lib/types'
 import {
   MapPin, BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
 } from '@phosphor-icons/react'
-import type { MapFiltersState } from '@/components/MapFilters'
 import type { VenueRenderPoint, VenueCluster } from '@/lib/interactive-map'
 import type { Icon } from '@phosphor-icons/react'
 

@@ -8,7 +8,7 @@ import type { WalkthroughRoute, WalkthroughStop, WalkthroughTheme } from '@/lib/
 import type { Venue } from '@/lib/types'
 
 const { IconStub } = vi.hoisted(() => {
-  const IconStub = (props: any) => null
+  const IconStub = (_props: Record<string, unknown>) => null
   return { IconStub }
 })
 

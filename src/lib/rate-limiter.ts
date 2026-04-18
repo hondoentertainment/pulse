@@ -2,6 +2,7 @@
  * Rate Limiter & Abuse Prevention
  *
  * Token bucket rate limiting for API endpoints and abuse detection.
+ * Also exposes a sliding-window RateLimiter class for flexible per-action limits.
  */
 
 export interface RateLimitConfig {
@@ -100,6 +101,98 @@ export function resetRateLimit(userId: string, action: string): void {
 export function clearAllRateLimits(): void {
   buckets.clear()
 }
+
+// ---------------------------------------------------------------------------
+// Sliding-window RateLimiter class
+// ---------------------------------------------------------------------------
+
+interface SlidingWindowEntry {
+  timestamps: number[]
+}
+
+export interface CheckLimitResult {
+  allowed: boolean
+  retryAfter?: number  // seconds until the oldest entry leaves the window
+}
+
+/**
+ * Sliding-window rate limiter.
+ * Each (userId, action) pair has an independent window.
+ * Data is held in memory; swap the store for Redis when the backend is ready.
+ */
+export class RateLimiter {
+  private store: Map<string, SlidingWindowEntry> = new Map()
+
+  /**
+   * Check whether a user is allowed to perform an action.
+   * Consumes one slot if allowed.
+   *
+   * @param userId     - Unique user identifier
+   * @param action     - Action name (e.g. 'pulse_create')
+   * @param maxActions - Maximum allowed actions in the window
+   * @param windowMs   - Window size in milliseconds
+   */
+  checkLimit(
+    userId: string,
+    action: string,
+    maxActions: number,
+    windowMs: number,
+  ): CheckLimitResult {
+    const key = `${userId}:${action}`
+    const now = Date.now()
+    const cutoff = now - windowMs
+
+    const entry = this.store.get(key) ?? { timestamps: [] }
+
+    // Drop timestamps that have slid out of the window
+    const inWindow = entry.timestamps.filter((t) => t > cutoff)
+
+    if (inWindow.length >= maxActions) {
+      // Oldest timestamp in window — when it expires the user gets a new slot
+      const oldest = inWindow[0]
+      const retryAfter = Math.ceil((oldest + windowMs - now) / 1000)
+      this.store.set(key, { timestamps: inWindow })
+      return { allowed: false, retryAfter }
+    }
+
+    inWindow.push(now)
+    this.store.set(key, { timestamps: inWindow })
+    return { allowed: true }
+  }
+
+  /** Reset state for a user/action pair (useful in tests or admin resets). */
+  reset(userId: string, action: string): void {
+    this.store.delete(`${userId}:${action}`)
+  }
+
+  /** Clear the entire store. */
+  clear(): void {
+    this.store.clear()
+  }
+}
+
+// Shared singleton instance with pre-configured default limits
+export const defaultRateLimiter = new RateLimiter()
+
+/** Convenience wrappers that apply the task-specified default limits */
+export const DEFAULT_LIMITS = {
+  /** 5 pulse creations per hour */
+  pulse_create: { maxActions: 5, windowMs: 60 * 60 * 1000 },
+  /** 30 reactions per minute */
+  reaction: { maxActions: 30, windowMs: 60 * 1000 },
+  /** 10 reports per day */
+  report: { maxActions: 10, windowMs: 24 * 60 * 60 * 1000 },
+} as const
+
+export function checkDefaultLimit(
+  userId: string,
+  action: keyof typeof DEFAULT_LIMITS,
+): CheckLimitResult {
+  const { maxActions, windowMs } = DEFAULT_LIMITS[action]
+  return defaultRateLimiter.checkLimit(userId, action, maxActions, windowMs)
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Abuse detection — checks for suspicious patterns.

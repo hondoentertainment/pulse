@@ -231,9 +231,9 @@ export function OfflineIndicator({
   isOnline,
   lastSyncTime,
   syncProgress,
-  cacheStats,
-  onClearCache,
-  onRefreshCache,
+  cacheStats: _cacheStats,
+  onClearCache: _onClearCache,
+  onRefreshCache: _onRefreshCache,
 }: OfflineIndicatorProps) {
   return (
     <>
@@ -247,4 +247,5 @@ export function OfflineIndicator({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { formatRelativeTime, formatBytes }

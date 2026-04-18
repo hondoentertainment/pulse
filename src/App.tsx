@@ -30,6 +30,7 @@ function AppContent() {
       setErrorTrackingUser({ id: currentUser.id, username: currentUser.username })
       logger.info('User context set for error tracking', 'App', { userId: currentUser.id })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, currentUser?.username])
 
   // End the analytics session when the page unloads

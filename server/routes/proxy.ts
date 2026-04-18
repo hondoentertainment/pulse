@@ -30,6 +30,42 @@ interface WebhookSubscription {
 }
 
 // ---------------------------------------------------------------------------
+// CORS Middleware
+// ---------------------------------------------------------------------------
+
+/**
+ * Adds CORS headers allowing requests from the app origin.
+ *
+ * In production the Express server and SPA share the same origin so CORS
+ * headers are a no-op for same-origin requests but are required when the
+ * Vite dev server (e.g. localhost:5173) calls the Express API server
+ * (e.g. localhost:3001).
+ *
+ * The allowed origin is read from the CORS_ORIGIN environment variable and
+ * falls back to the Vite dev default.
+ */
+const APP_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
+
+function corsHeaders(req: Request, res: Response, next: NextFunction): void {
+  const origin = req.headers.origin
+  // Allow requests from the known app origin (or same-origin requests which
+  // won't include an Origin header at all).
+  if (!origin || origin === APP_ORIGIN) {
+    res.set('Access-Control-Allow-Origin', APP_ORIGIN)
+  }
+  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.set('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-API-Key')
+  res.set('Vary', 'Origin')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+
+  next()
+}
+
+// ---------------------------------------------------------------------------
 // Rate Limiting Middleware (Stub)
 // ---------------------------------------------------------------------------
 
@@ -172,8 +208,210 @@ async function lookupWebhookSubscription(subscriptionId: string): Promise<Webhoo
 
 const router = Router()
 
+// Apply CORS headers to all routes on this router
+router.use(corsHeaders)
+
+// ---------------------------------------------------------------------------
+// POST /api/geocode/reverse  (primary — used by api-proxy client)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/geocode/reverse
+ *
+ * Proxies reverse geocoding requests to Nominatim (OpenStreetMap).
+ * Accepts a JSON body `{ lat, lng }` and returns `{ city, state }`.
+ *
+ * Why POST instead of GET:
+ * - Consistent with the api-proxy client's fetch interface
+ * - Avoids coordinates appearing in server access logs as query-string params
+ *
+ * Request body:
+ *   lat (number, required) - Latitude, -90 to 90
+ *   lng (number, required) - Longitude, -180 to 180
+ *
+ * Rate limit: 100 requests per minute per IP
+ * Max payload: body-parser default (100 kb) — coordinates are tiny
+ */
+router.post(
+  '/geocode/reverse',
+  rateLimit(60_000, 100, 'geocode-reverse'),
+  async (req: Request, res: Response): Promise<void> => {
+    const { lat, lng } = req.body ?? {}
+
+    const latNum = typeof lat === 'number' ? lat : parseFloat(lat)
+    const lngNum = typeof lng === 'number' ? lng : parseFloat(lng)
+
+    if (
+      isNaN(latNum) || isNaN(lngNum) ||
+      latNum < -90 || latNum > 90 ||
+      lngNum < -180 || lngNum > 180
+    ) {
+      res.status(400).json({
+        data: null,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'Valid lat (-90 to 90) and lng (-180 to 180) are required.',
+        },
+      })
+      return
+    }
+
+    // Check cache
+    const cacheKey = getCacheKey(latNum, lngNum)
+    const cached = geocodeCache.get(cacheKey)
+    if (cached && Date.now() - cached.cachedAt < GEOCODE_CACHE_TTL_MS) {
+      res.set('X-Cache', 'HIT')
+      res.json({ data: cached.data, error: null })
+      return
+    }
+
+    try {
+      // Nominatim requires a descriptive User-Agent per their usage policy
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${latNum}&lon=${lngNum}&format=json`
+      const upstream = await fetch(nominatimUrl, {
+        headers: {
+          'User-Agent': 'PulseApp/1.0 (https://pulse.app; contact@pulse.app)',
+        },
+      })
+
+      if (!upstream.ok) {
+        res.status(502).json({
+          data: null,
+          error: {
+            code: 'UPSTREAM_ERROR',
+            message: `Nominatim returned status ${upstream.status}`,
+          },
+        })
+        return
+      }
+
+      const raw = await upstream.json()
+      const address = raw.address ?? {}
+
+      const result = {
+        city: address.city || address.town || address.village || 'Unknown',
+        state: address.state || 'Unknown',
+        displayName: raw.display_name || '',
+        address: {
+          city: address.city,
+          town: address.town,
+          village: address.village,
+          state: address.state,
+          country: address.country,
+          postcode: address.postcode,
+        },
+      }
+
+      // Cache the result
+      geocodeCache.set(cacheKey, { data: result, cachedAt: Date.now() })
+
+      res.set('X-Cache', 'MISS')
+      res.json({ data: result, error: null })
+    } catch (err) {
+      res.status(502).json({
+        data: null,
+        error: {
+          code: 'UPSTREAM_ERROR',
+          message: err instanceof Error ? err.message : 'Failed to reach Nominatim',
+        },
+      })
+    }
+  }
+)
+
+// ---------------------------------------------------------------------------
+// POST /api/webhook/sign  (primary — used by api-proxy client)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/webhook/sign
+ *
+ * Signs an arbitrary JSON payload with the server-side HMAC-SHA256 secret
+ * and returns only the hex signature. The secret never travels to the browser.
+ *
+ * The signing format is:
+ *   HMAC-SHA256(JSON.stringify(payload), WEBHOOK_SECRET)
+ *
+ * Request body:
+ *   payload (object, required) - JSON-serialisable object to sign
+ *                                Max size enforced by body-parser (100 kb)
+ *
+ * Rate limit: 100 requests per minute per IP
+ */
+router.post(
+  '/webhook/sign',
+  rateLimit(60_000, 100, 'webhook-sign'),
+  (req: Request, res: Response): void => {
+    const { payload } = req.body ?? {}
+
+    if (payload === undefined || payload === null) {
+      res.status(400).json({
+        data: null,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'payload (object) is required.',
+        },
+      })
+      return
+    }
+
+    if (typeof payload !== 'object' || Array.isArray(payload)) {
+      res.status(400).json({
+        data: null,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'payload must be a JSON object.',
+        },
+      })
+      return
+    }
+
+    // Guard against oversized payloads (belt-and-suspenders alongside body-parser limit)
+    const serialised = JSON.stringify(payload)
+    const MAX_PAYLOAD_BYTES = 100_000 // 100 KB
+    if (Buffer.byteLength(serialised, 'utf8') > MAX_PAYLOAD_BYTES) {
+      res.status(413).json({
+        data: null,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: `Payload exceeds maximum size of ${MAX_PAYLOAD_BYTES} bytes.`,
+        },
+      })
+      return
+    }
+
+    const secret = process.env.WEBHOOK_SECRET
+    if (!secret || secret === 'PLACEHOLDER_REPLACE_IN_PRODUCTION') {
+      console.warn('[proxy] WEBHOOK_SECRET is not configured — signing with placeholder')
+    }
+
+    const signingSecret = secret && secret !== 'PLACEHOLDER_REPLACE_IN_PRODUCTION'
+      ? secret
+      : 'PLACEHOLDER_REPLACE_IN_PRODUCTION'
+
+    try {
+      const signature = createHmac('sha256', signingSecret).update(serialised).digest('hex')
+      res.json({ data: { signature }, error: null })
+    } catch (err) {
+      res.status(500).json({
+        data: null,
+        error: {
+          code: 'SIGNING_FAILED',
+          message: err instanceof Error ? err.message : 'Failed to sign payload',
+        },
+      })
+    }
+  }
+)
+
+// ---------------------------------------------------------------------------
+// Legacy routes (kept for backwards compatibility)
+// ---------------------------------------------------------------------------
+
 /**
  * GET /api/proxy/geocode
+ *
+ * @deprecated Use POST /api/geocode/reverse instead.
  *
  * Proxies reverse geocoding requests to Nominatim (OpenStreetMap).
  *
@@ -269,6 +507,8 @@ router.get(
 
 /**
  * POST /api/proxy/webhook
+ *
+ * @deprecated Use POST /api/webhook/sign for payload signing only.
  *
  * Signs a webhook payload with the subscription's HMAC secret and
  * delivers it to the registered URL.

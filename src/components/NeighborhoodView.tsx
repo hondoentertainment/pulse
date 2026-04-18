@@ -1,9 +1,10 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { Venue, Pulse } from '@/lib/types'
-import { Neighborhood, NeighborhoodScore, getNeighborhoodLeaderboard, getHottestNeighborhood, assignVenueToNeighborhood } from '@/lib/neighborhood-scores'
+import { Neighborhood, getNeighborhoodLeaderboard, getHottestNeighborhood } from '@/lib/neighborhood-scores'
 import { CaretLeft, MapTrifold, Crown, TrendUp, NavigationArrow } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useNeighborhoodWalkthrough } from '@/hooks/use-neighborhood-walkthrough'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const NeighborhoodWalkthrough = lazy(() => import('@/components/NeighborhoodWalkthrough').then(m => ({ default: m.NeighborhoodWalkthrough })))
 
@@ -203,21 +204,23 @@ export function NeighborhoodView({ venues, pulses, onBack, onVenueClick, userLoc
                 Close
               </button>
             </div>
-            <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading walkthrough...</div>}>
-              <NeighborhoodWalkthrough
-                route={walkthrough.activeRoute}
-                currentStopIndex={walkthrough.currentStopIndex}
-                isActive={walkthrough.isActive}
-                isCompleted={walkthrough.isCompleted}
-                estimatedCompletion={walkthrough.estimatedCompletion}
-                availableThemes={walkthrough.availableThemes}
-                onGenerateRoute={(neighborhood, theme) => walkthrough.generateRoute(neighborhood, theme)}
-                onStart={walkthrough.startWalkthrough}
-                onAdvance={walkthrough.advanceToNext}
-                onEnd={() => { walkthrough.endWalkthrough(); setShowWalkthrough(false) }}
-                neighborhood={walkthroughNeighborhood}
-              />
-            </Suspense>
+            <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load walkthrough</div>}>
+              <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading walkthrough...</div>}>
+                <NeighborhoodWalkthrough
+                  route={walkthrough.activeRoute}
+                  currentStopIndex={walkthrough.currentStopIndex}
+                  isActive={walkthrough.isActive}
+                  isCompleted={walkthrough.isCompleted}
+                  estimatedCompletion={walkthrough.estimatedCompletion}
+                  availableThemes={walkthrough.availableThemes}
+                  onGenerateRoute={(neighborhood, theme) => walkthrough.generateRoute(neighborhood, theme)}
+                  onStart={walkthrough.startWalkthrough}
+                  onAdvance={walkthrough.advanceToNext}
+                  onEnd={() => { walkthrough.endWalkthrough(); setShowWalkthrough(false) }}
+                  neighborhood={walkthroughNeighborhood}
+                />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         )}
       </div>

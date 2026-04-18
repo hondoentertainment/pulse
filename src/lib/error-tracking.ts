@@ -140,11 +140,153 @@ export function initErrorTracking(config: ErrorTrackingConfig): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Context enrichment
+// ---------------------------------------------------------------------------
+
+export interface ErrorContext {
+  /** Current route / tab visible to the user */
+  route?: string
+  /** Authenticated user ID */
+  userId?: string
+  /** Application version / release tag */
+  appVersion?: string
+  /** Arbitrary extra key-value pairs */
+  [key: string]: unknown
+}
+
+let globalContext: ErrorContext = {}
+
+/**
+ * Set application-level context that will be merged into every captured event.
+ * Useful for recording the current route, user ID, or app version once so you
+ * don't have to repeat it at every call site.
+ */
+export function setErrorContext(context: Partial<ErrorContext>): void {
+  globalContext = { ...globalContext, ...context }
+}
+
+/**
+ * Read the current global error context (useful for testing).
+ */
+export function getErrorContext(): ErrorContext {
+  return { ...globalContext }
+}
+
+/**
+ * Clear all global error context (e.g. on sign-out).
+ */
+export function clearErrorContext(): void {
+  globalContext = {}
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting — max 10 errors per minute
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
+
+const errorTimestamps: number[] = []
+
+/**
+ * Returns true if the error should be captured (not rate-limited).
+ * Maintains a sliding 60-second window allowing at most RATE_LIMIT_MAX events.
+ */
+function isAllowedByRateLimit(): boolean {
+  const now = Date.now()
+  // Drop timestamps older than the window
+  const cutoff = now - RATE_LIMIT_WINDOW_MS
+  while (errorTimestamps.length > 0 && errorTimestamps[0] < cutoff) {
+    errorTimestamps.shift()
+  }
+  if (errorTimestamps.length >= RATE_LIMIT_MAX) {
+    return false
+  }
+  errorTimestamps.push(now)
+  return true
+}
+
+/** Expose for testing — resets the rate-limit sliding window. */
+export function _resetRateLimit(): void {
+  errorTimestamps.length = 0
+}
+
+/** Expose for testing — returns count of events in the current window. */
+export function _getRateLimitCount(): number {
+  const now = Date.now()
+  const cutoff = now - RATE_LIMIT_WINDOW_MS
+  return errorTimestamps.filter(t => t >= cutoff).length
+}
+
+// ---------------------------------------------------------------------------
+// setupErrorTracking — enhanced global error hooks
+// ---------------------------------------------------------------------------
+
+let isSetup = false
+
+/**
+ * Wire up `window.onerror` and `window.onunhandledrejection` with context
+ * enrichment and rate limiting.  Safe to call multiple times — subsequent
+ * calls are no-ops.
+ *
+ * This is the preferred entry-point over `initErrorTracking` when you want
+ * the full feature set without configuring an upstream provider.
+ */
+export function setupErrorTracking(contextDefaults?: Partial<ErrorContext>): void {
+  if (typeof window === 'undefined') return
+  if (isSetup) return
+  isSetup = true
+
+  if (contextDefaults) {
+    setErrorContext(contextDefaults)
+  }
+
+  window.addEventListener('error', (event) => {
+    if (!event.error) return
+    if (!isAllowedByRateLimit()) {
+      if (isDev) {
+        console.warn('[error-tracking] Rate limit reached — dropping error', event.error)
+      }
+      return
+    }
+    activeProvider.captureException(event.error, {
+      source: 'window.onerror',
+      ...globalContext,
+    })
+  })
+
+  window.addEventListener('unhandledrejection', (event) => {
+    if (!isAllowedByRateLimit()) {
+      if (isDev) {
+        console.warn('[error-tracking] Rate limit reached — dropping unhandled rejection')
+      }
+      return
+    }
+    activeProvider.captureException(event.reason ?? 'Unhandled promise rejection', {
+      source: 'window.unhandledrejection',
+      ...globalContext,
+    })
+  })
+}
+
+/** Reset setup state — for testing only. */
+export function _resetSetup(): void {
+  isSetup = false
+}
+
 /**
  * Capture an exception with optional context metadata.
+ * Global context (route, userId, appVersion) is automatically merged in.
  */
 export function captureException(error: unknown, context?: Record<string, unknown>): void {
-  activeProvider.captureException(error, context)
+  if (!isAllowedByRateLimit()) {
+    if (isDev) {
+      console.warn('[error-tracking] Rate limit reached — dropping captureException')
+    }
+    return
+  }
+  activeProvider.captureException(error, { ...globalContext, ...context })
 }
 
 /**

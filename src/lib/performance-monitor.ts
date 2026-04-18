@@ -185,3 +185,103 @@ export async function measureInteraction<T>(
     throw error
   }
 }
+
+// ---------------------------------------------------------------------------
+// Custom timing marks for domain-specific operations
+// ---------------------------------------------------------------------------
+
+export interface CustomTimingEntry {
+  name: string
+  durationMs: number
+  timestamp: number
+}
+
+const customTimings: CustomTimingEntry[] = []
+const MAX_CUSTOM_TIMINGS = 100
+
+/**
+ * Record a custom timing entry by name and duration in milliseconds.
+ * Entries are capped at MAX_CUSTOM_TIMINGS.
+ */
+function recordCustomTiming(name: string, durationMs: number): void {
+  customTimings.push({ name, durationMs, timestamp: Date.now() })
+  if (customTimings.length > MAX_CUSTOM_TIMINGS) {
+    customTimings.splice(0, customTimings.length - MAX_CUSTOM_TIMINGS)
+  }
+  trackPerformance(`custom.${name}`, durationMs, 'ms')
+}
+
+/**
+ * Time a map render operation.
+ *
+ * @example
+ *   const end = startMapRenderTiming()
+ *   // ... render map ...
+ *   end()
+ */
+export function startMapRenderTiming(): () => void {
+  const start = performance.now()
+  return () => {
+    const duration = performance.now() - start
+    recordCustomTiming('map_render', duration)
+    logger.debug(`Map render: ${duration.toFixed(1)}ms`, 'PerformanceMonitor')
+  }
+}
+
+/**
+ * Time a venue list render operation.
+ */
+export function startVenueListRenderTiming(): () => void {
+  const start = performance.now()
+  return () => {
+    const duration = performance.now() - start
+    recordCustomTiming('venue_list_render', duration)
+    logger.debug(`Venue list render: ${duration.toFixed(1)}ms`, 'PerformanceMonitor')
+  }
+}
+
+/**
+ * Time a search query operation.
+ */
+export function startSearchQueryTiming(): () => void {
+  const start = performance.now()
+  return () => {
+    const duration = performance.now() - start
+    recordCustomTiming('search_query', duration)
+    logger.debug(`Search query: ${duration.toFixed(1)}ms`, 'PerformanceMonitor')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Performance report
+// ---------------------------------------------------------------------------
+
+export interface PerformanceReport {
+  webVitals: WebVitals
+  customTimings: readonly CustomTimingEntry[]
+  /** Summary of custom timings keyed by operation name */
+  customTimingsSummary: Record<string, { count: number; avgMs: number; maxMs: number }>
+}
+
+/**
+ * Return a full snapshot of collected performance data.
+ */
+export function getPerformanceReport(): PerformanceReport {
+  const summary: Record<string, { count: number; avgMs: number; maxMs: number }> = {}
+
+  for (const entry of customTimings) {
+    if (!summary[entry.name]) {
+      summary[entry.name] = { count: 0, avgMs: 0, maxMs: 0 }
+    }
+    const s = summary[entry.name]
+    s.count += 1
+    s.avgMs = (s.avgMs * (s.count - 1) + entry.durationMs) / s.count
+    s.maxMs = Math.max(s.maxMs, entry.durationMs)
+  }
+
+  return {
+    webVitals: getWebVitals(),
+    customTimings: [...customTimings],
+    customTimingsSummary: summary,
+  }
+}

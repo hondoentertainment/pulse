@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { HashtagManager } from './HashtagManager'
+import { FeatureFlagPanel } from './FeatureFlagPanel'
 import { SocialPulseGraph } from './SocialPulseGraph'
 import { CorrelationOverlayChart } from './CorrelationOverlayChart'
 import { CorrelationInsights } from './CorrelationInsights'
@@ -168,6 +168,7 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
   const timeSinceUpdate = Math.floor((Date.now() - lastUpdate.getTime()) / 1000)
   const integrationSummary = useMemo(
     () => getIntegrationActionSummary(getEvents()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [lastUpdate]
   )
 
@@ -312,11 +313,12 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-2xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="correlations">Correlations</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="flags">Flags</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -574,6 +576,10 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
               onToggleActive={handleToggleActive}
               onUpdateVenueMapping={handleUpdateVenueMapping}
             />
+          </TabsContent>
+
+          <TabsContent value="flags" className="space-y-6">
+            <FeatureFlagPanel />
           </TabsContent>
         </Tabs>
       </div>

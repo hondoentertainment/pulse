@@ -1,8 +1,10 @@
-import { ReactNode } from 'react'
+import { lazy, Suspense, ReactNode } from 'react'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
-import { CreatePulseDialog } from '@/components/CreatePulseDialog'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
+
+const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 import { useOfflineCache } from '@/hooks/use-offline-cache'
 import { Plus } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
@@ -54,24 +56,28 @@ export function AppShell({ state, handlers, sortedVenues, children }: AppShellPr
         currentTime={currentTime}
       />
 
-      <OfflineIndicator
-        isOnline={offlineCache.isOnline}
-        lastSyncTime={offlineCache.lastSyncTime}
-        syncProgress={offlineCache.syncProgress}
-        cacheStats={offlineCache.cacheStats}
-        onClearCache={offlineCache.clearCache}
-        onRefreshCache={offlineCache.forcePrefetch}
-      />
+      <ErrorBoundary fallback={null}>
+        <OfflineIndicator
+          isOnline={offlineCache.isOnline}
+          lastSyncTime={offlineCache.lastSyncTime}
+          syncProgress={offlineCache.syncProgress}
+          cacheStats={offlineCache.cacheStats}
+          onClearCache={offlineCache.clearCache}
+          onRefreshCache={offlineCache.forcePrefetch}
+        />
+      </ErrorBoundary>
 
       {children}
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
-      <CreatePulseDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        venue={venueForPulse}
-        onSubmit={handleSubmitPulse}
-      />
+      <Suspense fallback={null}>
+        <CreatePulseDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          venue={venueForPulse}
+          onSubmit={handleSubmitPulse}
+        />
+      </Suspense>
 
       <motion.button
         whileHover={{ scale: 1.05 }}

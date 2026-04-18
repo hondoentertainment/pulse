@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import {
-  ChartBar, Lightning, TrendUp, TrendDown, Minus, Fire,
+  ChartBar, Lightning, TrendUp, Fire,
   Users, CurrencyDollar, Share, Copy, Check,
 } from '@phosphor-icons/react'
 import {
@@ -13,7 +12,7 @@ import type { Venue, Pulse, EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import type { VenueOwnerDashboard } from '@/lib/venue-owner'
 import type { RevenueMetrics } from '@/lib/venue-platform'
-import { isPlanFeatureAvailable, PLAN_CONFIG } from '@/lib/venue-platform'
+import { isPlanFeatureAvailable } from '@/lib/venue-platform'
 import type { PlanTier, VenuePlatformAccount, SocialContent } from '@/lib/venue-platform'
 import { CompetitorBenchmark } from '@/components/CompetitorBenchmark'
 import { StaffScheduler } from '@/components/StaffScheduler'

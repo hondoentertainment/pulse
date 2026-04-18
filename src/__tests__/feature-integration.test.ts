@@ -14,8 +14,6 @@ import {
   checkStreakProgress,
   getNextMilestone,
   getStreakMultiplier,
-  calculateTotalXP,
-  getAchievedMilestones,
   type Streak,
 } from '@/lib/streak-rewards'
 import {
@@ -39,14 +37,10 @@ import {
 } from '@/lib/venue-comparison'
 import {
   generateEnergyHistory,
-  findPeakHour,
-  calculateTrend,
 } from '@/lib/venue-energy-history'
 import {
   generateActivityEvents,
   deduplicateEvents,
-  prioritizeEvents,
-  formatActivityMessage,
   type ActivityEvent,
 } from '@/lib/live-activity-feed'
 import {
@@ -152,7 +146,7 @@ describe('Tonight\'s Pick + Going Tonight integration', () => {
     })
 
     // Build friend activity from RSVPs using going-tonight
-    const rsvps: VenueRSVP[] = [
+    const _rsvps: VenueRSVP[] = [
       makeRSVP('u2', 'v2', 'going'),
       makeRSVP('u3', 'v2', 'going'),
       makeRSVP('u4', 'v2', 'going'),
@@ -175,7 +169,7 @@ describe('Tonight\'s Pick + Going Tonight integration', () => {
 
     // The venue with friends should score higher when friend activity is provided
     // Find v2's score in both picks
-    const v2WithFriends = pickWith!.venue.id === 'v2' || pickWith!.alternates.some(a => a.id === 'v2')
+    const _v2WithFriends = pickWith!.venue.id === 'v2' || pickWith!.alternates.some(a => a.id === 'v2')
     // When 4 friends are going to v2, it should be competitive despite lower base pulse
     expect(pickWith!.score).toBeGreaterThan(0)
   })

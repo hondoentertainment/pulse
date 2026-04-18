@@ -6,7 +6,6 @@ import {
   User,
   Notification,
   Hashtag,
-  COOLDOWN_MINUTES,
 } from '@/lib/types'
 import type { TabId } from '@/components/BottomNav'
 import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
@@ -29,6 +28,7 @@ import { addBreadcrumb } from '@/lib/error-tracking'
 import { toast } from 'sonner'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity } from '@/lib/venue-trending'
+import { reverseGeocode } from '@/lib/api-proxy'
 
 export type SubPage = 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'challenges' | 'my-tickets' | 'night-planner' | null
 
@@ -178,14 +178,12 @@ export function useAppState() {
     }
   }, [realtimeLocation, simulatedLocation, locationPermissionDenied])
 
-  // Reverse geocode user location
+  // Reverse geocode user location via server-side proxy (keeps browser IP off
+  // Nominatim logs and avoids client-side rate limit exposure)
   useEffect(() => {
     if (userLocation) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json`)
-        .then(res => res.json())
-        .then(data => {
-          const city = data.address?.city || data.address?.town || data.address?.village || 'New York'
-          const state = data.address?.state || 'NY'
+      reverseGeocode(userLocation.lat, userLocation.lng)
+        .then(({ city, state }) => {
           setLocationName(`${city}, ${state}`)
         })
         .catch(() => {

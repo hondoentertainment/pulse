@@ -1,5 +1,5 @@
 import type { Pulse, Venue, EnergyRating } from './types'
-import { analyzeVenuePatterns, predictSurge } from './predictive-surge'
+import { analyzeVenuePatterns } from './predictive-surge'
 
 /**
  * Venue Operator Platform Engine (B2B SaaS)

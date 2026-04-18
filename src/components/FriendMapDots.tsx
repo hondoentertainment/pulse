@@ -86,6 +86,7 @@ export default function FriendMapDots({
 
   const clusters = useMemo(
     () => clusterFriends(friends, latLngToPixel),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [friends, latLngToPixel, zoom]
   )
 

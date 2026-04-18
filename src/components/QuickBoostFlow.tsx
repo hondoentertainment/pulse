@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   ArrowLeft, BeerStein, MusicNotes, Confetti, Clock,
-  Sparkle, Star, Rocket, Check,
+  Sparkle, Star, Rocket,
 } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

@@ -1,5 +1,4 @@
 import type { Venue, EnergyRating } from './types'
-import type { Neighborhood } from './neighborhood-scores'
 import { calculateDistance } from './interactive-map'
 
 /**
@@ -65,7 +64,6 @@ const THEME_LABELS: Record<WalkthroughTheme, string> = {
 }
 
 const ENERGY_VALUES: Record<EnergyRating, number> = { dead: 0, chill: 1, buzzing: 2, electric: 3 }
-const ENERGY_LABELS: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
 /**
  * Calculate walking time in minutes between two lat/lng points.
@@ -122,7 +120,7 @@ export function generateThemeDescription(route: WalkthroughRoute): string {
 /**
  * Check which themes have enough venues (>=2) to be viable.
  */
-export function getAvailableThemes(venues: Venue[], neighborhood: string): WalkthroughTheme[] {
+export function getAvailableThemes(venues: Venue[], _neighborhood: string): WalkthroughTheme[] {
   const themes: WalkthroughTheme[] = ['hottest', 'cocktail-crawl', 'dive-bars', 'live-music', 'foodie', 'best-of']
 
   return themes.filter(theme => {

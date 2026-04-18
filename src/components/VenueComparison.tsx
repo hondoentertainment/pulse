@@ -148,7 +148,7 @@ function ComparisonBar({
 
 function VenueCard({
   venue,
-  energyLabel,
+  energyLabel: _energyLabel,
   trending,
   category,
   side,

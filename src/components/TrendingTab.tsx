@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Star, Megaphone, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
 import { getPeakCategories } from '@/lib/time-contextual-scoring'
@@ -46,7 +47,7 @@ export function TrendingTab({
   userLocation,
   unitSystem,
   currentUser,
-  allUsers,
+  allUsers: _allUsers,
   trendingSubTab,
   onSubTabChange,
   onVenueClick,
@@ -160,14 +161,16 @@ export function TrendingTab({
           <div className="max-w-2xl mx-auto px-4 pt-4">
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Live Activity</h3>
-              <LiveActivityFeed
-                venues={venues}
-                pulses={pulses}
-                onVenueTap={(venueId) => {
-                  const venue = venues.find(v => v.id === venueId)
-                  if (venue) onVenueClick(venue)
-                }}
-              />
+              <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+                <LiveActivityFeed
+                  venues={venues}
+                  pulses={pulses}
+                  onVenueTap={(venueId) => {
+                    const venue = venues.find(v => v.id === venueId)
+                    if (venue) onVenueClick(venue)
+                  }}
+                />
+              </ErrorBoundary>
             </div>
           </div>
 

@@ -31,6 +31,7 @@ import { MapTopBar, MapRightControls, MapBottomLeftControls } from './MapControl
 import { MapSmartRoute } from './MapSmartRoute'
 import { VenueComparison } from '@/components/VenueComparison'
 import { compareVenues } from '@/lib/venue-comparison'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const PROGRESSIVE_DISCLOSURE_LIMIT = 5
 
@@ -748,17 +749,19 @@ export function InteractiveMap({
             className="absolute top-16 right-4 z-30 w-[min(340px,40vw)] max-h-[60vh] overflow-y-auto bg-card/95 backdrop-blur-sm rounded-xl border border-border shadow-xl p-3"
             data-testid="map-venue-comparison"
           >
-            <VenueComparison
-              selectedVenues={comparisonSelectedVenues}
-              comparisonResult={comparisonResult}
-              onRemoveVenue={(index) => {
-                setComparedVenueIds(prev => prev.filter((_, i) => i !== index))
-              }}
-              onSwapVenues={() => {
-                setComparedVenueIds(prev => [...prev].reverse())
-              }}
-              onClear={() => setComparedVenueIds([])}
-            />
+            <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load comparison</div>}>
+              <VenueComparison
+                selectedVenues={comparisonSelectedVenues}
+                comparisonResult={comparisonResult}
+                onRemoveVenue={(index) => {
+                  setComparedVenueIds(prev => prev.filter((_, i) => i !== index))
+                }}
+                onSwapVenues={() => {
+                  setComparedVenueIds(prev => [...prev].reverse())
+                }}
+                onClear={() => setComparedVenueIds([])}
+              />
+            </ErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>

@@ -4,7 +4,7 @@ import type { HTMLAttributes, SVGAttributes } from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { VenuePage } from '../VenuePage'
-import type { User, Venue, PresenceData } from '@/lib/types'
+import type { User, Venue } from '@/lib/types'
 
 // ── Mocks ────────────────────────────────────────────────────
 
@@ -335,9 +335,9 @@ describe('VenuePage', () => {
   // ── VenueEnergyTimeline wiring ─────────────────────────────
 
   describe('VenueEnergyTimeline', () => {
-    it('renders VenueEnergyTimeline with venue data', () => {
+    it('renders VenueEnergyTimeline with venue data', async () => {
       render(<VenuePage {...defaultProps} />)
-      const timeline = screen.getByTestId('venue-energy-timeline')
+      const timeline = await screen.findByTestId('venue-energy-timeline', {}, { timeout: 10000 })
       expect(timeline).toBeTruthy()
       expect(timeline.getAttribute('data-venue-id')).toBe('venue-1')
     })

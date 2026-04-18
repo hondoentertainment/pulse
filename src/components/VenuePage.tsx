@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -20,7 +20,7 @@ import { WhoIsHereRow } from './WhoIsHereRow'
 import { ParallaxVenueHero } from './ParallaxVenueHero'
 // Phase 2: Venue star moment
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
-import { VenueEnergyTimeline } from './VenueEnergyTimeline'
+const VenueEnergyTimeline = lazy(() => import('./VenueEnergyTimeline').then(m => ({ default: m.VenueEnergyTimeline })))
 import { VenueQuickActions } from './VenueQuickActions'
 import { VenueActivityStream } from './VenueActivityStream'
 // Phase 4: Personalization
@@ -33,6 +33,7 @@ import { BoostStatusBadge } from './BoostStatusBadge'
 import { useGoingTonight } from '@/hooks/use-going-tonight'
 import { useEmojiBurst } from '@/hooks/use-emoji-burst'
 import { useVenueBoost } from '@/hooks/use-venue-boost'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -108,7 +109,7 @@ export function VenuePage({
     usersArray,
   )
   const myRsvpStatus = goingTonight.getMyStatus(venue.id)
-  const venuePlan = goingTonight.getVenuePlan(venue.id)
+  const _venuePlan = goingTonight.getVenuePlan(venue.id)
   const friendsGoingUsers = useMemo(() => {
     const friendRsvps = goingTonight.friendsPlans.get(venue.id) ?? []
     return friendRsvps
@@ -155,10 +156,12 @@ export function VenuePage({
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">{venue.name}</h1>
                 {activeBoostsForVenue.length > 0 && (
-                  <BoostStatusBadge
-                    boost={activeBoostsForVenue[0]}
-                    venuePulseScore={venue.pulseScore}
-                  />
+                  <ErrorBoundary fallback={null}>
+                    <BoostStatusBadge
+                      boost={activeBoostsForVenue[0]}
+                      venuePulseScore={venue.pulseScore}
+                    />
+                  </ErrorBoundary>
                 )}
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
@@ -353,14 +356,16 @@ export function VenuePage({
         />
 
         {/* Going Tonight RSVP Button */}
-        <GoingTonightButton
-          venueId={venue.id}
-          currentStatus={myRsvpStatus}
-          friendsGoing={friendsGoingUsers}
-          onMarkGoing={goingTonight.markGoing}
-          onMarkMaybe={goingTonight.markMaybe}
-          onCancel={goingTonight.cancelGoing}
-        />
+        <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+          <GoingTonightButton
+            venueId={venue.id}
+            currentStatus={myRsvpStatus}
+            friendsGoing={friendsGoingUsers}
+            onMarkGoing={goingTonight.markGoing}
+            onMarkMaybe={goingTonight.markMaybe}
+            onCancel={goingTonight.cancelGoing}
+          />
+        </ErrorBoundary>
 
         {/* Phase 4: Venue Memory Card */}
         {currentUser && (
@@ -379,7 +384,11 @@ export function VenuePage({
         )}
 
         {/* Phase 2: Energy Timeline */}
-        <VenueEnergyTimeline venue={venue} />
+        <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+          <Suspense fallback={null}>
+            <VenueEnergyTimeline venue={venue} />
+          </Suspense>
+        </ErrorBoundary>
 
         <div className="flex items-center justify-between">
           <div>
@@ -475,10 +484,12 @@ export function VenuePage({
         />
 
         {/* Emoji Reaction Bar */}
-        <EmojiReactionBar
-          onReaction={triggerBurst}
-          reactionCounts={reactionCounts}
-        />
+        <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load</div>}>
+          <EmojiReactionBar
+            onReaction={triggerBurst}
+            reactionCounts={reactionCounts}
+          />
+        </ErrorBoundary>
 
         <Separator />
 
@@ -510,7 +521,9 @@ export function VenuePage({
       />
 
       {/* Emoji Burst Overlay (floating particles) */}
-      <EmojiBurstOverlay particles={particles} />
+      <ErrorBoundary fallback={null}>
+        <EmojiBurstOverlay particles={particles} />
+      </ErrorBoundary>
 
       <QuickReportSheet
         open={reportSheetOpen}

@@ -1,7 +1,6 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   X,
-  MapPin,
   Lightning,
   Users,
   ArrowRight,

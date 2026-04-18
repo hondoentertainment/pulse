@@ -32,7 +32,7 @@ vi.mock('framer-motion', () => ({
       children,
       ...props
     }: HTMLAttributes<HTMLButtonElement> & { whileHover?: unknown; whileTap?: unknown }) => {
-      const { whileHover, whileTap, ...rest } = props as Record<string, unknown>
+      const { whileHover: _whileHover, whileTap: _whileTap, ...rest } = props as Record<string, unknown>
       return <button {...(rest as HTMLAttributes<HTMLButtonElement>)}>{children}</button>
     },
     circle: (props: Record<string, unknown>) => (

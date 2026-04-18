@@ -13,7 +13,7 @@ interface AchievementsPageProps {
   onBack: () => void
 }
 
-export function AchievementsPage({ currentUser, pulses, venues, onBack }: AchievementsPageProps) {
+export function AchievementsPage({ currentUser, pulses, venues: _venues, onBack }: AchievementsPageProps) {
   const progress = useMemo(
     () => calculateAchievementProgress(currentUser, pulses, pulses),
     [currentUser, pulses]

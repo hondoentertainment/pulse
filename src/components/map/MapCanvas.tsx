@@ -2,25 +2,10 @@ import { useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { clampZoom, clampCenter } from '@/lib/interactive-map'
 import { triggerHapticFeedback } from '@/lib/haptics'
-import { ZOOM_STEP, MAP_SCALE, type MapPoint } from './shared'
+import { ZOOM_STEP, MAP_SCALE } from './shared'
 
-interface MapCanvasProps {
-  canvasRef: React.RefObject<HTMLCanvasElement | null>
-  dimensions: { width: number; height: number }
-  isDragging: boolean
-  zoom: number
-  center: { lat: number; lng: number }
-  onDragStart: () => void
-  onDragEnd: () => void
-  onCenterChange: (center: { lat: number; lng: number } | null) => void
-  onZoomChange: (zoom: number) => void
-  onFollowUserOff: () => void
-  onExpandedClusterClear: () => void
-  onHoveredVenueClear: () => void
-  setIsDragging: (v: boolean) => void
-  setDragStart: (v: { x: number; y: number } | null) => void
-}
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useMapInteractions(props: {
   center: { lat: number; lng: number } | null
   zoom: number

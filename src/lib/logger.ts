@@ -93,6 +93,29 @@ export function getLogBuffer(): readonly LogEntry[] {
 }
 
 // ---------------------------------------------------------------------------
+// Crash report buffer — last 50 entries across ALL levels
+// ---------------------------------------------------------------------------
+
+const CRASH_BUFFER_MAX = 50
+const crashBuffer: LogEntry[] = []
+
+/**
+ * Get a read-only snapshot of the last 50 log entries suitable for attaching
+ * to crash reports.  Unlike `getLogBuffer()`, this buffer is never flushed
+ * automatically — it always reflects the most recent CRASH_BUFFER_MAX lines.
+ */
+export function getCrashBuffer(): readonly LogEntry[] {
+  return [...crashBuffer]
+}
+
+/**
+ * Clear the crash report buffer (e.g. after a successful report submission).
+ */
+export function clearCrashBuffer(): void {
+  crashBuffer.length = 0
+}
+
+// ---------------------------------------------------------------------------
 // Core emit function
 // ---------------------------------------------------------------------------
 
@@ -114,6 +137,12 @@ function emit(level: LogLevel, message: string, component: string, data?: Record
   logBuffer.push(entry)
   if (logBuffer.length > LOG_BUFFER_MAX) {
     logBuffer.splice(0, logBuffer.length - LOG_BUFFER_MAX)
+  }
+
+  // Crash report buffer — keep only the most recent CRASH_BUFFER_MAX entries
+  crashBuffer.push(entry)
+  if (crashBuffer.length > CRASH_BUFFER_MAX) {
+    crashBuffer.shift()
   }
 
   if (isDev) {

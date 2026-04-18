@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import { useVoiceSearch, parseVoiceInput, VOICE_FALLBACK_MESSAGE } from './use-voice-search'
+import { useVoiceSearch, parseVoiceInput } from './use-voice-search'
 import { MapFiltersState, EnergyFilter } from '@/components/MapFilters'
 import { toast } from 'sonner'
 

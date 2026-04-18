@@ -22,7 +22,6 @@ const EVENT_TYPES: ActivityEventType[] = [
   'happy_hour',
 ]
 
-const SURGE_ADJECTIVES = ['surging', 'on fire', 'absolutely packed']
 const EVENT_NAMES = [
   'DJ set',
   'Live music',

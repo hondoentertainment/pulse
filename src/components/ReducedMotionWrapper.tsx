@@ -12,6 +12,7 @@ import type { Transition, MotionProps } from 'framer-motion'
  * falls back to a standalone media query listener so the hook works even
  * outside the provider tree.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useReducedMotion(): boolean {
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -47,6 +48,7 @@ const DEFAULT_TRANSITION: Transition = {
  * Return either a normal spring transition or an instant one depending on
  * the user's motion preference.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getTransition(
   reducedMotion: boolean,
   custom?: Transition
@@ -64,6 +66,7 @@ export function getTransition(
  * preferred. The element will still reach its target state — it just skips
  * the animation.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getMotionProps(
   reducedMotion: boolean,
   animationProps: Partial<MotionProps>

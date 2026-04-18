@@ -7,7 +7,7 @@
 
 import type { Venue } from './types'
 import type { CacheEntry, CacheInstance, PrefetchStrategy } from './offline-cache'
-import { getCacheEntry, getRawCacheEntry, setCacheEntry } from './offline-cache'
+import { getCacheEntry, setCacheEntry } from './offline-cache'
 
 // --- Types ---
 

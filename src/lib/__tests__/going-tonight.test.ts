@@ -49,7 +49,7 @@ const user4 = makeUser('u4', 'Jordan')
 
 const venue1 = makeVenue('v1', 'The Rooftop')
 const venue2 = makeVenue('v2', 'Neon Lounge')
-const venue3 = makeVenue('v3', 'Club Nova')
+const _venue3 = makeVenue('v3', 'Club Nova')
 
 // ── createRSVP ───────────────────────────────────────────────
 

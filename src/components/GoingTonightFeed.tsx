@@ -50,7 +50,7 @@ export function GoingTonightFeed({
   onVenueClick,
 }: GoingTonightFeedProps) {
   const isEmpty = friendPlans.length === 0 && popularVenues.length === 0
-  const prefersReducedMotion = useReducedMotion()
+  const _prefersReducedMotion = useReducedMotion()
 
   return (
     <Card className="p-4 bg-card border-border overflow-hidden" data-testid="going-tonight-feed" role="log" aria-label="Tonight's plans feed">

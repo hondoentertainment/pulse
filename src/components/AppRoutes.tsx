@@ -1,19 +1,20 @@
 import { lazy, Suspense } from 'react'
 import {
   Venue,
-  PulseWithUser,
 } from '@/lib/types'
-import { InteractiveMap } from '@/components/InteractiveMap'
-import { NotificationFeed } from '@/components/NotificationFeed'
-import { TrendingTab } from '@/components/TrendingTab'
-import { ProfileTab } from '@/components/ProfileTab'
-import { DiscoverTab } from '@/components/DiscoverTab'
 import { BottomNav } from '@/components/BottomNav'
-import type { TabId } from '@/components/BottomNav'
-import { PresenceSheet } from '@/components/PresenceSheet'
-import { CreatePulseDialog } from '@/components/CreatePulseDialog'
+import { useProgressiveOnboarding } from '@/hooks/use-progressive-onboarding'
+import { FeatureTooltip } from '@/components/FeatureTooltip'
+
+const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
+const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
+const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ default: m.TrendingTab })))
+const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
+const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
+const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => ({ default: m.PresenceSheet })))
+const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 import { calculatePresence } from '@/lib/presence-engine'
-import type { AppState, SubPage } from '@/hooks/use-app-state'
+import type { AppState } from '@/hooks/use-app-state'
 import { ALL_USERS } from '@/hooks/use-app-state'
 import type { AppHandlers } from '@/hooks/use-app-handlers'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
@@ -31,10 +32,6 @@ const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
-const StreakDashboard = lazy(() => import('@/components/StreakDashboard'))
-const VenueComparison = lazy(() => import('@/components/VenueComparison'))
-const NeighborhoodWalkthrough = lazy(() => import('@/components/NeighborhoodWalkthrough'))
-const QuickBoostFlow = lazy(() => import('@/components/QuickBoostFlow'))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -63,7 +60,7 @@ interface AppRoutesProps {
   isFollowed: (venueId: string) => boolean
 }
 
-export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, followedVenues, isFavorite, isFollowed }: AppRoutesProps) {
+export function AppRoutes({ state, handlers, sortedVenues: _sortedVenues, favoriteVenues, followedVenues, isFavorite, isFollowed }: AppRoutesProps) {
   const {
     hasCompletedOnboarding,
     setHasCompletedOnboarding,
@@ -129,6 +126,9 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
     handleCityChange,
     getPulsesWithUsers,
   } = handlers
+
+  // Progressive onboarding — must be called unconditionally (rules of hooks)
+  const { currentStep: onboardingStep, dismissStep: dismissOnboardingStep } = useProgressiveOnboarding()
 
   // Onboarding
   if (hasCompletedOnboarding === false) {
@@ -355,34 +355,38 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             onOpenIntegrations={() => handleOpenIntegrations(selectedVenue)}
           />
         </Suspense>
-        <PresenceSheet
-          open={presenceSheetOpen}
-          onClose={() => setPresenceSheetOpen(false)}
-          presence={presenceData}
-          currentUser={currentUser}
-          onUpdateSettings={(settings) => {
-            setCurrentUser(prev => {
-              if (!prev) return {
-                id: 'user-1',
-                username: 'nightowl',
-                profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
-                friends: [],
-                favoriteVenues: [],
-                followedVenues: [],
-                createdAt: new Date().toISOString(),
-                presenceSettings: settings
-              }
-              return { ...prev, presenceSettings: settings }
-            })
-          }}
-        />
+        <Suspense fallback={null}>
+          <PresenceSheet
+            open={presenceSheetOpen}
+            onClose={() => setPresenceSheetOpen(false)}
+            presence={presenceData}
+            currentUser={currentUser}
+            onUpdateSettings={(settings) => {
+              setCurrentUser(prev => {
+                if (!prev) return {
+                  id: 'user-1',
+                  username: 'nightowl',
+                  profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+                  friends: [],
+                  favoriteVenues: [],
+                  followedVenues: [],
+                  createdAt: new Date().toISOString(),
+                  presenceSettings: settings
+                }
+                return { ...prev, presenceSettings: settings }
+              })
+            }}
+          />
+        </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
-        <CreatePulseDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          venue={venueForPulse}
-          onSubmit={handleSubmitPulse}
-        />
+        <Suspense fallback={null}>
+          <CreatePulseDialog
+            open={createDialogOpen}
+            onClose={() => setCreateDialogOpen(false)}
+            venue={venueForPulse}
+            onSubmit={handleSubmitPulse}
+          />
+        </Suspense>
       </>
     )
   }
@@ -399,25 +403,27 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <TrendingTab
-              venues={venues}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              favoriteVenues={favoriteVenues}
-              followedVenues={followedVenues}
-              userLocation={userLocation}
-              unitSystem={unitSystem}
-              currentUser={currentUser}
-              allUsers={ALL_USERS}
-              trendingSubTab={trendingSubTab}
-              onSubTabChange={setTrendingSubTab}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleFollow={handleToggleFollow}
-              onReaction={handleReaction}
-              isFavorite={isFavorite}
-              promotions={promotions || []}
-            />
+            <Suspense fallback={pageFallback}>
+              <TrendingTab
+                venues={venues}
+                pulses={pulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                favoriteVenues={favoriteVenues}
+                followedVenues={followedVenues}
+                userLocation={userLocation}
+                unitSystem={unitSystem}
+                currentUser={currentUser}
+                allUsers={ALL_USERS}
+                trendingSubTab={trendingSubTab}
+                onSubTabChange={setTrendingSubTab}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                onToggleFavorite={handleToggleFavorite}
+                onToggleFollow={handleToggleFollow}
+                onReaction={handleReaction}
+                isFavorite={isFavorite}
+                promotions={promotions || []}
+              />
+            </Suspense>
           </motion.div>
         )}
 
@@ -429,26 +435,28 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <DiscoverTab
-              venues={venues}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              currentUser={currentUser}
-              allUsers={ALL_USERS}
-              stories={stories || []}
-              events={events || []}
-              followedVenues={followedVenues}
-              userLocation={userLocation}
-              unitSystem={unitSystem}
-              discoverSubTab={discoverSubTab}
-              onSubTabChange={setDiscoverSubTab}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onStoryClick={handleStoryClick}
-              onAddFriend={handleAddFriend}
-              onToggleFollow={handleToggleFollow}
-              onReaction={handleReaction}
-              onNavigate={(page) => setSubPage(page)}
-            />
+            <Suspense fallback={pageFallback}>
+              <DiscoverTab
+                venues={venues}
+                pulses={pulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                currentUser={currentUser}
+                allUsers={ALL_USERS}
+                stories={stories || []}
+                events={events || []}
+                followedVenues={followedVenues}
+                userLocation={userLocation}
+                unitSystem={unitSystem}
+                discoverSubTab={discoverSubTab}
+                onSubTabChange={setDiscoverSubTab}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                onStoryClick={handleStoryClick}
+                onAddFriend={handleAddFriend}
+                onToggleFollow={handleToggleFollow}
+                onReaction={handleReaction}
+                onNavigate={(page) => setSubPage(page)}
+              />
+            </Suspense>
           </motion.div>
         )}
 
@@ -462,15 +470,17 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]"
           >
             <div className="h-full">
-              <InteractiveMap
-                venues={venues}
-                userLocation={userLocation}
-                onVenueClick={(venue) => setSelectedVenue(venue)}
-                isTracking={isTracking}
-                locationAccuracy={realtimeLocation?.accuracy}
-                locationHeading={realtimeLocation?.heading}
-                followedVenueIds={currentUser?.followedVenues || []}
-              />
+              <Suspense fallback={pageFallback}>
+                <InteractiveMap
+                  venues={venues}
+                  userLocation={userLocation}
+                  onVenueClick={(venue) => setSelectedVenue(venue)}
+                  isTracking={isTracking}
+                  locationAccuracy={realtimeLocation?.accuracy}
+                  locationHeading={realtimeLocation?.heading}
+                  followedVenueIds={currentUser?.followedVenues || []}
+                />
+              </Suspense>
             </div>
           </motion.div>
         )}
@@ -483,12 +493,14 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <NotificationFeed
-              currentUser={currentUser}
-              pulses={pulses}
-              venues={venues}
-              onNotificationClick={handleNotificationClick}
-            />
+            <Suspense fallback={pageFallback}>
+              <NotificationFeed
+                currentUser={currentUser}
+                pulses={pulses}
+                venues={venues}
+                onNotificationClick={handleNotificationClick}
+              />
+            </Suspense>
           </motion.div>
         )}
 
@@ -500,17 +512,19 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <ProfileTab
-              currentUser={currentUser}
-              pulses={pulses}
-              pulsesWithUsers={getPulsesWithUsers()}
-              favoriteVenues={favoriteVenues}
-              onVenueClick={(venue) => setSelectedVenue(venue)}
-              onReaction={handleReaction}
-              onOpenSocialPulseDashboard={handleOpenSocialPulseDashboard}
-              onOpenSettings={() => setSubPage('settings')}
-              onOpenOwnerDashboard={handleOpenOwnerDashboard}
-            />
+            <Suspense fallback={pageFallback}>
+              <ProfileTab
+                currentUser={currentUser}
+                pulses={pulses}
+                pulsesWithUsers={getPulsesWithUsers()}
+                favoriteVenues={favoriteVenues}
+                onVenueClick={(venue) => setSelectedVenue(venue)}
+                onReaction={handleReaction}
+                onOpenSocialPulseDashboard={handleOpenSocialPulseDashboard}
+                onOpenSettings={() => setSubPage('settings')}
+                onOpenOwnerDashboard={handleOpenOwnerDashboard}
+              />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>
@@ -528,6 +542,14 @@ export function AppRoutes({ state, handlers, sortedVenues, favoriteVenues, follo
           </Suspense>
         )}
       </AnimatePresence>
+
+      {/* Progressive onboarding tooltip */}
+      {onboardingStep && (
+        <FeatureTooltip
+          step={onboardingStep}
+          onDismiss={dismissOnboardingStep}
+        />
+      )}
     </>
   )
 }

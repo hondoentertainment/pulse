@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
@@ -95,54 +96,58 @@ export function ProfileTab({
       </div>
 
       {/* Streak Widget */}
-      <div className="space-y-3" data-testid="streak-section">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Fire size={20} weight="fill" className="text-orange-500" />
-            <h3 className="text-lg font-bold">Streaks</h3>
-            {streakRewards.currentMultiplier > 1 && (
-              <span className="text-xs font-bold text-accent px-2 py-0.5 rounded-full bg-accent/10">
-                {streakRewards.currentMultiplier}x XP
-              </span>
-            )}
+      <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load streaks</div>}>
+        <div className="space-y-3" data-testid="streak-section">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Fire size={20} weight="fill" className="text-orange-500" />
+              <h3 className="text-lg font-bold">Streaks</h3>
+              {streakRewards.currentMultiplier > 1 && (
+                <span className="text-xs font-bold text-accent px-2 py-0.5 rounded-full bg-accent/10">
+                  {streakRewards.currentMultiplier}x XP
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowStreakDashboard(!showStreakDashboard)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="streak-toggle"
+            >
+              {showStreakDashboard ? 'Hide' : 'View Streaks'}
+              {showStreakDashboard ? <CaretUp size={14} /> : <CaretDown size={14} />}
+            </button>
           </div>
-          <button
-            onClick={() => setShowStreakDashboard(!showStreakDashboard)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="streak-toggle"
-          >
-            {showStreakDashboard ? 'Hide' : 'View Streaks'}
-            {showStreakDashboard ? <CaretUp size={14} /> : <CaretDown size={14} />}
-          </button>
+          {streakRewards.activeStreaks.length > 0 && !showStreakDashboard && (
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide" data-testid="streak-counters">
+              {streakRewards.activeStreaks.slice(0, 4).map((streak) => (
+                <StreakCounter
+                  key={streak.type}
+                  streak={streak}
+                  size="small"
+                  onExpand={() => setShowStreakDashboard(true)}
+                />
+              ))}
+            </div>
+          )}
+          {showStreakDashboard && (
+            <ErrorBoundary fallback={<div className="p-2 text-xs text-muted-foreground">Unable to load streak dashboard</div>}>
+              <Suspense fallback={<div className="p-4 text-center text-muted-foreground">Loading...</div>}>
+                <StreakDashboard
+                  currentUser={currentUser}
+                  allStreaks={streakRewards.allStreaks}
+                  activeStreaks={streakRewards.activeStreaks}
+                  atRiskStreaks={streakRewards.atRiskStreaks}
+                  totalXP={streakRewards.totalXP}
+                  currentMultiplier={streakRewards.currentMultiplier}
+                  recentMilestones={streakRewards.recentMilestones}
+                  leaderboard={streakRewards.leaderboard}
+                  onBack={() => setShowStreakDashboard(false)}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          )}
         </div>
-        {streakRewards.activeStreaks.length > 0 && !showStreakDashboard && (
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide" data-testid="streak-counters">
-            {streakRewards.activeStreaks.slice(0, 4).map((streak) => (
-              <StreakCounter
-                key={streak.type}
-                streak={streak}
-                size="small"
-                onExpand={() => setShowStreakDashboard(true)}
-              />
-            ))}
-          </div>
-        )}
-        {showStreakDashboard && (
-          <Suspense fallback={<div className="p-4 text-center text-muted-foreground">Loading...</div>}>
-            <StreakDashboard
-              currentUser={currentUser}
-              allStreaks={streakRewards.allStreaks}
-              activeStreaks={streakRewards.activeStreaks}
-              atRiskStreaks={streakRewards.atRiskStreaks}
-              totalXP={streakRewards.totalXP}
-              currentMultiplier={streakRewards.currentMultiplier}
-              recentMilestones={streakRewards.recentMilestones}
-              leaderboard={streakRewards.leaderboard}
-              onBack={() => setShowStreakDashboard(false)}
-            />
-          </Suspense>
-        )}
-      </div>
+      </ErrorBoundary>
 
       <Separator />
 
