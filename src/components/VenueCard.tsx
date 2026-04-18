@@ -2,13 +2,23 @@ import { Venue } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock, Star, HeartStraight } from '@phosphor-icons/react'
+import { MapPin, Clock, Star, HeartStraight, CurrencyDollar, Timer } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
+import { isWaitTimeFresh } from '@/lib/wait-time-estimator'
 import { motion } from 'framer-motion'
+
+const DRESS_CODE_LABELS: Record<NonNullable<Venue['dressCode']>, string> = {
+  casual: 'Casual',
+  smart_casual: 'Smart casual',
+  upscale: 'Upscale',
+  formal: 'Formal',
+  costume_required: 'Costume',
+  no_code: 'No code',
+}
 
 interface VenueCardProps {
   venue: Venue
@@ -26,6 +36,11 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
+  const dressCodeLabel = venue.dressCode ? DRESS_CODE_LABELS[venue.dressCode] : null
+  const coverDollars = typeof venue.coverChargeCents === 'number'
+    ? Math.round(venue.coverChargeCents / 100)
+    : null
+  const freshWait = isWaitTimeFresh(venue.waitTime) ? venue.waitTime : null
   
   return (
     <motion.div
@@ -82,6 +97,35 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 {preTrendingLabel && (
                   <Badge variant="outline" className="text-xs border-dashed border-muted-foreground/50 text-muted-foreground">
                     {preTrendingLabel}
+                  </Badge>
+                )}
+                {coverDollars !== null && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs gap-0.5 border-[#FCAF45]/60 text-[#FCAF45]"
+                    aria-label={`Cover charge $${coverDollars}`}
+                  >
+                    <CurrencyDollar size={12} weight="bold" />
+                    {coverDollars}
+                  </Badge>
+                )}
+                {dressCodeLabel && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-[#833AB4]/60 text-[#833AB4]"
+                    aria-label={`Dress code: ${dressCodeLabel}`}
+                  >
+                    {dressCodeLabel}
+                  </Badge>
+                )}
+                {freshWait && freshWait.estimatedMinutes > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs gap-0.5 border-[#E1306C]/60 text-[#E1306C]"
+                    aria-label={`Estimated wait: ${freshWait.estimatedMinutes} minutes`}
+                  >
+                    <Timer size={12} weight="bold" />
+                    ~{freshWait.estimatedMinutes} min wait
                   </Badge>
                 )}
               </div>

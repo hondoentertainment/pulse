@@ -1,4 +1,10 @@
-export type FeatureFlag = 'integrations' | 'socialDashboard' | 'smartMap'
+export type FeatureFlag =
+  | 'integrations'
+  | 'socialDashboard'
+  | 'smartMap'
+  | 'weatherBoost'
+  | 'waitTime'
+  | 'accessibilityFilter'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -14,12 +20,22 @@ const defaults: FeatureFlagMap = {
   integrations: true,
   socialDashboard: true,
   smartMap: true,
+  // Differentiator pack — all default on (safe, no API keys required).
+  weatherBoost: true,
+  waitTime: true,
+  accessibilityFilter: true,
 }
 
 export const featureFlags: FeatureFlagMap = {
   integrations: parseFlag(import.meta.env.VITE_FF_ENABLE_INTEGRATIONS, defaults.integrations),
   socialDashboard: parseFlag(import.meta.env.VITE_FF_ENABLE_SOCIAL_DASHBOARD, defaults.socialDashboard),
   smartMap: parseFlag(import.meta.env.VITE_FF_ENABLE_SMART_MAP, defaults.smartMap),
+  weatherBoost: parseFlag(import.meta.env.VITE_WEATHER_BOOST_ENABLED, defaults.weatherBoost),
+  waitTime: parseFlag(import.meta.env.VITE_WAIT_TIME_ENABLED, defaults.waitTime),
+  accessibilityFilter: parseFlag(
+    import.meta.env.VITE_ACCESSIBILITY_FILTER_ENABLED,
+    defaults.accessibilityFilter,
+  ),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
