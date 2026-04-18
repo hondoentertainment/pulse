@@ -36,6 +36,10 @@
     {
       "path": "/api/wait-time/recompute",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/safety/cron/check-expired",
+      "schedule": "*/1 * * * *"
     }
   ]
 }
