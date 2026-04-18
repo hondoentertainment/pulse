@@ -280,7 +280,7 @@ export function useAppHandlers() {
 
   const handleAddFriend = (userId: string) => {
     if (!currentUser) return
-    trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
+    track('friend_added', { friendUserId: userId, method: 'suggestion' })
     setCurrentUser(prev => { if (!prev) return prev!; if (prev.friends.includes(userId)) return prev; return { ...prev, friends: [...prev.friends, userId] } })
     toast.success('Friend added!')
     if (navigator.vibrate) navigator.vibrate([30])

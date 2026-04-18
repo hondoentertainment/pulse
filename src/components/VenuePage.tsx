@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
+import { track } from '@/lib/observability/analytics'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
@@ -103,6 +105,10 @@ export function VenuePage({
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
+  const routerLocation = useLocation()
+  const hasCheckedInRef = useRef<boolean>(
+    Boolean(currentUser?.venueCheckInHistory?.[venue.id]),
+  )
 
   const refreshLiveData = useCallback(() => {
     setLiveData(getVenueLiveData(venue.id))
@@ -111,6 +117,27 @@ export function VenuePage({
   useEffect(() => {
     refreshLiveData()
   }, [venue.id, refreshLiveData])
+
+  // Fire `venue_viewed` once per venue mount; prefer source provided in
+  // router state (e.g. `{ source: 'map' | 'trending' | 'search' }`) and fall
+  // back to `'direct'` for deep links / direct navigation.
+  useEffect(() => {
+    const state = routerLocation.state as { source?: string } | null
+    const source = state?.source ?? 'direct'
+    track('venue_viewed', { venueId: venue.id, source })
+  }, [venue.id, routerLocation.state])
+
+  const handleCreatePulseWithTracking = useCallback(() => {
+    const priorCheckIns = currentUser?.venueCheckInHistory?.[venue.id] ?? 0
+    const isFirstCheckIn = !hasCheckedInRef.current && priorCheckIns === 0
+    track('check_in_completed', {
+      venueId: venue.id,
+      method: 'manual',
+      isFirstCheckIn,
+    })
+    hasCheckedInRef.current = true
+    onCreatePulse()
+  }, [currentUser, venue.id, onCreatePulse])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
@@ -408,7 +435,7 @@ export function VenuePage({
             )}
           </div>
           <Button
-            onClick={onCreatePulse}
+            onClick={handleCreatePulseWithTracking}
             className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-white"
           >
             <Plus size={20} weight="bold" className="mr-2" />
@@ -483,7 +510,7 @@ export function VenuePage({
         {/* Phase 2: Quick Actions Bar */}
         <VenueQuickActions
           venue={venue}
-          onCheckIn={onCreatePulse}
+          onCheckIn={handleCreatePulseWithTracking}
           onShare={handleShare}
           onDirections={() => {
             if (venue.location.address) {
@@ -503,7 +530,7 @@ export function VenuePage({
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
             variant="no-pulses"
-            onAction={onCreatePulse}
+            onAction={handleCreatePulseWithTracking}
             actionLabel="Create Pulse"
           />
         ) : (

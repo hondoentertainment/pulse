@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { track } from '@/lib/observability/analytics'
 
 interface OnboardingFlowProps {
   onComplete: (preferences: OnboardingPreferences) => void
@@ -42,8 +43,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [selectedTimes, setSelectedTimes] = useState<string[]>([])
   const [locationEnabled, setLocationEnabled] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const startedAtRef = useRef<number>(Date.now())
+  const stepsCompletedRef = useRef<Set<Step>>(new Set())
 
   const currentStepIndex = STEPS.indexOf(step)
+
+  // Fire onboarding_started once when the flow first mounts.
+  useEffect(() => {
+    startedAtRef.current = Date.now()
+    track('onboarding_started', { method: 'organic' })
+  }, [])
+
+  // Count each unique step the user reaches as "completed".
+  useEffect(() => {
+    stepsCompletedRef.current.add(step)
+  }, [step])
 
   const nextStep = () => {
     const nextIndex = currentStepIndex + 1
@@ -53,6 +67,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }
 
   const handleComplete = () => {
+    track('onboarding_completed', {
+      durationMs: Date.now() - startedAtRef.current,
+      stepsCompleted: stepsCompletedRef.current.size,
+    })
     onComplete({
       favoriteCategories: selectedCategories,
       preferredTimes: selectedTimes,
