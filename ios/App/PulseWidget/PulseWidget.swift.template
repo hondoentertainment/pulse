@@ -1,0 +1,88 @@
+// PulseWidget.swift — TEMPLATE
+// "Tonight's trending" home-screen widget.
+// Rename to .swift AFTER creating the Widget Extension target.
+
+import WidgetKit
+import SwiftUI
+
+struct TrendingEntry: TimelineEntry {
+    let date: Date
+    let neighborhood: String
+    let venues: [TrendingVenue]
+}
+
+struct TrendingVenue: Codable, Hashable {
+    let name: String
+    let score: Double
+}
+
+struct TrendingProvider: TimelineProvider {
+    let appGroup = "group.com.pulse.nightlife.shared"
+
+    func placeholder(in context: Context) -> TrendingEntry {
+        TrendingEntry(
+            date: Date(),
+            neighborhood: "Your area",
+            venues: [TrendingVenue(name: "Loading…", score: 0)]
+        )
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TrendingEntry) -> Void) {
+        completion(currentEntry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TrendingEntry>) -> Void) {
+        // TODO(widget): refresh every 15 min; Capacitor prefs are the source of truth.
+        let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
+        completion(Timeline(entries: [currentEntry()], policy: .after(next)))
+    }
+
+    private func currentEntry() -> TrendingEntry {
+        let defaults = UserDefaults(suiteName: appGroup)
+        if let raw = defaults?.string(forKey: "widget:trending"),
+           let data = raw.data(using: .utf8),
+           let payload = try? JSONDecoder().decode(TrendingPayload.self, from: data) {
+            return TrendingEntry(date: Date(), neighborhood: payload.neighborhood, venues: payload.venues)
+        }
+        return TrendingEntry(date: Date(), neighborhood: "Nearby", venues: [])
+    }
+}
+
+struct TrendingPayload: Codable {
+    let neighborhood: String
+    let venues: [TrendingVenue]
+}
+
+struct PulseWidgetEntryView: View {
+    var entry: TrendingProvider.Entry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Trending in \(entry.neighborhood)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ForEach(entry.venues.prefix(3), id: \.self) { venue in
+                HStack {
+                    Text(venue.name).font(.subheadline).bold()
+                    Spacer()
+                    Text(String(format: "%.0f", venue.score)).font(.caption).monospacedDigit()
+                }
+            }
+        }
+        .padding()
+    }
+}
+
+struct PulseWidget: Widget {
+    let kind = "PulseWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: TrendingProvider()) { entry in
+            PulseWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("Pulse — Trending")
+        .description("Live nightlife pulse near you.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}

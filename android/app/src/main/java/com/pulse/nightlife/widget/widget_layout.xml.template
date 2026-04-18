@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TEMPLATE — move to android/app/src/main/res/layout/pulse_widget_layout.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="#0B0B10">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:text="Trending nearby" />
+
+    <LinearLayout
+        android:id="@+id/widget_venue_row_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+        <TextView android:id="@+id/widget_venue_name_1"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/widget_venue_score_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#A855F7"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- TODO(widget): add rows 2 + 3 -->
+</LinearLayout>

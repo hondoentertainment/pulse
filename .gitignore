@@ -45,3 +45,21 @@ eslint.json
 lint_output.txt
 analysis.txt
 lighthouse-*.json
+
+# Native / Capacitor build artifacts
+# NOTE: ios/ and android/ *projects* will be committed in a follow-up PR
+# after native review. For now, ignore build outputs only.
+ios/App/build/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/DerivedData/
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+android/app/google-services.json
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+.capacitor/
