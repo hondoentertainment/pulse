@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
 import "@github/spark/spark"
 import { trackError } from "./lib/analytics"
+import { initWebVitals } from "./lib/observability/web-vitals"
 import * as Sentry from '@sentry/react'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -59,3 +60,13 @@ createRoot(document.getElementById('root')!).render(
     </PersistQueryClientProvider>
   </ErrorBoundary>
 )
+
+// Capture web vitals after first paint so we don't delay hydration.
+if (typeof window !== 'undefined') {
+  const schedule = (cb: () => void) => {
+    const ric = (window as unknown as { requestIdleCallback?: (fn: () => void) => void }).requestIdleCallback
+    if (typeof ric === 'function') ric(cb)
+    else setTimeout(cb, 0)
+  }
+  schedule(() => initWebVitals())
+}
