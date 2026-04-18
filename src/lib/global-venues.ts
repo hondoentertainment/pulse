@@ -32,3 +32,12 @@ export async function loadGlobalVenueFixtures(): Promise<{
     GLOBAL_CITY_LOCATIONS: mod.GLOBAL_CITY_LOCATIONS,
   }
 }
+
+/**
+ * DEV-only loader for global-expansion venues. Returns empty array in
+ * production bundles so fixture data stays out of shipped code.
+ */
+export function loadGlobalVenueFixtures(): Venue[] {
+  if (!import.meta.env.DEV) return []
+  return GLOBAL_EXPANSION_VENUES
+}

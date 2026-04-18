@@ -299,7 +299,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues])
 
-  // Remote data sync with React Query
+  // Remote data sync with React Query.
+  //
+  // When `USE_SUPABASE_BACKEND` is on, the venue + live-pulse hydrators
+  // use the new data modules and fall back to mock fixtures on any failure
+  // so the UI never blocks on a bad network / missing schema path.
   const { data: serverEvents } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEventsFromApi,
@@ -307,13 +311,54 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const { data: serverVenues } = useQuery({
     queryKey: ['venues'],
-    queryFn: fetchVenuesFromSupabase,
+    queryFn: async (): Promise<Venue[] | null> => {
+      if (USE_SUPABASE_BACKEND) {
+        try {
+          const rows = await VenueData.listVenues()
+          if (rows.length > 0) return rows
+          // Empty result set is not an error but doesn't help hydration either;
+          // fall through to mock fixtures so the UI keeps showing data.
+        } catch (error) {
+          if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
+            toast.error('Sign-in required', { description: error.message })
+          }
+          console.warn('[pulse] listVenues() failed, falling back to mock fixtures', error)
+        }
+      }
+      // Fallback path: legacy Supabase endpoint → mock fixtures.
+      const legacy = await fetchVenuesFromSupabase().catch(() => null)
+      if (legacy && legacy.length > 0) return legacy
+      const devMock = [
+        ...loadMockVenueFixtures(),
+        ...loadUSVenueFixtures(),
+        ...loadGlobalVenueFixtures(),
+      ]
+      return devMock.length > 0 ? devMock : null
+    },
   })
 
   const { data: serverPulses } = useQuery({
     queryKey: ['pulses'],
-    queryFn: fetchPulsesFromSupabase,
+    queryFn: async (): Promise<Pulse[] | null> => {
+      if (USE_SUPABASE_BACKEND) {
+        try {
+          const rows = await PulseData.listLivePulses()
+          return rows
+        } catch (error) {
+          if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
+            toast.error('Sign-in required', { description: error.message })
+          }
+          console.warn('[pulse] listLivePulses() failed, falling back to legacy fetch', error)
+        }
+      }
+      return fetchPulsesFromSupabase().catch(() => null)
+    },
   })
+
+  // One-time dev heads-up when we're running on mocks.
+  useEffect(() => {
+    warnIfUsingMockBackend()
+  }, [])
 
   // Hydrate local KV state from React Query
   useEffect(() => {

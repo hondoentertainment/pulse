@@ -89,3 +89,12 @@ export function getNearestCity(lat: number, lng: number): { key: string; name: s
 
   return nearest
 }
+
+/**
+ * DEV-only loader for US expansion venues. Returns empty array outside
+ * of dev builds so production bundles don't include fixture data.
+ */
+export function loadUSVenueFixtures(): Venue[] {
+  if (!import.meta.env.DEV) return []
+  return US_EXPANSION_VENUES
+}
