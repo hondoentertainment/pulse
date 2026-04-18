@@ -24,7 +24,6 @@ const isVitest = process.env.VITEST === 'true'
 function manualChunks(id: string): string | undefined {
   if (!id.includes('node_modules')) return
 
-  // --- highly-used vendor chunks we want to isolate so they cache well ---
   if (id.includes('@sentry/')) return 'sentry';
   if (id.includes('@supabase/')) return 'supabase';
   if (id.includes('@tanstack/')) return 'tanstack-query';
@@ -43,7 +42,6 @@ function manualChunks(id: string): string | undefined {
   if (id.includes('zod') || id.includes('@hookform') || id.includes('react-hook-form')) return 'forms';
   if (id.includes('@github/spark')) return 'spark';
 
-  // --- React runtime (narrow matcher — only the React packages themselves) ---
   if (
     id.includes('/node_modules/react/') ||
     id.includes('/node_modules/react-dom/') ||
@@ -53,11 +51,9 @@ function manualChunks(id: string): string | undefined {
     return 'react-vendor';
   }
 
-  // --- Router sits on top of React and changes rarely; keep separate ---
   if (id.includes('react-router')) return 'router';
   if (id.includes('react-error-boundary')) return 'error-boundary';
 
-  // Everything else (mostly tiny utility deps) lands in the default chunk.
   return undefined;
 }
 
@@ -72,10 +68,6 @@ export default defineConfig(({ command }) => {
           manualChunks,
         },
       },
-      // Tight ceiling so that accidentally ballooning a chunk is loud in CI.
-      // Lifted to 300 kB because mapbox + react-vendor legitimately land near
-      // the 250-kB line; anything over 300 kB is a regression worth a PR
-      // comment.
       chunkSizeWarningLimit: 300,
     },
     plugins: [
@@ -86,8 +78,6 @@ export default defineConfig(({ command }) => {
       isDev ? (createIconImportProxy() as PluginOption) : null,
       // Dev-only: `sparkPlugin()` emits a 1.5 MB `proxy.js` runtime wrapper
       // into `dist/` and only makes sense inside the GitHub Spark workbench.
-      // Gating it to `command === 'serve'` keeps Spark features during local
-      // dev while stopping the proxy from shipping to production.
       isDev ? (sparkPlugin() as PluginOption) : null,
       ViteImageOptimizer({
         jpg: { quality: 75 },
@@ -97,12 +87,9 @@ export default defineConfig(({ command }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        manifest: false, // Utilizing existing public/manifest.json
+        manifest: false,
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          // Keep precache lean: don't ship stale spark proxies, source maps,
-          // or the giant map/sentry/three mega-chunks — they're only needed
-          // on specific routes and are fetched on demand.
           globIgnores: [
             '**/proxy.js',
             '**/mapbox-*.js',
@@ -112,7 +99,7 @@ export default defineConfig(({ command }) => {
             '**/sentry-*.js',
             '**/*.map',
           ],
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB cap
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
@@ -122,7 +109,7 @@ export default defineConfig(({ command }) => {
                 backgroundSync: {
                   name: 'pulse-sync-queue',
                   options: {
-                    maxRetentionTime: 24 * 60, // Retry for max 24 hours
+                    maxRetentionTime: 24 * 60,
                   },
                 },
               },
@@ -144,22 +131,28 @@ export default defineConfig(({ command }) => {
       exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**', '.claude/worktrees/**'],
       coverage: {
         provider: 'v8',
-        reporter: ['text', 'lcov', 'json-summary'],
+        reporter: ['text', 'text-summary', 'lcov', 'json-summary'],
+        reportOnFailure: true,
+        // Scope coverage to library code (pure logic); UI components, data stubs,
+        // auth/observability/a11y shims, and fixtures are excluded because they
+        // require DOM/network or are Supabase-dependent.
         include: ['src/lib/**'],
         exclude: [
-          'src/lib/**/__tests__/**',
-          'src/lib/**/*.test.ts',
-          'src/lib/**/*.test.tsx',
+          'src/lib/__tests__/**',
+          'src/lib/__fixtures__/**',
+          'src/lib/data/**',
+          'src/lib/auth/**',
+          'src/lib/observability/**',
+          'src/lib/a11y/**',
         ],
         thresholdAutoUpdate: false,
         thresholds: {
-          // Starting floor based on today's actual src/lib coverage.
-          // Set ~2% below current to allow small legitimate refactors.
-          // Raised by Wave 3e after +193 tests (actuals ~58/53/61/58).
-          statements: 35,
-          branches: 33,
-          functions: 42,
-          lines: 34,
+          // Wave 3e actuals (April 2026): stmts 58.4 / branches 53.6 / funcs 61.5 / lines 58.3.
+          // Set ~2% below actuals to allow small legitimate refactors.
+          statements: 56,
+          branches: 51,
+          functions: 59,
+          lines: 56,
         },
       },
     },
