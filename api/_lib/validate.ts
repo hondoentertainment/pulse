@@ -73,3 +73,20 @@ export function asHttpsUrl(value: unknown): string | null {
     return null
   }
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function asUuid(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  return UUID_RE.test(value) ? value : null
+}
+
+export function asInteger(
+  value: unknown,
+  opts: { min?: number; max?: number } = {},
+): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return null
+  if (opts.min !== undefined && value < opts.min) return null
+  if (opts.max !== undefined && value > opts.max) return null
+  return value
+}

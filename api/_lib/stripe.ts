@@ -141,6 +141,112 @@ export async function retrievePaymentIntent(id: string): Promise<StripePaymentIn
   })
 }
 
+// ─── Checkout Sessions ───
+
+export interface StripeCheckoutSessionLineItem {
+  name: string
+  description?: string
+  amountCents: number
+  currency: string
+  quantity: number
+}
+
+export interface CreateCheckoutSessionArgs {
+  lineItems: StripeCheckoutSessionLineItem[]
+  successUrl: string
+  cancelUrl: string
+  clientReferenceId?: string
+  customerEmail?: string
+  metadata?: Record<string, string>
+  mode?: 'payment' | 'subscription'
+  /** Platform fee in cents (destination-charge model). */
+  applicationFeeCents?: number
+  /** Destination connected account id. When present Stripe routes the charge. */
+  destinationAccountId?: string
+  idempotencyKey?: string
+}
+
+export interface StripeCheckoutSession {
+  id: string
+  url: string | null
+  payment_intent?: string | null
+  payment_status?: 'paid' | 'unpaid' | 'no_payment_required'
+  status?: 'open' | 'complete' | 'expired'
+  amount_total?: number | null
+  currency?: string | null
+  client_reference_id?: string | null
+  metadata?: Record<string, string>
+}
+
+export async function createCheckoutSession(
+  args: CreateCheckoutSessionArgs,
+): Promise<StripeCheckoutSession> {
+  const body: Record<string, unknown> = {
+    mode: args.mode ?? 'payment',
+    success_url: args.successUrl,
+    cancel_url: args.cancelUrl,
+    line_items: args.lineItems.map(item => ({
+      quantity: item.quantity,
+      price_data: {
+        currency: item.currency,
+        unit_amount: item.amountCents,
+        product_data: {
+          name: item.name,
+          ...(item.description ? { description: item.description } : {}),
+        },
+      },
+    })),
+  }
+  if (args.clientReferenceId) body.client_reference_id = args.clientReferenceId
+  if (args.customerEmail) body.customer_email = args.customerEmail
+  if (args.metadata) body.metadata = args.metadata
+  if (args.applicationFeeCents || args.destinationAccountId) {
+    const payment_intent_data: Record<string, unknown> = {}
+    if (args.applicationFeeCents) payment_intent_data.application_fee_amount = args.applicationFeeCents
+    if (args.destinationAccountId) {
+      payment_intent_data.transfer_data = { destination: args.destinationAccountId }
+    }
+    if (args.metadata) payment_intent_data.metadata = args.metadata
+    body.payment_intent_data = payment_intent_data
+  }
+
+  return stripeFetch<StripeCheckoutSession>('/checkout/sessions', {
+    method: 'POST',
+    body: encodeStripeForm(body),
+  })
+}
+
+export async function retrieveCheckoutSession(
+  id: string,
+): Promise<StripeCheckoutSession> {
+  return stripeFetch<StripeCheckoutSession>(
+    `/checkout/sessions/${encodeURIComponent(id)}`,
+    { method: 'GET' },
+  )
+}
+
+/**
+ * Parse a raw Stripe webhook event payload. No signature verification —
+ * callers should invoke `verifyWebhookSignature` first.
+ */
+export interface StripeWebhookEvent<T = unknown> {
+  id: string
+  type: string
+  data: { object: T }
+  created: number
+}
+
+export function parseWebhookEvent<T = unknown>(rawBody: string): StripeWebhookEvent<T> | null {
+  try {
+    const parsed = JSON.parse(rawBody) as StripeWebhookEvent<T>
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.id !== 'string') return null
+    if (typeof parsed.type !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export interface StripeRefund {
   id: string
   status: 'pending' | 'succeeded' | 'failed' | 'canceled'

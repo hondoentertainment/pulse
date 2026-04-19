@@ -71,6 +71,10 @@ export function forbidden(res: ResponseLike, message = 'Forbidden'): void {
   res.status(403).json({ error: message })
 }
 
+export function notFound(res: ResponseLike, message = 'Not found'): void {
+  res.status(404).json({ error: message })
+}
+
 export function tooManyRequests(
   res: ResponseLike,
   message = 'Rate limit exceeded',
