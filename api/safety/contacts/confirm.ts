@@ -13,6 +13,7 @@ import { hashOtpCode } from '../../_lib/notify'
 import {
   authenticate,
   badRequest,
+  consumeRateLimitToken,
   getServiceClient,
   methodNotAllowed,
   readJsonBody,
@@ -22,13 +23,25 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../../_lib/safety-server'
+import { asString, isPlainObject } from '../../_lib/validate'
 
-type ConfirmBody = {
-  contactId?: string
-  code?: string
+interface ConfirmBody {
+  contactId: string
+  code: string
 }
 
 const MAX_ATTEMPTS = 5
+
+function validate(
+  body: unknown,
+): { ok: true; value: ConfirmBody } | { ok: false; error: string } {
+  if (!isPlainObject(body)) return { ok: false, error: 'body-not-object' }
+  const contactId = asString(body.contactId, 1, 128)
+  if (!contactId) return { ok: false, error: 'invalid-contactId' }
+  const code = asString(body.code, 6, 6)
+  if (!code || !/^[0-9]{6}$/.test(code)) return { ok: false, error: 'invalid-code' }
+  return { ok: true, value: { contactId, code } }
+}
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   setCors(res)
@@ -47,11 +60,23 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const body = readJsonBody<ConfirmBody>(req)
-  if (!body?.contactId || !body.code || !/^[0-9]{6}$/.test(body.code)) {
-    badRequest(res, 'invalid-body')
+  // Brute-force guard at the edge: 20 confirm attempts / 5 min / user.
+  // MAX_ATTEMPTS below also caps per-OTP-row attempts in the DB.
+  const limit = consumeRateLimitToken(`safety:confirm:${userId}`, {
+    maxTokens: 5,
+    refillPerSecond: 20 / 300,
+  })
+  if (!limit.allowed) {
+    res.status(429).json({ error: 'rate-limited', retryAfterMs: limit.retryAfterMs })
     return
   }
+
+  const parsed = validate(readJsonBody(req))
+  if (!parsed.ok) {
+    badRequest(res, parsed.error)
+    return
+  }
+  const body = parsed.value
 
   const client = getServiceClient()
   if (!client) {

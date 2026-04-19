@@ -102,8 +102,47 @@ function toBase64(s: string): string {
 }
 
 /**
- * Fire an SMS via the Twilio REST API. When Twilio env is absent this logs and
- * returns `ok: true, provider: 'log-only'` so integrators can develop offline.
+ * Redact a phone number for log output: keep the country code and last 2
+ * digits, mask the rest. e.g. `+15555551234` -> `+1*******34`.
+ */
+function redactPhone(to: string): string {
+  if (!to || to.length < 4) return '***'
+  const head = to.startsWith('+') ? to.slice(0, 2) : to.slice(0, 1)
+  const tail = to.slice(-2)
+  const midLen = Math.max(0, to.length - head.length - tail.length)
+  return `${head}${'*'.repeat(midLen)}${tail}`
+}
+
+/**
+ * Log a suppressed-SMS event using the shared structured marker so ops can
+ * grep production logs. Never throws; always safe to call from fallback paths.
+ */
+function logSuppressed(
+  logger: LoggerLike,
+  to: string,
+  reason: string,
+  extra: Record<string, unknown> = {},
+): void {
+  try {
+    logger.warn('SAFETY_KIT_SMS_SUPPRESSED', {
+      marker: 'SAFETY_KIT_SMS_SUPPRESSED',
+      to: redactPhone(to),
+      reason,
+      ...extra,
+    })
+  } catch {
+    // Swallow logger failures — delivery attempt already accounted for.
+  }
+}
+
+/**
+ * Fire an SMS via the Twilio REST API.
+ *
+ * Twilio is used when `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and
+ * `TWILIO_FROM` are all set. On any missing env or HTTP failure the helper
+ * falls back to a structured `SAFETY_KIT_SMS_SUPPRESSED` console.warn log
+ * (including the redacted `to` and a `reason` code) and returns a result
+ * object — it **never throws** into the caller.
  */
 export async function sendSms(input: SendSmsInput, deps: NotifyDeps = {}): Promise<SendResult> {
   const logger = deps.logger ?? defaultLogger
@@ -112,18 +151,20 @@ export async function sendSms(input: SendSmsInput, deps: NotifyDeps = {}): Promi
     deps.fetch ?? (globalThis as { fetch?: FetchLike }).fetch
 
   if (!input.to || !/^\+[1-9][0-9]{6,14}$/.test(input.to)) {
+    logSuppressed(logger, input.to ?? '', 'invalid-e164')
     return { ok: false, provider: 'log-only', error: 'invalid-e164' }
   }
   if (!input.body || input.body.length > 1600) {
+    logSuppressed(logger, input.to, 'invalid-body')
     return { ok: false, provider: 'log-only', error: 'invalid-body' }
   }
 
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM) {
-    logger.warn('twilio-env-missing, logging SMS instead', { to: input.to, body: input.body })
+    logSuppressed(logger, input.to, 'twilio-env-missing')
     return { ok: true, provider: 'log-only' }
   }
   if (!fetchFn) {
-    logger.error('no-fetch-available')
+    logSuppressed(logger, input.to, 'no-fetch-available')
     return { ok: false, provider: 'log-only', error: 'no-fetch' }
   }
 
@@ -146,13 +187,15 @@ export async function sendSms(input: SendSmsInput, deps: NotifyDeps = {}): Promi
     })
     if (!response.ok) {
       const text = await response.text().catch(() => '')
-      logger.error('twilio-failure', { status: response.status, body: text })
+      logSuppressed(logger, input.to, `twilio-http-${response.status}`, {
+        responseBody: text.slice(0, 500),
+      })
       return { ok: false, provider: 'twilio', error: `twilio-${response.status}` }
     }
     const json = (await response.json().catch(() => ({}))) as { sid?: string }
     return { ok: true, provider: 'twilio', providerMessageId: json.sid }
   } catch (error) {
-    logger.error('twilio-throw', { error: String(error) })
+    logSuppressed(logger, input.to, 'fetch-failed', { error: String(error) })
     return { ok: false, provider: 'twilio', error: 'fetch-failed' }
   }
 }

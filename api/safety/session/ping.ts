@@ -24,20 +24,42 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../../_lib/safety-server'
+import { asNumber, asString, isPlainObject } from '../../_lib/validate'
 
-type PingBody = {
-  sessionId?: string
-  lat?: number
-  lng?: number
+interface PingBody {
+  sessionId: string
+  lat: number
+  lng: number
   batteryPct?: number
   networkQuality?: string
 }
 
-function isValidLat(n: unknown): n is number {
-  return typeof n === 'number' && Number.isFinite(n) && n >= -90 && n <= 90
-}
-function isValidLng(n: unknown): n is number {
-  return typeof n === 'number' && Number.isFinite(n) && n >= -180 && n <= 180
+function validate(
+  body: unknown,
+): { ok: true; value: PingBody } | { ok: false; error: string } {
+  if (!isPlainObject(body)) return { ok: false, error: 'body-not-object' }
+  const sessionId = asString(body.sessionId, 1, 128)
+  if (!sessionId) return { ok: false, error: 'invalid-sessionId' }
+  const lat = asNumber(body.lat, { min: -90, max: 90 })
+  if (lat === null) return { ok: false, error: 'invalid-lat' }
+  const lng = asNumber(body.lng, { min: -180, max: 180 })
+  if (lng === null) return { ok: false, error: 'invalid-lng' }
+  let batteryPct: number | undefined
+  if (body.batteryPct !== undefined && body.batteryPct !== null) {
+    const b = asNumber(body.batteryPct, { min: 0, max: 100 })
+    if (b === null) return { ok: false, error: 'invalid-batteryPct' }
+    batteryPct = b
+  }
+  let networkQuality: string | undefined
+  if (body.networkQuality !== undefined && body.networkQuality !== null) {
+    const n = asString(body.networkQuality, 1, 64)
+    if (!n) return { ok: false, error: 'invalid-networkQuality' }
+    networkQuality = n
+  }
+  return {
+    ok: true,
+    value: { sessionId, lat, lng, batteryPct, networkQuality },
+  }
 }
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
@@ -57,14 +79,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const body = readJsonBody<PingBody>(req)
-  if (!body || !body.sessionId || !isValidLat(body.lat) || !isValidLng(body.lng)) {
-    badRequest(res, 'invalid-body')
+  const parsed = validate(readJsonBody(req))
+  if (!parsed.ok) {
+    badRequest(res, parsed.error)
     return
   }
+  const body = parsed.value
 
   // 1 token / 5s => refill at 0.2 tokens/sec, burst of 1.
-  const limit = consumeRateLimitToken(`ping:${userId}:${body.sessionId}`, {
+  const limit = consumeRateLimitToken(`safety:ping:${userId}:${body.sessionId}`, {
     maxTokens: 1,
     refillPerSecond: 0.2,
   })

@@ -12,6 +12,7 @@ import { generateOtpCode, hashOtpCode, sendSms } from '../../_lib/notify'
 import {
   authenticate,
   badRequest,
+  consumeRateLimitToken,
   getServiceClient,
   methodNotAllowed,
   readJsonBody,
@@ -21,10 +22,22 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../../_lib/safety-server'
+import { asString, isPlainObject } from '../../_lib/validate'
 
-type VerifyBody = { contactId?: string }
+interface VerifyBody {
+  contactId: string
+}
 
 const CODE_TTL_MINUTES = 10
+
+function validate(
+  body: unknown,
+): { ok: true; value: VerifyBody } | { ok: false; error: string } {
+  if (!isPlainObject(body)) return { ok: false, error: 'body-not-object' }
+  const contactId = asString(body.contactId, 1, 128)
+  if (!contactId) return { ok: false, error: 'invalid-contactId' }
+  return { ok: true, value: { contactId } }
+}
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   setCors(res)
@@ -43,9 +56,30 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const body = readJsonBody<VerifyBody>(req)
-  if (!body?.contactId) {
-    badRequest(res, 'invalid-body')
+  // OTP issuance is a paid-SMS abuse vector. Per-user: 5 OTPs/hour (burst 2).
+  const userLimit = consumeRateLimitToken(`safety:verify-user:${userId}`, {
+    maxTokens: 2,
+    refillPerSecond: 5 / 3600,
+  })
+  if (!userLimit.allowed) {
+    res.status(429).json({ error: 'rate-limited', retryAfterMs: userLimit.retryAfterMs })
+    return
+  }
+
+  const parsed = validate(readJsonBody(req))
+  if (!parsed.ok) {
+    badRequest(res, parsed.error)
+    return
+  }
+  const body = parsed.value
+
+  // Per-contact: 3 OTPs/hour (burst 1). Stops hammering a specific number.
+  const contactLimit = consumeRateLimitToken(
+    `safety:verify-contact:${userId}:${body.contactId}`,
+    { maxTokens: 1, refillPerSecond: 3 / 3600 },
+  )
+  if (!contactLimit.allowed) {
+    res.status(429).json({ error: 'rate-limited', retryAfterMs: contactLimit.retryAfterMs })
     return
   }
 

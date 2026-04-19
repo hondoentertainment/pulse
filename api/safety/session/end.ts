@@ -9,6 +9,7 @@
 import {
   authenticate,
   badRequest,
+  consumeRateLimitToken,
   getServiceClient,
   methodNotAllowed,
   readJsonBody,
@@ -18,10 +19,29 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../../_lib/safety-server'
+import { asEnum, asString, isPlainObject } from '../../_lib/validate'
 
-type EndBody = {
-  sessionId?: string
-  reason?: 'user_completed' | 'cancelled'
+const REASONS = ['user_completed', 'cancelled'] as const
+type Reason = (typeof REASONS)[number]
+
+interface EndBody {
+  sessionId: string
+  reason: Reason
+}
+
+function validate(
+  body: unknown,
+): { ok: true; value: EndBody } | { ok: false; error: string } {
+  if (!isPlainObject(body)) return { ok: false, error: 'body-not-object' }
+  const sessionId = asString(body.sessionId, 1, 128)
+  if (!sessionId) return { ok: false, error: 'invalid-sessionId' }
+  let reason: Reason = 'user_completed'
+  if (body.reason !== undefined) {
+    const r = asEnum<Reason>(body.reason, REASONS)
+    if (!r) return { ok: false, error: 'invalid-reason' }
+    reason = r
+  }
+  return { ok: true, value: { sessionId, reason } }
 }
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
@@ -41,14 +61,23 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const body = readJsonBody<EndBody>(req)
-  if (!body || !body.sessionId) {
-    badRequest(res, 'invalid-body')
+  // 30 ends per minute per user — generous, just stops accidental loops.
+  const limit = consumeRateLimitToken(`safety:session-end:${userId}`, {
+    maxTokens: 30,
+    refillPerSecond: 0.5,
+  })
+  if (!limit.allowed) {
+    res.status(429).json({ error: 'rate-limited', retryAfterMs: limit.retryAfterMs })
     return
   }
 
-  const reason = body.reason ?? 'user_completed'
-  const nextState = reason === 'cancelled' ? 'cancelled' : 'completed'
+  const parsed = validate(readJsonBody(req))
+  if (!parsed.ok) {
+    badRequest(res, parsed.error)
+    return
+  }
+  const body = parsed.value
+  const nextState = body.reason === 'cancelled' ? 'cancelled' : 'completed'
 
   const client = getServiceClient()
   if (!client) {
