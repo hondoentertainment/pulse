@@ -15,7 +15,7 @@
  * performance dashboard instead.
  */
 
-import * as Sentry from '@sentry/react'
+import * as sentryBridge from '@/lib/sentry-bridge'
 import { logger } from './logger'
 
 export type WebVitalName = 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'FCP'
@@ -56,11 +56,10 @@ function report(v: WebVital): void {
     extra: { name: v.name, value: v.value, rating: v.rating },
   })
   try {
-    // Sentry's setMeasurement is available on the top-level SDK in v10+.
-    const withMeasurement = Sentry as unknown as {
-      setMeasurement?: (k: string, v: number, unit?: string) => void
-    }
-    withMeasurement.setMeasurement?.(
+    // Forwarded via the lazy bridge so we don't pull `@sentry/react` into
+    // the critical-path chunk. Pre-init calls are buffered inside
+    // `sentry-lazy` and flushed once `initSentry()` runs.
+    sentryBridge.measurement(
       v.name,
       v.value,
       v.name === 'CLS' ? 'none' : 'millisecond'
