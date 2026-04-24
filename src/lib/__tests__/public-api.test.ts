@@ -141,6 +141,6 @@ describe('formatVenueResponse', () => {
     }]
     const resp = formatVenueResponse(venue, pulses)
     expect(resp.recentPulses).toHaveLength(1)
-    expect(resp.recentPulses[0].id).toBe('p1')
+    expect(resp.recentPulses?.[0].id).toBe('p1')
   })
 })

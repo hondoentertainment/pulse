@@ -7,6 +7,7 @@ import {
   generateSmartNotification,
   getVenuesThatWillSurge,
   calculatePredictionAccuracy,
+  type VenuePattern,
 } from '../predictive-surge'
 import type { Pulse, Venue } from '../types'
 
@@ -76,6 +77,7 @@ describe('applyWeatherModifier', () => {
     const modified = applyWeatherModifier(base, 'rainy')
     expect(modified.confidence).toBeLessThan(base.confidence)
     expect(modified.basedOn).toBe('combined')
+    expect(Number.isNaN(modified.momentumScore)).toBe(false)
   })
 
   it('clear weather boosts', () => {
@@ -91,6 +93,7 @@ describe('applyEventModifier', () => {
     const modified = applyEventModifier(base, 50)
     expect(modified.confidence).toBeGreaterThan(base.confidence)
     expect(modified.basedOn).toBe('combined')
+    expect(Number.isNaN(modified.momentumScore)).toBe(false)
   })
 
   it('no rsvps returns unchanged', () => {
@@ -104,6 +107,7 @@ describe('generateSmartNotification', () => {
     const pred = { venueId: 'v1', predictedPeakTime: '10PM', predictedEnergyLevel: 'electric' as const, confidence: 0.7, label: 'test', basedOn: 'historical' as const }
     const msg = generateSmartNotification('Bar A', pred)
     expect(msg).toContain('Bar A')
+    expect(msg).toContain('usually surges around 10PM')
   })
 
   it('uses generic for low confidence', () => {
@@ -116,7 +120,7 @@ describe('generateSmartNotification', () => {
 describe('getVenuesThatWillSurge', () => {
   it('returns sorted predictions', () => {
     const venues = [makeVenue({ id: 'v1', name: 'A' }), makeVenue({ id: 'v2', name: 'B' })]
-    const patterns = [
+    const patterns: VenuePattern[] = [
       { venueId: 'v1', dayOfWeek: 5, hourDistribution: { 21: { avgPulseCount: 10, avgEnergy: 3 } }, typicalPeakHour: 21, typicalPeakEnergy: 'electric' as const },
       { venueId: 'v2', dayOfWeek: 5, hourDistribution: { 20: { avgPulseCount: 5, avgEnergy: 2 } }, typicalPeakHour: 20, typicalPeakEnergy: 'buzzing' as const },
     ]

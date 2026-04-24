@@ -11,7 +11,7 @@ import {
 } from '@/lib/night-planner'
 import type { NightPlan, PlanStop, PlanPreferences } from '@/lib/night-planner'
 import { LivePlanTracker } from '@/components/LivePlanTracker'
-import { CaretLeft, UsersThree, Sparkle, CurrencyDollar, Clock, ArrowsClockwise, LockSimple, ShareNetwork, MapPin, Car, PersonSimpleWalk } from '@phosphor-icons/react'
+import { CaretLeft, UsersThree, Sparkle, CurrencyDollar, Clock, ArrowsClockwise, LockSimple, ShareNetwork, MapPin, Car, PersonSimpleWalk, ChatCircleDots, ShieldCheck } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
@@ -158,7 +158,9 @@ export function NightPlannerPage({
   }
 
   const handleSharePlan = () => {
-    toast.success('Plan shared with your crew!')
+    toast.success('Plan shared with your crew!', {
+      description: 'Votes, ETAs, and split ride costs are ready to compare.',
+    })
   }
 
   const handleActivatePlan = () => {
@@ -647,7 +649,7 @@ function StopCard({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div
               className="px-2 py-0.5 rounded-full text-xs font-medium"
               style={{
@@ -662,6 +664,24 @@ function StopCard({
                 {stop.venueCategory}
               </span>
             )}
+            <span className="inline-flex items-center gap-1 rounded-full bg-card/60 px-2 py-0.5 text-xs text-muted-foreground">
+              <ChatCircleDots size={12} />
+              {stop.groupVote.yes} yes{stop.groupVote.maybe > 0 ? ` • ${stop.groupVote.maybe} maybe` : ''}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-card/60 px-2 py-0.5 text-xs text-muted-foreground">
+              <Car size={12} />
+              ETA {stop.etaMinutes}m
+            </span>
+            {stop.rideSplitEstimate > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-card/60 px-2 py-0.5 text-xs text-muted-foreground">
+                <CurrencyDollar size={12} />
+                Ride split ~${stop.rideSplitEstimate}/pp
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 rounded-full bg-card/60 px-2 py-0.5 text-xs text-muted-foreground">
+              <ShieldCheck size={12} />
+              Entry {stop.entryConfidence}%
+            </span>
           </div>
         </div>
       </div>

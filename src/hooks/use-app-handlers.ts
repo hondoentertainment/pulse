@@ -23,9 +23,11 @@ import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted
 import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import type { TabId } from '@/components/BottomNav'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
 export function useAppHandlers() {
   const state = useAppState()
+  const { updateProfile } = useSupabaseAuth()
   const {
     activeTab,
     venues,
@@ -138,14 +140,20 @@ export function useAppHandlers() {
       return currentVenues.map(v => v.id === venueForPulse.id ? updateVenueWithCheckIn(v, newPulse) : v)
     })
 
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), venueCheckInHistory: { [venueForPulse.id]: 1 }, postStreak: 1, lastPostDate: today }
-      let newStreak = user.postStreak || 0
-      if (user.lastPostDate !== today) {
-        if (user.lastPostDate) { const diff = Math.ceil(Math.abs(new Date(today).getTime() - new Date(user.lastPostDate).getTime()) / (1000 * 60 * 60 * 24)); newStreak = diff === 1 ? newStreak + 1 : 1 } else newStreak = 1
+    const history = currentUser.venueCheckInHistory || {}
+    let newStreak = currentUser.postStreak || 0
+    if (currentUser.lastPostDate !== today) {
+      if (currentUser.lastPostDate) {
+        const diff = Math.ceil(Math.abs(new Date(today).getTime() - new Date(currentUser.lastPostDate).getTime()) / (1000 * 60 * 60 * 24))
+        newStreak = diff === 1 ? newStreak + 1 : 1
+      } else {
+        newStreak = 1
       }
-      const history = user.venueCheckInHistory || {}
-      return { ...user, venueCheckInHistory: { ...history, [venueForPulse.id]: (history[venueForPulse.id] || 0) + 1 }, postStreak: newStreak, lastPostDate: today }
+    }
+    void updateProfile({
+      venueCheckInHistory: { ...history, [venueForPulse.id]: (history[venueForPulse.id] || 0) + 1 },
+      postStreak: newStreak,
+      lastPostDate: today,
     })
 
     if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
@@ -222,7 +230,8 @@ export function useAppHandlers() {
   const handleAddFriend = (userId: string) => {
     if (!currentUser) return
     trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
-    setCurrentUser(prev => { if (!prev) return prev!; if (prev.friends.includes(userId)) return prev; return { ...prev, friends: [...prev.friends, userId] } })
+    if (currentUser.friends.includes(userId)) return
+    void updateProfile({ friends: [...currentUser.friends, userId] })
     toast.success('Friend added!')
     if (navigator.vibrate) navigator.vibrate([30])
   }
@@ -270,25 +279,35 @@ export function useAppHandlers() {
   }
 
   const handleToggleFavorite = (venueId: string) => {
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [venueId], followedVenues: [], createdAt: new Date().toISOString() }
-      const favorites = user.favoriteVenues || []
-      if (favorites.includes(venueId)) { toast.success('Removed from favorites'); return { ...user, favoriteVenues: favorites.filter(id => id !== venueId) } }
-      if (favorites.length >= 4) { toast.error('Maximum 4 favorites', { description: 'Remove one to add another' }); return user }
+    if (!currentUser) return
+    const favorites = currentUser.favoriteVenues || []
+    if (favorites.includes(venueId)) { 
+      toast.success('Removed from favorites')
+      updateProfile({ favoriteVenues: favorites.filter(id => id !== venueId) })
+    } else {
+      if (favorites.length >= 4) { 
+        toast.error('Maximum 4 favorites', { description: 'Remove one to add another' })
+        return 
+      }
       toast.success('Added to favorites')
-      return { ...user, favoriteVenues: [...favorites, venueId] }
-    })
+      updateProfile({ favoriteVenues: [...favorites, venueId] })
+    }
   }
 
   const handleToggleFollow = (venueId: string) => {
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [venueId], createdAt: new Date().toISOString() }
-      const followed = user.followedVenues || []
-      if (followed.includes(venueId)) { toast.success('Unfollowed venue'); return { ...user, followedVenues: followed.filter(id => id !== venueId) } }
-      if (followed.length >= 10) { toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' }); return user }
+    if (!currentUser) return
+    const followed = currentUser.followedVenues || []
+    if (followed.includes(venueId)) { 
+      toast.success('Unfollowed venue')
+      updateProfile({ followedVenues: followed.filter(id => id !== venueId) })
+    } else {
+      if (followed.length >= 10) { 
+        toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' })
+        return 
+      }
       toast.success('Following venue')
-      return { ...user, followedVenues: [...followed, venueId] }
-    })
+      updateProfile({ followedVenues: [...followed, venueId] })
+    }
   }
 
   return {

@@ -8,6 +8,8 @@
 import { track as vercelTrack } from '@vercel/analytics'
 import * as Sentry from '@sentry/react'
 
+type AnalyticsPropertyValue = string | number | boolean | null | undefined
+
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
   | { type: 'onboarding_start'; timestamp: number }
@@ -22,7 +24,7 @@ export type AnalyticsEvent =
   | { type: 'neighborhood_view'; timestamp: number; neighborhoodCount: number }
   | { type: 'neighborhood_hottest_click'; timestamp: number; neighborhoodId: string; city?: string }
   | { type: 'neighborhood_venue_click'; timestamp: number; neighborhoodId: string; venueId: string }
-  | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
+  | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
@@ -75,7 +77,7 @@ export interface IntegrationActionSummary {
   successCount: number
   unavailableCount: number
   failureCount: number
-  actionsByType: Record<'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts', number>
+  actionsByType: Record<'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets', number>
   topProviders: { provider: string; count: number }[]
   recentFailures: Extract<AnalyticsEvent, { type: 'integration_action' }>[]
 }
@@ -93,8 +95,14 @@ export function trackEvent(event: AnalyticsEvent): void {
   }
   
   // Broadcast to Vercel Analytics
-  const { type, timestamp, ...properties } = event
-  vercelTrack(type, properties as Record<string, any>)
+  if (typeof window !== 'undefined') {
+    const { type, timestamp: _timestamp, ...properties } = event
+    try {
+      vercelTrack(type, properties as Record<string, AnalyticsPropertyValue>)
+    } catch {
+      // Ignore analytics transport issues so local/test environments stay deterministic.
+    }
+  }
 }
 /**
  * Get all tracked events, optionally filtered by type.
@@ -122,6 +130,7 @@ export function getIntegrationActionSummary(events: AnalyticsEvent[]): Integrati
     reservation: 0,
     maps: 0,
     shortcuts: 0,
+    tickets: 0,
   }
 
   const providerCounts: Record<string, number> = {}

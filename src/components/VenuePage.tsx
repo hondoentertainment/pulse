@@ -9,12 +9,14 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank } from '@phosphor-icons/react'
+import { VenueActionPanel } from '@/components/VenueActionPanel'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
 import { ParallaxVenueHero } from './ParallaxVenueHero'
@@ -27,6 +29,10 @@ import { VenueActivityStream } from './VenueActivityStream'
 // Phase 4: Personalization
 import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
+import { trackEvent } from '@/lib/analytics'
+import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
+import { launchIntegrationUrl } from '@/lib/integrations'
+import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
 import {
   getVenueLiveData,
   reportWaitTime,
@@ -38,11 +44,13 @@ import {
   seedDemoReports,
   type VenueLiveData,
 } from '@/lib/live-intelligence'
+import { seedVenueOperatorStatus } from '@/lib/venue-operator-live'
 
 interface VenuePageProps {
   venue: Venue
   venuePulses: PulseWithUser[]
   distance?: number
+  userLocation?: { lat: number; lng: number } | null
   unitSystem: 'imperial' | 'metric'
   locationName: string
   currentTime: Date
@@ -61,14 +69,13 @@ interface VenuePageProps {
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
-  onGetTickets?: () => void
-  onReserveTable?: () => void
 }
 
 export function VenuePage({
   venue,
   venuePulses,
   distance,
+  userLocation,
   unitSystem,
   locationName,
   currentTime,
@@ -87,13 +94,12 @@ export function VenuePage({
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
-  onGetTickets,
-  onReserveTable,
 }: VenuePageProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
+  const [isWatchingSurge, setIsWatchingSurge] = useState(false)
 
   const refreshLiveData = useCallback(() => {
     setLiveData(getVenueLiveData(venue.id))
@@ -102,13 +108,97 @@ export function VenuePage({
   useEffect(() => {
     // Seed demo data on first load for this venue
     seedDemoReports([venue.id])
+    seedVenueOperatorStatus(venue.id, venue.name)
     refreshLiveData()
   }, [venue.id, refreshLiveData])
+
+  useEffect(() => {
+    setIsWatchingSurge(isVenueSurgeWatched(venue.id))
+  }, [venue.id])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
     setShareCard(card)
     setShareOpen(true)
+  }
+
+  const actionCtas = getVenueActionCtas(venue, {
+    userLocation: userLocation ?? null,
+    liveData,
+    isWatchingSurge,
+  })
+
+  const directionsAction = actionCtas.find(action => action.id === 'directions')
+  const rideAction = actionCtas.find(action => action.id === 'ride')
+  const reserveAction = actionCtas.find(action => action.id === 'reserve')
+  const ticketAction = actionCtas.find(action => action.id === 'tickets')
+
+  const launchVenueAction = (action: VenueActionCta) => {
+    if (action.kind === 'status') {
+      toast.info(action.label, { description: action.description })
+      return
+    }
+
+    if (action.kind === 'toggle') {
+      const next = toggleVenueSurgeWatch(venue.id)
+      setIsWatchingSurge(next)
+      trackEvent({
+        type: 'integration_action',
+        timestamp: Date.now(),
+        venueId: venue.id,
+        integrationType: 'shortcuts',
+        actionId: next ? 'enable_surge_watch' : 'disable_surge_watch',
+        outcome: 'success',
+      })
+      toast.success(next ? 'Watching for surges' : 'Surge alerts removed', {
+        description: next
+          ? `Pulse will keep ${venue.name} on your radar when energy spikes.`
+          : `You will no longer be nudged when ${venue.name} surges.`,
+      })
+      return
+    }
+
+    if (action.disabledReason || !action.href || !action.integrationType) {
+      trackEvent({
+        type: 'integration_action',
+        timestamp: Date.now(),
+        venueId: venue.id,
+        integrationType: action.integrationType ?? 'shortcuts',
+        actionId: action.id,
+        provider: action.provider,
+        outcome: 'unavailable',
+        reason: action.disabledReason ?? 'missing-link',
+      })
+      toast.error(action.disabledReason ?? 'This action is not available yet.')
+      return
+    }
+
+    const result = launchIntegrationUrl(action.href, {
+      opener: (...args) => window.open(...args),
+      locationAssign: nextUrl => window.location.assign(nextUrl),
+    })
+
+    trackEvent({
+      type: 'integration_action',
+      timestamp: Date.now(),
+      venueId: venue.id,
+      integrationType: action.integrationType,
+      actionId: action.id,
+      provider: action.provider,
+      outcome: result.ok ? 'success' : result.reason === 'unavailable' ? 'unavailable' : 'failed',
+      reason: result.reason,
+    })
+
+    if (!result.ok) {
+      toast.error('Unable to open link', {
+        description: action.disabledReason ?? 'Check browser settings and try again.',
+      })
+      return
+    }
+
+    toast.success(action.label, {
+      description: action.description,
+    })
   }
 
   return (
@@ -162,18 +252,6 @@ export function VenuePage({
               >
                 <ShareNetwork size={24} className="text-muted-foreground" />
               </button>
-              {onToggleFollow && (
-                <button
-                  onClick={onToggleFollow}
-                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  <HeartStraight
-                    size={24}
-                    weight={isFollowed ? 'fill' : 'regular'}
-                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
-                  />
-                </button>
-              )}
               <button
                 onClick={onToggleFavorite}
                 className="p-2 rounded-lg hover:bg-secondary transition-colors"
@@ -361,48 +439,16 @@ export function VenuePage({
           </Button>
         )}
 
-        {/* Ticketing & Table Reservations */}
-        {(onGetTickets || onReserveTable) && (
-          <div className="flex gap-2">
-            {onGetTickets && (
-              <button
-                onClick={onGetTickets}
-                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20 hover:border-primary/40 transition-colors"
-              >
-                <Ticket size={18} weight="fill" className="text-primary" />
-                <span className="text-sm font-medium">Get Tickets</span>
-              </button>
-            )}
-            {onReserveTable && (
-              <button
-                onClick={onReserveTable}
-                className="flex-1 flex items-center gap-2 p-3 bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/20 hover:border-blue-500/40 transition-colors"
-              >
-                <CalendarBlank size={18} weight="fill" className="text-blue-500" />
-                <span className="text-sm font-medium">Reserve Table</span>
-              </button>
-            )}
-          </div>
-        )}
+        <VenueActionPanel actions={actionCtas} onAction={launchVenueAction} />
 
-        {/* Quick Actions: Rideshare & Reservations */}
         {onOpenIntegrations && (
-          <div className="flex gap-2">
-            <button
-              onClick={onOpenIntegrations}
-              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
-            >
-              <Car size={18} weight="fill" className="text-primary" />
-              <span className="text-sm font-medium">Get a Ride</span>
-            </button>
-            <button
-              onClick={onOpenIntegrations}
-              className="flex-1 flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors"
-            >
-              <CalendarCheck size={18} weight="fill" className="text-blue-500" />
-              <span className="text-sm font-medium">Reserve</span>
-            </button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={onOpenIntegrations}
+            className="w-full border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          >
+            More Partner Links
+          </Button>
         )}
 
         {/* Live Venue Intelligence Panel */}
@@ -416,16 +462,27 @@ export function VenuePage({
 
         {/* Phase 2: Quick Actions Bar */}
         <VenueQuickActions
-          venue={venue}
           onCheckIn={onCreatePulse}
           onShare={handleShare}
-          onDirections={() => {
-            if (venue.location.address) {
-              window.open(`https://maps.google.com/?q=${encodeURIComponent(venue.location.address)}`, '_blank')
+          onDirections={() => directionsAction && launchVenueAction(directionsAction)}
+          onRide={() => rideAction && launchVenueAction(rideAction)}
+          onReserve={() => {
+            if (reserveAction) {
+              launchVenueAction(reserveAction)
+              return
             }
+            if (ticketAction) {
+              launchVenueAction(ticketAction)
+            }
+          }}
+          onWatchSurge={() => {
+            const watchAction = actionCtas.find(action => action.id === 'surge_watch')
+            if (watchAction) launchVenueAction(watchAction)
           }}
           onSave={onToggleFavorite}
           isSaved={isFavorite}
+          isWatchingSurge={isWatchingSurge}
+          canReserve={Boolean(reserveAction || ticketAction)}
         />
 
         <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />

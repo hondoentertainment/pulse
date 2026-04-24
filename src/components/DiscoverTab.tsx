@@ -6,10 +6,10 @@ import { StoryRing } from '@/components/StoryRing'
 import { FriendSuggestions } from '@/components/FriendSuggestions'
 import { EventCard } from '@/components/EventCard'
 import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
+import { RightNowSection } from '@/components/RightNowSection'
 import { Separator } from '@/components/ui/separator'
 import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix, Lightning, Ticket, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import ForYouFeed from '@/components/ForYouFeed'
 import MoodSelector from '@/components/MoodSelector'
 import type { MoodType } from '@/lib/personalization-engine'
 import { useState } from 'react'
@@ -70,10 +70,20 @@ export function DiscoverTab({
         </>
       )}
 
+      <RightNowSection
+        venues={venues}
+        currentUser={currentUser}
+        userLocation={userLocation ?? null}
+        onVenueClick={onVenueClick}
+      />
+
+      <Separator />
+
       {/* Predictive Surge */}
       <PredictiveSurgePanel
         venues={venues}
         pulses={pulses}
+        events={events}
         onVenueClick={onVenueClick}
       />
 
@@ -81,15 +91,6 @@ export function DiscoverTab({
       <MoodSelector
         onMoodSelect={setSelectedMood}
         selectedMood={selectedMood}
-      />
-
-      {/* Phase 4: For You Feed */}
-      <ForYouFeed
-        venues={venues}
-        user={currentUser}
-        pulses={pulses}
-        userLocation={userLocation ?? null}
-        onVenueClick={onVenueClick}
       />
 
       <Separator />

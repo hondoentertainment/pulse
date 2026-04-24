@@ -10,12 +10,14 @@ Run these locally before shipping:
 npm run lint
 npm run test
 npm run build
+npm run test:smoke
 ```
 
 Expected result:
 - Lint completes without errors
 - Tests pass
 - Build succeeds
+- Browser smoke checks pass against a preview build
 
 ## Manual Smoke Checks
 
@@ -42,10 +44,18 @@ Configure these workflow checks as required on the default branch:
 - `lint`
 - `test`
 - `build`
+- `smoke-preview`
 
-## Next Check To Add
+The workflow now also runs:
 
-The next automation gap to close is browser-level smoke coverage for the critical path:
+- `smoke-preview`
+  Runs Playwright against a preview build with auth bypass enabled and uploads the HTML report.
+- `dependency-audit`
+  Uploads `npm audit` output as an artifact so dependency debt is visible without keeping every PR red.
+
+## Next Check To Harden
+
+The next automation gap to close is expanding browser smoke coverage for the critical path:
 
 - onboarding
 - map interaction

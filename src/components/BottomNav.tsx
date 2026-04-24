@@ -28,6 +28,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
           return (
             <button
               key={tab.id}
+              data-testid={`tab-${tab.label}`}
               onClick={() => onTabChange(tab.id)}
               className="flex flex-col items-center justify-center flex-1 h-full relative"
             >

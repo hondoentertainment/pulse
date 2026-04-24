@@ -97,8 +97,26 @@ export function getEndpointsForTier(tier: APIKey['tier']): APIEndpoint[] {
   return API_ENDPOINTS.filter(ep => TIER_ORDER.indexOf(ep.tier) <= tierIdx)
 }
 
-export function formatVenueResponse(venue: Venue, pulses?: Pulse[]): Record<string, unknown> {
-  const resp: Record<string, unknown> = {
+export interface PublicVenueResponse {
+  id: string
+  name: string
+  category: string | null
+  city: string | null
+  state: string | null
+  location: { lat: number; lng: number }
+  pulseScore: number
+  lastPulseAt: string | null
+  recentPulses?: {
+    id: string
+    energyRating: Pulse['energyRating']
+    createdAt: string
+    caption: string | null
+    photoCount: number
+  }[]
+}
+
+export function formatVenueResponse(venue: Venue, pulses?: Pulse[]): PublicVenueResponse {
+  const resp: PublicVenueResponse = {
     id: venue.id, name: venue.name, category: venue.category ?? null,
     city: venue.city ?? null, state: venue.state ?? null,
     location: { lat: venue.location.lat, lng: venue.location.lng },

@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { AppStateProvider, useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { useNativeAppBootstrap } from '@/hooks/use-native-app-bootstrap'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { calculatePresence } from '@/lib/presence-engine'
 import { calculateDistance } from '@/lib/pulse-engine'
 import { BottomNav } from '@/components/BottomNav'
@@ -18,12 +20,14 @@ const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ d
 const SocialPulseDashboard = lazy(() => import('@/components/SocialPulseDashboard').then(m => ({ default: m.SocialPulseDashboard })))
 const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => ({ default: m.PresenceSheet })))
 const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
+const LoginScreen = lazy(() => import('@/components/LoginScreen').then(m => ({ default: m.LoginScreen })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
 function AppContent() {
   const state = useAppState()
   const handlers = useAppHandlers()
+  useNativeAppBootstrap()
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -44,7 +48,7 @@ function AppContent() {
     unreadNotificationCount,
     isFavorite, isFollowed,
     integrationsEnabled,
-    setIntegrationVenue, setCurrentUser,
+    setIntegrationVenue,
     getPulsesWithUsers,
   } = state
 
@@ -54,15 +58,28 @@ function AppContent() {
     handleTabChange, handleStoryReact, handlePulseReport,
   } = handlers
 
+  const { session, isLoading: authLoading, updateProfile } = useSupabaseAuth()
+
+  // ── Auth gate ────────────────────────────────────────────
+  if (authLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading Session...</p></div>
+  }
+
+  if (!session) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <LoginScreen />
+      </Suspense>
+    )
+  }
+
   // ── Onboarding gate ──────────────────────────────────────
   if (hasCompletedOnboarding === false) {
     return (
       <Suspense fallback={pageFallback}>
         <OnboardingFlow
           onComplete={(prefs: OnboardingPreferences) => {
-            if (prefs.favoriteCategories.length > 0) {
-              setCurrentUser(prev => prev ? { ...prev, favoriteCategories: prefs.favoriteCategories } : prev!)
-            }
+            void updateProfile({ favoriteCategories: prefs.favoriteCategories })
             setHasCompletedOnboarding(true)
           }}
         />
@@ -114,6 +131,7 @@ function AppContent() {
             venue={selectedVenue}
             venuePulses={venuePulses}
             distance={distance}
+            userLocation={userLocation}
             unitSystem={unitSystem}
             locationName={locationName}
             currentTime={currentTime}
@@ -146,10 +164,7 @@ function AppContent() {
             presence={presenceData}
             currentUser={currentUser}
             onUpdateSettings={(settings) => {
-              setCurrentUser(prev => {
-                if (!prev) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), presenceSettings: settings }
-                return { ...prev, presenceSettings: settings }
-              })
+              void updateProfile({ presenceSettings: settings })
             }}
           />
         </Suspense>
@@ -195,6 +210,7 @@ function AppContent() {
       </Suspense>
 
       <motion.button
+        data-testid="create-pulse-fab"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}

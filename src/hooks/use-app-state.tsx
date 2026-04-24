@@ -32,6 +32,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
+import { hasSupabaseConfig, supabase } from '@/lib/supabase'
 import { trackEvent, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
@@ -49,6 +50,7 @@ export type SubPage =
   | 'settings'
   | 'integrations'
   | 'moderation'
+  | 'owner-dashboard'
   | 'challenges'
   | 'my-tickets'
   | 'night-planner'
@@ -164,6 +166,17 @@ export function useAppState(): AppState {
   return ctx
 }
 
+export function getInitialCatalogState(initialVenues: Venue[]) {
+  return {
+    venues: hasSupabaseConfig ? undefined : initialVenues,
+    pulses: hasSupabaseConfig ? undefined : [],
+  }
+}
+
+export function getCurrentUserFromProfile(profile: User | null): User | undefined {
+  return profile ?? undefined
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [activeTab, setActiveTab] = useState<TabId>('trending')
@@ -194,23 +207,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const { profile: supabaseProfile } = useSupabaseAuth()
 
-  const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
-    id: 'user-1',
-    username: 'kyle',
-    profilePhoto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
-    friends: ['user-2', 'user-3', 'user-4'],
-    favoriteVenues: [],
-    followedVenues: [],
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    venueCheckInHistory: {},
-    credibilityScore: 1.0,
-    presenceSettings: { enabled: true, visibility: 'everyone', hideAtSensitiveVenues: true },
-  })
+  const [currentUser, setCurrentUser] = useState<User | undefined>(undefined)
 
   // Bridge Supabase Profile -> Local State
   useEffect(() => {
-    if (supabaseProfile) setCurrentUser(supabaseProfile)
-  }, [supabaseProfile, setCurrentUser])
+    setCurrentUser(getCurrentUserFromProfile(supabaseProfile))
+  }, [supabaseProfile])
 
   const launchedCitySet = new Set(
     (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
@@ -223,19 +225,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return launchedCitySet.has((venue.city ?? '').toLowerCase())
   })
 
-  const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
-  const [venues, setVenues] = useKV<Venue[]>('venues', initialVenues)
-  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
-  const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
-  const [stories, setStories] = useKV<PulseStory[]>('stories', [])
-  const [events, setEvents] = useKV<VenueEvent[]>('events', [])
-  const [crews, setCrews] = useKV<Crew[]>('crews', [])
-  const [crewCheckIns, setCrewCheckIns] = useKV<CrewCheckIn[]>('crewCheckIns', [])
-  const [playlists, setPlaylists] = useKV<PulsePlaylist[]>('playlists', [])
-  const [promotions, setPromotions] = useKV<PromotedVenue[]>('promotions', [])
-  const [contentReports, setContentReports] = useKV<ContentReport[]>('contentReports', [])
-  const [userBlocks] = useKV<UserBlock[]>('userBlocks', [])
-  const [userMutes] = useKV<UserMute[]>('userMutes', [])
+  const initialCatalogState = getInitialCatalogState(initialVenues)
+  const [pulses, setPulses] = useState<Pulse[] | undefined>(initialCatalogState.pulses)
+  const [venues, setVenues] = useState<Venue[] | undefined>(initialCatalogState.venues)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [hashtags, setHashtags] = useState<Hashtag[]>([])
+  const [stories, setStories] = useState<PulseStory[]>([])
+  const [events, setEvents] = useState<VenueEvent[]>([])
+  const [crews, setCrews] = useState<Crew[]>([])
+  const [crewCheckIns, setCrewCheckIns] = useState<CrewCheckIn[]>([])
+  const [playlists, setPlaylists] = useState<PulsePlaylist[]>([])
+  const [promotions, setPromotions] = useState<PromotedVenue[]>([])
+  const [contentReports, setContentReports] = useState<ContentReport[]>([])
+  const [userBlocks] = useState<UserBlock[]>([])
+  const [userMutes] = useState<UserMute[]>([])
 
   // ── Side-effects ─────────────────────────────────────────
   // Activate batched Supabase Realtime subscriptions (Phase 6)
@@ -248,9 +251,26 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { initHighContrast() }, [])
 
+  const { data: serverEvents } = useQuery({
+    queryKey: ['events'],
+    queryFn: fetchEventsFromApi,
+  })
+
+  const { data: serverVenues } = useQuery({
+    queryKey: ['venues'],
+    queryFn: fetchVenuesFromSupabase,
+    enabled: hasSupabaseConfig,
+  })
+
+  const { data: serverPulses } = useQuery({
+    queryKey: ['pulses'],
+    queryFn: fetchPulsesFromSupabase,
+    enabled: hasSupabaseConfig,
+  })
+
   // Seed demo events / promotions
   useEffect(() => {
-    if (!events || events.length === 0) {
+    if ((!events || events.length === 0) && (!Array.isArray(serverEvents) || serverEvents.length === 0)) {
       if (venues && venues.length > 0) {
         const now = new Date()
         const demoEvents = [
@@ -270,36 +290,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ])
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venues])
-
-  // Remote data sync with React Query
-  const { data: serverEvents } = useQuery({
-    queryKey: ['events'],
-    queryFn: fetchEventsFromApi,
-  })
-
-  const { data: serverVenues } = useQuery({
-    queryKey: ['venues'],
-    queryFn: fetchVenuesFromSupabase,
-  })
-
-  const { data: serverPulses } = useQuery({
-    queryKey: ['pulses'],
-    queryFn: fetchPulsesFromSupabase,
-  })
+  }, [events, promotions, serverEvents, venues])
 
   // Hydrate local KV state from React Query
   useEffect(() => {
-    if (serverEvents && serverEvents.length > 0) setEvents(serverEvents)
+    if (Array.isArray(serverEvents) && serverEvents.length > 0) setEvents(serverEvents)
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (serverVenues && serverVenues.length > 0) setVenues(serverVenues)
+    if (Array.isArray(serverVenues)) setVenues(serverVenues)
   }, [serverVenues, setVenues])
 
   useEffect(() => {
-    if (serverPulses && serverPulses.length > 0) setPulses(serverPulses)
+    if (Array.isArray(serverPulses)) setPulses(serverPulses)
   }, [serverPulses, setPulses])
 
   // Location
@@ -321,16 +324,30 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (userLocation) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json`)
-        .then(res => res.json())
-        .then(data => {
-          const city = data.address?.city || data.address?.town || data.address?.village || 'New York'
-          const state = data.address?.state || 'NY'
-          setLocationName(`${city}, ${state}`)
-        })
-        .catch(() => setLocationName('New York, NY'))
+      if (!hasSupabaseConfig) {
+        const fallbackVenue = getVenuesByProximity(initialVenues, userLocation.lat, userLocation.lng)[0]
+        if (fallbackVenue?.city && fallbackVenue?.state) {
+          setLocationName(`${fallbackVenue.city}, ${fallbackVenue.state}`)
+          return
+        }
+      }
+
+      supabase.functions.invoke('geocode', {
+        method: 'POST',
+        body: { lat: userLocation.lat.toString(), lng: userLocation.lng.toString() }
+      })
+      .then(({ data, error }) => {
+        if (error) throw error
+        const city = data.address?.city || data.address?.town || data.address?.village || 'New York'
+        const state = data.address?.state || 'NY'
+        setLocationName(`${city}, ${state}`)
+      })
+      .catch((err) => {
+        console.error('Geocode error:', err)
+        setLocationName('New York, NY')
+      })
     }
-  }, [userLocation])
+  }, [initialVenues, userLocation])
 
   useEffect(() => {
     if (locationError) {

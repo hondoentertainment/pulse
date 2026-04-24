@@ -15,26 +15,6 @@ const isVitest = process.env.VITEST === 'true'
 // https://vite.dev/config/
 export default defineConfig({
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) return 'react-vendor';
-            if (id.includes('framer-motion')) return 'framer-motion';
-            if (id.includes('recharts') || id.includes('d3')) return 'charts';
-            if (id.includes('three')) return 'three';
-            if (id.includes('@radix-ui/')) return 'radix';
-            if (id.includes('sonner')) return 'sonner';
-            if (id.includes('@tanstack/react-query')) return 'tanstack-query';
-            if (id.includes('@phosphor-icons')) return 'phosphor';
-            if (id.includes('octokit') || id.includes('@octokit')) return 'octokit';
-            if (id.includes('@supabase/')) return 'supabase';
-            if (id.includes('@sentry/')) return 'sentry';
-            if (id.includes('@vercel/')) return 'vercel';
-          }
-        },
-      },
-    },
     chunkSizeWarningLimit: 600,
   },
   plugins: [

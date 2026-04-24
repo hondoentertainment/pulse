@@ -150,8 +150,7 @@ export function MainTabRouter() {
               }}
               onOpenSettings={() => setSubPage('settings')}
               onOpenOwnerDashboard={() => {
-                if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Owner dashboard is currently unavailable')); return }
-                setShowAdminDashboard(true)
+                setSubPage('owner-dashboard')
               }}
               onOpenModerationQueue={() => setSubPage('moderation')}
             />

@@ -1,10 +1,32 @@
 import type { Venue } from './types'
 import { calculateDistance } from './pulse-engine'
+import {
+  type GuestListStatus,
+  formatGuestListStatus,
+  getVenueOperatorStatus,
+  seedVenueOperatorStatus,
+} from './venue-operator-live'
 
 // --- Types ---
 
 export type DressCode = 'casual' | 'smart-casual' | 'dressy' | 'formal'
 export type ConfidenceLevel = 'low' | 'medium' | 'high'
+
+export interface SignalConfidenceDetail {
+  level: ConfidenceLevel
+  reportCount: number
+  freshnessMinutes: number | null
+  operatorVerified: boolean
+  summary: string
+}
+
+export interface DoorMode {
+  lineStatus: 'walk-right-in' | 'moving' | 'slow' | 'door-risk'
+  entryConfidence: number
+  guestListStatus: GuestListStatus | null
+  tableMinimum: number | null
+  reasons: string[]
+}
 
 export interface NowPlaying {
   track: string
@@ -25,6 +47,11 @@ export interface VenueLiveData {
   capacity: { current: number; max: number; percentFull: number } | null
   lastUpdated: string
   confidence: Record<string, ConfidenceLevel>
+  confidenceDetails: Record<string, SignalConfidenceDetail>
+  doorMode: DoorMode
+  operatorNote?: string
+  djStatus?: string
+  special?: string
 }
 
 export interface LiveReport {
@@ -200,6 +227,35 @@ function computeConfidence(reports: LiveReport[]): ConfidenceLevel {
   return 'low'
 }
 
+function getFreshnessMinutes(reports: LiveReport[]): number | null {
+  if (reports.length === 0) return null
+  const latest = reports.reduce((best, current) =>
+    new Date(current.createdAt).getTime() > new Date(best.createdAt).getTime() ? current : best
+  )
+  return Math.max(0, Math.round((Date.now() - new Date(latest.createdAt).getTime()) / 60000))
+}
+
+function buildConfidenceDetail(
+  reports: LiveReport[],
+  level: ConfidenceLevel,
+  opts?: { operatorVerified?: boolean; fallback?: string }
+): SignalConfidenceDetail {
+  const freshnessMinutes = getFreshnessMinutes(reports)
+  const operatorVerified = opts?.operatorVerified ?? false
+  const freshnessLabel = freshnessMinutes === null ? 'No recent reports' : `${freshnessMinutes}m ago`
+  const summary = reports.length > 0
+    ? `${reports.length} recent report${reports.length === 1 ? '' : 's'} • ${freshnessLabel}${operatorVerified ? ' • owner confirmed' : ''}`
+    : opts?.fallback ?? `No recent reports${operatorVerified ? ' • owner confirmed' : ''}`
+
+  return {
+    level,
+    reportCount: reports.length,
+    freshnessMinutes,
+    operatorVerified,
+    summary,
+  }
+}
+
 function weightedAverage(reports: LiveReport[]): number {
   if (reports.length === 0) return 0
   let totalWeight = 0
@@ -235,6 +291,9 @@ function mostReportedValue<T>(reports: LiveReport[]): T | null {
 
 export function getVenueLiveData(venueId: string): VenueLiveData {
   const now = new Date().toISOString()
+  seedVenueOperatorStatus(venueId, venueId)
+  const operatorStatus = getVenueOperatorStatus(venueId)
+  const hasVerifiedOperatorUpdate = !!operatorStatus && operatorStatus.updatedBy !== 'owner-demo'
 
   const waitReports = getRecentReports(venueId, 'wait_time')
   const coverReports = getRecentReports(venueId, 'cover_charge')
@@ -312,11 +371,80 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     ageRange: computeConfidence(ageReports),
   }
 
+  const confidenceDetails: Record<string, SignalConfidenceDetail> = {
+    waitTime: buildConfidenceDetail(waitReports, confidence.waitTime, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.doorNote,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.doorNote ? 'Owner shared a door update' : 'No recent line reports yet',
+    }),
+    coverCharge: buildConfidenceDetail(coverReports, confidence.coverCharge, {
+      operatorVerified: hasVerifiedOperatorUpdate && operatorStatus?.tableMinimum !== null,
+      fallback: 'No recent cover reports yet',
+    }),
+    musicGenre: buildConfidenceDetail(musicReports, confidence.musicGenre, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.djStatus,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.djStatus ? 'Owner shared a DJ update' : 'No recent music reports yet',
+    }),
+    crowdLevel: buildConfidenceDetail(crowdReports, confidence.crowdLevel, {
+      fallback: 'No recent crowd reports yet',
+    }),
+    dressCode: buildConfidenceDetail(dressReports, confidence.dressCode, {
+      fallback: 'No recent dress code reports yet',
+    }),
+    nowPlaying: buildConfidenceDetail(nowPlayingReports, confidence.nowPlaying, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.djStatus,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.djStatus ? 'Owner shared a DJ update' : 'No recent track reports yet',
+    }),
+    ageRange: buildConfidenceDetail(ageReports, confidence.ageRange, {
+      fallback: 'No recent crowd demographic reports yet',
+    }),
+  }
+
   // lastUpdated = most recent report timestamp
   const allReports = getRecentReports(venueId)
   const lastUpdated = allReports.length > 0
     ? allReports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
     : now
+
+  const reasons: string[] = []
+  const lineStatus: DoorMode['lineStatus'] =
+    waitTime === null ? 'moving'
+    : waitTime <= 5 ? 'walk-right-in'
+    : waitTime <= 15 ? 'moving'
+    : waitTime <= 30 ? 'slow'
+    : 'door-risk'
+
+  if (waitTime !== null) {
+    reasons.push(waitTime === 0 ? 'No meaningful line reported' : `Door reports are averaging ${waitTime} min`)
+  }
+  if (crowdLevel > 0) {
+    reasons.push(`${crowdLevel}% crowd level reported in the last 30 minutes`)
+  }
+  if (operatorStatus?.guestListStatus) {
+    const guestListLabel = formatGuestListStatus(operatorStatus.guestListStatus)
+    if (guestListLabel) reasons.push(guestListLabel)
+  }
+  if (operatorStatus?.doorNote) {
+    reasons.push(operatorStatus.doorNote)
+  }
+  if (operatorStatus?.tableMinimum) {
+    reasons.push(`Tables starting around $${operatorStatus.tableMinimum}`)
+  }
+
+  const entryConfidenceBase =
+    45 +
+    (crowdReports.length > 0 ? 10 : 0) +
+    (waitReports.length > 0 ? 10 : 0) +
+    (operatorStatus ? 20 : 0) +
+    (confidence.waitTime === 'high' ? 10 : confidence.waitTime === 'medium' ? 5 : 0)
+  const entryConfidence = Math.max(
+    20,
+    Math.min(
+      95,
+      entryConfidenceBase -
+        (lineStatus === 'door-risk' ? 20 : lineStatus === 'slow' ? 10 : 0) -
+        (operatorStatus?.guestListStatus === 'closed' ? 15 : operatorStatus?.guestListStatus === 'limited' ? 5 : 0)
+    )
+  )
 
   return {
     venueId,
@@ -332,6 +460,17 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     capacity,
     lastUpdated,
     confidence,
+    confidenceDetails,
+    doorMode: {
+      lineStatus,
+      entryConfidence,
+      guestListStatus: operatorStatus?.guestListStatus ?? null,
+      tableMinimum: operatorStatus?.tableMinimum ?? null,
+      reasons,
+    },
+    operatorNote: operatorStatus?.doorNote,
+    djStatus: operatorStatus?.djStatus,
+    special: operatorStatus?.special,
   }
 }
 
