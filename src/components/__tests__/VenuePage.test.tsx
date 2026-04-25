@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, type RenderOptions } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
+
+// VenuePage calls useLocation(); every render needs a Router context.
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
+  rtlRender(ui, {
+    wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>,
+    ...options,
+  })
 
 vi.mock('framer-motion', () => {
   const strip = (props: Record<string, unknown>) => {

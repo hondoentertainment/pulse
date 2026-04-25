@@ -28,12 +28,37 @@ vi.mock('framer-motion', () => ({
   useInView: () => true,
 }))
 
-vi.mock('@phosphor-icons/react', () => new Proxy({}, {
-  get: (_target, prop) => {
-    if (prop === '__esModule') return true
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
+// Vitest resolves named exports via Object.keys() at mock-load time, so a
+// Proxy alone is insufficient — we must enumerate every icon the components
+// under test import. The list is inlined inside the factory because vi.mock
+// factories are hoisted and cannot reference top-level variables.
+vi.mock('@phosphor-icons/react', () => {
+  const icons = [
+    'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Buildings','Calendar','CalendarBlank',
+    'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
+    'ChartBar','ChartLine','ChatCircle','ChatText','Check','CheckCircle','CircleNotch','Clock',
+    'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
+    'CursorClick','Diamond','DownloadSimple','Envelope','EnvelopeSimple','Export','Eye','EyeSlash',
+    'Eyeglasses','Faders','Fire','Flag','Flame','Footprints','ForkKnife','FunnelSimple',
+    'Gear','GearSix','Globe','Handshake','Hash','HashStraight','Heart','HeartStraight',
+    'House','Info','InstagramLogo','Lightbulb','Lightning','Link','LinkSimple','ListChecks',
+    'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
+    'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
+    'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Quotes',
+    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
+    'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
+    'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
+    'UsersThree','VideoCamera','Warning','WarningCircle','WifiHigh','WifiSlash','Wrench','X',
+  ]
+  const exports: Record<string, any> = {}
+  for (const name of icons) {
+    exports[name] = (props: any) => <span data-testid={`icon-${name}`} {...props} />
   }
-}))
+  return exports
+})
 
 vi.mock('@/components/ui/sheet', () => ({
   Sheet: ({ children, open }: any) => open ? <div data-testid="sheet">{children}</div> : null,
