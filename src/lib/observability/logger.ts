@@ -9,17 +9,21 @@
  * - Typed log fields (userId, sessionId, route, action, ...)
  *
  * Design notes:
- * - Zero new runtime dependencies. Uses `fetch` + `@sentry/react`
- *   (already bundled) under the hood.
+ * - Zero new runtime dependencies. Uses `fetch` under the hood plus a
+ *   tiny critical-path-safe bridge into `@sentry/react` (`sentry-bridge`)
+ *   that dynamic-imports the Sentry SDK rather than statically importing
+ *   it. That keeps the 250 KB `sentry` chunk OUT of the initial bundle.
  * - Sinks are pure functions. Add a sink in one place, every logger
  *   call forwards to it.
  * - warn+ entries become Sentry breadcrumbs so they are attached to
  *   any subsequent captured error. error-level entries are captured
  *   as Sentry messages so they surface in the issue stream even when
  *   there is no thrown exception.
+ * - Sentry forwards that happen before `AppBootstrap` has initialised
+ *   the SDK are buffered inside `sentry-lazy.ts` and flushed on init.
  */
 
-import * as Sentry from '@sentry/react'
+import * as sentryBridge from '@/lib/sentry-bridge'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,13 +164,17 @@ const consoleSink: LogSink = {
  * Sentry sink:
  * - warn+ becomes a breadcrumb (attached to the next captured error)
  * - error becomes a captureMessage so it surfaces standalone too
+ *
+ * Calls are routed through `sentry-bridge`, which dynamic-imports the
+ * Sentry SDK. Calls that fire before `initSentry()` are queued and
+ * flushed once the SDK finishes loading — no errors are lost.
  */
 const sentrySink: LogSink = {
   name: 'sentry',
   write(entry) {
     if (LEVEL_RANK[entry.level] < LEVEL_RANK.warn) return
     try {
-      Sentry.addBreadcrumb({
+      sentryBridge.breadcrumb({
         level: entry.level === 'warn' ? 'warning' : entry.level,
         category: entry.component ?? entry.action ?? 'log',
         message: entry.message,
@@ -183,18 +191,11 @@ const sentrySink: LogSink = {
       })
       if (entry.level === 'error') {
         if (entry.error) {
-          Sentry.captureException(new Error(entry.error.message), {
-            extra: {
-              ...entry,
-              logMessage: entry.message,
-              stack: entry.error.stack,
-            },
-          })
+          const err = new Error(entry.error.message)
+          err.stack = entry.error.stack
+          sentryBridge.exception(err, entry.action ?? entry.component)
         } else {
-          Sentry.captureMessage(entry.message, {
-            level: 'error',
-            extra: { ...entry },
-          })
+          sentryBridge.message(entry.message, 'error', entry.action ?? entry.component)
         }
       }
     } catch {
