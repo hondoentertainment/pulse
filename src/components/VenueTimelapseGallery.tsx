@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Users, User as UserIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import type { VenueTimelapse, CrowdLevel } from '@/lib/venue-storytelling'

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -16,6 +17,8 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
 import { screenContent } from '@/lib/content-moderation'
+import { moderateServer } from '@/lib/moderation-client'
+import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
 
@@ -55,6 +58,7 @@ export function CreatePulseDialog({
   const [originalSize, setOriginalSize] = useState<number>(0)
   const [compressedSize, setCompressedSize] = useState<number>(0)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const hasSubmittedFirstPulse = useRef<boolean>(false)
   const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
 
@@ -91,9 +95,9 @@ export function CreatePulseDialog({
 
   const handleSubmit = async () => {
     if (!venue) return
-    
+
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
-    
+
     const contentIssues = screenContent(caption)
     if (contentIssues.length > 0) {
       toast.error(contentIssues[0])
@@ -101,13 +105,38 @@ export function CreatePulseDialog({
     }
 
     setIsSubmitting(true)
+
+    // Authoritative server-side moderation check before persisting.
+    if (caption && caption.trim().length > 0) {
+      const verdict = await moderateServer(caption, 'pulse')
+      if (!verdict.allowed) {
+        setIsSubmitting(false)
+        const reason = verdict.reasons[0] ?? 'Content cannot be posted'
+        toast.error('Pulse blocked by moderation', {
+          description: verdict.reasons.join(' · ') || reason,
+        })
+        return
+      }
+    }
+
     await onSubmit({
-      energyRating, 
-      caption, 
-      photos, 
+      energyRating,
+      caption,
+      photos,
       video: video || undefined,
       hashtags: selectedHashtags
     })
+
+    track('pulse_created', {
+      pulseId: `pulse-${Date.now()}`,
+      venueId: venue.id,
+      hasPhoto: photos.length > 0,
+      hashtagCount: selectedHashtags.length,
+      energyRating,
+      isFirstPulse: !hasSubmittedFirstPulse.current,
+    })
+    hasSubmittedFirstPulse.current = true
+
     setIsSubmitting(false)
     
     setEnergyRating('chill')
@@ -252,6 +281,9 @@ export function CreatePulseDialog({
           <DialogTitle className="text-2xl">
             Create Pulse at {venue?.name}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Share the current energy, add a caption, photos, video, and hashtags.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -283,6 +315,7 @@ export function CreatePulseDialog({
                 </video>
                 <button
                   onClick={removeVideo}
+                  aria-label="Remove video"
                   className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
                 >
                   <X size={16} weight="bold" className="text-white" />
@@ -342,18 +375,20 @@ export function CreatePulseDialog({
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label htmlFor="create-pulse-caption" className="text-sm font-medium">
               Caption <span className="text-muted-foreground">(optional)</span>
             </label>
             <Textarea
+              id="create-pulse-caption"
               placeholder="What's the vibe?"
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, 140))}
               maxLength={140}
               rows={3}
               className="resize-none"
+              aria-describedby="create-pulse-caption-count"
             />
-            <p className="text-xs text-muted-foreground text-right">
+            <p id="create-pulse-caption-count" className="text-xs text-muted-foreground text-right">
               {caption.length}/140
             </p>
           </div>

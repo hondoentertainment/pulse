@@ -20,14 +20,27 @@ export function EnergySlider({ value, onChange }: EnergySliderProps) {
   const currentConfig = ENERGY_CONFIG[value]
 
   const handleEnergyChange = (newIndex: number) => {
-    const newValue = energyLevels[newIndex]
-    
-    if (newIndex !== previousIndexRef.current) {
-      triggerEnergyChangeHaptic(previousIndexRef.current, newIndex)
-      previousIndexRef.current = newIndex
+    const clamped = Math.max(0, Math.min(energyLevels.length - 1, newIndex))
+    const newValue = energyLevels[clamped]
+
+    if (clamped !== previousIndexRef.current) {
+      triggerEnergyChangeHaptic(previousIndexRef.current, clamped)
+      previousIndexRef.current = clamped
     }
-    
+
     onChange(newValue)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Native range input handles arrow keys, but we also support Home/End
+    // for better keyboard parity.
+    if (e.key === 'Home') {
+      e.preventDefault()
+      handleEnergyChange(0)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      handleEnergyChange(energyLevels.length - 1)
+    }
   }
 
   return (
@@ -87,10 +100,18 @@ export function EnergySlider({ value, onChange }: EnergySliderProps) {
             step="1"
             value={currentIndex}
             onChange={(e) => handleEnergyChange(Number(e.target.value))}
+            onKeyDown={handleKeyDown}
             onMouseDown={() => setIsDragging(true)}
             onMouseUp={() => setIsDragging(false)}
             onTouchStart={() => setIsDragging(true)}
             onTouchEnd={() => setIsDragging(false)}
+            role="slider"
+            aria-label="Energy level"
+            aria-valuemin={0}
+            aria-valuemax={energyLevels.length - 1}
+            aria-valuenow={currentIndex}
+            aria-valuetext={currentConfig.label}
+            aria-orientation="horizontal"
             className="absolute inset-0 w-full h-8 -mt-5 opacity-0 cursor-pointer z-10"
           />
           

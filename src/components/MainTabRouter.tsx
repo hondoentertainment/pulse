@@ -4,6 +4,7 @@ import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TabId } from '@/components/BottomNav'
+import { PageSkeleton } from '@/components/PageSkeleton'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -11,7 +12,7 @@ const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ d
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <PageSkeleton />
 
 const tabMotion = {
   initial: { opacity: 0, y: 20 },

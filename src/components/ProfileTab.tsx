@@ -235,7 +235,7 @@ export function ProfileTab({
             <span className="text-sm font-medium">Moderation Queue</span>
           </button>
         )}
-        {onOpenSettings ? (
+        {onOpenSettings && (
           <button
             onClick={onOpenSettings}
             className="w-full p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
@@ -246,10 +246,6 @@ export function ProfileTab({
               <p className="text-xs text-muted-foreground">Notifications, privacy, display</p>
             </div>
           </button>
-        ) : (
-          <Settings
-            onOpenSocialPulseDashboard={onOpenSocialPulseDashboard}
-          />
         )}
       </div>
     </div>

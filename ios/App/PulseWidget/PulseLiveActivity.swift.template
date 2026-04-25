@@ -1,0 +1,58 @@
+// PulseLiveActivity.swift — TEMPLATE
+// Live Activity for an active safety session.
+// Requires iOS 16.1+, ActivityKit entitlement, NSSupportsLiveActivities=YES.
+
+import ActivityKit
+import WidgetKit
+import SwiftUI
+
+struct SafetySessionAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        var elapsedSeconds: Int
+        var crewCount: Int
+        var lastPing: Date
+    }
+
+    var sessionId: String
+    var crewName: String
+}
+
+@available(iOS 16.2, *)
+struct PulseSafetyLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: SafetySessionAttributes.self) { context in
+            // Lock-screen / banner appearance
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Safety session").font(.caption).foregroundStyle(.secondary)
+                    Text(context.attributes.crewName).font(.headline)
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text(format(elapsed: context.state.elapsedSeconds)).monospacedDigit()
+                    Text("\(context.state.crewCount) crew").font(.caption2)
+                }
+            }
+            .padding()
+        } dynamicIsland: { context in
+            // TODO(widget): flesh out Dynamic Island regions
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) { Text(context.attributes.crewName) }
+                DynamicIslandExpandedRegion(.trailing) { Text("\(context.state.crewCount)") }
+                DynamicIslandExpandedRegion(.bottom) { Text("Active session") }
+            } compactLeading: {
+                Text("P")
+            } compactTrailing: {
+                Text(format(elapsed: context.state.elapsedSeconds))
+            } minimal: {
+                Text("P")
+            }
+        }
+    }
+
+    private func format(elapsed seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
+}

@@ -204,6 +204,11 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             setTimeout(() => setIsFocused(false), 200)
           }}
           onKeyDown={handleKeyDown}
+          aria-label="Search venues"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={isFocused && query.trim().length > 0}
+          aria-controls="map-search-results"
           className={cn(
             'pl-10 bg-card/95 backdrop-blur-xl border-white/10 h-11 focus:ring-2 focus:ring-[#E1306C] transition-all rounded-2xl',
             query ? 'pr-20' : 'pr-12',
@@ -217,6 +222,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
               variant="ghost"
               className="h-8 w-8"
               onClick={handleClear}
+              aria-label="Clear search"
             >
               <X size={16} weight="bold" />
             </Button>
@@ -231,6 +237,8 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             )}
             onClick={handleVoiceSearch}
             disabled={!isSupported}
+            aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
+            aria-pressed={isListening}
           >
             <Microphone
               size={18}
@@ -253,7 +261,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             <Card className="bg-card/95 backdrop-blur-xl border-white/10 shadow-2xl overflow-hidden rounded-2xl">
               {sortedResults.length > 0 ? (
                 <ScrollArea className="max-h-[300px]">
-                  <div className="p-1">
+                  <div className="p-1" id="map-search-results" role="listbox" aria-label="Venue search results">
                     {sortedResults.map((venue, index) => {
                       const distance = userLocation
                         ? calculateDistance(
@@ -269,6 +277,8 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
                           key={venue.id}
                           onClick={() => handleSelectVenue(venue)}
                           onMouseEnter={() => setSelectedIndex(index)}
+                          role="option"
+                          aria-selected={selectedIndex === index}
                           className={cn(
                             'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
                             selectedIndex === index

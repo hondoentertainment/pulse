@@ -2,14 +2,12 @@ import type { Venue, User } from './types'
 import {
   type TimeOfDay,
   type DayType,
-  getTimeOfDay,
-  getDayType,
   getPeakConfig,
-  normalizeCategoryKeyPublic,
   getPeakCategories,
+  normalizeCategoryKeyPublic,
 } from './time-contextual-scoring'
 import { buildCategoryPreferences } from './venue-recommendations'
-import { calculateDistance, getEnergyLabel } from './pulse-engine'
+import { calculateDistance } from './pulse-engine'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -221,7 +219,6 @@ export function getContextualSearchSuggestions(
   userLocation: { lat: number; lng: number } | null,
   timeOfDay: TimeOfDay,
 ): ContextualSearchSuggestion[] {
-  const peakCategories = getPeakCategories()
   const suggestions: ContextualSearchSuggestion[] = []
 
   // Build counts per normalized category

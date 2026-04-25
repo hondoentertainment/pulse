@@ -120,7 +120,7 @@ describe('getVenuesThatWillSurge', () => {
       { venueId: 'v1', dayOfWeek: 5, hourDistribution: { 21: { avgPulseCount: 10, avgEnergy: 3 } }, typicalPeakHour: 21, typicalPeakEnergy: 'electric' as const },
       { venueId: 'v2', dayOfWeek: 5, hourDistribution: { 20: { avgPulseCount: 5, avgEnergy: 2 } }, typicalPeakHour: 20, typicalPeakEnergy: 'buzzing' as const },
     ]
-    const results = getVenuesThatWillSurge(venues, patterns, 18, 5)
+    const results = getVenuesThatWillSurge(venues, patterns as any, 18, 5)
     expect(results.length).toBeGreaterThanOrEqual(1)
     expect(results[0].venueName).toBeDefined()
   })

@@ -10,6 +10,7 @@ import {
 } from '@phosphor-icons/react'
 import { Venue } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { track } from '@/lib/observability/analytics'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,18 +89,7 @@ function fuzzyMatch(
 
   // Close last run
   if (runStart !== -1) {
-    const lastMatchIdx =
-      ranges.length > 0 ? ranges[ranges.length - 1][1] : runStart
-    // Walk forward to find actual end of last run
-    let end = runStart
-    for (let ti = runStart; ti < lowerText.length; ti++) {
-      if (ti - runStart < lowerQuery.length - (qi - (lowerQuery.length - (lowerQuery.length - qi)))) break
-      end = ti + 1
-      break
-    }
-    // Simpler: just push the run from runStart to current qi position
-    // We know the last character matched ended at (the last ti that matched)
-    // Recompute: find last ti matched
+    // Find last ti matched and push run
     let lastTi = 0
     let tmpQi = 0
     for (let ti = 0; ti < lowerText.length && tmpQi < lowerQuery.length; ti++) {
@@ -122,17 +112,6 @@ function fuzzyMatch(
   }
 
   return { score, ranges: merged }
-}
-
-/** Deduplicate an array by a key function. */
-function uniqueBy<T>(arr: T[], keyFn: (item: T) => string): T[] {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const k = keyFn(item)
-    if (seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
 }
 
 // ---------------------------------------------------------------------------
@@ -397,6 +376,15 @@ export function GlobalSearch({
   useEffect(() => {
     setActiveIndex(-1)
   }, [debouncedQuery])
+
+  // Emit analytics on the debounced query (not per-keystroke). Only fire when
+  // the user actually typed something to avoid noisy empty events.
+  useEffect(() => {
+    const q = debouncedQuery.trim()
+    if (!q) return
+    const resultCount = sections.reduce((sum, s) => sum + s.results.length, 0)
+    track('search_performed', { query: q, resultCount, kind: 'global' })
+  }, [debouncedQuery, sections])
 
   // ---- Scroll active item into view ----
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Lightbulb, X, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
-import type { Venue, User, Pulse } from '@/lib/types'
+import type { Venue, User } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
 // Props
