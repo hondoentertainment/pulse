@@ -30,6 +30,7 @@ const JS_PROTOCOL_RE = /(?:href|src|action)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^
 const DATA_PROTOCOL_RE = /src\s*=\s*(?:"data:(?!image\/)[^"]*"|'data:(?!image\/)[^']*')/gi
 
 /** Control characters (C0 and C1 controls, excluding common whitespace) */
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g
 
 /** Default max length for general user input */
