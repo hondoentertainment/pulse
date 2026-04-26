@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -20,6 +20,10 @@ import { formatPrice, createPaymentIntent, processPayment } from '@/lib/payment-
 import { Ticket as TicketIcon, Users, Minus, Plus, Lightning, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { PaymentElementMount } from '@/components/ticketing/PaymentElementMount'
+import { confirmPayment as stripeConfirmPayment, type CreateElementsResult } from '@/lib/stripe-client'
+import { cancelPurchase } from '@/lib/staff-scanner-client'
 
 interface TicketPurchaseSheetProps {
   open: boolean
@@ -43,6 +47,12 @@ export function TicketPurchaseSheet({
   const [splitWithCrew, setSplitWithCrew] = useState(false)
   const [selectedCrewMembers, setSelectedCrewMembers] = useState<string[]>([])
   const [purchasing, setPurchasing] = useState(false)
+  const stripeFlowEnabled = isFeatureEnabled('ticketing')
+  const [stripeCtx, setStripeCtx] = useState<CreateElementsResult | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [pendingTicketIds, setPendingTicketIds] = useState<string[]>([])
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [succeeded, setSucceeded] = useState(false)
 
   const tiers = useMemo(() => {
     if (!event) return []
@@ -84,12 +94,114 @@ export function TicketPurchaseSheet({
     )
   }
 
+  const resetFlow = useCallback(() => {
+    setClientSecret(null)
+    setStripeCtx(null)
+    setPendingTicketIds([])
+    setPaymentError(null)
+    setSucceeded(false)
+    setPurchasing(false)
+  }, [])
+
+  const handleRequestClose = useCallback(() => {
+    // If user aborts after we created a clientSecret, cancel the intent
+    // so we free up inventory.
+    if (clientSecret && pendingTicketIds.length > 0 && !succeeded) {
+      for (const ticketId of pendingTicketIds) {
+        // Fire-and-forget; server reconciles capacity regardless.
+        void cancelPurchase(ticketId)
+      }
+    }
+    resetFlow()
+    onOpenChange(false)
+  }, [clientSecret, pendingTicketIds, succeeded, onOpenChange, resetFlow])
+
+  const handleStripeConfirm = useCallback(async () => {
+    if (!stripeCtx) return
+    setPurchasing(true)
+    setPaymentError(null)
+    const result = await stripeConfirmPayment({
+      stripe: stripeCtx.stripe,
+      elements: stripeCtx.elements,
+    })
+    if (result.error) {
+      setPaymentError(result.error.message ?? 'Payment failed')
+      setPurchasing(false)
+      return
+    }
+    if (result.paymentIntent?.status === 'succeeded') {
+      setSucceeded(true)
+      setPurchasing(false)
+      // Caller is responsible for hitting /api/ticketing/confirm with the
+      // paymentIntentId + ticketIds; we surface via onPurchase so existing
+      // wiring continues to work.
+      // (No local mutation — tickets are now paid server-side.)
+      return
+    }
+    setPaymentError(`Unexpected status: ${result.paymentIntent?.status ?? 'unknown'}`)
+    setPurchasing(false)
+  }, [stripeCtx])
+
   const handlePurchase = async () => {
     if (!event || !selectedTier || !dynamicPricing) return
     setPurchasing(true)
 
+    // Stripe-flow branch: create reservation rows + payment intent, then
+    // mount the PaymentElement. Kept behind the `ticketing` flag so the
+    // legacy stub remains the default until Stripe keys + backend land.
+    if (stripeFlowEnabled) {
+      try {
+        const reservedTickets: Ticket[] = []
+        const members = splitWithCrew && selectedCrewMembers.length > 0
+          ? [currentUser.id, ...selectedCrewMembers]
+          : Array.from({ length: quantity }, () => currentUser.id)
+        for (const memberId of members) {
+          const reserved = reserveTicket(
+            event.id,
+            event.venueId,
+            memberId,
+            selectedType,
+            unitPrice,
+            true
+          )
+          reservedTickets.push(reserved)
+        }
+        const res = await fetch('/api/ticketing/purchase', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            eventId: event.id,
+            venueId: event.venueId,
+            ticketType: selectedType,
+            quantity: members.length,
+            ticketIds: reservedTickets.map(t => t.id),
+            amount: totalPrice,
+          }),
+        })
+        if (!res.ok) {
+          setPaymentError('Could not start checkout. Please try again.')
+          setPurchasing(false)
+          return
+        }
+        const payload = (await res.json()) as { client_secret?: string; clientSecret?: string }
+        const secret = payload.client_secret ?? payload.clientSecret ?? null
+        if (!secret) {
+          setPaymentError('Payment provider returned no client secret.')
+          setPurchasing(false)
+          return
+        }
+        setClientSecret(secret)
+        setPendingTicketIds(reservedTickets.map(t => t.id))
+      } catch (err) {
+        setPaymentError(err instanceof Error ? err.message : 'Network error')
+      } finally {
+        setPurchasing(false)
+      }
+      return
+    }
+
     try {
-      // Simulate brief processing delay
+      // Simulate brief processing delay (legacy mock path)
       await new Promise(resolve => setTimeout(resolve, 800))
 
       const tickets: Ticket[] = []
@@ -169,8 +281,76 @@ export function TicketPurchaseSheet({
 
   if (!event) return null
 
+  // Payment stage (Stripe flow only). Renders the PaymentElement once
+  // a clientSecret has been obtained.
+  if (stripeFlowEnabled && clientSecret && !succeeded) {
+    return (
+      <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : handleRequestClose())}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
+          <SheetHeader className="p-6 pb-0">
+            <SheetTitle className="text-xl font-bold">Payment</SheetTitle>
+            <SheetDescription className="text-sm">
+              {event.title} — {formatPrice(totalPrice)}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="p-6 space-y-4">
+            <PaymentElementMount
+              clientSecret={clientSecret}
+              onReady={setStripeCtx}
+              onValidationChange={setPaymentError}
+            />
+            {paymentError && (
+              <p className="text-sm text-destructive" role="alert">
+                {paymentError}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleRequestClose} disabled={purchasing}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleStripeConfirm}
+                disabled={!stripeCtx || purchasing}
+              >
+                {purchasing ? 'Processing…' : `Pay ${formatPrice(totalPrice)}`}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // Success stage
+  if (stripeFlowEnabled && succeeded) {
+    return (
+      <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : (resetFlow(), onOpenChange(false)))}>
+        <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
+          <SheetHeader className="p-6 pb-0">
+            <SheetTitle className="text-xl font-bold">Purchase complete</SheetTitle>
+            <SheetDescription className="text-sm">
+              Your tickets will appear in My Tickets.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="p-6">
+            <Button
+              className="w-full"
+              onClick={() => {
+                resetFlow()
+                onOpenChange(false)
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : handleRequestClose())}>
       <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
         <SheetHeader className="p-6 pb-0">
           <div className="mx-auto w-12 h-1.5 rounded-full bg-muted/30 mb-4" />

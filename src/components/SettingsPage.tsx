@@ -18,6 +18,7 @@ import { getPendingCount, clearQueue, getLastQueueSyncStatus, getQueueRetryInfo 
 import { getAvailableLocales, getLocale, setLocale, type Locale } from '@/lib/i18n'
 import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefersReducedMotion } from '@/lib/accessibility'
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
@@ -26,9 +27,10 @@ interface SettingsPageProps {
   onBack: () => void
   onUpdateUser: (user: User) => void
   onCityChange?: (location: { lat: number; lng: number }) => void
+  onOpenSafetyContacts?: () => void
 }
 
-export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }: SettingsPageProps) {
+export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, onOpenSafetyContacts }: SettingsPageProps) {
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
   const [offlineCount, setOfflineCount] = useState(getPendingCount())
@@ -245,6 +247,24 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange }
                 Your exact location is never shared. Only general presence at venues is shown.
               </p>
             </div>
+
+            {isFeatureEnabled('safetyKit') && onOpenSafetyContacts && (
+              <button
+                type="button"
+                onClick={onOpenSafetyContacts}
+                className="w-full flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
+                data-testid="settings-safety-contacts-link"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield size={16} weight="fill" className="text-primary" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium">Emergency contacts</p>
+                    <p className="text-xs text-muted-foreground">Manage who gets alerted in Safety Kit</p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">Open</span>
+              </button>
+            )}
           </Card>
         </motion.div>
 

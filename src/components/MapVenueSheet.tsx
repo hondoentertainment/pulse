@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getEnergyLabel } from '@/lib/pulse-engine'
-import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
+import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 import { useState, useRef } from 'react'
 import {
   MapPin, Users, Lightning, Fire,
@@ -156,7 +156,6 @@ export function MapVenueSheet({
 }: MapVenueSheetProps) {
   const { unitSystem } = useUnitPreference()
   const [snap, setSnap] = useState<SheetSnap>('peek')
-  const _dragControls = useDragControls()
   const sheetRef = useRef<HTMLDivElement>(null)
 
   // Get nearby venues sorted by distance then score
@@ -232,6 +231,8 @@ export function MapVenueSheet({
                 else if (snap === 'half') setSnap('full')
                 else setSnap('half')
               }}
+              aria-label={snap === 'full' ? 'Collapse venue sheet' : 'Expand venue sheet'}
+              aria-expanded={snap !== 'peek'}
               className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               {snap === 'full' ? (
@@ -244,6 +245,7 @@ export function MapVenueSheet({
             {venue && (
               <button
                 onClick={onClose}
+                aria-label="Close venue sheet"
                 className="p-1 rounded-lg hover:bg-secondary transition-colors"
               >
                 <X size={16} className="text-muted-foreground" />

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -25,14 +24,37 @@ vi.mock('framer-motion', () => ({
   useMotionValue: (v: number) => ({ get: () => v, set: () => {} }),
 }))
 
-vi.mock('@phosphor-icons/react', () => new Proxy({}, {
-  get: (_target, prop) => {
-    if (prop === '__esModule') return true
-    if (typeof prop === 'symbol' || prop === 'then') return undefined
-    return (props: any) => <span data-testid={`icon-${String(prop)}`} {...props} />
-  },
-  has: () => true,
-}))
+// Vitest resolves named exports via Object.keys() at mock-load time, so a
+// Proxy alone is insufficient — we must enumerate every icon the components
+// under test import. The list is inlined inside the factory because vi.mock
+// factories are hoisted and cannot reference top-level variables.
+vi.mock('@phosphor-icons/react', () => {
+  const icons = [
+    'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Buildings','Calendar','CalendarBlank',
+    'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
+    'ChartBar','ChartLine','ChatCircle','ChatText','Check','CheckCircle','CircleNotch','Clock',
+    'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
+    'CursorClick','Diamond','DownloadSimple','Envelope','EnvelopeSimple','Export','Eye','EyeSlash',
+    'Eyeglasses','Faders','Fire','Flag','Flame','Footprints','ForkKnife','FunnelSimple',
+    'Gear','GearSix','Globe','Handshake','Hash','HashStraight','Heart','HeartStraight',
+    'House','Info','InstagramLogo','Lightbulb','Lightning','Link','LinkSimple','ListChecks',
+    'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
+    'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
+    'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Quotes',
+    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
+    'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
+    'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
+    'UsersThree','VideoCamera','Warning','WarningCircle','WifiHigh','WifiSlash','Wrench','X',
+  ]
+  const exports: Record<string, any> = {}
+  for (const name of icons) {
+    exports[name] = (props: any) => <span data-testid={`icon-${name}`} {...props} />
+  }
+  return exports
+})
 
 // ── Shared mocks ──────────────────────────────────────────────
 
@@ -244,9 +266,10 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Fire icon is rendered inside the mocked motion.button (rendered as <div>)
-    const fireIcon = screen.getByTestId('icon-Fire')
-    const fireButton = fireIcon.closest('div[class]')!
+    // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
+    // mock renders motion.button as a <div>, so query by aria-label instead of
+    // role=button.
+    const fireButton = screen.getByLabelText(/Fire reaction/)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -674,8 +697,8 @@ describe('HappeningNowBanner', () => {
       />
     )
 
-    // Venues are duplicated in the DOM for seamless scrolling, so use getAllByText
-    expect(screen.getAllByText('Hot Spot A').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Hot Spot B').length).toBeGreaterThanOrEqual(1)
+    // Banner duplicates venues for a marquee effect — assert presence via getAllByText
+    expect(screen.getAllByText('Hot Spot A').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Hot Spot B').length).toBeGreaterThan(0)
   })
 })

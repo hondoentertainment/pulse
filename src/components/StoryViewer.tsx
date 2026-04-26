@@ -235,6 +235,32 @@ export function StoryViewer({
     }
   }, [replyOpen])
 
+  // ---------- Escape-to-close + restore focus ----------
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !replyOpen) {
+        e.preventDefault()
+        onClose()
+      } else if (e.key === 'ArrowRight') {
+        goNext()
+      } else if (e.key === 'ArrowLeft') {
+        goPrev()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.removeEventListener('keydown', handler)
+      // Restore focus to the element that opened the viewer
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        requestAnimationFrame(() => {
+          try { previouslyFocused.focus() } catch { /* gone */ }
+        })
+      }
+    }
+  }, [onClose, goNext, goPrev, replyOpen])
+
   // ---------- helpers ----------
 
   const removeFloating = useCallback((id: string) => {
@@ -396,12 +422,21 @@ export function StoryViewer({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
         className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Story from ${story.username || 'user'} at ${story.venueName || 'venue'}. Story ${currentIndex + 1} of ${stories.length}.`}
         style={{
           background: bgGradient,
           opacity: dismissOpacity,
           scale: dismissScale,
         }}
       >
+        {/* Live region announces slide changes for screen readers. */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          Story {currentIndex + 1} of {stories.length}
+          {story.username ? ` from ${story.username}` : ''}
+          {story.venueName ? ` at ${story.venueName}` : ''}
+        </div>
         {/* Draggable surface for swipe gestures */}
         <motion.div
           className="flex-1 flex flex-col touch-none"
@@ -465,6 +500,7 @@ export function StoryViewer({
                 e.stopPropagation()
                 onClose()
               }}
+              aria-label="Close stories"
               className="p-2 rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
             >
               <X size={22} weight="bold" />

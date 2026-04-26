@@ -1,6 +1,6 @@
 "use client"
 
-import { ComponentProps, createContext, useCallback, useContext, useEffect, useState, KeyboardEvent } from "react"
+import { ComponentProps, createContext, useCallback, useContext, useEffect, useRef, useState, KeyboardEvent } from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react"
@@ -61,11 +61,20 @@ function Carousel({
   )
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
+  const liveRef = useRef<HTMLDivElement>(null)
 
   const onSelect = useCallback((api: CarouselApi) => {
     if (!api) return
     setCanScrollPrev(api.canScrollPrev())
     setCanScrollNext(api.canScrollNext())
+    // Announce slide changes to screen readers.
+    if (liveRef.current) {
+      const total = api.scrollSnapList().length
+      const index = api.selectedScrollSnap() + 1
+      if (total > 0) {
+        liveRef.current.textContent = `Slide ${index} of ${total}`
+      }
+    }
   }, [])
 
   const scrollPrev = useCallback(() => {
@@ -128,6 +137,12 @@ function Carousel({
         {...props}
       >
         {children}
+        <div
+          ref={liveRef}
+          className="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+        />
       </div>
     </CarouselContext.Provider>
   )

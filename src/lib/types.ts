@@ -1,5 +1,76 @@
 export type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 
+/**
+ * Structured venue metadata tokens (additive — all fields on Venue are
+ * optional to keep every seeded / mock / legacy record valid).
+ */
+export type VenueDressCode =
+  | 'casual'
+  | 'smart_casual'
+  | 'upscale'
+  | 'formal'
+  | 'costume_required'
+  | 'no_code'
+
+export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
+
+export type AccessibilityFeature =
+  | 'wheelchair_accessible'
+  | 'step_free_entry'
+  | 'accessible_restroom'
+  | 'gender_neutral_restroom'
+  | 'sensory_friendly'
+  | 'quiet_hours'
+  | 'service_animal_friendly'
+  | 'signer_on_request'
+  | 'braille_menu'
+
+export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
+  'wheelchair_accessible',
+  'step_free_entry',
+  'accessible_restroom',
+  'gender_neutral_restroom',
+  'sensory_friendly',
+  'quiet_hours',
+  'service_animal_friendly',
+  'signer_on_request',
+  'braille_menu',
+] as const
+
+export type WaitTimeConfidence = 'low' | 'med' | 'high'
+
+export interface VenueWaitTime {
+  venueId: string
+  estimatedMinutes: number
+  confidence: WaitTimeConfidence
+  sampleSize: number
+  computedAt: string
+}
+
+/**
+ * Weather payload returned by the /api/weather/current Edge Function and
+ * consumed by `applyWeatherBoost` + `useWeather`. Kept in shared types so
+ * both the client bundle and the Edge Function can reference it without
+ * crossing tsconfig boundaries.
+ */
+export type WeatherCondition =
+  | 'clear'
+  | 'cloudy'
+  | 'rain'
+  | 'snow'
+  | 'storm'
+  | 'fog'
+  | 'unknown'
+
+export interface WeatherPayload {
+  condition: WeatherCondition
+  tempC: number
+  precipitationPct: number
+  windKph: number
+  visibilityKm: number
+  observedAt: string
+}
+
 export interface User {
   id: string
   username: string
@@ -70,6 +141,18 @@ export interface Venue {
       appleMapsUrl?: string
     }
   }
+  // Structured venue metadata (differentiator pack). All optional & additive.
+  dressCode?: VenueDressCode
+  coverChargeCents?: number
+  coverChargeNote?: string
+  accessibilityFeatures?: AccessibilityFeature[]
+  indoorOutdoor?: VenueIndoorOutdoor
+  /** Rough occupancy hint (used by the wait-time estimator). */
+  capacityHint?: number
+  /** Latest wait-time snapshot (hydrated at read time, not persisted on venues). */
+  waitTime?: VenueWaitTime
+  /** Transient scoring bonus applied by weather-aware ranking. */
+  contextualScore?: number
 }
 
 export interface Pulse {

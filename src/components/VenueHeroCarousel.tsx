@@ -111,10 +111,27 @@ export function VenueHeroCarousel({ venue, pulseScore, onBack }: VenueHeroCarous
     startAutoPlay()
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      setCurrentIndex((prev) => Math.min(prev + 1, gradients.length - 1))
+      startAutoPlay()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      setCurrentIndex((prev) => Math.max(prev - 1, 0))
+      startAutoPlay()
+    }
+  }
+
   return (
     <div
       ref={containerRef}
       className="relative h-[320px] overflow-hidden rounded-b-3xl"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Venue images"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
     >
       {/* Parallax background layer */}
       <motion.div
@@ -172,10 +189,16 @@ export function VenueHeroCarousel({ venue, pulseScore, onBack }: VenueHeroCarous
       {/* Back button */}
       <button
         onClick={onBack}
+        aria-label="Go back"
         className="absolute top-4 left-4 z-30 p-2.5 rounded-full bg-black/20 backdrop-blur-md border border-white/10 hover:bg-black/30 transition-colors"
       >
         <ArrowLeft size={22} weight="bold" className="text-white" />
       </button>
+
+      {/* Live region announces carousel slide changes */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        Slide {currentIndex + 1} of {gradients.length}
+      </div>
 
       {/* Content overlay */}
       <div className="absolute bottom-0 left-0 right-0 z-20 p-5 pointer-events-none">
@@ -224,7 +247,7 @@ export function VenueHeroCarousel({ venue, pulseScore, onBack }: VenueHeroCarous
         )}
 
         {/* Dot indicators */}
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-2 mt-4" role="tablist" aria-label="Venue image slides">
           {gradients.map((_, index) => (
             <button
               key={index}
@@ -233,6 +256,9 @@ export function VenueHeroCarousel({ venue, pulseScore, onBack }: VenueHeroCarous
                 setCurrentIndex(index)
                 startAutoPlay()
               }}
+              role="tab"
+              aria-label={`Go to slide ${index + 1}`}
+              aria-selected={index === currentIndex}
             >
               <div
                 className={cn(

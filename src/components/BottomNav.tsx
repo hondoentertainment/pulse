@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
+import { TrendUp, MapTrifold, User, Bell, Compass, VideoCamera } from '@phosphor-icons/react'
 import { motion, useAnimation, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
+import { isVideoFeedEnabled } from '@/lib/video-feature-flag'
 
-export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile' | 'video'
 
 const TAB_TO_PATH: Record<TabId, string> = {
   trending: '/',
@@ -13,6 +14,7 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
+  video: '/video',
 }
 
 const PATH_TO_TAB: Record<string, TabId> = {
@@ -21,6 +23,7 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/map': 'map',
   '/notifications': 'notifications',
   '/profile': 'profile',
+  '/video': 'video',
 }
 
 interface BottomNavProps {
@@ -116,12 +119,16 @@ function TabButton({
   return (
     <Link
       to={TAB_TO_PATH[tab.id]}
-      onClick={(_e) => {
+      onClick={() => {
         // Let the Link handle navigation; fire haptics + animation
         handlePress()
       }}
       className="flex flex-col items-center justify-center flex-1 h-full relative no-underline"
-      aria-label={tab.label}
+      aria-label={
+        tab.badge !== undefined && tab.badge > 0
+          ? `${tab.label}, ${tab.badge} unread`
+          : tab.label
+      }
       aria-current={isActive ? 'page' : undefined}
     >
       <div className="relative z-10 flex flex-col items-center gap-1">
@@ -209,10 +216,13 @@ export function BottomNav({
   // Derive active tab from the URL, falling back to the prop
   const currentTab = PATH_TO_TAB[location.pathname] ?? activeTab
 
+  const showVideoTab = isVideoFeedEnabled()
+
   const tabs: TabConfig[] = [
     { id: 'trending', icon: TrendUp, label: 'Trending' },
     { id: 'discover', icon: Compass, label: 'Discover' },
     { id: 'map', icon: MapTrifold, label: 'Map' },
+    ...(showVideoTab ? [{ id: 'video' as const, icon: VideoCamera, label: 'Video' }] : []),
     {
       id: 'notifications',
       icon: Bell,
@@ -224,6 +234,7 @@ export function BottomNav({
 
   return (
     <nav
+      aria-label="Primary"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50',
         'bg-card/80 backdrop-blur-xl',

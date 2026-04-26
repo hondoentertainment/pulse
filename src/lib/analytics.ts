@@ -7,10 +7,32 @@
 
 import { track as vercelTrack } from '@vercel/analytics'
 
-// Lazy-load Sentry to avoid pulling ~257 KB into the initial bundle.
-// The module is cached after first import so subsequent calls are ~free.
-function getSentry() {
-  return import('@sentry/react')
+/**
+ * Lazily forward an error/message to Sentry if and when the SDK is available.
+ *
+ * We intentionally avoid `import * as Sentry from '@sentry/react'` at module
+ * scope — that pulls the 250 KB SDK into every bundle that touches analytics
+ * (i.e. almost the whole app). Instead we dynamic-import the SDK only after
+ * `AppBootstrap` has scheduled `Sentry.init()`, so at runtime the module is
+ * already cached and the call is synchronous-ish (single microtask).
+ */
+async function forwardToSentry(
+  payload: Error | string,
+  context?: string,
+): Promise<void> {
+  try {
+    // `sentry-lazy` re-exports only the narrow surface the app uses
+    // (init / capture{Message,Exception}) so Rollup can tree-shake the
+    // rest of the SDK from the async chunk.
+    const lazy = await import('./sentry-lazy')
+    if (typeof payload === 'string') {
+      lazy.reportMessage(payload, context)
+    } else {
+      lazy.reportException(payload, context)
+    }
+  } catch {
+    /* Sentry is an optional dependency at runtime — swallow. */
+  }
 }
 
 export type AnalyticsEvent =
@@ -99,7 +121,7 @@ export function trackEvent(event: AnalyticsEvent): void {
   
   // Broadcast to Vercel Analytics
   const { type, timestamp: _timestamp, ...properties } = event
-  vercelTrack(type, properties as Record<string, string | number | boolean>)
+  vercelTrack(type, properties as Record<string, any>)
 }
 /**
  * Get all tracked events, optionally filtered by type.
@@ -336,14 +358,9 @@ export function trackError(error: Error | string, context?: string): void {
     context,
   })
 
-  // Broadcast to Sentry (lazy-loaded)
-  getSentry().then(Sentry => {
-    if (typeof error === 'string') {
-      Sentry.captureMessage(error, { extra: { context } })
-    } else {
-      Sentry.captureException(error, { extra: { context } })
-    }
-  })
+  // Fire-and-forget: the SDK is dynamically imported so this never blocks the
+  // synchronous `trackError` contract that callers rely on.
+  void forwardToSentry(error, context)
 }
 
 /**

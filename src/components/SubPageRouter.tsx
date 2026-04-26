@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ALL_USERS } from '@/hooks/use-app-state'
 import { useVenueState } from '@/hooks/use-venue-state'
@@ -7,6 +7,7 @@ import { useUIState, type SubPage } from '@/hooks/use-ui-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { BottomNav } from '@/components/BottomNav'
+import { PageSkeleton } from '@/components/PageSkeleton'
 import { toast } from 'sonner'
 
 const AchievementsPage = lazy(() => import('@/components/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
@@ -22,7 +23,7 @@ const NightPlannerPage = lazy(() => import('@/components/NightPlannerPage').then
 const MyTicketsPage = lazy(() => import('@/components/MyTicketsPage').then(m => ({ default: m.MyTicketsPage })))
 const ChallengeFeed = lazy(() => import('@/components/ChallengeFeed').then(m => ({ default: m.ChallengeFeed })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <PageSkeleton />
 
 interface SubPageRouterProps {
   page?: NonNullable<SubPage>
@@ -71,7 +72,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     />
   )
 
-  const config: Record<string, () => JSX.Element> = {
+  const config: Record<string, () => ReactElement> = {
     achievements: () => (
       <>
         <Suspense fallback={pageFallback}>
@@ -161,7 +162,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
       </>
     ),
     integrations: () => {
-      if (!integrationVenue || !integrationsEnabled) return null as unknown as JSX.Element
+      if (!integrationVenue || !integrationsEnabled) return null as unknown as ReactElement
       return (
         <>
           <Suspense fallback={pageFallback}>

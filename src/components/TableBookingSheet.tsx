@@ -19,6 +19,8 @@ import { formatPrice, createPaymentIntent, processPayment } from '@/lib/payment-
 import { CalendarBlank, Clock, Users, MapPin, Minus, Plus, ChatText } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { featureFlags } from '@/lib/feature-flags'
+import { requestReservation } from '@/lib/reservations-client'
 
 interface TableBookingSheetProps {
   open: boolean
@@ -46,6 +48,7 @@ export function TableBookingSheet({
   const [selectedTable, setSelectedTable] = useState<VenueTable | null>(null)
   const [specialRequests, setSpecialRequests] = useState('')
   const [booking, setBooking] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const timeSlots = useMemo(() => generateTimeSlots(selectedDate), [selectedDate])
 
@@ -86,6 +89,38 @@ export function TableBookingSheet({
   const handleBook = async () => {
     if (!venue || !selectedTable || !selectedSlot) return
     setBooking(true)
+    setApiError(null)
+
+    // ── New reservations API (feature-flagged) ───────────────
+    if (featureFlags.ticketing) {
+      try {
+        const startsAt = `${selectedDate}T${selectedSlot.start}:00`
+        const endsAt = `${selectedDate}T${selectedSlot.end}:00`
+        const result = await requestReservation({
+          venue_id: venue.id,
+          party_size: partySize,
+          starts_at: new Date(startsAt).toISOString(),
+          ends_at: new Date(endsAt).toISOString(),
+          notes: specialRequests || undefined,
+          deposit_cents: Math.round(deposit * 100),
+        })
+        if (!result.ok) {
+          setApiError(result.error)
+          return
+        }
+        onOpenChange(false)
+        setSelectedSlot(null)
+        setSelectedTable(null)
+        setSpecialRequests('')
+        setPartySize(4)
+        return
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : 'Booking failed')
+        return
+      } finally {
+        setBooking(false)
+      }
+    }
 
     try {
       await new Promise(resolve => setTimeout(resolve, 800))
@@ -339,6 +374,15 @@ export function TableBookingSheet({
                     Deposit is 50% of minimum spend. Remainder due at venue.
                   </p>
                 </div>
+
+                {apiError && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+                  >
+                    {apiError}
+                  </div>
+                )}
 
                 <Button
                   onClick={handleBook}

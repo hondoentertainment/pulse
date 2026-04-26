@@ -123,6 +123,8 @@ export function QuickReactions({ onReact, reactions, currentUserId, disabled = f
             <button
                 onClick={() => handleReact('fire')}
                 disabled={disabled}
+                aria-label={`Fire reaction${isActive('fire') ? ', active' : ''}`}
+                aria-pressed={!!isActive('fire')}
                 className={`p-1.5 rounded-full transition-all ${isActive('fire')
                         ? 'bg-accent/20 text-accent scale-110'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -133,6 +135,8 @@ export function QuickReactions({ onReact, reactions, currentUserId, disabled = f
             <button
                 onClick={() => handleReact('lightning')}
                 disabled={disabled}
+                aria-label={`Lightning reaction${isActive('lightning') ? ', active' : ''}`}
+                aria-pressed={!!isActive('lightning')}
                 className={`p-1.5 rounded-full transition-all ${isActive('lightning')
                         ? 'bg-accent/20 text-accent scale-110'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -143,6 +147,8 @@ export function QuickReactions({ onReact, reactions, currentUserId, disabled = f
             <button
                 onClick={() => handleReact('eyes')}
                 disabled={disabled}
+                aria-label={`Eyes reaction${isActive('eyes') ? ', active' : ''}`}
+                aria-pressed={!!isActive('eyes')}
                 className={`p-1.5 rounded-full transition-all ${isActive('eyes')
                         ? 'bg-accent/20 text-accent scale-110'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -153,6 +159,8 @@ export function QuickReactions({ onReact, reactions, currentUserId, disabled = f
             <button
                 onClick={() => handleReact('skull')}
                 disabled={disabled}
+                aria-label={`Skull reaction${isActive('skull') ? ', active' : ''}`}
+                aria-pressed={!!isActive('skull')}
                 className={`p-1.5 rounded-full transition-all ${isActive('skull')
                         ? 'bg-accent/20 text-accent scale-110'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'

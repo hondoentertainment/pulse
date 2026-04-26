@@ -1,246 +1,247 @@
 /**
- * Thin wrapper around the Supabase client for data operations.
+ * Thin browser client for the server-side Edge Functions in `api/`.
  *
- * Every helper returns the mapped application-level type so that callers
- * never deal with raw Supabase rows.  When VITE_SUPABASE_URL is not set
- * (i.e. local / demo mode), `isSupabaseConfigured()` returns false and
- * the query hooks fall back to mock data instead.
+ * This file is ADDITIVE — it runs alongside the existing integration
+ * helpers in src/lib/integrations.ts and src/lib/public-api.ts. Callers
+ * can migrate incrementally by swapping a single call site at a time.
+ *
+ * All requests:
+ *   - hit same-origin /api/* (no CORS headaches in prod)
+ *   - auto-forward the Supabase access token if the caller provides one
+ *   - return discriminated `{ ok: true, data } | { ok: false, error }`
+ *     so call sites don't need try/catch boilerplate.
  */
 
-import { supabase } from './supabase'
-import type { Venue, Pulse, User, EnergyRating } from './types'
-import type { Crew } from './crew-mode'
+export type ApiSuccess<T> = { ok: true; data: T }
+export type ApiFailure = { ok: false; status: number; error: string }
+export type ApiResult<T> = ApiSuccess<T> | ApiFailure
 
-// ── Configuration check ───────────────────────────────────────────────
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-
-export function isSupabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && !SUPABASE_URL.includes('placeholder'))
+export interface ApiClientOptions {
+  /** Supabase access token (JWT). Forwarded as `Authorization: Bearer ...`. */
+  accessToken?: string | null
+  /** Spotify user-token (used only by `spotifyUserPlaylists`). */
+  spotifyUserToken?: string | null
+  /** Optional AbortSignal so callers can cancel in-flight requests. */
+  signal?: AbortSignal
+  /** Override the base URL (mostly for tests). Defaults to same-origin. */
+  baseUrl?: string
 }
 
-// ── Venues ────────────────────────────────────────────────────────────
-
-export async function fetchVenues(): Promise<Venue[]> {
-  const { data, error } = await supabase.from('venues').select('*')
-  if (error || !data) throw new Error(error?.message ?? 'Failed to fetch venues')
-
-  return data.map(mapRowToVenue)
+function buildHeaders(
+  opts: ApiClientOptions | undefined,
+  extra?: Record<string, string>
+): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (opts?.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`
+  if (opts?.spotifyUserToken) headers['X-Spotify-Token'] = opts.spotifyUserToken
+  if (extra) Object.assign(headers, extra)
+  return headers
 }
 
-export async function fetchVenueById(id: string): Promise<Venue> {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('*')
-    .eq('id', id)
-    .single()
-  if (error || !data) throw new Error(error?.message ?? `Venue ${id} not found`)
-
-  return mapRowToVenue(data)
-}
-
-// ── Pulses ────────────────────────────────────────────────────────────
-
-export async function fetchPulses(venueId?: string): Promise<Pulse[]> {
-  let query = supabase.from('pulses').select('*')
-  if (venueId) query = query.eq('venue_id', venueId)
-
-  const { data, error } = await query
-  if (error || !data) throw new Error(error?.message ?? 'Failed to fetch pulses')
-
-  return data.map(mapRowToPulse)
-}
-
-export async function createPulse(pulse: Pulse): Promise<Pulse> {
-  const { data, error } = await supabase
-    .from('pulses')
-    .insert({
-      id: pulse.id,
-      user_id: pulse.userId,
-      venue_id: pulse.venueId,
-      crew_id: pulse.crewId,
-      photos: pulse.photos,
-      video_url: pulse.video,
-      energy_rating: pulse.energyRating,
-      caption: pulse.caption,
-      hashtags: pulse.hashtags,
-      views: pulse.views,
-      is_pioneer: pulse.isPioneer,
-      credibility_weight: pulse.credibilityWeight,
-      reactions: pulse.reactions,
-      created_at: pulse.createdAt,
-      expires_at: pulse.expiresAt,
-    })
-    .select()
-    .single()
-
-  if (error || !data) throw new Error(error?.message ?? 'Failed to create pulse')
-  return mapRowToPulse(data)
-}
-
-// ── Users ─────────────────────────────────────────────────────────────
-
-export async function fetchCurrentUser(): Promise<User> {
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !authUser) throw new Error(authError?.message ?? 'Not authenticated')
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', authUser.id)
-    .single()
-  if (error || !data) throw new Error(error?.message ?? 'Profile not found')
-
-  return mapRowToUser(data)
-}
-
-export async function fetchUserProfile(id: string): Promise<User> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', id)
-    .single()
-  if (error || !data) throw new Error(error?.message ?? `User ${id} not found`)
-
-  return mapRowToUser(data)
-}
-
-// ── Social ────────────────────────────────────────────────────────────
-
-export async function fetchCrews(userId: string): Promise<Crew[]> {
-  const { data, error } = await supabase
-    .from('crews')
-    .select('*')
-    .contains('member_ids', [userId])
-  if (error || !data) throw new Error(error?.message ?? 'Failed to fetch crews')
-
-  return data.map(mapRowToCrew)
-}
-
-export async function fetchFriends(userId: string): Promise<User[]> {
-  // Fetch the user's friend ID list, then resolve profiles
-  const { data: profile, error: profileErr } = await supabase
-    .from('profiles')
-    .select('friends')
-    .eq('id', userId)
-    .single()
-  if (profileErr || !profile) throw new Error(profileErr?.message ?? 'Profile not found')
-
-  const friendIds: string[] = profile.friends ?? []
-  if (friendIds.length === 0) return []
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .in('id', friendIds)
-  if (error || !data) throw new Error(error?.message ?? 'Failed to fetch friends')
-
-  return data.map(mapRowToUser)
-}
-
-export async function fetchFollowing(userId: string): Promise<Venue[]> {
-  const { data: profile, error: profileErr } = await supabase
-    .from('profiles')
-    .select('followed_venues')
-    .eq('id', userId)
-    .single()
-  if (profileErr || !profile) throw new Error(profileErr?.message ?? 'Profile not found')
-
-  const venueIds: string[] = profile.followed_venues ?? []
-  if (venueIds.length === 0) return []
-
-  const { data, error } = await supabase
-    .from('venues')
-    .select('*')
-    .in('id', venueIds)
-  if (error || !data) throw new Error(error?.message ?? 'Failed to fetch followed venues')
-
-  return data.map(mapRowToVenue)
-}
-
-// ── Row mappers ───────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRowToVenue(row: any): Venue {
-  return {
-    id: row.id,
-    name: row.name,
-    location: {
-      lat: row.location_lat,
-      lng: row.location_lng,
-      address: row.location_address,
-    },
-    city: row.city,
-    state: row.state,
-    category: row.category,
-    pulseScore: row.pulse_score ?? 0,
-    scoreVelocity: row.score_velocity,
-    lastPulseAt: row.last_pulse_at,
-    preTrending: row.pre_trending,
-    preTrendingLabel: row.pre_trending_label,
-    seeded: row.seeded,
-    verifiedCheckInCount: row.verified_check_in_count,
-    firstRealCheckInAt: row.first_real_check_in_at,
-    hours: row.hours,
-    phone: row.phone,
-    website: row.website,
-    integrations: row.integrations,
+async function parse<T>(response: Response): Promise<ApiResult<T>> {
+  let payload: unknown = null
+  try {
+    payload = await response.json()
+  } catch {
+    // body may be empty; fall through
   }
+  if (!response.ok) {
+    const error =
+      (payload && typeof payload === 'object' && 'error' in payload
+        ? String((payload as { error: unknown }).error)
+        : null) ?? `Request failed (${response.status})`
+    return { ok: false, status: response.status, error }
+  }
+  const data =
+    payload && typeof payload === 'object' && 'data' in payload
+      ? ((payload as { data: T }).data)
+      : (payload as T)
+  return { ok: true, data }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRowToPulse(row: any): Pulse {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    venueId: row.venue_id,
-    crewId: row.crew_id,
-    photos: row.photos ?? [],
-    video: row.video_url,
-    energyRating: row.energy_rating as EnergyRating,
-    caption: row.caption,
-    hashtags: row.hashtags ?? [],
-    views: row.views ?? 0,
-    isPioneer: row.is_pioneer,
-    credibilityWeight: row.credibility_weight,
-    reactions: row.reactions ?? { fire: [], eyes: [], skull: [], lightning: [] },
-    createdAt: row.created_at,
-    expiresAt: row.expires_at,
-    isPending: false,
-    uploadError: false,
-  }
+function endpoint(path: string, opts?: ApiClientOptions): string {
+  const base = opts?.baseUrl ?? ''
+  return `${base}${path}`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRowToUser(row: any): User {
-  return {
-    id: row.id,
-    username: row.username,
-    profilePhoto: row.profile_photo,
-    friends: row.friends ?? [],
-    favoriteVenues: row.favorite_venues ?? [],
-    followedVenues: row.followed_venues ?? [],
-    createdAt: row.created_at,
-    venueCheckInHistory: row.venue_check_in_history ?? {},
-    favoriteCategories: row.favorite_categories ?? [],
-    credibilityScore: row.credibility_score ?? 1.0,
-    presenceSettings: row.presence_settings,
-    postStreak: row.post_streak,
-    lastPostDate: row.last_post_date,
-  }
+// ── Spotify ───────────────────────────────────────────────────────
+
+export interface SpotifyTrack {
+  id: string
+  name: string
+  artist: string
+  album: string | null
+  artworkUrl: string | null
+  spotifyUrl: string | null
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRowToCrew(row: any): Crew {
-  return {
-    id: row.id,
-    name: row.name,
-    createdBy: row.created_by,
-    memberIds: row.member_ids ?? [],
-    createdAt: row.created_at,
-    activeNight: row.active_night,
-  }
+export interface SpotifyPlaylist {
+  id: string
+  name: string
+  isPublic: boolean
+  trackCount: number
+  spotifyUrl: string | null
+}
+
+export async function searchSpotifyTracks(
+  query: string,
+  limit = 10,
+  opts?: ApiClientOptions
+): Promise<ApiResult<SpotifyTrack[]>> {
+  const url = new URL(endpoint('/api/integrations/spotify', opts), window.location.origin)
+  url.searchParams.set('op', 'search')
+  url.searchParams.set('q', query)
+  url.searchParams.set('limit', String(limit))
+  const res = await fetch(url.pathname + url.search, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts?.signal,
+  })
+  return parse<SpotifyTrack[]>(res)
+}
+
+export async function getSpotifyUserPlaylists(
+  opts: ApiClientOptions
+): Promise<ApiResult<SpotifyPlaylist[]>> {
+  const url = new URL(endpoint('/api/integrations/spotify', opts), window.location.origin)
+  url.searchParams.set('op', 'playlists')
+  const res = await fetch(url.pathname + url.search, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts?.signal,
+  })
+  return parse<SpotifyPlaylist[]>(res)
+}
+
+// ── Rideshare ─────────────────────────────────────────────────────
+
+export interface RideEstimateRequest {
+  pickup: { lat: number; lng: number }
+  dropoff: { lat: number; lng: number }
+  seatCount?: number
+}
+
+export interface UberEstimates {
+  priceEstimates: unknown
+  timeEstimates: unknown
+}
+
+export async function getUberEstimates(
+  req: RideEstimateRequest,
+  opts?: ApiClientOptions
+): Promise<ApiResult<UberEstimates>> {
+  const res = await fetch(endpoint('/api/integrations/uber', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(req),
+    signal: opts?.signal,
+  })
+  return parse<UberEstimates>(res)
+}
+
+export interface LyftEstimates {
+  costEstimates: unknown
+  etaEstimates: unknown
+}
+
+export async function getLyftEstimates(
+  req: Omit<RideEstimateRequest, 'seatCount'>,
+  opts?: ApiClientOptions
+): Promise<ApiResult<LyftEstimates>> {
+  const res = await fetch(endpoint('/api/integrations/lyft', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(req),
+    signal: opts?.signal,
+  })
+  return parse<LyftEstimates>(res)
+}
+
+// ── Reverse geocoding ─────────────────────────────────────────────
+
+export interface ReverseGeocodeResult {
+  address: string | null
+  city: string | null
+  region: string | null
+  country: string | null
+  postalCode: string | null
+  provider: 'mapbox' | 'google'
+}
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  provider: 'mapbox' | 'google' = 'mapbox',
+  opts?: ApiClientOptions
+): Promise<ApiResult<ReverseGeocodeResult>> {
+  const url = new URL(endpoint('/api/integrations/geocode', opts), window.location.origin)
+  url.searchParams.set('lat', String(lat))
+  url.searchParams.set('lng', String(lng))
+  url.searchParams.set('provider', provider)
+  const res = await fetch(url.pathname + url.search, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts?.signal,
+  })
+  return parse<ReverseGeocodeResult>(res)
+}
+
+// ── Webhook signing ───────────────────────────────────────────────
+
+export interface SignedWebhookPayload {
+  event: string
+  timestamp: number
+  data: Record<string, unknown>
+  signature: string
+}
+
+export async function signWebhookPayload(
+  event: string,
+  data: Record<string, unknown>,
+  opts: ApiClientOptions & { subscriptionId?: string }
+): Promise<ApiResult<SignedWebhookPayload>> {
+  const res = await fetch(endpoint('/api/webhooks/sign', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify({
+      event,
+      data,
+      subscriptionId: opts.subscriptionId,
+    }),
+    signal: opts.signal,
+  })
+  return parse<SignedWebhookPayload>(res)
+}
+
+// ── API key generation ────────────────────────────────────────────
+
+export type ApiKeyTier = 'free' | 'starter' | 'business' | 'enterprise'
+
+export interface GeneratedApiKey {
+  id: string
+  key: string
+  name: string
+  ownerId: string
+  tier: ApiKeyTier
+  createdAt: string
+  active: boolean
+  rateLimit: number
+  dailyRequests: number
+  dailyLimit: number
+  issuedBy: string
+}
+
+export async function generateApiKey(
+  name: string,
+  ownerId: string,
+  tier: ApiKeyTier = 'free',
+  opts: ApiClientOptions = {}
+): Promise<ApiResult<GeneratedApiKey>> {
+  const res = await fetch(endpoint('/api/keys/generate', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify({ name, ownerId, tier }),
+    signal: opts.signal,
+  })
+  return parse<GeneratedApiKey>(res)
 }

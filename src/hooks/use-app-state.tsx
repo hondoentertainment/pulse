@@ -14,8 +14,12 @@ import { Crew, CrewCheckIn } from '@/lib/crew-mode'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { ContentReport, UserBlock, UserMute, filterModeratedPulses } from '@/lib/content-moderation'
-import { MOCK_VENUES, getSimulatedLocation } from '@/lib/mock-data'
-import { US_EXPANSION_VENUES } from '@/lib/us-venues'
+import { loadMockVenueFixtures, getSimulatedLocation } from '@/lib/mock-data'
+import { loadUSVenueFixtures } from '@/lib/us-venues'
+import { loadGlobalVenueFixtures } from '@/lib/global-venues'
+import { USE_SUPABASE_BACKEND, warnIfUsingMockBackend, VenueData, PulseData } from '@/lib/data'
+import { AuthRequiredError } from '@/lib/auth/require-auth'
+import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import {
   calculatePulseScore,
   getVenuesByProximity,
@@ -120,19 +124,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     if (supabaseProfile) setCurrentUser(supabaseProfile)
   }, [supabaseProfile, setCurrentUser])
 
-  const launchedCitySet = new Set(
-    (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
-      .split(',')
-      .map((city: string) => city.trim().toLowerCase())
-      .filter(Boolean)
-  )
-  const initialVenues = [...MOCK_VENUES, ...US_EXPANSION_VENUES].filter((venue) => {
-    if (launchedCitySet.size === 0) return true
-    return launchedCitySet.has((venue.city ?? '').toLowerCase())
-  })
-
+  // In production, `MOCK_VENUES` / `US_EXPANSION_VENUES` are empty stubs — real
+  // venues arrive via Supabase (see `fetchVenuesFromSupabase` below). In
+  // development we lazy-load the full fixture tables from `__fixtures__/` so
+  // they never end up in the production bundle. The useKV seed therefore
+  // starts empty and is hydrated asynchronously in a dev-only effect.
   const [pulses, setPulses] = useKV<Pulse[]>('pulses', [])
-  const [venues, setVenues] = useKV<Venue[]>('venues', initialVenues)
+  const [venues, setVenues] = useKV<Venue[]>('venues', [])
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [stories, setStories] = useKV<PulseStory[]>('stories', [])
@@ -155,6 +153,38 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => { initHighContrast() }, [])
+
+  // Dev-only: seed the venue KV with the fixture catalog so the app has
+  // something to display before (or when) Supabase is unreachable. The
+  // fixture modules aren't statically imported anywhere — Rollup drops
+  // them from the production bundle entirely.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    if (venues && venues.length > 0) return
+    let cancelled = false
+    void (async () => {
+      const [{ MOCK_VENUES }, us] = await Promise.all([
+        loadMockVenueFixtures(),
+        loadUSVenueFixtures(),
+      ])
+      if (cancelled) return
+      const launchedCitySet = new Set(
+        (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
+          .split(',')
+          .map((city: string) => city.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      const combined = [...MOCK_VENUES, ...us].filter((venue) => {
+        if (launchedCitySet.size === 0) return true
+        return launchedCitySet.has((venue.city ?? '').toLowerCase())
+      })
+      if (combined.length > 0) setVenues(combined)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Seed demo events / promotions
   useEffect(() => {
@@ -181,7 +211,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues])
 
-  // Remote data sync with React Query
+  // Remote data sync with React Query.
+  //
+  // When `USE_SUPABASE_BACKEND` is on, the venue + live-pulse hydrators
+  // use the new data modules and fall back to mock fixtures on any failure
+  // so the UI never blocks on a bad network / missing schema path.
   const { data: serverEvents } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEventsFromApi,
@@ -189,13 +223,59 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const { data: serverVenues } = useQuery({
     queryKey: ['venues'],
-    queryFn: fetchVenuesFromSupabase,
+    queryFn: async (): Promise<Venue[] | null> => {
+      if (USE_SUPABASE_BACKEND) {
+        try {
+          const rows = await VenueData.listVenues()
+          if (rows.length > 0) return rows
+          // Empty result set is not an error but doesn't help hydration either;
+          // fall through to mock fixtures so the UI keeps showing data.
+        } catch (error) {
+          if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
+            toast.error('Sign-in required', { description: error.message })
+          }
+          console.warn('[pulse] listVenues() failed, falling back to mock fixtures', error)
+        }
+      }
+      // Fallback path: legacy Supabase endpoint → mock fixtures.
+      const legacy = await fetchVenuesFromSupabase().catch(() => null)
+      if (legacy && legacy.length > 0) return legacy
+      const [mockRes, usMock, globalRes] = await Promise.all([
+        loadMockVenueFixtures(),
+        loadUSVenueFixtures(),
+        loadGlobalVenueFixtures(),
+      ])
+      const devMock = [
+        ...mockRes.MOCK_VENUES,
+        ...usMock,
+        ...globalRes.GLOBAL_EXPANSION_VENUES,
+      ]
+      return devMock.length > 0 ? devMock : null
+    },
   })
 
   const { data: serverPulses } = useQuery({
     queryKey: ['pulses'],
-    queryFn: fetchPulsesFromSupabase,
+    queryFn: async (): Promise<Pulse[] | null> => {
+      if (USE_SUPABASE_BACKEND) {
+        try {
+          const rows = await PulseData.listLivePulses()
+          return rows
+        } catch (error) {
+          if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
+            toast.error('Sign-in required', { description: error.message })
+          }
+          console.warn('[pulse] listLivePulses() failed, falling back to legacy fetch', error)
+        }
+      }
+      return fetchPulsesFromSupabase().catch(() => null)
+    },
   })
+
+  // One-time dev heads-up when we're running on mocks.
+  useEffect(() => {
+    warnIfUsingMockBackend()
+  }, [])
 
   // Hydrate local KV state from React Query
   useEffect(() => {

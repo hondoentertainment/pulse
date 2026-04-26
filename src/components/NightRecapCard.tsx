@@ -57,7 +57,7 @@ export function NightRecapCard({ recap, onShare }: NightRecapCardProps) {
 
         {/* Venue list */}
         <motion.div variants={itemVariants} className="space-y-2 mb-5">
-          {recap.venuesVisited.map((venue, _i) => (
+          {recap.venuesVisited.map((venue) => (
             <motion.div
               key={venue.id}
               variants={itemVariants}

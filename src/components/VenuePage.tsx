@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
+import { track } from '@/lib/observability/analytics'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
@@ -9,7 +11,8 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank } from '@phosphor-icons/react'
+import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, Car, CalendarCheck, ShareNetwork, Ticket, CalendarBlank, CurrencyDollar, Heart } from '@phosphor-icons/react'
+import { ACCESSIBILITY_LABELS } from '@/components/filters/AccessibilityFilter'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
@@ -64,6 +67,15 @@ interface VenuePageProps {
   onReserveTable?: () => void
 }
 
+const DRESS_CODE_DISPLAY: Record<string, string> = {
+  casual: 'Casual',
+  smart_casual: 'Smart casual',
+  upscale: 'Upscale',
+  formal: 'Formal',
+  costume_required: 'Costume required',
+  no_code: 'No dress code',
+}
+
 export function VenuePage({
   venue,
   venuePulses,
@@ -93,6 +105,10 @@ export function VenuePage({
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
+  const routerLocation = useLocation()
+  const hasCheckedInRef = useRef<boolean>(
+    Boolean(currentUser?.venueCheckInHistory?.[venue.id]),
+  )
 
   const refreshLiveData = useCallback(() => {
     setLiveData(getVenueLiveData(venue.id))
@@ -101,6 +117,27 @@ export function VenuePage({
   useEffect(() => {
     refreshLiveData()
   }, [venue.id, refreshLiveData])
+
+  // Fire `venue_viewed` once per venue mount; prefer source provided in
+  // router state (e.g. `{ source: 'map' | 'trending' | 'search' }`) and fall
+  // back to `'direct'` for deep links / direct navigation.
+  useEffect(() => {
+    const state = routerLocation.state as { source?: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity' } | null
+    const source = state?.source ?? 'deeplink'
+    track('venue_viewed', { venueId: venue.id, source })
+  }, [venue.id, routerLocation.state])
+
+  const handleCreatePulseWithTracking = useCallback(() => {
+    const priorCheckIns = currentUser?.venueCheckInHistory?.[venue.id] ?? 0
+    const isFirstCheckIn = !hasCheckedInRef.current && priorCheckIns === 0
+    track('check_in_completed', {
+      venueId: venue.id,
+      method: 'manual',
+      isFirstCheckIn,
+    })
+    hasCheckedInRef.current = true
+    onCreatePulse()
+  }, [currentUser, venue.id, onCreatePulse])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
@@ -300,6 +337,63 @@ export function VenuePage({
           </>
         )}
 
+        {(venue.dressCode ||
+          typeof venue.coverChargeCents === 'number' ||
+          venue.coverChargeNote ||
+          (venue.accessibilityFeatures && venue.accessibilityFeatures.length > 0)) && (
+          <Card className="p-4 space-y-4 bg-card/95 backdrop-blur-xl border-white/10 rounded-2xl shadow-lg">
+            <h3 className="text-lg font-semibold">Details</h3>
+            {venue.dressCode && (
+              <div className="flex items-start gap-3">
+                <Star size={20} weight="fill" className="text-[#833AB4] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Dress code</p>
+                  <p className="text-sm">{DRESS_CODE_DISPLAY[venue.dressCode] ?? venue.dressCode}</p>
+                </div>
+              </div>
+            )}
+            {(typeof venue.coverChargeCents === 'number' || venue.coverChargeNote) && (
+              <div className="flex items-start gap-3">
+                <CurrencyDollar size={20} weight="fill" className="text-[#FCAF45] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Cover</p>
+                  <p className="text-sm">
+                    {typeof venue.coverChargeCents === 'number'
+                      ? venue.coverChargeCents === 0
+                        ? 'No cover'
+                        : `$${(venue.coverChargeCents / 100).toFixed(2)}`
+                      : null}
+                    {venue.coverChargeNote ? (
+                      <span className="text-muted-foreground">
+                        {typeof venue.coverChargeCents === 'number' ? ' · ' : ''}
+                        {venue.coverChargeNote}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
+            )}
+            {venue.accessibilityFeatures && venue.accessibilityFeatures.length > 0 && (
+              <div className="flex items-start gap-3">
+                <Heart size={20} weight="fill" className="text-[#E1306C] mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Accessibility</p>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {venue.accessibilityFeatures.map((f) => (
+                      <li
+                        key={f}
+                        className="text-xs px-2 py-0.5 rounded-full border border-[#E1306C]/40 text-foreground"
+                      >
+                        {ACCESSIBILITY_LABELS[f] ?? f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Phase 2: Live Crowd Indicator — only show with real presence data */}
         {(presenceData?.friendsHereNowCount ?? venue.verifiedCheckInCount ?? 0) > 0 && (
           <LiveCrowdIndicator
@@ -341,7 +435,7 @@ export function VenuePage({
             )}
           </div>
           <Button
-            onClick={onCreatePulse}
+            onClick={handleCreatePulseWithTracking}
             className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-white"
           >
             <Plus size={20} weight="bold" className="mr-2" />
@@ -416,7 +510,7 @@ export function VenuePage({
         {/* Phase 2: Quick Actions Bar */}
         <VenueQuickActions
           venue={venue}
-          onCheckIn={onCreatePulse}
+          onCheckIn={handleCreatePulseWithTracking}
           onShare={handleShare}
           onDirections={() => {
             if (venue.location.address) {
@@ -436,7 +530,7 @@ export function VenuePage({
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
             variant="no-pulses"
-            onAction={onCreatePulse}
+            onAction={handleCreatePulseWithTracking}
             actionLabel="Create Pulse"
           />
         ) : (

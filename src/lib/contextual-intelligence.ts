@@ -3,8 +3,8 @@ import {
   type TimeOfDay,
   type DayType,
   getPeakConfig,
-  normalizeCategoryKeyPublic,
   getPeakCategories,
+  normalizeCategoryKeyPublic,
 } from './time-contextual-scoring'
 import { buildCategoryPreferences } from './venue-recommendations'
 import { calculateDistance } from './pulse-engine'
@@ -219,7 +219,6 @@ export function getContextualSearchSuggestions(
   userLocation: { lat: number; lng: number } | null,
   timeOfDay: TimeOfDay,
 ): ContextualSearchSuggestion[] {
-  const _peakCategories = getPeakCategories()
   const suggestions: ContextualSearchSuggestion[] = []
 
   // Build counts per normalized category

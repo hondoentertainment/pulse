@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'claude/**' ]
   pull_request:
     branches: [ main, master ]
 
@@ -23,16 +23,30 @@ jobs:
       run: npm ci
       
     - name: Lint
+      # Fails on any error; warnings capped via --max-warnings in npm script.
       run: npm run lint
-      
-    - name: Unit Tests
-      run: npm run test
-      
+
+    - name: Unit Tests (with coverage)
+      # Enforces coverage thresholds configured in vite.config.ts (src/lib scope).
+      run: npm run test:coverage
+
+    - name: Upload coverage artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage
+        path: coverage
+        if-no-files-found: ignore
+
     - name: Build
       run: npm run build
-      
+
+    - name: Bundle-size budget
+      # Fails CI if any dist/assets chunk exceeds limits in docs/bundle-budget.md.
+      run: npm run bundle-size
+
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
-      
+
     - name: Smoke Tests
       run: npm run test:smoke
