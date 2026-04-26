@@ -11,19 +11,13 @@ import {
   TICKET_TYPE_CONFIG,
   calculateDynamicPrice,
   getDefaultTicketTiers,
-  reserveTicket,
-  confirmPurchase,
-  createGroupOrder,
   GroupOrder,
 } from '@/lib/ticketing'
-import { formatPrice, createPaymentIntent, processPayment } from '@/lib/payment-processing'
+import { formatPrice } from '@/lib/payment-processing'
+import { purchaseTicket } from '@/lib/ticketing-client'
 import { Ticket as TicketIcon, Users, Minus, Plus, Lightning, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { isFeatureEnabled } from '@/lib/feature-flags'
-import { PaymentElementMount } from '@/components/ticketing/PaymentElementMount'
-import { confirmPayment as stripeConfirmPayment, type CreateElementsResult } from '@/lib/stripe-client'
-import { cancelPurchase } from '@/lib/staff-scanner-client'
 
 interface TicketPurchaseSheetProps {
   open: boolean
@@ -31,6 +25,13 @@ interface TicketPurchaseSheetProps {
   event: VenueEvent | null
   currentUser: User
   allUsers: User[]
+  /**
+   * Legacy callback — retained for parents that wanted to append tickets to
+   * client-side KV state. With Stripe Checkout we redirect away before
+   * tickets exist in `paid` state, so this fires with an empty list on
+   * successful redirect. Server-issued ticket rows appear via
+   * `ticketing-client.listTickets()` on return.
+   */
   onPurchase: (tickets: Ticket[], groupOrder?: GroupOrder) => void
 }
 
@@ -47,12 +48,7 @@ export function TicketPurchaseSheet({
   const [splitWithCrew, setSplitWithCrew] = useState(false)
   const [selectedCrewMembers, setSelectedCrewMembers] = useState<string[]>([])
   const [purchasing, setPurchasing] = useState(false)
-  const stripeFlowEnabled = isFeatureEnabled('ticketing')
-  const [stripeCtx, setStripeCtx] = useState<CreateElementsResult | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [pendingTicketIds, setPendingTicketIds] = useState<string[]>([])
-  const [paymentError, setPaymentError] = useState<string | null>(null)
-  const [succeeded, setSucceeded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const tiers = useMemo(() => {
     if (!event) return []
@@ -94,263 +90,45 @@ export function TicketPurchaseSheet({
     )
   }
 
-  const resetFlow = useCallback(() => {
-    setClientSecret(null)
-    setStripeCtx(null)
-    setPendingTicketIds([])
-    setPaymentError(null)
-    setSucceeded(false)
-    setPurchasing(false)
-  }, [])
-
-  const handleRequestClose = useCallback(() => {
-    // If user aborts after we created a clientSecret, cancel the intent
-    // so we free up inventory.
-    if (clientSecret && pendingTicketIds.length > 0 && !succeeded) {
-      for (const ticketId of pendingTicketIds) {
-        // Fire-and-forget; server reconciles capacity regardless.
-        void cancelPurchase(ticketId)
-      }
-    }
-    resetFlow()
-    onOpenChange(false)
-  }, [clientSecret, pendingTicketIds, succeeded, onOpenChange, resetFlow])
-
-  const handleStripeConfirm = useCallback(async () => {
-    if (!stripeCtx) return
+  const handlePurchase = useCallback(async () => {
+    if (!event) return
     setPurchasing(true)
-    setPaymentError(null)
-    const result = await stripeConfirmPayment({
-      stripe: stripeCtx.stripe,
-      elements: stripeCtx.elements,
+    setError(null)
+
+    const buyQuantity = splitWithCrew && selectedCrewMembers.length > 0
+      ? selectedCrewMembers.length + 1
+      : quantity
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
+    const result = await purchaseTicket({
+      eventId: event.id,
+      quantity: buyQuantity,
+      ticketType: selectedType,
+      successUrl: origin ? `${origin}/my-tickets?session_id={CHECKOUT_SESSION_ID}` : undefined,
+      cancelUrl: origin ? `${origin}/venues/${event.venueId}?ticket_cancelled=1` : undefined,
     })
-    if (result.error) {
-      setPaymentError(result.error.message ?? 'Payment failed')
+
+    if (!result.ok) {
+      setError(result.error)
       setPurchasing(false)
       return
     }
-    if (result.paymentIntent?.status === 'succeeded') {
-      setSucceeded(true)
-      setPurchasing(false)
-      // Caller is responsible for hitting /api/ticketing/confirm with the
-      // paymentIntentId + ticketIds; we surface via onPurchase so existing
-      // wiring continues to work.
-      // (No local mutation — tickets are now paid server-side.)
-      return
+
+    // Server created pending tickets + Stripe session. Tell the parent that
+    // a purchase was initiated so it can clear UI state, then redirect to
+    // Stripe Checkout. The ticket rows materialize as `paid` via webhook.
+    onPurchase([])
+
+    if (typeof window !== 'undefined' && result.data.checkoutUrl) {
+      window.location.assign(result.data.checkoutUrl)
     }
-    setPaymentError(`Unexpected status: ${result.paymentIntent?.status ?? 'unknown'}`)
-    setPurchasing(false)
-  }, [stripeCtx])
-
-  const handlePurchase = async () => {
-    if (!event || !selectedTier || !dynamicPricing) return
-    setPurchasing(true)
-
-    // Stripe-flow branch: create reservation rows + payment intent, then
-    // mount the PaymentElement. Kept behind the `ticketing` flag so the
-    // legacy stub remains the default until Stripe keys + backend land.
-    if (stripeFlowEnabled) {
-      try {
-        const reservedTickets: Ticket[] = []
-        const members = splitWithCrew && selectedCrewMembers.length > 0
-          ? [currentUser.id, ...selectedCrewMembers]
-          : Array.from({ length: quantity }, () => currentUser.id)
-        for (const memberId of members) {
-          const reserved = reserveTicket(
-            event.id,
-            event.venueId,
-            memberId,
-            selectedType,
-            unitPrice,
-            true
-          )
-          reservedTickets.push(reserved)
-        }
-        const res = await fetch('/api/ticketing/purchase', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            eventId: event.id,
-            venueId: event.venueId,
-            ticketType: selectedType,
-            quantity: members.length,
-            ticketIds: reservedTickets.map(t => t.id),
-            amount: totalPrice,
-          }),
-        })
-        if (!res.ok) {
-          setPaymentError('Could not start checkout. Please try again.')
-          setPurchasing(false)
-          return
-        }
-        const payload = (await res.json()) as { client_secret?: string; clientSecret?: string }
-        const secret = payload.client_secret ?? payload.clientSecret ?? null
-        if (!secret) {
-          setPaymentError('Payment provider returned no client secret.')
-          setPurchasing(false)
-          return
-        }
-        setClientSecret(secret)
-        setPendingTicketIds(reservedTickets.map(t => t.id))
-      } catch (err) {
-        setPaymentError(err instanceof Error ? err.message : 'Network error')
-      } finally {
-        setPurchasing(false)
-      }
-      return
-    }
-
-    try {
-      // Simulate brief processing delay (legacy mock path)
-      await new Promise(resolve => setTimeout(resolve, 800))
-
-      const tickets: Ticket[] = []
-
-      if (splitWithCrew && selectedCrewMembers.length > 0) {
-        // Group order flow
-        const allMembers = [currentUser.id, ...selectedCrewMembers]
-        const groupOrder = createGroupOrder(
-          event.id,
-          currentUser.id,
-          allMembers,
-          selectedType,
-          unitPrice
-        )
-
-        for (const memberId of allMembers) {
-          const reserved = reserveTicket(
-            event.id,
-            event.venueId,
-            memberId,
-            selectedType,
-            unitPrice,
-            true
-          )
-          const purchased = confirmPurchase({ ...reserved, groupOrderId: groupOrder.id })
-          tickets.push(purchased)
-        }
-
-        // Process payment
-        const intent = createPaymentIntent(
-          totalPrice,
-          'ticket',
-          currentUser.id,
-          event.venueId,
-          event.id,
-          { groupOrderId: groupOrder.id }
-        )
-        processPayment(intent)
-
-        onPurchase(tickets, groupOrder)
-      } else {
-        // Standard purchase
-        for (let i = 0; i < quantity; i++) {
-          const reserved = reserveTicket(
-            event.id,
-            event.venueId,
-            currentUser.id,
-            selectedType,
-            unitPrice,
-            true
-          )
-          const purchased = confirmPurchase(reserved)
-          tickets.push(purchased)
-        }
-
-        const intent = createPaymentIntent(
-          totalPrice,
-          'ticket',
-          currentUser.id,
-          event.venueId,
-          event.id
-        )
-        processPayment(intent)
-
-        onPurchase(tickets)
-      }
-
-      // Reset state
-      setQuantity(1)
-      setSplitWithCrew(false)
-      setSelectedCrewMembers([])
-      onOpenChange(false)
-    } finally {
-      setPurchasing(false)
-    }
-  }
+  }, [event, splitWithCrew, selectedCrewMembers, quantity, selectedType, onPurchase])
 
   if (!event) return null
 
-  // Payment stage (Stripe flow only). Renders the PaymentElement once
-  // a clientSecret has been obtained.
-  if (stripeFlowEnabled && clientSecret && !succeeded) {
-    return (
-      <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : handleRequestClose())}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
-          <SheetHeader className="p-6 pb-0">
-            <SheetTitle className="text-xl font-bold">Payment</SheetTitle>
-            <SheetDescription className="text-sm">
-              {event.title} — {formatPrice(totalPrice)}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="p-6 space-y-4">
-            <PaymentElementMount
-              clientSecret={clientSecret}
-              onReady={setStripeCtx}
-              onValidationChange={setPaymentError}
-            />
-            {paymentError && (
-              <p className="text-sm text-destructive" role="alert">
-                {paymentError}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleRequestClose} disabled={purchasing}>
-                Cancel
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleStripeConfirm}
-                disabled={!stripeCtx || purchasing}
-              >
-                {purchasing ? 'Processing…' : `Pay ${formatPrice(totalPrice)}`}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    )
-  }
-
-  // Success stage
-  if (stripeFlowEnabled && succeeded) {
-    return (
-      <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : (resetFlow(), onOpenChange(false)))}>
-        <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
-          <SheetHeader className="p-6 pb-0">
-            <SheetTitle className="text-xl font-bold">Purchase complete</SheetTitle>
-            <SheetDescription className="text-sm">
-              Your tickets will appear in My Tickets.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="p-6">
-            <Button
-              className="w-full"
-              onClick={() => {
-                resetFlow()
-                onOpenChange(false)
-              }}
-            >
-              Done
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-    )
-  }
-
   return (
-    <Sheet open={open} onOpenChange={v => (v ? onOpenChange(v) : handleRequestClose())}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl border-t-primary/20 bg-card p-0 max-h-[85vh] overflow-y-auto">
         <SheetHeader className="p-6 pb-0">
           <div className="mx-auto w-12 h-1.5 rounded-full bg-muted/30 mb-4" />
@@ -587,9 +365,16 @@ export function TicketPurchaseSheet({
               </div>
             )}
 
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+
             <Button
               onClick={handlePurchase}
               disabled={purchasing}
+              aria-busy={purchasing}
               className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90"
             >
               {purchasing ? (
