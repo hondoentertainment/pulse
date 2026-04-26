@@ -104,7 +104,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     distanceFilter: 0.001,
   })
 
-  const { profile: supabaseProfile } = useSupabaseAuth()
+  const {
+    profile: supabaseProfile,
+    session: supabaseSession,
+    isPlaceholder: authIsPlaceholder,
+  } = useSupabaseAuth()
 
   const [currentUser, setCurrentUser] = useKV<User>('currentUser', {
     id: 'user-1',
@@ -221,20 +225,38 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queryFn: fetchEventsFromApi,
   })
 
+  // When the Supabase backend is on we prefer **live reads** via the new
+  // data modules; on any auth/RLS degradation (signed-out user, stale JWT,
+  // RLS rejection) we quietly fall back to the legacy/mock hydrators so the
+  // UI keeps rendering an empty-but-valid state instead of crashing.
+  //
+  // The `authIsPlaceholder` gate also lets us short-circuit into the mock
+  // path when Supabase credentials are absent so we never issue a doomed
+  // network call that will only come back as AuthRequiredError.
+  const supabaseReadsEnabled = USE_SUPABASE_BACKEND && !authIsPlaceholder
+
   const { data: serverVenues } = useQuery({
-    queryKey: ['venues'],
+    queryKey: [
+      'venues',
+      supabaseReadsEnabled ? 'supabase' : 'fallback',
+      supabaseSession?.user.id ?? 'anon',
+    ],
     queryFn: async (): Promise<Venue[] | null> => {
-      if (USE_SUPABASE_BACKEND) {
+      if (supabaseReadsEnabled) {
         try {
           const rows = await VenueData.listVenues()
           if (rows.length > 0) return rows
           // Empty result set is not an error but doesn't help hydration either;
           // fall through to mock fixtures so the UI keeps showing data.
         } catch (error) {
+          // AuthRequiredError / RlsDeniedError degrade silently to empty
+          // state — the user can still browse what little we have, and
+          // signing in will retry on the next query invalidation.
           if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
-            toast.error('Sign-in required', { description: error.message })
+            console.info('[pulse] venues: supabase auth required, using fixtures', error.code)
+          } else {
+            console.warn('[pulse] listVenues() failed, falling back to mock fixtures', error)
           }
-          console.warn('[pulse] listVenues() failed, falling back to mock fixtures', error)
         }
       }
       // Fallback path: legacy Supabase endpoint → mock fixtures.
@@ -255,15 +277,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   })
 
   const { data: serverPulses } = useQuery({
-    queryKey: ['pulses'],
+    queryKey: [
+      'pulses',
+      supabaseReadsEnabled ? 'supabase' : 'fallback',
+      supabaseSession?.user.id ?? 'anon',
+    ],
     queryFn: async (): Promise<Pulse[] | null> => {
-      if (USE_SUPABASE_BACKEND) {
+      if (supabaseReadsEnabled) {
         try {
           const rows = await PulseData.listLivePulses()
           return rows
         } catch (error) {
           if (error instanceof AuthRequiredError || error instanceof RlsDeniedError) {
-            toast.error('Sign-in required', { description: error.message })
+            console.info('[pulse] pulses: supabase auth required, using fixtures', error.code)
+            // Return an empty array rather than null so downstream hydration
+            // effects know we attempted a fetch; the UI will render an
+            // empty state until the user signs in and the query refetches.
+            return []
           }
           console.warn('[pulse] listLivePulses() failed, falling back to legacy fetch', error)
         }
