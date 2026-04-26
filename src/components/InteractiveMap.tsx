@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { Venue } from '@/lib/types'
+import { Venue, User, Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, MapFiltersState } from '@/components/MapFilters'
 import { venuePassesAccessibilityFilter } from '@/components/filters/AccessibilityFilter'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import { MapboxBaseLayer, type MapboxBaseLayerHandle } from '@/components/MapboxBaseLayer'
+import FriendMapDots from '@/components/FriendMapDots'
 import {
   MapPin, NavigationArrow, Plus, Minus,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire
+  Users, UsersThree, Fire
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
+import { calculatePresence, type PresenceContext } from '@/lib/presence-engine'
+import { trackEvent } from '@/lib/analytics'
 import {
   buildVenueRenderPoints,
   clampCenter,
@@ -27,6 +30,24 @@ import {
   type VenueRenderPoint
 } from '@/lib/interactive-map'
 
+/**
+ * Session-storage key for the friend-on-map layer toggle. Persisted per tab
+ * so users who opt-in on one device/tab don't leak the preference across
+ * sessions — aligns with the privacy-first stance of `presence-engine.ts`.
+ */
+export const FRIEND_LAYER_STORAGE_KEY = 'pulse.map.friendLayer'
+
+export interface FriendPresenceInput {
+  /** The signed-in user. If null/undefined the layer fully hides. */
+  currentUser?: User | null
+  /** All known users (friends + familiar faces). Empty = nothing to show. */
+  allUsers?: User[]
+  /** Pulses used by the engine to infer co-presence / familiar faces. */
+  allPulses?: Pulse[]
+  /** Latest known locations keyed by userId. The engine applies a 5-min freshness rule. */
+  userLocations?: Record<string, { lat: number; lng: number; lastUpdate: string }>
+}
+
 interface InteractiveMapProps {
   venues: Venue[]
   userLocation: { lat: number; lng: number } | null
@@ -34,10 +55,58 @@ interface InteractiveMapProps {
   isTracking?: boolean
   locationAccuracy?: number
   locationHeading?: number | null
+  /**
+   * Presence context for the optional "Friends on map" layer. The layer is
+   * default OFF and even when ON every position is routed through
+   * `calculatePresence` so jitter, the 2+ familiar-face threshold, and
+   * per-venue suppression apply. Never bypass.
+   */
+  friendPresence?: FriendPresenceInput
 }
 
 const ZOOM_STEP = 1.35
 const MAP_SCALE = 500000
+
+/**
+ * Read the friend-layer preference from sessionStorage. Defaults to `false`.
+ * Guarded for SSR / unavailable storage (private mode, quota errors).
+ */
+function readFriendLayerPref(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.sessionStorage.getItem(FRIEND_LAYER_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeFriendLayerPref(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(FRIEND_LAYER_STORAGE_KEY, enabled ? 'true' : 'false')
+  } catch {
+    /* storage unavailable — the toggle still works for this session. */
+  }
+}
+
+/**
+ * Deterministic per-venue jitter so repeated renders don't jump. Offsets
+ * are ~10–30m at mid latitudes. We jitter position rather than counts to
+ * complement the engine's count jitter (`applyJitter`) — no user's real
+ * location is ever used for the map dot.
+ */
+function jitterForVenue(venueId: string): { dLat: number; dLng: number } {
+  let hash = 0
+  for (let i = 0; i < venueId.length; i++) {
+    hash = ((hash << 5) - hash + venueId.charCodeAt(i)) | 0
+  }
+  // Two independent offsets from the hash bits.
+  const a = ((hash & 0xffff) / 0xffff) * 2 - 1
+  const b = (((hash >> 16) & 0xffff) / 0xffff) * 2 - 1
+  // ~0.0001° ≈ 11 metres at the equator — enough to be visibly non-exact
+  // while keeping the dot within the venue's footprint.
+  return { dLat: a * 0.00015, dLng: b * 0.00015 }
+}
 
 export function InteractiveMap({
   venues,
@@ -45,7 +114,8 @@ export function InteractiveMap({
   onVenueClick,
   isTracking = false,
   locationAccuracy,
-  locationHeading
+  locationHeading,
+  friendPresence
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -63,6 +133,9 @@ export function InteractiveMap({
     maxDistance: Infinity
   })
   const [nearMeActive, setNearMeActive] = useState(false)
+  // Friends-on-map layer is default OFF and persisted in sessionStorage so
+  // the preference resets when the tab is closed — deliberate privacy default.
+  const [showFriendLayer, setShowFriendLayer] = useState<boolean>(() => readFriendLayerPref())
 
   const [showOnboardingTips, setShowOnboardingTips] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
@@ -750,6 +823,84 @@ export function InteractiveMap({
     })
   }, [center, filteredVenues, zoom, dimensions, userLocation])
 
+  // ── Friend presence layer ────────────────────────────────────
+  // Route every venue through `calculatePresence` so the engine's privacy
+  // rules (5-min freshness, 2+ familiar-face threshold, per-venue
+  // suppression, visibility settings) apply. The layer renders ONE dot per
+  // non-suppressed venue — no raw user positions are ever exposed.
+  //
+  // Conditions that fully hide the layer:
+  //   1. Toggle is OFF
+  //   2. No signed-in user (currentUser is null/undefined)
+  //   3. Engine returns `isSuppressed` for every venue (< 2 familiar faces)
+  const friendLayerDots = useMemo(() => {
+    if (!showFriendLayer) return []
+    const ctx = friendPresence
+    if (!ctx?.currentUser) return []
+    const allUsers = ctx.allUsers ?? []
+    const allPulses = ctx.allPulses ?? []
+    const userLocations = ctx.userLocations ?? {}
+
+    const dots: Array<{
+      id: string
+      username: string
+      avatar: string
+      lat: number
+      lng: number
+      venueId: string
+      venueName: string
+    }> = []
+
+    for (const venue of filteredVenues) {
+      const presenceCtx: PresenceContext = {
+        currentUser: ctx.currentUser,
+        allUsers,
+        allPulses,
+        venueLocation: { lat: venue.location.lat, lng: venue.location.lng },
+        userLocations
+      }
+      const presence = calculatePresence(venue.id, presenceCtx)
+      // The engine's own privacy gate. NEVER bypass.
+      if (presence.isSuppressed) continue
+
+      const { dLat, dLng } = jitterForVenue(venue.id)
+      // Use the first prioritised avatar as the cluster face; the engine
+      // already ordered friends-here > friends-nearby > familiar-faces.
+      const avatar = presence.prioritizedAvatars[0] ?? ''
+      dots.push({
+        id: `friend-cluster-${venue.id}`,
+        username: `${presence.friendsHereNowCount + presence.friendsNearbyCount + presence.familiarFacesCount} here`,
+        avatar,
+        lat: venue.location.lat + dLat,
+        lng: venue.location.lng + dLng,
+        venueId: venue.id,
+        venueName: venue.name
+      })
+    }
+    return dots
+  }, [showFriendLayer, friendPresence, filteredVenues])
+
+  const friendLayerLatLngToPixel = useMemo(() => {
+    return (lat: number, lng: number) => {
+      if (!center) return { x: 0, y: 0 }
+      return latLngToPixel(lat, lng, center, zoom, dimensions)
+    }
+  }, [center, zoom, dimensions])
+
+  const handleFriendLayerToggle = () => {
+    triggerHapticFeedback('light')
+    setShowFriendLayer((prev) => {
+      const next = !prev
+      writeFriendLayerPref(next)
+      trackEvent({
+        type: 'friend_presence_layer_toggled',
+        timestamp: Date.now(),
+        enabled: next
+      })
+      return next
+    })
+  }
+
   const shouldClusterMarkers = zoom < 1.05 && !isDragging
 
   const clusteredMapData = useMemo(() => {
@@ -1160,6 +1311,15 @@ export function InteractiveMap({
             </g>
           )
         })()}
+
+        {/* Friend presence layer — gated by toggle + engine privacy rules */}
+        {showFriendLayer && friendLayerDots.length > 0 && center && (
+          <FriendMapDots
+            friends={friendLayerDots}
+            latLngToPixel={friendLayerLatLngToPixel}
+            zoom={zoom}
+          />
+        )}
       </svg>
 
       {/* Empty State Message */}
@@ -1480,6 +1640,23 @@ export function InteractiveMap({
               {label}
             </button>
           ))}
+          {/* Friends-on-map toggle. Default OFF; the engine's suppression
+              rules still gate what actually renders. */}
+          <button
+            data-testid="friend-layer-toggle"
+            onClick={handleFriendLayerToggle}
+            aria-pressed={showFriendLayer}
+            aria-label="Show friends on map"
+            className={cn(
+              "flex-shrink-0 flex items-center gap-1.5 px-4 h-9 rounded-full text-[13px] font-medium transition-all touch-manipulation active:scale-[0.96]",
+              showFriendLayer
+                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-md"
+                : "bg-card/90 backdrop-blur-xl text-foreground border border-white/10 hover:bg-card"
+            )}
+          >
+            <UsersThree size={14} weight="fill" />
+            Show friends
+          </button>
         </div>
       </div>
 
