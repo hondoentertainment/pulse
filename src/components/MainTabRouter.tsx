@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
+import { ALL_USERS } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useUIState } from '@/hooks/use-ui-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TabId } from '@/components/BottomNav'
@@ -27,10 +29,11 @@ interface MainTabRouterProps {
 
 export function MainTabRouter({ tab }: MainTabRouterProps) {
   const navigate = useNavigate()
-  const state = useAppState()
+  const venueState = useVenueState()
+  const uiState = useUIState()
   const handlers = useAppHandlers()
   // Use the tab prop (from the route) if provided, otherwise fall back to state
-  const activeTab = tab ?? state.activeTab
+  const activeTab = tab ?? uiState.activeTab
   const {
     venues,
     moderatedPulses,
@@ -41,18 +44,20 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     followedVenues,
     userLocation,
     unitSystem,
-    trendingSubTab,
-    setTrendingSubTab,
     realtimeLocation,
     isTracking,
     promotions,
+    isFavorite,
+    getPulsesWithUsers,
+  } = venueState
+  const {
+    trendingSubTab,
+    setTrendingSubTab,
     socialDashboardEnabled,
     setShowAdminDashboard,
     setStoryViewerOpen,
     setStoryViewerStories,
-    isFavorite,
-    getPulsesWithUsers,
-  } = state
+  } = uiState
 
   const {
     handleReaction,
@@ -65,7 +70,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     handlePromotionClick,
   } = handlers
 
-  const navigateToVenue = (venue: any) => {
+  const navigateToVenue = (venue: { id: string }) => {
     navigate(`/venue/${venue.id}`)
   }
 

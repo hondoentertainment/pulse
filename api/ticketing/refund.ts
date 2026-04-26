@@ -12,37 +12,56 @@
  * Body: { ticket_id: uuid, force?: boolean }
  */
 
-import { authenticate, isVenueStaff } from '../_lib/auth'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { verifySupabaseJwt } from '../_lib/auth'
 import {
   badRequest,
   forbidden,
   handlePreflight,
   methodNotAllowed,
-  notFound,
   serverError,
   unauthorized,
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http'
 import { createRefund } from '../_lib/stripe'
-import { getServiceSupabase } from '../_lib/supabase-server'
-import { isUuid, requireFields } from '../_lib/validate'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000
+
+async function isVenueStaff(
+  supabase: SupabaseClient,
+  userId: string,
+  venueId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('venue_staff')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('venue_id', venueId)
+    .maybeSingle()
+  return !!data
+}
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return
-  if (req.method !== 'POST') return methodNotAllowed(res)
+  if (req.method !== 'POST') return methodNotAllowed(res, ['POST', 'OPTIONS'])
 
-  const auth = await authenticate(req)
-  if (!auth) return unauthorized(res)
+  const auth = await verifySupabaseJwt(req)
+  if (!auth.ok || !auth.user) return unauthorized(res, auth.error ?? 'Unauthorized')
+  const userId = auth.user.id
 
-  const errors = requireFields(req.body, { ticket_id: isUuid })
-  if (errors.length) return badRequest(res, 'validation_failed', errors)
+  const body = (req.body ?? {}) as { ticket_id?: unknown; force?: unknown }
+  if (typeof body.ticket_id !== 'string' || !UUID_RE.test(body.ticket_id)) {
+    return badRequest(res, 'validation_failed', ['ticket_id must be a uuid'])
+  }
+  const ticket_id = body.ticket_id
+  const force = body.force === true
 
-  const { ticket_id, force } = req.body as { ticket_id: string; force?: boolean }
-  const supabase = getServiceSupabase()
-  if (!supabase) return serverError(res, new Error('Supabase not configured'))
+  const url = process.env.SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) return serverError(res, 'Supabase not configured')
+  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
 
   try {
     const { data: ticket } = await supabase
@@ -50,7 +69,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .select('id, user_id, event_id, status, stripe_payment_intent, price_cents')
       .eq('id', ticket_id)
       .maybeSingle()
-    if (!ticket) return notFound(res, 'ticket_not_found')
+    if (!ticket) {
+      res.status(404).json({ error: 'ticket_not_found' })
+      return
+    }
     if (ticket.status !== 'paid') return badRequest(res, 'ticket_not_refundable')
     if (!ticket.stripe_payment_intent) return badRequest(res, 'missing_payment_intent')
 
@@ -59,10 +81,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .select('id, venue_id, starts_at')
       .eq('id', ticket.event_id)
       .maybeSingle()
-    if (!event) return notFound(res, 'event_not_found')
+    if (!event) {
+      res.status(404).json({ error: 'event_not_found' })
+      return
+    }
 
-    const isOwner = ticket.user_id === auth.userId
-    const isStaff = await isVenueStaff(auth.userId, event.venue_id)
+    const isOwner = ticket.user_id === userId
+    const isStaff = await isVenueStaff(supabase, userId, event.venue_id)
     if (!isOwner && !isStaff) return forbidden(res)
 
     const eventStart = event.starts_at ? new Date(event.starts_at).getTime() : 0
@@ -79,10 +104,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .from('tickets')
       .update({ status: 'refunded', refunded_at: new Date().toISOString() })
       .eq('id', ticket_id)
-    if (updErr) return serverError(res, updErr)
+    if (updErr) return serverError(res, updErr.message)
 
     res.status(200).json({ data: { ticket_id, refund_id: refund.id, status: 'refunded' } })
   } catch (err) {
-    serverError(res, err)
+    serverError(res, err instanceof Error ? err.message : 'Internal error')
   }
 }
