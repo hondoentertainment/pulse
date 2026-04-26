@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, createContext, useContext, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useContext, type ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import type {
   Venue,
@@ -43,20 +43,17 @@ import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 
-export type SubPage =
-  | 'events'
-  | 'crews'
-  | 'achievements'
-  | 'insights'
-  | 'neighborhoods'
-  | 'playlists'
-  | 'settings'
-  | 'integrations'
-  | 'moderation'
-  | 'challenges'
-  | 'my-tickets'
-  | 'night-planner'
-  | null
+import { VenueContext, type VenueState } from '@/hooks/use-venue-state'
+import { SocialContext, type SocialState } from '@/hooks/use-social-state'
+import { UIContext, type UIState } from '@/hooks/use-ui-state'
+
+// Re-export domain hooks and types for backward compatibility
+export { useVenueState } from '@/hooks/use-venue-state'
+export { useSocialState } from '@/hooks/use-social-state'
+export { useUIState } from '@/hooks/use-ui-state'
+export type { SubPage } from '@/hooks/use-ui-state'
+
+export type AppState = VenueState & SocialState & UIState
 
 export const ALL_USERS: User[] = [
   { id: 'user-2', username: 'sarah_j', profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
@@ -66,106 +63,17 @@ export const ALL_USERS: User[] = [
   { id: 'user-6', username: 'tom_b', profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop', friends: [], createdAt: new Date().toISOString() },
 ]
 
-export interface AppState {
-  // Navigation
-  activeTab: TabId
-  setActiveTab: (tab: TabId) => void
-  selectedVenue: Venue | null
-  setSelectedVenue: (v: Venue | null) => void
-  subPage: SubPage
-  setSubPage: (p: SubPage) => void
-
-  // Onboarding
-  hasCompletedOnboarding: boolean | undefined
-  setHasCompletedOnboarding: (v: boolean) => void
-
-  // Data
-  venues: Venue[] | undefined
-  setVenues: (fn: ((v: Venue[] | undefined) => Venue[]) | Venue[]) => void
-  pulses: Pulse[] | undefined
-  setPulses: (fn: ((p: Pulse[] | undefined) => Pulse[]) | Pulse[]) => void
-  notifications: Notification[] | undefined
-  setNotifications: (fn: ((n: Notification[] | undefined) => Notification[]) | Notification[]) => void
-  hashtags: Hashtag[] | undefined
-  setHashtags: (fn: ((h: Hashtag[] | undefined) => Hashtag[]) | Hashtag[]) => void
-  stories: PulseStory[] | undefined
-  setStories: (fn: ((s: PulseStory[] | undefined) => PulseStory[]) | PulseStory[]) => void
-  events: VenueEvent[] | undefined
-  setEvents: (fn: ((e: VenueEvent[] | undefined) => VenueEvent[]) | VenueEvent[]) => void
-  crews: Crew[] | undefined
-  setCrews: (fn: ((c: Crew[] | undefined) => Crew[]) | Crew[]) => void
-  crewCheckIns: CrewCheckIn[] | undefined
-  setCrewCheckIns: (fn: ((c: CrewCheckIn[] | undefined) => CrewCheckIn[]) | CrewCheckIn[]) => void
-  playlists: PulsePlaylist[] | undefined
-  setPlaylists: (fn: ((p: PulsePlaylist[] | undefined) => PulsePlaylist[]) | PulsePlaylist[]) => void
-  promotions: PromotedVenue[] | undefined
-  setPromotions: (fn: ((p: PromotedVenue[] | undefined) => PromotedVenue[]) | PromotedVenue[]) => void
-  contentReports: ContentReport[] | undefined
-  setContentReports: (fn: ((r: ContentReport[] | undefined) => ContentReport[]) | ContentReport[]) => void
-  userBlocks: UserBlock[] | undefined
-  userMutes: UserMute[] | undefined
-
-  // User
-  currentUser: User | undefined
-  setCurrentUser: (fn: ((u: User | undefined) => User) | User) => void
-
-  // Location
-  userLocation: { lat: number; lng: number } | null
-  locationName: string
-  locationError: string | undefined
-  isTracking: boolean
-  realtimeLocation: { lat: number; lng: number; accuracy?: number; heading?: number } | null
-  locationPermissionDenied: boolean
-  setLocationPermissionDenied: (v: boolean) => void
-  simulatedLocation: { lat: number; lng: number } | null
-  setSimulatedLocation: (v: { lat: number; lng: number } | null) => void
-
-  // Preferences
-  unitSystem: 'imperial' | 'metric'
-  notificationSettings: ReturnType<typeof useNotificationSettings>['settings']
-  currentTime: Date
-
-  // Feature flags
-  integrationsEnabled: boolean
-  socialDashboardEnabled: boolean
-
-  // UI state
-  createDialogOpen: boolean
-  setCreateDialogOpen: (v: boolean) => void
-  venueForPulse: Venue | null
-  setVenueForPulse: (v: Venue | null) => void
-  showAdminDashboard: boolean
-  setShowAdminDashboard: (v: boolean) => void
-  trendingSubTab: 'trending' | 'my-spots'
-  setTrendingSubTab: (v: 'trending' | 'my-spots') => void
-  storyViewerOpen: boolean
-  setStoryViewerOpen: (v: boolean) => void
-  storyViewerStories: PulseStory[]
-  setStoryViewerStories: (v: PulseStory[]) => void
-  integrationVenue: Venue | null
-  setIntegrationVenue: (v: Venue | null) => void
-  presenceSheetOpen: boolean
-  setPresenceSheetOpen: (v: boolean) => void
-  queuedPulseCount: number
-  setQueuedPulseCount: (v: number) => void
-
-  // Derived
-  moderatedPulses: Pulse[]
-  sortedVenues: Venue[]
-  favoriteVenues: Venue[]
-  followedVenues: Venue[]
-  unreadNotificationCount: number
-  isFavorite: (venueId: string) => boolean
-  isFollowed: (venueId: string) => boolean
-  getPulsesWithUsers: () => PulseWithUser[]
-}
-
-const AppStateContext = createContext<AppState | null>(null)
-
+/**
+ * Backward-compatible hook that returns the combined state from all three contexts.
+ * Prefer using the domain-specific hooks (useVenueState, useSocialState, useUIState)
+ * to avoid unnecessary re-renders.
+ */
 export function useAppState(): AppState {
-  const ctx = useContext(AppStateContext)
-  if (!ctx) throw new Error('useAppState must be used within AppStateProvider')
-  return ctx
+  const venue = useContext(VenueContext)
+  const social = useContext(SocialContext)
+  const ui = useContext(UIContext)
+  if (!venue || !social || !ui) throw new Error('useAppState must be used within AppStateProvider')
+  return { ...venue, ...social, ...ui }
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
@@ -173,7 +81,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
-  const [subPage, setSubPage] = useState<SubPage>(null)
+  const [subPage, setSubPage] = useState<UIState['subPage']>(null)
   const [storyViewerOpen, setStoryViewerOpen] = useState(false)
   const [storyViewerStories, setStoryViewerStories] = useState<PulseStory[]>([])
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -475,28 +383,51 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       .filter(p => p.venue)
   }
 
-  const value: AppState = {
-    activeTab, setActiveTab,
-    selectedVenue, setSelectedVenue,
-    subPage, setSubPage,
-    hasCompletedOnboarding, setHasCompletedOnboarding,
+  // ── Build domain-specific context values ─────────────────
+  const venueValue: VenueState = useMemo(() => ({
     venues, setVenues,
     pulses, setPulses,
     notifications, setNotifications,
     hashtags, setHashtags,
     stories, setStories,
     events, setEvents,
-    crews, setCrews,
-    crewCheckIns, setCrewCheckIns,
     playlists, setPlaylists,
     promotions, setPromotions,
     contentReports, setContentReports,
     userBlocks, userMutes,
-    currentUser, setCurrentUser,
     userLocation, locationName, locationError: locationError ?? undefined, isTracking,
-    realtimeLocation: realtimeLocation ? { ...realtimeLocation, heading: realtimeLocation.heading ?? undefined } : null, locationPermissionDenied, setLocationPermissionDenied,
+    realtimeLocation: realtimeLocation ? { ...realtimeLocation, heading: realtimeLocation.heading ?? undefined } : null,
+    locationPermissionDenied, setLocationPermissionDenied,
     simulatedLocation, setSimulatedLocation,
     unitSystem, notificationSettings, currentTime,
+    currentUser, setCurrentUser,
+    moderatedPulses, sortedVenues, favoriteVenues, followedVenues,
+    unreadNotificationCount, isFavorite, isFollowed, getPulsesWithUsers,
+  }), [
+    venues, setVenues, pulses, setPulses, notifications, setNotifications,
+    hashtags, setHashtags, stories, setStories, events, setEvents,
+    playlists, setPlaylists, promotions, setPromotions,
+    contentReports, setContentReports, userBlocks, userMutes,
+    userLocation, locationName, locationError, isTracking,
+    realtimeLocation, locationPermissionDenied, setLocationPermissionDenied,
+    simulatedLocation, setSimulatedLocation,
+    unitSystem, notificationSettings, currentTime,
+    currentUser, setCurrentUser,
+    moderatedPulses, sortedVenues, favoriteVenues, followedVenues,
+    unreadNotificationCount,
+  ])
+
+  const socialValue: SocialState = useMemo(() => ({
+    crews, setCrews,
+    crewCheckIns, setCrewCheckIns,
+    currentUser, setCurrentUser,
+  }), [crews, setCrews, crewCheckIns, setCrewCheckIns, currentUser, setCurrentUser])
+
+  const uiValue: UIState = useMemo(() => ({
+    activeTab, setActiveTab,
+    selectedVenue, setSelectedVenue,
+    subPage, setSubPage,
+    hasCompletedOnboarding, setHasCompletedOnboarding,
     integrationsEnabled, socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
     venueForPulse, setVenueForPulse,
@@ -507,9 +438,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     integrationVenue, setIntegrationVenue,
     presenceSheetOpen, setPresenceSheetOpen,
     queuedPulseCount, setQueuedPulseCount,
-    moderatedPulses, sortedVenues, favoriteVenues, followedVenues,
-    unreadNotificationCount, isFavorite, isFollowed, getPulsesWithUsers,
-  }
+  }), [
+    activeTab, selectedVenue, subPage,
+    hasCompletedOnboarding, setHasCompletedOnboarding,
+    integrationsEnabled, socialDashboardEnabled,
+    createDialogOpen, venueForPulse,
+    showAdminDashboard, trendingSubTab,
+    storyViewerOpen, storyViewerStories,
+    integrationVenue, presenceSheetOpen, queuedPulseCount,
+  ])
 
-  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+  return (
+    <VenueContext.Provider value={venueValue}>
+      <SocialContext.Provider value={socialValue}>
+        <UIContext.Provider value={uiValue}>
+          {children}
+        </UIContext.Provider>
+      </SocialContext.Provider>
+    </VenueContext.Provider>
+  )
 }

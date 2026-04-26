@@ -98,7 +98,7 @@ export async function requestPushPermission(): Promise<PushSubscription | null> 
       // In production, this would be a real VAPID key
       applicationServerKey: urlBase64ToUint8Array(
         'BPh-fake-vapid-key-for-development-only-replace-in-production-with-real-key-00'
-      ) as any,
+      ) as BufferSource,
     })
     return subscription
   } catch {

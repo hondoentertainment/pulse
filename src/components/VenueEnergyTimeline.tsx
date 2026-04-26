@@ -95,6 +95,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
   const height = 80
   const padding = { top: 8, bottom: 20, left: 30, right: 10 }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data])
 
   // Build fill path (line + close at bottom)
@@ -104,6 +105,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
     const firstX = padding.left
     const lastX = width - padding.right
     return `${linePath} L ${lastX},${chartBottom} L ${firstX},${chartBottom} Z`
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linePath])
 
   // Find peak point
@@ -135,6 +137,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
       len += Math.sqrt(dx * dx + dy * dy)
     }
     return Math.ceil(len)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   const timeLabels = [

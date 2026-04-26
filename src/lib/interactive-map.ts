@@ -180,7 +180,7 @@ export function buildVenueRenderPoints(params: {
 
 import Supercluster from 'supercluster'
 
-let clusterIndex: Supercluster<any, any> | null = null
+let clusterIndex: Supercluster<Record<string, unknown>, Record<string, unknown>> | null = null
 let lastPointsCount = -1
 
 export function clusterVenueRenderPoints(
