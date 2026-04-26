@@ -58,6 +58,12 @@ vi.mock('@/lib/content-moderation', () => ({
   screenContent: (t: string) => screenContentMock(t),
 }))
 
+// Authoritative server-side moderation lives in a separate module; without a
+// mock it would try to call supabase/fetch and block submit in tests.
+vi.mock('@/lib/moderation-client', () => ({
+  moderateServer: vi.fn(async () => ({ allowed: true, reasons: [], severity: 'low' })),
+}))
+
 vi.mock('@/lib/seeded-hashtags', () => ({
   suggestHashtags: () => [],
   getTimeOfDay: () => 'night',

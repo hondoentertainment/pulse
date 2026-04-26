@@ -1,6 +1,9 @@
 import { lazy, Suspense, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
+import { ALL_USERS } from '@/hooks/use-app-state'
+import { useVenueState } from '@/hooks/use-venue-state'
+import { useSocialState } from '@/hooks/use-social-state'
+import { useUIState, type SubPage } from '@/hooks/use-ui-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { BottomNav } from '@/components/BottomNav'
@@ -16,6 +19,9 @@ const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => 
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
+const NightPlannerPage = lazy(() => import('@/components/NightPlannerPage').then(m => ({ default: m.NightPlannerPage })))
+const MyTicketsPage = lazy(() => import('@/components/MyTicketsPage').then(m => ({ default: m.MyTicketsPage })))
+const ChallengeFeed = lazy(() => import('@/components/ChallengeFeed').then(m => ({ default: m.ChallengeFeed })))
 
 const pageFallback = <PageSkeleton />
 
@@ -26,17 +32,26 @@ interface SubPageRouterProps {
 export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
   const navigate = useNavigate()
   const { activeTab, navigateToTab } = useRouteNavigation()
-  const state = useAppState()
+  const venueState = useVenueState()
+  const socialState = useSocialState()
+  const uiState = useUIState()
   const { handleEventsUpdate } = useAppHandlers()
   const {
-    subPage, unreadNotificationCount,
-    currentUser, moderatedPulses, venues, crews, crewCheckIns,
+    unreadNotificationCount,
+    currentUser, moderatedPulses, venues,
     events, playlists, pulses, contentReports,
-    userLocation, integrationVenue, setIntegrationVenue,
-    integrationsEnabled, setSimulatedLocation,
-    setCurrentUser, setCrews, setCrewCheckIns, setPlaylists,
+    userLocation, setSimulatedLocation,
+    setCurrentUser, setPlaylists,
     setContentReports,
-  } = state
+  } = venueState
+  const {
+    crews, crewCheckIns,
+    setCrews, setCrewCheckIns,
+  } = socialState
+  const {
+    subPage, integrationVenue, setIntegrationVenue,
+    integrationsEnabled,
+  } = uiState
 
   // Use the page prop from the route if provided, otherwise fall back to state
   const page = pageProp ?? subPage
@@ -45,7 +60,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
 
   const goBack = () => navigate(-1)
 
-  const navigateToVenue = (venue: any) => {
+  const navigateToVenue = (venue: { id: string }) => {
     navigate(`/venue/${venue.id}`)
   }
 
@@ -118,6 +133,30 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
       <>
         <Suspense fallback={pageFallback}>
           <ModerationQueuePage reports={contentReports || []} onBack={goBack} onUpdateReports={setContentReports} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    'night-planner': () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <NightPlannerPage currentUser={currentUser} allUsers={ALL_USERS} venues={venues} pulses={moderatedPulses} crews={crews || []} userLocation={userLocation} onBack={goBack} onVenueClick={navigateToVenue} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    'my-tickets': () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <MyTicketsPage currentUserId={currentUser.id} tickets={[]} reservations={[]} events={events || []} venues={venues} onBack={goBack} onTicketsUpdate={() => {}} onReservationsUpdate={() => {}} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    challenges: () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <ChallengeFeed challenges={[]} venues={venues} currentUserId={currentUser.id} onBack={goBack} onJoinChallenge={() => {}} />
         </Suspense>
         {nav}
       </>

@@ -11,42 +11,49 @@
  * Body: { ticket_id: uuid, payment_intent_id: string }
  */
 
-import { authenticate } from '../_lib/auth'
+import { createClient } from '@supabase/supabase-js'
+import { verifySupabaseJwt } from '../_lib/auth'
 import {
   badRequest,
   forbidden,
   handlePreflight,
   methodNotAllowed,
-  notFound,
   serverError,
   unauthorized,
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http'
 import { generateQrSecret, retrievePaymentIntent } from '../_lib/stripe'
-import { getServiceSupabase } from '../_lib/supabase-server'
-import { isString, isUuid, requireFields } from '../_lib/validate'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return
-  if (req.method !== 'POST') return methodNotAllowed(res)
+  if (req.method !== 'POST') return methodNotAllowed(res, ['POST', 'OPTIONS'])
 
-  const auth = await authenticate(req)
-  if (!auth) return unauthorized(res)
+  const auth = await verifySupabaseJwt(req)
+  if (!auth.ok || !auth.user) return unauthorized(res, auth.error ?? 'Unauthorized')
+  const userId = auth.user.id
 
-  const errors = requireFields(req.body, {
-    ticket_id: isUuid,
-    payment_intent_id: isString,
-  })
+  const body = (req.body ?? {}) as { ticket_id?: unknown; payment_intent_id?: unknown }
+  const errors: string[] = []
+  if (typeof body.ticket_id !== 'string' || !UUID_RE.test(body.ticket_id)) {
+    errors.push('ticket_id must be a uuid')
+  }
+  if (typeof body.payment_intent_id !== 'string' || !body.payment_intent_id.trim()) {
+    errors.push('payment_intent_id must be a non-empty string')
+  }
   if (errors.length) return badRequest(res, 'validation_failed', errors)
 
-  const { ticket_id, payment_intent_id } = req.body as {
-    ticket_id: string
-    payment_intent_id: string
-  }
+  const ticket_id = body.ticket_id as string
+  const payment_intent_id = body.payment_intent_id as string
 
-  const supabase = getServiceSupabase()
-  if (!supabase) return serverError(res, new Error('Supabase not configured'))
+  const url = process.env.SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    return serverError(res, 'Supabase not configured')
+  }
+  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
 
   try {
     const { data: ticket, error: ticketErr } = await supabase
@@ -54,9 +61,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .select('id, user_id, status, stripe_payment_intent')
       .eq('id', ticket_id)
       .maybeSingle()
-    if (ticketErr) return serverError(res, ticketErr)
-    if (!ticket) return notFound(res, 'ticket_not_found')
-    if (ticket.user_id !== auth.userId) return forbidden(res)
+    if (ticketErr) return serverError(res, ticketErr.message)
+    if (!ticket) {
+      res.status(404).json({ error: 'ticket_not_found' })
+      return
+    }
+    if (ticket.user_id !== userId) return forbidden(res)
     if (ticket.stripe_payment_intent !== payment_intent_id) {
       return badRequest(res, 'payment_intent_mismatch')
     }
@@ -72,7 +82,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const serverSecret = process.env.QR_SECRET ?? process.env.STRIPE_SECRET_KEY ?? 'dev-qr-secret'
-    const qr = await generateQrSecret(ticket_id, auth.userId, serverSecret)
+    const qr = await generateQrSecret(ticket_id, userId, serverSecret)
 
     const { error: updErr } = await supabase
       .from('tickets')
@@ -82,10 +92,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         paid_at: new Date().toISOString(),
       })
       .eq('id', ticket_id)
-    if (updErr) return serverError(res, updErr)
+    if (updErr) return serverError(res, updErr.message)
 
     res.status(200).json({ data: { ticket_id, status: 'paid', qr_code_secret: qr } })
   } catch (err) {
-    serverError(res, err)
+    serverError(res, err instanceof Error ? err.message : 'Internal error')
   }
 }

@@ -81,6 +81,7 @@ export function TableBookingSheet({
       })
     }
     return dates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const deposit = selectedTable ? calculateDeposit(selectedTable.minimumSpend) : 0
