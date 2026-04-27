@@ -98,7 +98,7 @@ export function useMapbox({
             let labelLayerId: string | undefined
             if (layers) {
               for (const layer of layers) {
-                if (layer.type === 'symbol' && (layer.layout as any)?.['text-field']) {
+                if (layer.type === 'symbol' && (layer.layout as Record<string, unknown>)?.['text-field']) {
                   labelLayerId = layer.id
                   break
                 }

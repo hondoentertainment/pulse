@@ -10,8 +10,15 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { setCors, sendJson, bearerToken, type ApiRequest, type ApiResponse } from '../_lib/http'
-import { checkRateLimit } from '../_lib/rate-limit'
+import {
+  setCors,
+  handleOptions,
+  methodNotAllowed,
+  type RequestLike,
+  type ResponseLike,
+} from '../_lib/http'
+import { extractBearer } from '../_lib/auth'
+import { rateLimit } from '../_lib/rate-limit'
 
 interface TicketRow {
   id: string
@@ -21,6 +28,10 @@ interface TicketRow {
   type: string
   status: string
   payment_intent_id: string | null
+}
+
+function sendJson(res: ResponseLike, status: number, payload: unknown): void {
+  res.status(status).json(payload)
 }
 
 async function cancelPaymentIntentStripe(pi: string, key: string): Promise<boolean> {
@@ -36,18 +47,15 @@ async function cancelPaymentIntentStripe(pi: string, key: string): Promise<boole
   return res.ok
 }
 
-export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
+export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   setCors(res)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
-  }
+  if (handleOptions(req, res)) return
   if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed' })
+    methodNotAllowed(res, ['POST', 'OPTIONS'])
     return
   }
 
-  const token = bearerToken(req)
+  const token = extractBearer(req)
   if (!token) {
     sendJson(res, 401, { error: 'Missing auth' })
     return
@@ -59,12 +67,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return
   }
 
-  const rl = checkRateLimit(`cancel:${token.slice(0, 16)}`, {
-    maxTokens: 10,
-    refillPerSec: 0.2,
-  })
+  const rl = rateLimit(`cancel:${token.slice(0, 16)}`, 10, 60_000)
   if (!rl.allowed) {
-    res.setHeader('retry-after', String(Math.ceil(rl.retryAfterMs / 1000)))
+    res.setHeader('retry-after', String(rl.retryAfterSeconds ?? 60))
     sendJson(res, 429, { error: 'Too many requests' })
     return
   }

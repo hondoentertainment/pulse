@@ -10,4 +10,9 @@ export * as ReactionData from './reactions'
 export * as CheckInData from './check-ins'
 export * as FollowData from './follows'
 export * as NotificationData from './notifications'
-export { USE_SUPABASE_BACKEND, warnIfUsingMockBackend } from './config'
+export {
+  USE_SUPABASE_BACKEND,
+  hasSupabaseEnv,
+  resolveBackend,
+  warnIfUsingMockBackend,
+} from './config'

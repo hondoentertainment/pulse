@@ -80,13 +80,13 @@ function clusterFriends(
 export default function FriendMapDots({
   friends,
   latLngToPixel,
-  zoom,
+  zoom: _zoom,
 }: FriendMapDotsProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const clusters = useMemo(
     () => clusterFriends(friends, latLngToPixel),
-    [friends, latLngToPixel, zoom]
+    [friends, latLngToPixel]
   )
 
   return (

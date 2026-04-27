@@ -34,6 +34,11 @@ const SocialPulseDashboard = lazy(() =>
 const CreatePulseDialog = lazy(() =>
   import('@/components/CreatePulseDialog').then((m) => ({ default: m.CreatePulseDialog })),
 )
+const VenueMetadataRoute = lazy(() =>
+  import('@/components/venue-admin/VenueMetadataRoute').then((m) => ({
+    default: m.VenueMetadataRoute,
+  })),
+)
 
 /**
  * AppRoutes — the tab / sub-page / modal switcher.
@@ -143,6 +148,17 @@ export function AppRoutes() {
       <Routes>
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
+
+        {/* Admin-only: structured venue metadata editor. Non-admins get a 403
+            rendered by VenueMetadataRoute itself. */}
+        <Route
+          path="/admin/venues/:id/metadata"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <VenueMetadataRoute />
+            </Suspense>
+          }
+        />
 
         {/* Sub-pages */}
         <Route path="/events" element={<SubPageRouter page="events" />} />

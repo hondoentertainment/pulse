@@ -3,8 +3,12 @@
  *
  * `USE_SUPABASE_BACKEND` decides whether the read/write path goes to
  * Supabase or falls back to local mock fixtures. The flag is ON by
- * default in any environment that has real Supabase credentials and can
- * be explicitly disabled via `VITE_USE_SUPABASE_BACKEND=false`.
+ * default in any environment that has **both** `VITE_SUPABASE_URL` and
+ * `VITE_SUPABASE_ANON_KEY` configured with real (non-placeholder)
+ * values. It can be explicitly disabled via `VITE_USE_SUPABASE_BACKEND=false`
+ * and can be explicitly enabled with `VITE_USE_SUPABASE_BACKEND=true` for
+ * tests — but opting in without credentials will still short-circuit to
+ * `false` because there is nothing to talk to.
  *
  * In local dev without credentials the flag resolves to `false` so the
  * app keeps booting against mock data.
@@ -21,16 +25,33 @@ function parseFlag(value: unknown): boolean | null {
 }
 
 /**
+ * Returns true iff both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+ * are present and look like real (non-placeholder) values. Exported so
+ * tests and the UI layer can reason about configuration without pulling
+ * in the Supabase client.
+ */
+export function hasSupabaseEnv(): boolean {
+  const url = import.meta.env.VITE_SUPABASE_URL
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) return false
+  // Defer to the canonical placeholder check so the two predicates stay
+  // in sync if the placeholder list grows.
+  return !hasPlaceholderCredentials()
+}
+
+/**
  * Resolve the current backend preference.
  *
  * Resolution order:
- *   1. If `VITE_USE_SUPABASE_BACKEND` is set to a falsy value, disable.
- *   2. Otherwise, enable iff Supabase credentials look real.
+ *   1. If Supabase env vars are missing/placeholder, force OFF — we
+ *      cannot talk to Supabase without them, so ignore any override.
+ *   2. If `VITE_USE_SUPABASE_BACKEND` is explicitly set, honour it.
+ *   3. Otherwise, default to ON whenever env vars are present.
  */
-function resolveBackend(): boolean {
+export function resolveBackend(): boolean {
+  if (!hasSupabaseEnv()) return false
   const override = parseFlag(import.meta.env.VITE_USE_SUPABASE_BACKEND)
   if (override === false) return false
-  if (hasPlaceholderCredentials()) return false
   return true
 }
 

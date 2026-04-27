@@ -51,6 +51,7 @@ export type AnalyticsEvent =
   | { type: 'neighborhood_venue_click'; timestamp: number; neighborhoodId: string; venueId: string }
   | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
+  | { type: 'friend_presence_layer_toggled'; timestamp: number; enabled: boolean }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
 
