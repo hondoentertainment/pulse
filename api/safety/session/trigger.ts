@@ -16,6 +16,7 @@ import { sendPush, sendSms } from '../../_lib/notify'
 import {
   authenticate,
   badRequest,
+  consumeRateLimitToken,
   getServiceClient,
   methodNotAllowed,
   readJsonBody,
@@ -25,11 +26,17 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../../_lib/safety-server'
+import { asEnum, asLatLng, asString, isPlainObject } from '../../_lib/validate'
 
-type TriggerBody = {
+const KINDS = ['safe_walk', 'share_night', 'panic'] as const
+type Kind = (typeof KINDS)[number]
+
+const MAX_MESSAGE_LEN = 500
+
+interface TriggerBody {
   sessionId?: string
-  kind?: 'safe_walk' | 'share_night' | 'panic'
-  location?: { lat?: number; lng?: number }
+  kind?: Kind
+  location?: { lat: number; lng: number }
   message?: string
 }
 
@@ -40,13 +47,42 @@ interface ContactSnapshot {
   method?: 'sms' | 'push'
 }
 
+function validate(
+  body: unknown,
+): { ok: true; value: TriggerBody } | { ok: false; error: string } {
+  if (body === null || body === undefined) return { ok: true, value: {} }
+  if (!isPlainObject(body)) return { ok: false, error: 'body-not-object' }
+  const out: TriggerBody = {}
+  if (body.sessionId !== undefined && body.sessionId !== null) {
+    const s = asString(body.sessionId, 1, 128)
+    if (!s) return { ok: false, error: 'invalid-sessionId' }
+    out.sessionId = s
+  }
+  if (body.kind !== undefined && body.kind !== null) {
+    const k = asEnum<Kind>(body.kind, KINDS)
+    if (!k) return { ok: false, error: 'invalid-kind' }
+    out.kind = k
+  }
+  if (body.location !== undefined && body.location !== null) {
+    const loc = asLatLng(body.location)
+    if (!loc) return { ok: false, error: 'invalid-location' }
+    out.location = loc
+  }
+  if (body.message !== undefined && body.message !== null) {
+    const m = asString(body.message, 1, MAX_MESSAGE_LEN)
+    if (!m) return { ok: false, error: 'invalid-message' }
+    out.message = m
+  }
+  return { ok: true, value: out }
+}
+
 function buildSmsBody(args: {
   userName: string
-  location?: { lat?: number; lng?: number }
+  location?: { lat: number; lng: number }
   note?: string
 }): string {
   const mapLink =
-    args.location?.lat != null && args.location?.lng != null
+    args.location
       ? ` Last known location: https://maps.google.com/?q=${args.location.lat},${args.location.lng}`
       : ''
   const note = args.note ? ` Note: ${args.note.slice(0, 120)}.` : ''
@@ -70,7 +106,24 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const body = readJsonBody<TriggerBody>(req) ?? {}
+  // Panic trigger is destructive (fans out SMS to every verified contact and
+  // may incur carrier cost). Allow a small burst for double-presses, then
+  // throttle hard — 5 triggers per hour per user.
+  const limit = consumeRateLimitToken(`safety:trigger:${userId}`, {
+    maxTokens: 2,
+    refillPerSecond: 5 / 3600,
+  })
+  if (!limit.allowed) {
+    res.status(429).json({ error: 'rate-limited', retryAfterMs: limit.retryAfterMs })
+    return
+  }
+
+  const parsed = validate(readJsonBody(req))
+  if (!parsed.ok) {
+    badRequest(res, parsed.error)
+    return
+  }
+  const body = parsed.value
   const client = getServiceClient()
 
   // ---- dev fallback ------------------------------------------------------
