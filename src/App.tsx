@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 
 import { AppStateProvider, useAppState } from '@/hooks/use-app-state'
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { isVisualPreviewEnabled } from '@/lib/supabase'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
 const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
@@ -34,7 +35,7 @@ function AppContent() {
     )
   }
 
-  if (hasCompletedOnboarding === false) {
+  if (!isVisualPreviewEnabled && hasCompletedOnboarding === false) {
     return (
       <Suspense fallback={pageFallback}>
         <OnboardingFlow

@@ -29,6 +29,7 @@ import type { LiveReport } from '@/lib/live-intelligence'
  */
 function handlePulseBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
     const existing = new Set(old.map(p => p.id))
@@ -41,6 +42,8 @@ function handlePulseBatchFlush(batch: BatchFlush) {
   })
 
   trackPerformance('realtime_pulse_batch_size', batch.events.length)
+  trackPerformance('realtime_pulse_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_pulse_batch_duration_ms', batch.batchDurationMs)
   if (batch.droppedCount > 0) {
     trackPerformance('realtime_pulse_duplicates_collapsed', batch.droppedCount)
   }
@@ -51,6 +54,7 @@ function handlePulseBatchFlush(batch: BatchFlush) {
  */
 function handleReactionBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
     const updates = new Map(batch.events.map(e => [e.key, e.payload as Partial<Pulse>]))
@@ -63,6 +67,8 @@ function handleReactionBatchFlush(batch: BatchFlush) {
   })
 
   trackPerformance('realtime_reaction_batch_size', batch.events.length)
+  trackPerformance('realtime_reaction_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_reaction_batch_duration_ms', batch.batchDurationMs)
 }
 
 /**
@@ -70,6 +76,7 @@ function handleReactionBatchFlush(batch: BatchFlush) {
  */
 function handlePresenceBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   // Presence updates are stored in a dedicated query key
   queryClient.setQueryData<Record<string, unknown>>(['venue-presence'], (old = {}) => {
@@ -95,6 +102,8 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
   })
 
   trackPerformance('realtime_presence_batch_size', batch.events.length)
+  trackPerformance('realtime_presence_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_presence_batch_duration_ms', batch.batchDurationMs)
 }
 
 function mergeLiveReport(report: LiveReport) {
@@ -192,6 +201,7 @@ export function useRealtimeSubscription(enabled = true) {
         (payload) => {
           const report = mapVenueLiveReport(payload.new as Parameters<typeof mapVenueLiveReport>[0])
           mergeLiveReport(report)
+          void queryClient.invalidateQueries({ queryKey: ['venues'] })
           trackPerformance('realtime_venue_live_report', 1)
         }
       )
@@ -204,12 +214,22 @@ export function useRealtimeSubscription(enabled = true) {
           const venueId = payload.new.venue_id as string
           queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
           queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
-            old.map(venue => venue.id === venueId
-              ? { ...venue, liveSummary: summary }
-              : venue
-            )
+            old.map(venue => {
+              if (venue.id !== venueId) return venue
+              const liveAdjustedScore = summary.crowdLevel > 0
+                ? Math.max(venue.pulseScore, Math.round(venue.pulseScore * 0.7 + summary.crowdLevel * 0.3))
+                : venue.pulseScore
+              return {
+                ...venue,
+                pulseScore: liveAdjustedScore,
+                lastActivity: summary.lastReportAt ?? summary.updatedAt ?? venue.lastActivity,
+                liveSummary: summary,
+              }
+            })
           )
+          void queryClient.invalidateQueries({ queryKey: ['venues'] })
           trackPerformance('realtime_venue_live_aggregate', 1)
+          trackPerformance('realtime_venue_live_aggregate_lag_ms', Date.now() - new Date(summary.updatedAt).getTime())
         }
       )
       .subscribe()

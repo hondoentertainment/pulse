@@ -29,7 +29,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
-import { hasSupabaseConfig, supabase } from '@/lib/supabase'
+import { hasSupabaseConfig, isVisualPreviewEnabled, supabase } from '@/lib/supabase'
 import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
@@ -37,6 +37,13 @@ import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 import { loadPrototypeCatalog, loadSimulatedLocation } from '@/lib/prototype-catalog'
+import {
+  ALL_US_MARKETS_KEY,
+  getMarketByKey,
+  getUsMarkets,
+  getVenuesForMarket,
+  type UsMarket,
+} from '@/lib/us-markets'
 
 export type SubPage =
   | 'events'
@@ -115,6 +122,10 @@ export interface AppState {
   setLocationPermissionDenied: (v: boolean) => void
   simulatedLocation: { lat: number; lng: number } | null
   setSimulatedLocation: (v: { lat: number; lng: number } | null) => void
+  selectedMarketKey: string
+  setSelectedMarketKey: (v: string) => void
+  selectedMarket: UsMarket | null
+  availableMarkets: UsMarket[]
 
   // Preferences
   unitSystem: 'imperial' | 'metric'
@@ -147,6 +158,7 @@ export interface AppState {
   // Derived
   moderatedPulses: Pulse[]
   sortedVenues: Venue[]
+  visibleVenues: Venue[]
   favoriteVenues: Venue[]
   followedVenues: Venue[]
   unreadNotificationCount: number
@@ -177,6 +189,7 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
+  const [selectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
@@ -236,7 +249,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   // ── Side-effects ─────────────────────────────────────────
   // Activate batched Supabase Realtime subscriptions (Phase 6)
-  useRealtimeSubscription(true)
+  useRealtimeSubscription(hasSupabaseConfig)
 
   useEffect(() => {
     if (hasSupabaseConfig) return
@@ -249,8 +262,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
 
         setPrototypeVenues(catalog.venues)
-        setVenues((current) => current ?? catalog.venues)
-        setPulses((current) => current ?? catalog.pulses)
+        setVenues((current) => isVisualPreviewEnabled ? catalog.venues : current ?? catalog.venues)
+        setPulses((current) => isVisualPreviewEnabled ? catalog.pulses : current ?? catalog.pulses)
         trackPerformance('prototype_catalog_ready', Date.now() - startedAt)
       })
       .catch((error) => {
@@ -343,9 +356,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [selectedVenue, venues])
 
   // Location
+  const availableMarkets = useMemo(() => getUsMarkets(venues || []), [venues])
+  const selectedMarket = useMemo(
+    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey),
+    [availableMarkets, selectedMarketKey]
+  )
+
+  const manualMarketLocation = useMemo(
+    () => selectedMarket ? { lat: selectedMarket.lat, lng: selectedMarket.lng } : null,
+    [selectedMarket]
+  )
   const userLocation = useMemo(
-    () => realtimeLocation ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng } : simulatedLocation,
-    [realtimeLocation, simulatedLocation]
+    () => realtimeLocation
+      ? { lat: realtimeLocation.lat, lng: realtimeLocation.lng }
+      : manualMarketLocation ?? simulatedLocation,
+    [manualMarketLocation, realtimeLocation, simulatedLocation]
   )
   const realtimeLocationValue = useMemo(
     () => realtimeLocation ? { ...realtimeLocation, heading: realtimeLocation.heading ?? undefined } : null,
@@ -417,6 +442,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [locationLookupKey, prototypeVenues])
 
   useEffect(() => {
+    if (selectedMarket) {
+      setLocationName(selectedMarket.name)
+    }
+  }, [selectedMarket])
+
+  useEffect(() => {
     if (locationError) {
       if (locationError.includes('denied')) {
         setLocationPermissionDenied(true)
@@ -453,6 +484,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [pulses])
 
   const refreshVenueScores = useCallback(() => {
+    const startedAt = performance.now()
     setVenues((current) => {
       if (!current) return []
       let didChange = false
@@ -496,8 +528,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           preTrending: nextPreTrending,
         }
       })
+      trackPerformance('venue_score_refresh_count', next.length, 'count')
       return didChange ? next : current
     })
+    trackPerformance('venue_score_refresh_ms', Math.round(performance.now() - startedAt))
   }, [pulsesByVenue, setVenues])
 
   useEffect(() => {
@@ -528,11 +562,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [notifications]
   )
 
+  const visibleVenues = useMemo(
+    () => getVenuesForMarket(venues || [], selectedMarket),
+    [selectedMarket, venues]
+  )
+
   const sortedVenues = useMemo(
     () => userLocation
-      ? getVenuesByProximity(venues || [], userLocation.lat, userLocation.lng)
-      : [...(venues || [])].sort((a, b) => b.pulseScore - a.pulseScore),
-    [userLocation, venues]
+      ? getVenuesByProximity(visibleVenues, userLocation.lat, userLocation.lng)
+      : [...visibleVenues].sort((a, b) => b.pulseScore - a.pulseScore),
+    [userLocation, visibleVenues]
   )
 
   const venueById = useMemo(
@@ -551,15 +590,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const favoriteVenues = useMemo(
     () => (currentUser?.favoriteVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined),
-    [currentUser?.favoriteVenues, venueById]
+      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
+    [currentUser?.favoriteVenues, venueById, visibleVenues]
   )
 
   const followedVenues = useMemo(
     () => (currentUser?.followedVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined),
-    [currentUser?.followedVenues, venueById]
+      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
+    [currentUser?.followedVenues, venueById, visibleVenues]
   )
 
   const isFavorite = useCallback((venueId: string) => favoriteVenueIds.has(venueId), [favoriteVenueIds])
@@ -595,6 +634,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     userLocation, locationName, locationError: locationError ?? undefined, isTracking,
     realtimeLocation: realtimeLocationValue, locationPermissionDenied, setLocationPermissionDenied,
     simulatedLocation, setSimulatedLocation,
+    selectedMarketKey, setSelectedMarketKey,
+    selectedMarket, availableMarkets,
     unitSystem, notificationSettings,
     integrationsEnabled, socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
@@ -606,7 +647,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     integrationVenue, setIntegrationVenue,
     presenceSheetOpen, setPresenceSheetOpen,
     queuedPulseCount, setQueuedPulseCount,
-    moderatedPulses, sortedVenues, favoriteVenues, followedVenues,
+    moderatedPulses, sortedVenues, visibleVenues, favoriteVenues, followedVenues,
     unreadNotificationCount, isFavorite, isFollowed, getPulsesWithUsers, pulsesWithUsers,
   }), [
     activeTab,
@@ -635,6 +676,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     realtimeLocationValue,
     locationPermissionDenied,
     simulatedLocation,
+    selectedMarketKey,
+    setSelectedMarketKey,
+    selectedMarket,
+    availableMarkets,
     unitSystem,
     notificationSettings,
     integrationsEnabled,
@@ -650,6 +695,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queuedPulseCount,
     moderatedPulses,
     sortedVenues,
+    visibleVenues,
     favoriteVenues,
     followedVenues,
     unreadNotificationCount,

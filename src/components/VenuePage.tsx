@@ -20,7 +20,7 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
-import { ParallaxVenueHero } from './ParallaxVenueHero'
+import { VenueDetailHero } from './VenueDetailHero'
 import type { ContentReport } from '@/lib/content-moderation'
 // Phase 2: Venue star moment
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
@@ -103,6 +103,7 @@ export function VenuePage({
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const currentTime = useCurrentTime()
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
+  const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
 
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
@@ -254,6 +255,17 @@ export function VenuePage({
 
   return (
     <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+      <VenueDetailHero
+        venue={venue}
+        mediaUrl={heroMediaUrl}
+        isFavorite={isFavorite}
+        isFollowed={isFollowed}
+        onBack={onBack}
+        onShare={handleShare}
+        onToggleFavorite={onToggleFavorite}
+        onToggleFollow={onToggleFollow}
+      />
+
       <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
@@ -342,12 +354,6 @@ export function VenuePage({
           </div>
         </div>
       </div>
-
-      <ParallaxVenueHero
-        venue={venue}
-        pulseScore={venue.pulseScore}
-        category={venue.category}
-      />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

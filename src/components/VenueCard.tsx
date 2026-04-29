@@ -1,8 +1,9 @@
 import { Venue } from '@/lib/types'
+import type { ReactNode } from 'react'
 import { Card } from '@/components/ui/card'
 import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock, Star, HeartStraight } from '@phosphor-icons/react'
+import { MapPin, Clock, Star, HeartStraight, Broadcast, Queue } from '@phosphor-icons/react'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
@@ -20,12 +21,14 @@ interface VenueCardProps {
   isFollowed?: boolean
   onToggleFollow?: (venueId: string) => void
   showPreTrendingLabel?: boolean
+  mediaUrl?: string
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel, mediaUrl }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
+  const liveReportCount = venue.liveSummary?.reportCount ?? 0
   
   return (
     <motion.div
@@ -33,9 +36,51 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
       whileTap={{ scale: 0.98 }}
     >
       <Card
-        className="p-5 cursor-pointer border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 relative"
+        className="group cursor-pointer overflow-hidden border-border/70 bg-card/90 p-0 transition-all duration-300 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/15"
         onClick={onClick}
       >
+        <div className="relative h-36 overflow-hidden bg-secondary">
+          {mediaUrl ? (
+            <img
+              src={mediaUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{
+                background:
+                  'linear-gradient(135deg, color-mix(in oklch, var(--primary) 62%, black), color-mix(in oklch, var(--accent) 45%, black))',
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/25 to-transparent" />
+          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                {isJustPopped && (
+                  <Badge className="bg-accent text-accent-foreground text-xs shadow-lg shadow-accent/20">
+                    Just popped
+                  </Badge>
+                )}
+                {liveReportCount > 0 && (
+                  <Badge variant="outline" className="border-white/25 bg-black/35 text-xs text-white backdrop-blur">
+                    <Broadcast size={11} weight="fill" className="mr-1" />
+                    Live
+                  </Badge>
+                )}
+              </div>
+              <h3 className="mt-1 truncate text-2xl font-bold text-white drop-shadow">{venue.name}</h3>
+            </div>
+            <div className="rounded-2xl bg-black/45 p-2 backdrop-blur">
+              <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
+            </div>
+          </div>
+        </div>
+
         <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
           {onToggleFollow && (
             <button
@@ -44,12 +89,12 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 onToggleFollow(venue.id)
               }}
               aria-label={isFollowed ? `Unfollow ${venue.name}` : `Follow ${venue.name}`}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-colors hover:bg-black/55"
             >
               <HeartStraight
                 size={18}
                 weight={isFollowed ? 'fill' : 'regular'}
-                className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+                className={isFollowed ? 'text-primary' : 'text-white'}
               />
             </button>
           )}
@@ -60,75 +105,77 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 onToggleFavorite(venue.id)
               }}
               aria-label={isFavorite ? `Remove ${venue.name} from favorites` : `Add ${venue.name} to favorites`}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-colors hover:bg-black/55"
             >
               <Star
                 size={18}
                 weight={isFavorite ? 'fill' : 'regular'}
-                className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
+                className={isFavorite ? 'text-accent' : 'text-white'}
               />
             </button>
           )}
         </div>
 
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-3 pr-8">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-xl font-bold">{venue.name}</h3>
-                {isJustPopped && (
-                  <Badge className="bg-accent text-accent-foreground animate-pulse-glow text-xs">
-                    Just Popped
-                  </Badge>
+        <div className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {venue.category && <span className="truncate font-semibold uppercase tracking-wide">{venue.category}</span>}
+                {distance !== undefined && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin size={12} weight="fill" />
+                    {formatDistance(distance, unitSystem)}
+                  </span>
                 )}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
                 {preTrendingLabel && (
                   <Badge variant="outline" className="text-xs border-dashed border-muted-foreground/50 text-muted-foreground">
                     {preTrendingLabel}
                   </Badge>
                 )}
-              </div>
-              
-              <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono uppercase">
-                {venue.category && (
-                  <span className="tracking-wider">{venue.category}</span>
-                )}
-                {distance !== undefined && (
-                  <div className="flex items-center gap-1">
-                    <MapPin size={12} weight="fill" />
-                    <span>{formatDistance(distance, unitSystem)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {venue.lastPulseAt && (
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Clock size={14} weight="fill" />
-                <span>Last pulse {formatTimeAgo(venue.lastPulseAt)}</span>
-              </div>
-            )}
-            {contextualLabel && (
-              <p className="text-xs text-accent font-medium italic">{contextualLabel}</p>
-            )}
-            {venue.liveSummary && venue.liveSummary.reportCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-xs text-primary">
-                  {venue.liveSummary.reportCount} live report{venue.liveSummary.reportCount === 1 ? '' : 's'}
-                </Badge>
-                {venue.liveSummary.waitTime !== null && (
-                  <Badge variant="outline" className="border-border bg-background text-xs text-muted-foreground">
-                    {venue.liveSummary.waitTime === 0 ? 'No wait' : `${venue.liveSummary.waitTime} min line`}
+                {contextualLabel && (
+                  <Badge variant="outline" className="border-accent/25 bg-accent/10 text-xs text-accent">
+                    {contextualLabel}
                   </Badge>
                 )}
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="flex-shrink-0">
-            <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
+          <div className="grid grid-cols-3 gap-2">
+            <MetricPill
+              icon={<Clock size={13} weight="fill" />}
+              label="Pulse"
+              value={venue.lastPulseAt ? formatTimeAgo(venue.lastPulseAt) : 'Quiet'}
+            />
+            <MetricPill
+              icon={<Queue size={13} weight="fill" />}
+              label="Line"
+              value={venue.liveSummary?.waitTime === null || venue.liveSummary?.waitTime === undefined
+                ? 'Unknown'
+                : venue.liveSummary.waitTime === 0 ? 'No wait' : `${venue.liveSummary.waitTime}m`}
+            />
+            <MetricPill
+              icon={<Broadcast size={13} weight="fill" />}
+              label="Reports"
+              value={liveReportCount > 0 ? String(liveReportCount) : 'None'}
+            />
           </div>
         </div>
       </Card>
     </motion.div>
+  )
+}
+
+function MetricPill({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border/60 bg-background/45 px-2.5 py-2">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {icon}
+        <span className="truncate">{label}</span>
+      </div>
+      <p className="mt-1 truncate text-xs font-semibold text-foreground">{value}</p>
+    </div>
   )
 }

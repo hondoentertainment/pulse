@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Venue, PulseWithUser, User } from '@/lib/types'
 import { Favorites } from '@/components/Favorites'
-import { TrendingSections } from '@/components/TrendingSections'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
-import { RecommendationsSection } from '@/components/RecommendationsSection'
-import { LiveActivityFeed } from '@/components/LiveActivityFeed'
+import { VenueReel } from '@/components/VenueReel'
+import { HomeSocialFeed } from '@/components/HomeSocialFeed'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Star, Scales, Sparkle } from '@phosphor-icons/react'
+import { Star, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
@@ -88,6 +87,7 @@ export function TrendingTab({
     )
     return smartSorted.slice(0, 3).map(venue => venue.id)
   }, [currentUser, venues])
+  const trendingSections = useMemo(() => getTrendingSections(venues, pulses), [venues, pulses])
 
   useEffect(() => {
     for (const promotion of activePromotions.slice(0, 2)) {
@@ -132,22 +132,7 @@ export function TrendingTab({
       </div>
 
       {trendingSubTab === 'trending' && (
-        <div className="max-w-2xl mx-auto px-4 pt-4">
-          <div className="overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/16 via-card to-accent/10 p-5 shadow-lg shadow-primary/5">
-            <div className="flex items-start gap-3">
-              <div className="rounded-2xl bg-primary/15 p-2.5 text-primary">
-                <Sparkle size={22} weight="fill" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary">Tonight's command center</p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight">Find the best move in seconds.</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Live crowd reports, friend activity, and venue momentum are ranked here so you do not have to guess.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <VenueReel venues={venues} pulses={pulses} onVenueClick={onVenueClick} />
       )}
 
       {/* Compare button */}
@@ -218,32 +203,17 @@ export function TrendingTab({
             )
           })()}
 
-          {/* Personalized recommendations */}
-          <div className="max-w-2xl mx-auto px-4 pt-4">
-            <RecommendationsSection
-              recommendations={recommended}
-              onVenueClick={onVenueClick}
-              promotions={activePromotions}
-              onPromotionImpression={onPromotionImpression}
-              onPromotionClick={onPromotionClick}
-            />
-          </div>
-
-          {/* Friend Activity Feed */}
-          <div className="max-w-2xl mx-auto px-4 pt-4">
-            <LiveActivityFeed
-              currentUser={currentUser}
-              allUsers={allUsers}
-              venues={venues}
-              pulses={pulses}
-              onVenueClick={onVenueClick}
-            />
-          </div>
-
-          <TrendingSections
-            sections={getTrendingSections(venues, pulses)}
+          <HomeSocialFeed
+            recommendations={recommended}
+            sections={trendingSections}
+            venues={venues}
+            pulses={pulses}
+            currentUser={currentUser}
+            allUsers={allUsers}
             userLocation={userLocation}
+            promotions={activePromotions}
             onVenueClick={onVenueClick}
+            onPromotionClick={onPromotionClick}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
           />

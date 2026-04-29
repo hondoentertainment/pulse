@@ -3,6 +3,7 @@ import {
   shouldRemovePreTrending,
   calculateScoreVelocity,
   getTrendingSections,
+  calculateVenuesAnalytics,
   getPreTrendingLabel,
   shouldPruneSeededData,
   updateVenueWithCheckIn,
@@ -138,6 +139,35 @@ describe('getTrendingSections', () => {
     const sections = getTrendingSections(venues, [])
     const busySection = sections.find(s => s.title === 'Expected to Be Busy')
     expect(busySection?.venues.length).toBeLessThanOrEqual(4)
+  })
+
+  it('handles large venue and pulse sets quickly enough for realtime analysis', () => {
+    const now = Date.now()
+    const largeVenues = Array.from({ length: 1000 }, (_, i) =>
+      makeVenue({
+        id: `venue-${i}`,
+        pulseScore: i % 4 === 0 ? 70 : 35,
+        preTrending: i % 7 === 0,
+      })
+    )
+    const largePulses = Array.from({ length: 10000 }, (_, i) =>
+      makePulse({
+        id: `pulse-${i}`,
+        userId: `user-${i % 250}`,
+        venueId: `venue-${i % largeVenues.length}`,
+        energyRating: i % 3 === 0 ? 'electric' : 'buzzing',
+        createdAt: new Date(now - (i % 60) * 60 * 1000).toISOString(),
+      })
+    )
+
+    const startedAt = performance.now()
+    const sections = getTrendingSections(largeVenues, largePulses)
+    const analytics = calculateVenuesAnalytics(largeVenues, largePulses)
+    const durationMs = performance.now() - startedAt
+
+    expect(sections.length).toBeGreaterThan(0)
+    expect(analytics).toHaveLength(largeVenues.length)
+    expect(durationMs).toBeLessThan(250)
   })
 })
 

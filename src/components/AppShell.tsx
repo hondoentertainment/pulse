@@ -52,6 +52,7 @@ export function AppShell() {
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, queuedPulseCount,
     userLocation, unitSystem,
+    selectedMarketKey, setSelectedMarketKey, availableMarkets,
     presenceSheetOpen, setPresenceSheetOpen,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
@@ -165,6 +166,9 @@ export function AppShell() {
         hasRealtimeLocation={!!realtimeLocation}
         locationPermissionDenied={locationPermissionDenied}
         queuedPulseCount={queuedPulseCount}
+        selectedMarketKey={selectedMarketKey}
+        markets={availableMarkets}
+        onMarketChange={setSelectedMarketKey}
       />
 
       <MainTabRouter />

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -25,6 +25,7 @@ export function MainTabRouter() {
   const {
     activeTab,
     venues,
+    visibleVenues,
     moderatedPulses,
     currentUser,
     stories,
@@ -59,6 +60,19 @@ export function MainTabRouter() {
     handlePromotionClick,
   } = handlers
 
+  const visibleVenueIds = useMemo(
+    () => new Set(visibleVenues.map(venue => venue.id)),
+    [visibleVenues]
+  )
+  const visiblePulses = useMemo(
+    () => moderatedPulses.filter(pulse => visibleVenueIds.has(pulse.venueId)),
+    [moderatedPulses, visibleVenueIds]
+  )
+  const visiblePulsesWithUsers = useMemo(
+    () => pulsesWithUsers.filter(pulse => visibleVenueIds.has(pulse.venueId)),
+    [pulsesWithUsers, visibleVenueIds]
+  )
+
   if (!venues || !currentUser) return null
 
   return (
@@ -67,9 +81,9 @@ export function MainTabRouter() {
         {activeTab === 'trending' && (
           <motion.div key="trending" {...tabMotion}>
             <TrendingTab
-              venues={venues}
-              pulses={moderatedPulses}
-              pulsesWithUsers={pulsesWithUsers}
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              pulsesWithUsers={visiblePulsesWithUsers}
               favoriteVenues={favoriteVenues}
               followedVenues={followedVenues}
               userLocation={userLocation}
@@ -94,9 +108,9 @@ export function MainTabRouter() {
         {activeTab === 'discover' && (
           <motion.div key="discover" {...tabMotion}>
             <DiscoverTab
-              venues={venues}
-              pulses={moderatedPulses}
-              pulsesWithUsers={pulsesWithUsers}
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              pulsesWithUsers={visiblePulsesWithUsers}
               currentUser={currentUser}
               allUsers={ALL_USERS}
               stories={stories || []}
@@ -113,7 +127,7 @@ export function MainTabRouter() {
           <motion.div key="map" {...tabMotion} className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]">
             <div className="h-full">
               <InteractiveMap
-                venues={venues}
+                venues={visibleVenues}
                 userLocation={userLocation}
                 onVenueClick={setSelectedVenue}
                 isTracking={isTracking}
@@ -128,8 +142,8 @@ export function MainTabRouter() {
           <motion.div key="notifications" {...tabMotion}>
             <NotificationFeed
               currentUser={currentUser}
-              pulses={moderatedPulses}
-              venues={venues}
+              pulses={visiblePulses}
+              venues={visibleVenues}
               onNotificationClick={handleNotificationClick}
             />
           </motion.div>

@@ -29,6 +29,7 @@ export default defineConfig({
     env: {
       ...process.env,
       VITE_E2E_AUTH_BYPASS: 'true',
+      VITE_VISUAL_PREVIEW: 'true',
       VITE_SUPABASE_URL: '',
       VITE_SUPABASE_ANON_KEY: '',
     },
