@@ -340,8 +340,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (!Array.isArray(serverVenues)) return
-    if (serverVenues.length > 0) {
+    if (serverVenues === undefined) return
+    if (Array.isArray(serverVenues) && serverVenues.length > 0) {
       setVenues(serverVenues)
       return
     }
@@ -350,7 +350,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       trackEvent({
         type: 'venue_data_fallback',
         timestamp: Date.now(),
-        source: 'supabase_empty',
+        source: Array.isArray(serverVenues) ? 'supabase_empty' : 'supabase_unavailable',
         count: prototypeVenues.length,
       })
     }

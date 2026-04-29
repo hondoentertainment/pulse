@@ -11,10 +11,10 @@ and live-intelligence data.
   the `get_live_venue_intelligence` RPC.
 - The app's U.S. market selector works with both data sources as long as venues
   include `city`, `state`, `location_lat`, and `location_lng`.
-- If Supabase is reachable but returns zero venues, the app temporarily falls
-  back to the national prototype catalog and emits a `venue_data_fallback`
-  analytics event. This keeps discovery usable while production venue seeding is
-  completed.
+- If Supabase returns zero venues or cannot return venue data, the app
+  temporarily falls back to the national prototype catalog and emits a
+  `venue_data_fallback` analytics event. This keeps discovery usable while
+  production venue seeding or RPC access is completed.
 
 ## Required Migration
 
