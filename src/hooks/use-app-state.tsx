@@ -294,7 +294,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   })
 
-  const { data: serverVenues } = useQuery({
+  const {
+    data: serverVenues,
+    isFetched: hasFetchedServerVenues,
+  } = useQuery({
     queryKey: ['venues'],
     queryFn: fetchVenuesFromSupabase,
     enabled: hasSupabaseConfig,
@@ -340,7 +343,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (serverVenues === undefined) return
+    if (!hasFetchedServerVenues) return
     if (Array.isArray(serverVenues) && serverVenues.length > 0) {
       setVenues(serverVenues)
       return
@@ -354,7 +357,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         count: prototypeVenues.length,
       })
     }
-  }, [prototypeVenues, serverVenues, setVenues])
+  }, [hasFetchedServerVenues, prototypeVenues, serverVenues, setVenues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)
