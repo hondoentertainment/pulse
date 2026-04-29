@@ -451,7 +451,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setVenues((current) => {
         if (!current) return []
         let didChange = false
-        return current.map((venue) => {
+        const next = current.map((venue) => {
           const venuePulses = pulsesByVenue.get(venue.id) || []
           const score = calculatePulseScore(venuePulses)
           const velocity = calculateScoreVelocity(venue, venuePulses)
@@ -467,19 +467,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           didChange = true
           return { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt }
         })
-        return didChange ? current.map((venue) => {
-          const venuePulses = pulsesByVenue.get(venue.id) || []
-          const score = calculatePulseScore(venuePulses)
-          const velocity = calculateScoreVelocity(venue, venuePulses)
-          const lastPulseAt = venuePulses[0]?.createdAt
-          return (
-            venue.pulseScore === score &&
-            venue.scoreVelocity === velocity &&
-            venue.lastPulseAt === lastPulseAt
-          )
-            ? venue
-            : { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt }
-        }) : current
+        return didChange ? next : current
       })
       setHashtags((current) => { if (!current) return []; return applyHashtagDecay(current) })
     }, 15000)

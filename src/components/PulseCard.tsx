@@ -8,7 +8,7 @@ import { formatTimeAgo } from '@/lib/pulse-engine'
 import { getUserTrustBadges, TrustBadge } from '@/lib/credibility'
 import { Fire, Eye, Skull, Lightning, Play, ArrowClockwise, Warning, Flag, ShareNetwork } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ReportDialog } from '@/components/ReportDialog'
 import { ShareSheet } from '@/components/ShareSheet'
@@ -32,14 +32,17 @@ interface PulseCardProps {
   venueName?: string
 }
 
-export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName }: PulseCardProps) {
+export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentUserId, onReport, venueName }: PulseCardProps) {
   const energyConfig = ENERGY_CONFIG[pulse.energyRating]
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
 
-  const trustBadges = getUserTrustBadges(pulse.user, pulse.venueId, allPulses)
+  const trustBadges = useMemo(
+    () => getUserTrustBadges(pulse.user, pulse.venueId, allPulses),
+    [allPulses, pulse.user, pulse.venueId]
+  )
 
   return (
     <motion.div
@@ -72,7 +75,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Avatar className="w-10 h-10 border-2 border-border flex-shrink-0">
-              <AvatarImage src={pulse.user.profilePhoto} />
+              <AvatarImage src={pulse.user.profilePhoto} loading="lazy" decoding="async" />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {pulse.user.username.slice(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -193,6 +196,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                   : "text-muted-foreground hover:text-foreground"
               )}
               disabled={pulse.isPending || pulse.uploadError}
+              aria-label={`React with fire. ${pulse.reactions.fire.length} reactions`}
             >
               <Fire size={18} weight={currentUserId && pulse.reactions.fire.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.fire.length}</span>
@@ -213,6 +217,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                   : "text-muted-foreground hover:text-foreground"
               )}
               disabled={pulse.isPending || pulse.uploadError}
+              aria-label={`React with lightning. ${pulse.reactions.lightning.length} reactions`}
             >
               <Lightning size={18} weight={currentUserId && pulse.reactions.lightning.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.lightning.length}</span>
@@ -233,6 +238,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                   : "text-muted-foreground hover:text-foreground"
               )}
               disabled={pulse.isPending || pulse.uploadError}
+              aria-label={`React with eyes. ${pulse.reactions.eyes.length} reactions`}
             >
               <Eye size={18} weight={currentUserId && pulse.reactions.eyes.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.eyes.length}</span>
@@ -253,6 +259,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                   : "text-muted-foreground hover:text-foreground"
               )}
               disabled={pulse.isPending || pulse.uploadError}
+              aria-label={`React with skull. ${pulse.reactions.skull.length} reactions`}
             >
               <Skull size={18} weight={currentUserId && pulse.reactions.skull.includes(currentUserId) ? "fill" : "regular"} />
               <span className="text-sm font-mono">{pulse.reactions.skull.length}</span>
@@ -290,6 +297,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
                 setShareOpen(true)
               }}
               className="text-muted-foreground hover:text-accent transition-colors"
+              aria-label="Share pulse"
               title="Share"
             >
               <ShareNetwork size={16} />
@@ -298,6 +306,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
               <button
                 onClick={() => setShowReport(true)}
                 className="text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Report pulse"
                 title="Report"
               >
                 <Flag size={16} />
@@ -327,7 +336,7 @@ export function PulseCard({ pulse, allPulses = [], onReaction, onRetry, currentU
       </Card>
     </motion.div>
   )
-}
+})
 
 function TrustBadgeComponent({ badge }: { badge: TrustBadge }) {
   return (
