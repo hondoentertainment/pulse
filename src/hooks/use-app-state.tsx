@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, createContext, useContext, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext, type ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import type {
   Venue,
@@ -219,6 +219,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const [currentUser, setCurrentUser] = useState<User | undefined>(undefined)
   const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
+  const hasTrackedVenueFallback = useRef(false)
 
   // Bridge Supabase Profile -> Local State
   useEffect(() => {
@@ -343,21 +344,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (!hasFetchedServerVenues) return
     if (Array.isArray(serverVenues) && serverVenues.length > 0) {
       setVenues(serverVenues)
       return
     }
-    if (prototypeVenues.length > 0) {
+
+    if (prototypeVenues.length > 0 && (!venues || venues.length === 0 || hasFetchedServerVenues)) {
       setVenues(prototypeVenues)
-      trackEvent({
-        type: 'venue_data_fallback',
-        timestamp: Date.now(),
-        source: Array.isArray(serverVenues) ? 'supabase_empty' : 'supabase_unavailable',
-        count: prototypeVenues.length,
-      })
+      if (hasSupabaseConfig && !hasTrackedVenueFallback.current) {
+        hasTrackedVenueFallback.current = true
+        trackEvent({
+          type: 'venue_data_fallback',
+          timestamp: Date.now(),
+          source: Array.isArray(serverVenues) ? 'supabase_empty' : 'supabase_unavailable',
+          count: prototypeVenues.length,
+        })
+      }
     }
-  }, [hasFetchedServerVenues, prototypeVenues, serverVenues, setVenues])
+  }, [hasFetchedServerVenues, prototypeVenues, serverVenues, setVenues, venues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)
