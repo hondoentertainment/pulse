@@ -39,7 +39,7 @@ export function AppHeader({
           {onSearchClick && (
             <button
               onClick={onSearchClick}
-              className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
+              className="min-h-11 min-w-11 p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary active:scale-[0.98] touch-manipulation transition-colors"
               aria-label="Search venues and cities"
             >
               <MagnifyingGlass size={22} weight="bold" className="text-muted-foreground" />
@@ -51,7 +51,7 @@ export function AppHeader({
             <div className="flex items-center gap-1.5">
               <MapPin size={14} weight="fill" className={cn(
                 "transition-colors",
-                isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
+                isTracking ? "text-accent motion-safe:animate-pulse" : "text-muted-foreground"
               )} />
               <span>{locationName}</span>
               {hasRealtimeLocation && (
@@ -76,7 +76,7 @@ export function AppHeader({
           )}
           <div className="flex items-center gap-1.5">
             <Clock size={14} weight="fill" className="text-accent" />
-            <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           {queuedPulseCount > 0 && (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/15 text-accent">

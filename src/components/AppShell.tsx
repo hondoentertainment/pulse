@@ -149,7 +149,7 @@ export function AppShell() {
   }
 
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <main className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
       <Toaster position="top-center" theme="dark" />
       <AppHeader
         locationName={locationName}
@@ -185,7 +185,7 @@ export function AppShell() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40 touch-manipulation"
         style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
       >
         <Plus size={28} weight="bold" />

@@ -253,13 +253,14 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
       <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              aria-label="Back to venues"
+              className="min-h-11 min-w-11 p-2 hover:bg-secondary rounded-lg transition-colors touch-manipulation active:scale-[0.98]"
             >
               <ArrowLeft size={24} />
             </button>
@@ -287,7 +288,8 @@ export function VenuePage({
               {onToggleFollow && (
                 <button
                   onClick={onToggleFollow}
-                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                  aria-label={isFollowed ? "Unfollow venue" : "Follow venue"}
+                  className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
                   title={isFollowed ? "Unfollow" : "Follow"}
                 >
                   <HeartStraight
@@ -299,13 +301,15 @@ export function VenuePage({
               )}
               <button
                 onClick={handleShare}
-                className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                aria-label="Share venue"
+                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
               >
                 <ShareNetwork size={24} className="text-muted-foreground" />
               </button>
               <button
                 onClick={onToggleFavorite}
-                className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
               >
                 <Star
                   size={24}
@@ -333,7 +337,7 @@ export function VenuePage({
             )}
             <div className="flex items-center gap-1.5">
               <Clock size={12} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
           </div>
         </div>

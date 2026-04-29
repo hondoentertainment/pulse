@@ -80,12 +80,33 @@ export function LoginScreen() {
             <motion.div key="email" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 pt-4 text-left">
               <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                  <label htmlFor="login-email" className="text-sm font-medium">Email</label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    inputMode="email"
+                    spellCheck={false}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+                  <label htmlFor="login-password" className="text-sm font-medium">Password</label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                  />
                 </div>
                 <Button type="submit" className="w-full h-11" disabled={loading}>
                   {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Log In'}

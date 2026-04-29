@@ -450,16 +450,39 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => {
       setVenues((current) => {
         if (!current) return []
+        let didChange = false
         return current.map((venue) => {
           const venuePulses = pulsesByVenue.get(venue.id) || []
           const score = calculatePulseScore(venuePulses)
           const velocity = calculateScoreVelocity(venue, venuePulses)
           const lastPulse = venuePulses[0]
-          return { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt: lastPulse?.createdAt }
+          const lastPulseAt = lastPulse?.createdAt
+          if (
+            venue.pulseScore === score &&
+            venue.scoreVelocity === velocity &&
+            venue.lastPulseAt === lastPulseAt
+          ) {
+            return venue
+          }
+          didChange = true
+          return { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt }
         })
+        return didChange ? current.map((venue) => {
+          const venuePulses = pulsesByVenue.get(venue.id) || []
+          const score = calculatePulseScore(venuePulses)
+          const velocity = calculateScoreVelocity(venue, venuePulses)
+          const lastPulseAt = venuePulses[0]?.createdAt
+          return (
+            venue.pulseScore === score &&
+            venue.scoreVelocity === velocity &&
+            venue.lastPulseAt === lastPulseAt
+          )
+            ? venue
+            : { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt }
+        }) : current
       })
       setHashtags((current) => { if (!current) return []; return applyHashtagDecay(current) })
-    }, 5000)
+    }, 15000)
     return () => clearInterval(interval)
   }, [pulsesByVenue, setVenues, setHashtags])
 

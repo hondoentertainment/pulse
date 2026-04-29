@@ -229,7 +229,8 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8"
+              aria-label="Clear search"
+              className="h-11 w-11"
               onClick={handleClear}
             >
               <X size={16} weight="bold" />
@@ -238,8 +239,9 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
           <Button
             size="icon"
             variant="ghost"
+            aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
             className={cn(
-              'h-8 w-8 transition-colors',
+              'h-11 w-11 transition-colors',
               isListening && 'bg-accent text-accent-foreground animate-pulse',
               !isSupported && 'opacity-50 cursor-not-allowed'
             )}
