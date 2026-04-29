@@ -1,13 +1,13 @@
 import { MapPin, Clock, MagnifyingGlass } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useCurrentTime } from '@/hooks/use-current-time'
 
 interface AppHeaderProps {
   locationName: string
   isTracking: boolean
   hasRealtimeLocation: boolean
   locationPermissionDenied: boolean
-  currentTime: Date
   queuedPulseCount?: number
   onSearchClick?: () => void
 }
@@ -17,10 +17,11 @@ export function AppHeader({
   isTracking,
   hasRealtimeLocation,
   locationPermissionDenied,
-  currentTime,
   queuedPulseCount = 0,
   onSearchClick,
 }: AppHeaderProps) {
+  const currentTime = useCurrentTime()
+
   return (
     <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-2xl mx-auto px-4 py-4">

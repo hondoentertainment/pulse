@@ -70,6 +70,23 @@ export interface Venue {
       appleMapsUrl?: string
     }
   }
+  liveSummary?: VenueLiveSummary
+}
+
+export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'
+
+export interface VenueLiveSummary {
+  reportCount: number
+  waitTime: number | null
+  coverCharge: number | null
+  coverChargeNote?: string
+  crowdLevel: number
+  dressCode: string | null
+  musicGenre: string | null
+  nowPlaying: { track: string; artist: string } | null
+  confidence: Record<string, 'low' | 'medium' | 'high'>
+  lastReportAt: string | null
+  updatedAt: string
 }
 
 export interface Pulse {

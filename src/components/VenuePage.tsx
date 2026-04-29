@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -34,17 +35,19 @@ import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
 import {
+  addLocalLiveReport,
+  createLiveReport,
   getVenueLiveData,
-  reportWaitTime,
-  reportCoverCharge,
-  reportMusicPlaying,
-  reportCrowdLevel,
-  reportDressCode,
-  reportNowPlaying,
+  getVenueLiveDataFromReports,
   seedDemoReports,
   type VenueLiveData,
+  type LiveReport,
 } from '@/lib/live-intelligence'
 import { seedVenueOperatorStatus } from '@/lib/venue-operator-live'
+import { useCurrentTime } from '@/hooks/use-current-time'
+import { hasSupabaseConfig } from '@/lib/supabase'
+import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
+import { queryClient } from '@/lib/query-client'
 
 interface VenuePageProps {
   venue: Venue
@@ -53,7 +56,6 @@ interface VenuePageProps {
   userLocation?: { lat: number; lng: number } | null
   unitSystem: 'imperial' | 'metric'
   locationName: string
-  currentTime: Date
   isTracking: boolean
   hasRealtimeLocation: boolean
   isFavorite: boolean
@@ -78,7 +80,6 @@ export function VenuePage({
   userLocation,
   unitSystem,
   locationName,
-  currentTime,
   isTracking,
   hasRealtimeLocation,
   isFavorite,
@@ -100,17 +101,33 @@ export function VenuePage({
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
+  const currentTime = useCurrentTime()
+  const liveReportsQueryKey = ['venue-live-reports', venue.id]
+
+  const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
+    queryKey: liveReportsQueryKey,
+    queryFn: () => fetchVenueLiveReportsFromSupabase(venue.id),
+    enabled: hasSupabaseConfig,
+  })
 
   const refreshLiveData = useCallback(() => {
+    if (hasSupabaseConfig && Array.isArray(serverLiveReports)) {
+      setLiveData(getVenueLiveDataFromReports(venue.id, serverLiveReports))
+      return
+    }
     setLiveData(getVenueLiveData(venue.id))
-  }, [venue.id])
+  }, [serverLiveReports, venue.id])
 
   useEffect(() => {
     // Seed demo data on first load for this venue
-    seedDemoReports([venue.id])
+    if (!hasSupabaseConfig) seedDemoReports([venue.id])
     seedVenueOperatorStatus(venue.id, venue.name)
     refreshLiveData()
-  }, [venue.id, refreshLiveData])
+  }, [venue.id, venue.name, refreshLiveData])
+
+  useEffect(() => {
+    refreshLiveData()
+  }, [refreshLiveData])
 
   useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
@@ -199,6 +216,40 @@ export function VenuePage({
     toast.success(action.label, {
       description: action.description,
     })
+  }
+
+  const submitLiveReport = async (type: LiveReport['type'], value: unknown) => {
+    if (!currentUser) {
+      toast.error('Sign in to report live intel')
+      return
+    }
+
+    const optimisticReport = createLiveReport(venue.id, currentUser.id, type, value)
+    const currentReports = Array.isArray(serverLiveReports) ? serverLiveReports : []
+    setLiveData(getVenueLiveDataFromReports(venue.id, [optimisticReport, ...currentReports]))
+
+    if (!hasSupabaseConfig) {
+      addLocalLiveReport(optimisticReport)
+      refreshLiveData()
+      toast.success('Live intel added')
+      return
+    }
+
+    const savedReport = await submitVenueLiveReportToSupabase(optimisticReport)
+    if (!savedReport) {
+      addLocalLiveReport(optimisticReport)
+      refreshLiveData()
+      toast.warning('Saved locally', { description: 'Live intel will appear on this device.' })
+      return
+    }
+
+    queryClient.setQueryData<LiveReport[]>(liveReportsQueryKey, (old = []) => {
+      if (old.some(report => report.id === savedReport.id)) return old
+      return [savedReport, ...old]
+    })
+    setLiveData(getVenueLiveDataFromReports(venue.id, [savedReport, ...currentReports]))
+    void refetchLiveReports()
+    toast.success('Live intel shared')
   }
 
   return (
@@ -528,28 +579,22 @@ export function VenuePage({
         onClose={() => setReportSheetOpen(false)}
         venueName={venue.name}
         onSubmitWaitTime={(minutes) => {
-          if (currentUser) reportWaitTime(venue.id, currentUser.id, minutes)
-          refreshLiveData()
+          void submitLiveReport('wait_time', minutes)
         }}
         onSubmitCoverCharge={(amount, note) => {
-          if (currentUser) reportCoverCharge(venue.id, currentUser.id, amount, note)
-          refreshLiveData()
+          void submitLiveReport('cover_charge', { amount, note })
         }}
         onSubmitMusicGenre={(genre) => {
-          if (currentUser) reportMusicPlaying(venue.id, currentUser.id, genre)
-          refreshLiveData()
+          void submitLiveReport('music', genre)
         }}
         onSubmitCrowdLevel={(level) => {
-          if (currentUser) reportCrowdLevel(venue.id, currentUser.id, level)
-          refreshLiveData()
+          void submitLiveReport('crowd_level', level)
         }}
         onSubmitDressCode={(code) => {
-          if (currentUser) reportDressCode(venue.id, currentUser.id, code)
-          refreshLiveData()
+          void submitLiveReport('dress_code', code)
         }}
         onSubmitNowPlaying={(track, artist) => {
-          if (currentUser) reportNowPlaying(venue.id, currentUser.id, track, artist)
-          refreshLiveData()
+          void submitLiveReport('now_playing', { track, artist })
         }}
       />
     </div>

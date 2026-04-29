@@ -74,7 +74,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <main className="min-h-screen bg-background flex flex-col" aria-live="polite">
       {/* Progress bar */}
       {step !== 'welcome' && (
         <div className="px-6 pt-4">
@@ -106,7 +106,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Lightning size={40} weight="fill" className="text-white" />
                 </div>
                 <h1 className="text-3xl font-bold mt-6">Welcome to Pulse</h1>
-                <p className="text-muted-foreground">
+                <p className="text-foreground/75">
                   Real-time energy ratings for your city's best spots
                 </p>
               </div>
@@ -143,7 +143,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="text-center space-y-2">
                 <Compass size={32} weight="fill" className="text-primary mx-auto" />
                 <h2 className="text-2xl font-bold">What's your scene?</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground/75">
                   Pick your favorite types of venues (select at least 1)
                 </p>
               </div>
@@ -195,7 +195,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="text-center space-y-2">
                 <Fire size={32} weight="fill" className="text-accent mx-auto" />
                 <h2 className="text-2xl font-bold">When do you go out?</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground/75">
                   We'll tailor recommendations to your schedule
                 </p>
               </div>
@@ -243,7 +243,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="text-center space-y-2">
                 <MapPin size={32} weight="fill" className="text-primary mx-auto" />
                 <h2 className="text-2xl font-bold">Enable permissions</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground/75">
                   These help us show you the best nearby spots
                 </p>
               </div>
@@ -312,12 +312,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold">You're all set!</h2>
-                <p className="text-muted-foreground">
+                <p className="text-foreground/75">
                   Time to discover what's buzzing near you
                 </p>
               </div>
 
-              <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="space-y-2 text-sm text-foreground/75">
                 {selectedCategories.length > 0 && (
                   <p>{selectedCategories.length} venue type{selectedCategories.length > 1 ? 's' : ''} selected</p>
                 )}
@@ -334,6 +334,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </main>
   )
 }

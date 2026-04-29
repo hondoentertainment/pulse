@@ -215,6 +215,17 @@ export function InteractiveMap({
     return 'oklch(0.40 0.05 260)'
   }
 
+  const getLiveIntelLabel = (venue: Venue) => {
+    const live = venue.liveSummary
+    if (!live || live.reportCount === 0) return null
+    if (live.waitTime !== null && live.waitTime <= 5) return 'Walk right in'
+    if (live.waitTime !== null && live.waitTime >= 25) return 'Line risk'
+    if (live.crowdLevel >= 75) return 'Packed now'
+    if (live.nowPlaying) return 'Track confirmed'
+    if (live.musicGenre) return `${live.musicGenre} now`
+    return `${live.reportCount} live report${live.reportCount === 1 ? '' : 's'}`
+  }
+
   const filteredVenues = useMemo(() => {
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
@@ -817,15 +828,22 @@ export function InteractiveMap({
 
   const bestNextVenue = previewVenues[0] ?? null
 
-  const statusChips = [
-    followUser && userLocation ? 'Following You' : null,
-    isCameraMoving ? 'Moving' : 'Settled',
-    locationHeading !== null && locationHeading !== undefined ? `Heading ${Math.round(locationHeading)}°` : null,
-    activeFilterCount > 0 ? `${activeFilterCount} Filters` : 'All Venues',
-    clusteredMapData.clusters.length > 0 ? `${clusteredMapData.clusters.length} Clusters` : null,
-    comparedVenueIds.length > 0 ? `${comparedVenueIds.length} Comparing` : null,
-    accessibilityMode ? 'Accessibility Mode' : null
-  ].filter(Boolean) as string[]
+  const mapModeLabel = nearMeActive
+    ? 'Near Me'
+    : activeFilterCount > 0
+      ? 'Filtered'
+      : showFullHeatmap
+        ? 'Full Map'
+        : 'Top Surges'
+  const mapSummary = activeFilterCount > 0
+    ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
+    : showFullHeatmap
+      ? `${filteredVenues.length} venues in view`
+      : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
+  const showCuratedToggle = !nearMeActive
+    && filters.energyLevels.length === 0
+    && filters.categories.length === 0
+    && filters.maxDistance === Infinity
 
   useEffect(() => {
     if (comparedVenueIds.length === 0) return
@@ -1326,6 +1344,11 @@ export function InteractiveMap({
                         <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
                           {hoveredVenue.category || 'Venue'}
                         </Badge>
+                        {getLiveIntelLabel(hoveredVenue) && (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
+                            {getLiveIntelLabel(hoveredVenue)}
+                          </Badge>
+                        )}
                         {distance !== undefined && (
                           <span className="text-[10px] text-muted-foreground font-mono">
                             {formatDistance(distance, unitSystem)}
@@ -1371,31 +1394,129 @@ export function InteractiveMap({
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2">
-        <div className="flex items-start gap-2">
-          <div className="flex-1 max-w-md">
-            <MapSearch
-              venues={venues}
-              onVenueSelect={handleVenueSelect}
-              userLocation={userLocation}
-            />
-          </div>
+      <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+        <div className="max-w-xl pointer-events-auto">
+          <Card className="bg-card/92 backdrop-blur-xl border-border/80 shadow-2xl overflow-hidden">
+            <div className="p-2.5">
+              <MapSearch
+                venues={venues}
+                onVenueSelect={handleVenueSelect}
+                userLocation={userLocation}
+              />
+            </div>
+
+            <div className="border-t border-border/50 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="h-5 px-2 text-[10px] font-bold bg-primary/12 text-primary border-primary/20">
+                      {mapModeLabel}
+                    </Badge>
+                    {followUser && userLocation && (
+                      <span className="text-[10px] font-medium text-muted-foreground">Following you</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground truncate">{mapSummary}</p>
+                </div>
+                {showCuratedToggle && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggleFullHeatmap}
+                    className="h-8 shrink-0 px-3 text-[11px] font-semibold"
+                  >
+                    {showFullHeatmap ? "Top only" : "Show all"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <div className="flex gap-1.5 flex-wrap max-w-lg">
-          {statusChips.map((chip) => (
-            <Badge
-              key={chip}
-              variant="secondary"
-              className="bg-card/90 backdrop-blur-sm border border-border/70 text-[10px] font-semibold"
-            >
-              {chip}
-            </Badge>
-          ))}
+        {/* Quick Filter Chips */}
+        <div className="mt-2 flex max-w-xl gap-2 overflow-x-auto pb-1 pointer-events-auto [scrollbar-width:none]">
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              if (filters.categories.includes('bar')) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.categories.includes('bar')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <BeerBottle size={14} weight="fill" className="inline mr-1" />
+            Bars
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
+              if (hasClub) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.categories.includes('club') || filters.categories.includes('nightclub')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MusicNotes size={14} weight="fill" className="inline mr-1" />
+            Clubs
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              setNearMeActive(!nearMeActive)
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              nearMeActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MapPin size={14} weight="fill" className="inline mr-1" />
+            Near Me
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+              if (hasHot) {
+                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
+              } else {
+                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <Fire size={14} weight="fill" className="inline mr-1" />
+            Hot
+          </button>
         </div>
 
         {showOnboardingTips && (
-          <Card className="max-w-md bg-card/95 backdrop-blur-sm border border-border shadow-lg p-3">
+          <Card className="mt-2 max-w-xl bg-card/95 backdrop-blur-sm border border-border shadow-lg p-3 pointer-events-auto">
             <p className="text-[11px] font-semibold text-primary mb-1.5">
               Map tips {tipIndex + 1}/{onboardingTips.length}
             </p>
@@ -1427,107 +1548,10 @@ export function InteractiveMap({
             </div>
           </Card>
         )}
-
-        {/* Quick Filter Chips */}
-        <div className="flex gap-1.5 flex-wrap max-w-md">
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              if (filters.categories.includes('bar')) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
-              } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
-              }
-            }}
-            className={cn(
-              "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-sm shadow-sm",
-              filters.categories.includes('bar')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <BeerBottle size={14} weight="fill" className="inline mr-1" />
-            Bars
-          </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
-              if (hasClub) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
-              } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
-              }
-            }}
-            className={cn(
-              "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-sm shadow-sm",
-              filters.categories.includes('club') || filters.categories.includes('nightclub')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <MusicNotes size={14} weight="fill" className="inline mr-1" />
-            Clubs
-          </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              setNearMeActive(!nearMeActive)
-            }}
-            className={cn(
-              "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-sm shadow-sm",
-              nearMeActive
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <MapPin size={14} weight="fill" className="inline mr-1" />
-            Near Me
-          </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-              if (hasHot) {
-                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
-              } else {
-                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
-              }
-            }}
-            className={cn(
-              "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-sm shadow-sm",
-              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <Fire size={14} weight="fill" className="inline mr-1" />
-            Hot
-          </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              setShowFullHeatmap(!showFullHeatmap)
-            }}
-            className={cn(
-              "px-3.5 min-h-11 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-sm shadow-sm",
-              showFullHeatmap
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            {showFullHeatmap ? 'Top 5' : 'Full Map'}
-          </button>
-        </div>
       </div>
 
-      {/* Consolidated Right Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+      {/* Consolidated Map Controls */}
+      <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
         <Button
           size="sm"
           variant={accessibilityMode ? "default" : "secondary"}
@@ -1559,19 +1583,6 @@ export function InteractiveMap({
             Re-center
           </Button>
         )}
-        {/* Venue Count Badge */}
-        <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2 shadow-lg">
-          <div className="flex items-center gap-2">
-            <MapPin size={16} weight="fill" className="text-primary" />
-            <div className="text-xs">
-              <span className="font-bold text-foreground">{filteredVenues.length}</span>
-              <span className="text-muted-foreground ml-1">
-                {filteredVenues.length === 1 ? 'venue' : 'venues'}
-              </span>
-            </div>
-          </div>
-        </Card>
-
         <MapFilters
           filters={filters}
           onChange={setFilters}
@@ -1639,11 +1650,8 @@ export function InteractiveMap({
         </Card>
 
         {/* Zoom Level Indicator */}
-        <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1">
+        <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1 shadow-sm">
           {zoom.toFixed(1)}x
-        </div>
-        <div className="text-[10px] font-mono text-muted-foreground/80 text-center bg-card/70 backdrop-blur-sm rounded px-2 py-1">
-          Drag to pan · scroll to zoom
         </div>
       </div>
 
@@ -1852,19 +1860,6 @@ export function InteractiveMap({
         </Card>
       </div>
 
-      {/* Progressive Disclosure Toggle */}
-      {!nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0 && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleToggleFullHeatmap}
-            className="bg-card/90 backdrop-blur-md shadow-lg border border-border/50 text-xs font-semibold px-4 py-1.5 rounded-full hover:bg-card/100 transition-colors"
-          >
-            {showFullHeatmap ? "Show Top Surges Only" : "Show Full Heatmap"}
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

@@ -16,6 +16,30 @@ const isVitest = process.env.VITEST === 'true'
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/')
+          if (!normalizedId.includes('/node_modules/')) return
+
+          if (normalizedId.includes('/react/') || normalizedId.includes('/react-dom/')) {
+            return 'react-vendor'
+          }
+          if (normalizedId.includes('/framer-motion/')) {
+            return 'motion-vendor'
+          }
+          if (normalizedId.includes('/@radix-ui/')) {
+            return 'radix-vendor'
+          }
+          if (normalizedId.includes('/@tanstack/') || normalizedId.includes('/@supabase/')) {
+            return 'data-vendor'
+          }
+          if (normalizedId.includes('/@sentry/') || normalizedId.includes('/@vercel/')) {
+            return 'observability'
+          }
+        },
+      },
+    },
   },
   plugins: [
     !isVitest && react(),

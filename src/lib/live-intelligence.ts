@@ -79,19 +79,31 @@ function generateId(): string {
   return `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-// --- Report functions ---
-
-export function reportWaitTime(venueId: string, userId: string, minutes: number): LiveReport {
-  const report: LiveReport = {
+export function createLiveReport(
+  venueId: string,
+  userId: string,
+  type: LiveReport['type'],
+  value: unknown
+): LiveReport {
+  return {
     id: generateId(),
     venueId,
     userId,
-    type: 'wait_time',
-    value: minutes,
+    type,
+    value,
     createdAt: new Date().toISOString(),
   }
+}
+
+export function addLocalLiveReport(report: LiveReport): LiveReport {
   reportStore.push(report)
   return report
+}
+
+// --- Report functions ---
+
+export function reportWaitTime(venueId: string, userId: string, minutes: number): LiveReport {
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'wait_time', minutes))
 }
 
 export function reportCoverCharge(
@@ -100,16 +112,7 @@ export function reportCoverCharge(
   amount: number | null,
   note?: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'cover_charge',
-    value: { amount, note },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'cover_charge', { amount, note }))
 }
 
 export function reportMusicPlaying(
@@ -117,16 +120,7 @@ export function reportMusicPlaying(
   userId: string,
   genre: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'music',
-    value: genre,
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'music', genre))
 }
 
 export function reportCrowdLevel(
@@ -134,16 +128,7 @@ export function reportCrowdLevel(
   userId: string,
   level: number
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'crowd_level',
-    value: Math.max(0, Math.min(100, level)),
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'crowd_level', Math.max(0, Math.min(100, level))))
 }
 
 export function reportDressCode(
@@ -151,16 +136,7 @@ export function reportDressCode(
   userId: string,
   code: DressCode
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'dress_code',
-    value: code,
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'dress_code', code))
 }
 
 export function reportNowPlaying(
@@ -169,16 +145,7 @@ export function reportNowPlaying(
   track: string,
   artist: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'now_playing',
-    value: { track, artist },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'now_playing', { track, artist }))
 }
 
 export function reportAgeRange(
@@ -187,25 +154,20 @@ export function reportAgeRange(
   min: number,
   max: number
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'age_range',
-    value: { min, max },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'age_range', { min, max }))
 }
 
 // --- Aggregation helpers ---
 
 const REPORT_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 
-function getRecentReports(venueId: string, type?: LiveReport['type']): LiveReport[] {
+function getRecentReports(
+  venueId: string,
+  type?: LiveReport['type'],
+  reports: LiveReport[] = reportStore
+): LiveReport[] {
   const cutoff = Date.now() - REPORT_WINDOW_MS
-  return reportStore.filter(
+  return reports.filter(
     r =>
       r.venueId === venueId &&
       (!type || r.type === type) &&
@@ -289,19 +251,19 @@ function mostReportedValue<T>(reports: LiveReport[]): T | null {
 
 // --- Main aggregation ---
 
-export function getVenueLiveData(venueId: string): VenueLiveData {
+function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore): VenueLiveData {
   const now = new Date().toISOString()
   seedVenueOperatorStatus(venueId, venueId)
   const operatorStatus = getVenueOperatorStatus(venueId)
   const hasVerifiedOperatorUpdate = !!operatorStatus && operatorStatus.updatedBy !== 'owner-demo'
 
-  const waitReports = getRecentReports(venueId, 'wait_time')
-  const coverReports = getRecentReports(venueId, 'cover_charge')
-  const musicReports = getRecentReports(venueId, 'music')
-  const crowdReports = getRecentReports(venueId, 'crowd_level')
-  const dressReports = getRecentReports(venueId, 'dress_code')
-  const nowPlayingReports = getRecentReports(venueId, 'now_playing')
-  const ageReports = getRecentReports(venueId, 'age_range')
+  const waitReports = getRecentReports(venueId, 'wait_time', reports)
+  const coverReports = getRecentReports(venueId, 'cover_charge', reports)
+  const musicReports = getRecentReports(venueId, 'music', reports)
+  const crowdReports = getRecentReports(venueId, 'crowd_level', reports)
+  const dressReports = getRecentReports(venueId, 'dress_code', reports)
+  const nowPlayingReports = getRecentReports(venueId, 'now_playing', reports)
+  const ageReports = getRecentReports(venueId, 'age_range', reports)
 
   // Wait time: weighted average
   const waitTime = waitReports.length > 0 ? Math.round(weightedAverage(waitReports)) : null
@@ -400,7 +362,7 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
   }
 
   // lastUpdated = most recent report timestamp
-  const allReports = getRecentReports(venueId)
+  const allReports = getRecentReports(venueId, undefined, reports)
   const lastUpdated = allReports.length > 0
     ? allReports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
     : now
@@ -472,6 +434,14 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     djStatus: operatorStatus?.djStatus,
     special: operatorStatus?.special,
   }
+}
+
+export function getVenueLiveData(venueId: string): VenueLiveData {
+  return buildVenueLiveData(venueId, reportStore)
+}
+
+export function getVenueLiveDataFromReports(venueId: string, reports: LiveReport[]): VenueLiveData {
+  return buildVenueLiveData(venueId, reports)
 }
 
 // --- Crowd forecast ---

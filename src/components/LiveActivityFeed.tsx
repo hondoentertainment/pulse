@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { User, Venue, Pulse } from '@/lib/types'
 import { generateActivityDigest } from '@/lib/social-graph'
 import { getEnergyLabel } from '@/lib/pulse-engine'
@@ -41,11 +42,22 @@ export function LiveActivityFeed({
   pulses,
   onVenueClick,
 }: LiveActivityFeedProps) {
-  const digest = generateActivityDigest(
-    currentUser,
-    allUsers,
-    pulses,
-    venues.map(v => ({ id: v.id, name: v.name }))
+  const venueSummaries = useMemo(
+    () => venues.map(venue => ({ id: venue.id, name: venue.name })),
+    [venues]
+  )
+  const venueById = useMemo(
+    () => new Map(venues.map(venue => [venue.id, venue] as const)),
+    [venues]
+  )
+  const digest = useMemo(
+    () => generateActivityDigest(
+      currentUser,
+      allUsers,
+      pulses,
+      venueSummaries
+    ),
+    [allUsers, currentUser, pulses, venueSummaries]
   )
 
   if (digest.entries.length === 0) {
@@ -67,7 +79,7 @@ export function LiveActivityFeed({
       </div>
       {digest.entries.map((entry, i) =>
         entry.venues.map((venueActivity, j) => {
-          const venue = venues.find(v => v.id === venueActivity.venueId)
+          const venue = venueById.get(venueActivity.venueId)
           if (!venue) return null
           const energyLabel = getEnergyLabel(venue.pulseScore)
           return (

@@ -17,11 +17,12 @@ import {
   reactionBatcher,
   presenceBatcher,
   pulseBatcher,
-  type BatchEvent,
   type BatchFlush,
 } from '@/lib/realtime-batcher'
-import type { Pulse } from '@/lib/types'
+import type { Pulse, Venue } from '@/lib/types'
 import { trackPerformance } from '@/lib/analytics'
+import { mapVenueLiveAggregate, mapVenueLiveReport } from '@/lib/supabase-api'
+import type { LiveReport } from '@/lib/live-intelligence'
 
 /**
  * Flush handler for pulse inserts — merges new pulses into React Query cache.
@@ -79,7 +80,28 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
     return merged
   })
 
+  queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
+    const updates = new Map(batch.events.map(event => [event.key, event.payload as Partial<Venue>]))
+    return old.map(venue => {
+      const update = updates.get(venue.id)
+      if (!update) return venue
+      return {
+        ...venue,
+        pulseScore: update.pulseScore ?? venue.pulseScore,
+        scoreVelocity: update.scoreVelocity ?? venue.scoreVelocity,
+        lastPulseAt: update.lastPulseAt ?? venue.lastPulseAt,
+      }
+    })
+  })
+
   trackPerformance('realtime_presence_batch_size', batch.events.length)
+}
+
+function mergeLiveReport(report: LiveReport) {
+  queryClient.setQueryData<LiveReport[]>(['venue-live-reports', report.venueId], (old = []) => {
+    if (old.some(existing => existing.id === report.id)) return old
+    return [report, ...old]
+  })
 }
 
 /**
@@ -162,6 +184,32 @@ export function useRealtimeSubscription(enabled = true) {
             },
             timestamp: Date.now(),
           })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'venue_live_reports' },
+        (payload) => {
+          const report = mapVenueLiveReport(payload.new as Parameters<typeof mapVenueLiveReport>[0])
+          mergeLiveReport(report)
+          trackPerformance('realtime_venue_live_report', 1)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'venue_live_aggregates' },
+        (payload) => {
+          if (!payload.new) return
+          const summary = mapVenueLiveAggregate(payload.new as Parameters<typeof mapVenueLiveAggregate>[0])
+          const venueId = payload.new.venue_id as string
+          queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
+          queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
+            old.map(venue => venue.id === venueId
+              ? { ...venue, liveSummary: summary }
+              : venue
+            )
+          )
+          trackPerformance('realtime_venue_live_aggregate', 1)
         }
       )
       .subscribe()

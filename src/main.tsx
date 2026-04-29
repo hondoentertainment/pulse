@@ -1,29 +1,55 @@
+import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
 import "@github/spark/spark"
 import { trackError } from "./lib/analytics"
-import * as Sentry from '@sentry/react'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/react'
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
 
 import "./main.css"
-import "./styles/theme.css"
-import "./index.css"
 
-Sentry.init({
-  // Use a placeholder if no DSN is provided
-  dsn: import.meta.env.VITE_SENTRY_DSN || '',
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
-  ],
-  tracesSampleRate: 1.0,
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-})
+const Analytics = lazy(() => import('@vercel/analytics/react').then(module => ({ default: module.Analytics })))
+const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(module => ({ default: module.SpeedInsights })))
+
+function isLocalPreviewHost() {
+  if (typeof window === 'undefined') return false
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+}
+
+function scheduleIdle(callback: () => void) {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(callback, { timeout: 3000 })
+    return
+  }
+  window.setTimeout(callback, 1500)
+}
+
+function initializeSentryWhenIdle() {
+  const dsn = import.meta.env.VITE_SENTRY_DSN
+  if (!dsn || typeof window === 'undefined') return
+
+  scheduleIdle(() => {
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.init({
+          dsn,
+          integrations: [
+            Sentry.browserTracingIntegration(),
+            Sentry.replayIntegration(),
+          ],
+          tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
+          replaysSessionSampleRate: import.meta.env.PROD ? 0.01 : 0.1,
+          replaysOnErrorSampleRate: 1.0,
+        })
+      })
+      .catch((error) => {
+        trackError(error instanceof Error ? error : String(error), 'sentry_init')
+      })
+  })
+}
+
+initializeSentryWhenIdle()
 
 if (typeof window !== "undefined") {
   window.addEventListener("error", (event) => {
@@ -51,8 +77,12 @@ createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister }}>
       <App />
-      <Analytics />
-      <SpeedInsights />
+      {!isLocalPreviewHost() && (
+        <Suspense fallback={null}>
+          <Analytics />
+          <SpeedInsights />
+        </Suspense>
+      )}
     </PersistQueryClientProvider>
   </ErrorBoundary>
 )

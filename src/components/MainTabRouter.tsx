@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -44,7 +45,7 @@ export function MainTabRouter() {
     setStoryViewerOpen,
     setStoryViewerStories,
     isFavorite,
-    getPulsesWithUsers,
+    pulsesWithUsers,
   } = state
 
   const {
@@ -56,7 +57,6 @@ export function MainTabRouter() {
     handlePulseReport,
     handlePromotionImpression,
     handlePromotionClick,
-    handleTabChange,
   } = handlers
 
   if (!venues || !currentUser) return null
@@ -69,7 +69,7 @@ export function MainTabRouter() {
             <TrendingTab
               venues={venues}
               pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
               followedVenues={followedVenues}
               userLocation={userLocation}
@@ -96,7 +96,7 @@ export function MainTabRouter() {
             <DiscoverTab
               venues={venues}
               pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              pulsesWithUsers={pulsesWithUsers}
               currentUser={currentUser}
               allUsers={ALL_USERS}
               stories={stories || []}
@@ -140,12 +140,12 @@ export function MainTabRouter() {
             <ProfileTab
               currentUser={currentUser}
               pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
               onVenueClick={setSelectedVenue}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => {
-                if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Admin dashboard is currently unavailable')); return }
+                if (!socialDashboardEnabled) { toast.error('Admin dashboard is currently unavailable'); return }
                 setShowAdminDashboard(true)
               }}
               onOpenSettings={() => setSubPage('settings')}

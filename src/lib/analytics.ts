@@ -6,7 +6,6 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics'
-import * as Sentry from '@sentry/react'
 
 type AnalyticsPropertyValue = string | number | boolean | null | undefined
 
@@ -84,6 +83,14 @@ export interface IntegrationActionSummary {
 
 const eventLog: AnalyticsEvent[] = []
 const MAX_EVENTS = 10000
+let sentryModulePromise: Promise<typeof import('@sentry/react')> | null = null
+
+function loadSentry() {
+  if (!sentryModulePromise) {
+    sentryModulePromise = import('@sentry/react')
+  }
+  return sentryModulePromise
+}
 
 /**
  * Track an analytics event.
@@ -341,11 +348,17 @@ export function trackError(error: Error | string, context?: string): void {
   })
 
   // Broadcast to Sentry
-  if (typeof error === 'string') {
-    Sentry.captureMessage(error, { extra: { context } })
-  } else {
-    Sentry.captureException(error, { extra: { context } })
-  }
+  void loadSentry()
+    .then((Sentry) => {
+      if (typeof error === 'string') {
+        Sentry.captureMessage(error, { extra: { context } })
+      } else {
+        Sentry.captureException(error, { extra: { context } })
+      }
+    })
+    .catch(() => {
+      // Ignore Sentry transport/bootstrap failures.
+    })
 }
 
 /**

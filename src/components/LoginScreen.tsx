@@ -41,7 +41,7 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6" aria-labelledby="login-title">
       <div className="w-full max-w-sm space-y-8 text-center">
         <motion.div
            initial={{ scale: 0 }}
@@ -52,8 +52,8 @@ export function LoginScreen() {
         </motion.div>
         
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Pulse</h1>
-          <p className="text-muted-foreground">Discover the city's live energy.</p>
+          <h1 id="login-title" className="text-3xl font-bold">Pulse</h1>
+          <p className="text-foreground/75">Discover the city's live energy.</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -101,6 +101,6 @@ export function LoginScreen() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </main>
   )
 }
