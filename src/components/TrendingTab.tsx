@@ -6,17 +6,14 @@ import { MySpotsFeed } from '@/components/MySpotsFeed'
 import { RecommendationsSection } from '@/components/RecommendationsSection'
 import { LiveActivityFeed } from '@/components/LiveActivityFeed'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Star, Megaphone, Scales } from '@phosphor-icons/react'
+import { Star, Scales, Sparkle } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
 import { getDayType, getPeakCategories, getTimeOfDay } from '@/lib/time-contextual-scoring'
 import { getSmartVenueSort } from '@/lib/contextual-intelligence'
 import { PromotedVenue, isPromotionActive, sortWithPromotions } from '@/lib/promoted-discoveries'
-import { PulseScore } from '@/components/PulseScore'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Pulse } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 
@@ -134,9 +131,28 @@ export function TrendingTab({
         </div>
       </div>
 
+      {trendingSubTab === 'trending' && (
+        <div className="max-w-2xl mx-auto px-4 pt-4">
+          <div className="overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/16 via-card to-accent/10 p-5 shadow-lg shadow-primary/5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-primary/15 p-2.5 text-primary">
+                <Sparkle size={22} weight="fill" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">Tonight's command center</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight">Find the best move in seconds.</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Live crowd reports, friend activity, and venue momentum are ranked here so you do not have to guess.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Compare button */}
       {onCompareVenues && trendingSubTab === 'trending' && (
-        <div className="max-w-2xl mx-auto px-4 pt-4">
+        <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
           <Button
             variant="outline"
             size="sm"
@@ -148,37 +164,46 @@ export function TrendingTab({
             <Scales size={16} className="mr-2" />
             Compare Top Venues
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Side-by-side pulse, line, and live-intel context before you head out.
+          </p>
         </div>
       )}
 
       {trendingSubTab === 'trending' && (
         <>
           {venues.length === 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-              {[1, 2, 3].map(i => (
-                <Skeleton key={i} className="w-full h-32 rounded-xl" />
-              ))}
+            <div className="max-w-2xl mx-auto px-4 pt-4">
+              <div className="rounded-2xl border border-border bg-card/70 p-6 text-center">
+                <p className="font-semibold">No venues loaded yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Try refreshing, enabling location, or checking your Supabase connection.</p>
+              </div>
             </div>
           )}
 
-          {favoriteVenues.length > 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
-              <div className="space-y-3">
+          <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Star size={20} weight="fill" className="text-accent" />
-                  <h2 className="text-xl font-bold">Favorites</h2>
+                  <h2 className="text-xl font-bold">Your saved spots</h2>
                 </div>
-                <Favorites
-                  favoriteVenues={favoriteVenues}
-                  userLocation={userLocation}
-                  unitSystem={unitSystem}
-                  onVenueClick={onVenueClick}
-                  onToggleFavorite={onToggleFavorite}
-                />
+                {favoriteVenues.length > 0 && (
+                  <span className="rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">
+                    {favoriteVenues.length} saved
+                  </span>
+                )}
               </div>
-              <Separator className="mt-6" />
+              <Favorites
+                favoriteVenues={favoriteVenues}
+                userLocation={userLocation}
+                unitSystem={unitSystem}
+                onVenueClick={onVenueClick}
+                onToggleFavorite={onToggleFavorite}
+              />
             </div>
-          )}
+            <Separator className="mt-6" />
+          </div>
 
           {/* Peak categories hint */}
           {(() => {
@@ -214,38 +239,6 @@ export function TrendingTab({
               onVenueClick={onVenueClick}
             />
           </div>
-
-          {/* Promoted Venues */}
-          {activePromotions.length > 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
-              {activePromotions.slice(0, 2).map(promo => {
-                const venue = venues.find(v => v.id === promo.venueId)
-                if (!venue) return null
-                return (
-                  <button
-                    key={promo.id}
-                    onClick={() => {
-                      onPromotionClick?.(promo.id)
-                      onVenueClick(venue)
-                    }}
-                    className="w-full p-3 bg-card rounded-xl border border-yellow-500/20 flex items-center gap-3 hover:border-yellow-500/40 transition-colors text-left"
-                  >
-                    <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold truncate">{venue.name}</p>
-                        <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500 flex-shrink-0">
-                          <Megaphone size={8} className="mr-0.5" />
-                          Sponsored
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{venue.category}{venue.city ? ` · ${venue.city}` : ''}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
 
           <TrendingSections
             sections={getTrendingSections(venues, pulses)}

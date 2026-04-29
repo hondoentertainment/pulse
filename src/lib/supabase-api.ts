@@ -35,6 +35,7 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
   const { data, error } = await supabase
     .from('venues')
     .select('*, venue_live_aggregates(*)')
+    .order('pulse_score', { ascending: false })
   if (error || !data) {
     console.error('Error fetching venues:', error)
     return null
@@ -71,7 +72,12 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
 }
 
 export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
-  const { data, error } = await supabase.from('pulses').select('*')
+  const { data, error } = await supabase
+    .from('pulses')
+    .select('*')
+    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1000)
   if (error || !data) {
     console.error('Error fetching pulses:', error)
     return null

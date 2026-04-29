@@ -26,7 +26,7 @@ import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
 import { createEvent } from '@/lib/events'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
-import { calculateScoreVelocity } from '@/lib/venue-trending'
+import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
 import { hasSupabaseConfig, supabase } from '@/lib/supabase'
@@ -277,18 +277,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const { data: serverEvents } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEventsFromApi,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
   const { data: serverVenues } = useQuery({
     queryKey: ['venues'],
     queryFn: fetchVenuesFromSupabase,
     enabled: hasSupabaseConfig,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   })
 
   const { data: serverPulses } = useQuery({
     queryKey: ['pulses'],
     queryFn: fetchPulsesFromSupabase,
     enabled: hasSupabaseConfig,
+    staleTime: 5_000,
+    refetchInterval: 15_000,
   })
 
   // Seed demo events / promotions
@@ -446,33 +452,71 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return byVenue
   }, [pulses])
 
+  const refreshVenueScores = useCallback(() => {
+    setVenues((current) => {
+      if (!current) return []
+      let didChange = false
+      const next = current.map((venue) => {
+        const venuePulses = pulsesByVenue.get(venue.id) || []
+        const pulseScore = venuePulses.length > 0
+          ? calculatePulseScore(venuePulses)
+          : venue.pulseScore
+        const velocity = venuePulses.length > 0
+          ? calculateScoreVelocity(venue, venuePulses)
+          : venue.scoreVelocity
+        const lastPulse = venuePulses[0]
+        const lastPulseAt = lastPulse?.createdAt
+        const lastActivity = lastPulseAt ?? venue.lastActivity
+        const nextPreTrending = venue.preTrending && (venue.verifiedCheckInCount ?? 0) >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS
+          ? false
+          : venue.preTrending
+        const liveSummary = venue.liveSummary
+        const liveCrowdScore = liveSummary?.crowdLevel
+        const scoreWithLiveReports = liveCrowdScore && liveSummary?.lastReportAt
+          ? Math.max(pulseScore, Math.round(pulseScore * 0.7 + liveCrowdScore * 0.3))
+          : pulseScore
+
+        if (
+          venue.pulseScore === scoreWithLiveReports &&
+          venue.scoreVelocity === velocity &&
+          venue.lastPulseAt === lastPulseAt &&
+          venue.lastActivity === lastActivity &&
+          venue.preTrending === nextPreTrending
+        ) {
+          return venue
+        }
+
+        didChange = true
+        return {
+          ...venue,
+          pulseScore: scoreWithLiveReports,
+          scoreVelocity: velocity,
+          lastPulseAt,
+          lastActivity,
+          preTrending: nextPreTrending,
+        }
+      })
+      return didChange ? next : current
+    })
+  }, [pulsesByVenue, setVenues])
+
+  useEffect(() => {
+    refreshVenueScores()
+  }, [refreshVenueScores])
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setVenues((current) => {
-        if (!current) return []
-        let didChange = false
-        const next = current.map((venue) => {
-          const venuePulses = pulsesByVenue.get(venue.id) || []
-          const score = calculatePulseScore(venuePulses)
-          const velocity = calculateScoreVelocity(venue, venuePulses)
-          const lastPulse = venuePulses[0]
-          const lastPulseAt = lastPulse?.createdAt
-          if (
-            venue.pulseScore === score &&
-            venue.scoreVelocity === velocity &&
-            venue.lastPulseAt === lastPulseAt
-          ) {
-            return venue
-          }
-          didChange = true
-          return { ...venue, pulseScore: score, scoreVelocity: velocity, lastPulseAt }
-        })
-        return didChange ? next : current
-      })
+      refreshVenueScores()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [refreshVenueScores])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
       setHashtags((current) => { if (!current) return []; return applyHashtagDecay(current) })
     }, 15000)
     return () => clearInterval(interval)
-  }, [pulsesByVenue, setVenues, setHashtags])
+  }, [setHashtags])
 
   // ── Derived values ───────────────────────────────────────
   const moderatedPulses = useMemo(

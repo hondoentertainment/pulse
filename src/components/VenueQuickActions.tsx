@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BookmarkSimple, CalendarBlank, Car, Lightning, MapPin, ShareNetwork } from '@phosphor-icons/react'
+import { BookmarkSimple, CalendarBlank, Car, Lightning, MapPin } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -55,14 +55,11 @@ function ActionButton({ icon, label, onClick, isPrimary, isActive, disabled }: A
 
 export function VenueQuickActions({
   onCheckIn,
-  onShare,
   onDirections,
   onRide,
   onReserve,
-  onWatchSurge,
   onSave,
   isSaved = false,
-  isWatchingSurge = false,
   canReserve = true,
 }: VenueQuickActionsProps) {
   return (
@@ -70,9 +67,9 @@ export function VenueQuickActions({
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 25, delay: 0.3 }}
-      className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-1/2 z-50 -translate-x-1/2"
     >
-      <div className="flex items-center gap-1 rounded-full border border-border bg-card/90 px-4 py-2 shadow-lg shadow-black/20 backdrop-blur-xl">
+      <div className="flex items-center gap-1 rounded-full border border-border bg-card/92 px-4 py-2 shadow-xl shadow-black/25 backdrop-blur-xl">
         <ActionButton
           icon={<Lightning size={22} weight="fill" />}
           label="Pulse"
@@ -94,17 +91,6 @@ export function VenueQuickActions({
           label="Reserve"
           onClick={onReserve}
           disabled={!canReserve}
-        />
-        <ActionButton
-          icon={<ShareNetwork size={20} weight="regular" />}
-          label="Share"
-          onClick={onShare}
-        />
-        <ActionButton
-          icon={<Lightning size={20} weight={isWatchingSurge ? 'fill' : 'regular'} />}
-          label={isWatchingSurge ? 'Watching' : 'Watch'}
-          onClick={onWatchSurge}
-          isActive={isWatchingSurge}
         />
         <ActionButton
           icon={<BookmarkSimple size={20} weight={isSaved ? 'fill' : 'regular'} />}

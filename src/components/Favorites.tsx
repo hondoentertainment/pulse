@@ -37,11 +37,11 @@ export function Favorites({
 }: FavoritesProps) {
   if (favoriteVenues.length === 0) {
     return (
-      <div className="text-center py-8 space-y-2">
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-8 text-center space-y-2">
         <Star size={48} weight="duotone" className="mx-auto text-muted-foreground opacity-50" />
-        <p className="text-muted-foreground">No favorite venues yet</p>
+        <p className="font-semibold">Build your shortlist</p>
         <p className="text-sm text-muted-foreground">
-          Tap the star icon on any venue to add it here
+          Star venues you care about and they will stay one tap away here.
         </p>
       </div>
     )
@@ -75,7 +75,8 @@ export function Favorites({
                   e.stopPropagation()
                   onToggleFavorite(venue.id)
                 }}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors z-10"
+                aria-label={`Remove ${venue.name} from favorites`}
+                className="absolute top-2 right-2 z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm transition-colors hover:bg-background"
               >
                 <Star size={16} weight="fill" className="text-accent" />
               </button>

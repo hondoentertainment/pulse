@@ -32,7 +32,7 @@ interface DiscoverTabProps {
 export function DiscoverTab({
   venues,
   pulses,
-  pulsesWithUsers,
+  pulsesWithUsers: _pulsesWithUsers,
   currentUser,
   allUsers,
   stories,
@@ -50,9 +50,19 @@ export function DiscoverTab({
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Compass size={24} weight="fill" className="text-primary" />
-        <h2 className="text-xl font-bold">Discover</h2>
+      <div className="rounded-3xl border border-border bg-card/75 p-5">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-primary/15 p-2.5 text-primary">
+            <Compass size={24} weight="fill" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Discover</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">Plan less. Move smarter.</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Start with the right-now picks, then jump into events, crews, tickets, or your recap when you need more.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Stories */}
@@ -98,7 +108,7 @@ export function DiscoverTab({
       {/* Night Planner CTA */}
       <button
         onClick={() => onNavigate('night-planner')}
-        className="w-full bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-xl p-4 border border-primary/20 flex items-center gap-3 hover:border-primary/40 transition-colors"
+        className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/12 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left"
       >
         <Sparkle size={24} weight="fill" className="text-primary" />
         <div className="flex-1 text-left">
@@ -113,64 +123,64 @@ export function DiscoverTab({
           icon={<CalendarBlank size={24} weight="fill" />}
           label="Events"
           sublabel={upcomingEvents.length > 0 ? `${upcomingEvents.length} coming up` : 'Browse events'}
-          color="from-blue-500/20 to-cyan-500/20"
-          borderColor="border-blue-500/20"
+          color="from-primary/14 to-accent/10"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('events')}
         />
         <QuickAction
           icon={<UsersThree size={24} weight="fill" />}
           label="Crews"
           sublabel="Group check-ins"
-          color="from-green-500/20 to-emerald-500/20"
-          borderColor="border-green-500/20"
+          color="from-accent/14 to-primary/10"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('crews')}
         />
         <QuickAction
           icon={<Trophy size={24} weight="fill" />}
           label="Achievements"
           sublabel="Track your badges"
-          color="from-yellow-500/20 to-orange-500/20"
-          borderColor="border-yellow-500/20"
+          color="from-accent/14 to-card"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('achievements')}
         />
         <QuickAction
           icon={<ChartBar size={24} weight="fill" />}
           label="Insights"
           sublabel="Your weekly recap"
-          color="from-purple-500/20 to-pink-500/20"
-          borderColor="border-purple-500/20"
+          color="from-primary/14 to-card"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('insights')}
         />
         <QuickAction
           icon={<MusicNotes size={24} weight="fill" />}
           label="Playlists"
           sublabel="Curated pulse boards"
-          color="from-rose-500/20 to-red-500/20"
-          borderColor="border-rose-500/20"
+          color="from-primary/12 to-accent/10"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('playlists')}
         />
         <QuickAction
           icon={<Lightning size={24} weight="fill" />}
           label="Challenges"
           sublabel="Earn rewards"
-          color="from-amber-500/20 to-yellow-500/20"
-          borderColor="border-amber-500/20"
+          color="from-accent/14 to-card"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('challenges')}
         />
         <QuickAction
           icon={<Ticket size={24} weight="fill" />}
           label="My Tickets"
           sublabel="Tickets & reservations"
-          color="from-indigo-500/20 to-violet-500/20"
-          borderColor="border-indigo-500/20"
+          color="from-primary/14 to-card"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('my-tickets')}
         />
         <QuickAction
           icon={<GearSix size={24} weight="fill" />}
           label="Settings"
           sublabel="Language, privacy & more"
-          color="from-gray-500/20 to-slate-500/20"
-          borderColor="border-gray-500/20"
+          color="from-muted/40 to-card"
+          borderColor="border-border"
           onClick={() => onNavigate('settings')}
         />
       </div>
@@ -178,7 +188,7 @@ export function DiscoverTab({
       {/* Neighborhood button */}
       <button
         onClick={() => onNavigate('neighborhoods')}
-        className="w-full bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 flex items-center gap-3 hover:border-primary/40 transition-colors"
+        className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left"
       >
         <MapTrifold size={24} weight="fill" className="text-primary" />
         <div className="flex-1 text-left">
@@ -250,7 +260,8 @@ function QuickAction({
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`bg-gradient-to-br ${color} rounded-xl p-4 border ${borderColor} text-left`}
+      aria-label={`${label}: ${sublabel}`}
+      className={`bg-gradient-to-br ${color} rounded-2xl p-4 border ${borderColor} text-left transition-colors hover:border-primary/35`}
     >
       <div className="text-foreground mb-2">{icon}</div>
       <p className="font-medium text-sm">{label}</p>

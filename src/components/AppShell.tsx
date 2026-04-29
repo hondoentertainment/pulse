@@ -21,8 +21,16 @@ const PresenceSheet = lazy(() => import('@/components/PresenceSheet').then(m => 
 const CreatePulseDialog = lazy(() => import('@/components/CreatePulseDialog').then(m => ({ default: m.CreatePulseDialog })))
 
 const pageFallback = (
-  <main className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
-    <p className="text-muted-foreground">Loading...</p>
+  <main className="min-h-screen bg-background px-4 py-8" role="status" aria-live="polite">
+    <div className="mx-auto max-w-2xl space-y-4">
+      <div className="h-24 rounded-3xl border border-border bg-card/70" />
+      <div className="grid gap-3">
+        <div className="h-28 rounded-2xl border border-border bg-card/60" />
+        <div className="h-28 rounded-2xl border border-border bg-card/50" />
+        <div className="h-28 rounded-2xl border border-border bg-card/40" />
+      </div>
+      <p className="text-center text-sm text-muted-foreground">Loading live venue intel...</p>
+    </div>
   </main>
 )
 
@@ -185,8 +193,7 @@ export function AppShell() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40 touch-manipulation"
-        style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/40 flex items-center justify-center z-40 touch-manipulation"
       >
         <Plus size={28} weight="bold" />
       </motion.button>

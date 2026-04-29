@@ -43,7 +43,8 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 e.stopPropagation()
                 onToggleFollow(venue.id)
               }}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              aria-label={isFollowed ? `Unfollow ${venue.name}` : `Follow ${venue.name}`}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary"
             >
               <HeartStraight
                 size={18}
@@ -58,7 +59,8 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 e.stopPropagation()
                 onToggleFavorite(venue.id)
               }}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              aria-label={isFavorite ? `Remove ${venue.name} from favorites` : `Add ${venue.name} to favorites`}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary"
             >
               <Star
                 size={18}
@@ -107,6 +109,18 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
             )}
             {contextualLabel && (
               <p className="text-xs text-accent font-medium italic">{contextualLabel}</p>
+            )}
+            {venue.liveSummary && venue.liveSummary.reportCount > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-xs text-primary">
+                  {venue.liveSummary.reportCount} live report{venue.liveSummary.reportCount === 1 ? '' : 's'}
+                </Badge>
+                {venue.liveSummary.waitTime !== null && (
+                  <Badge variant="outline" className="border-border bg-background text-xs text-muted-foreground">
+                    {venue.liveSummary.waitTime === 0 ? 'No wait' : `${venue.liveSummary.waitTime} min line`}
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
 

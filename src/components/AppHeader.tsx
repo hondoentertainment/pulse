@@ -23,17 +23,17 @@ export function AppHeader({
   const currentTime = useCurrentTime()
 
   return (
-    <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
+    <div className="sticky top-0 z-40 border-b border-border bg-background/82 backdrop-blur-xl">
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Pulse
               </span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Where the energy is — right now
+            <p className="text-sm text-foreground/80 mt-1">
+              Pick a spot with fresh crowd, line, and vibe intel.
             </p>
           </div>
           {onSearchClick && (
@@ -46,9 +46,9 @@ export function AppHeader({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {locationName && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1">
               <MapPin size={14} weight="fill" className={cn(
                 "transition-colors",
                 isTracking ? "text-accent motion-safe:animate-pulse" : "text-muted-foreground"
@@ -74,13 +74,13 @@ export function AppHeader({
               <span>Enable Location</span>
             </button>
           )}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1">
             <Clock size={14} weight="fill" className="text-accent" />
             <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           {queuedPulseCount > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/15 text-accent">
-              <span className="text-[10px] uppercase font-bold">Queued</span>
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/15 px-2.5 py-1 text-accent" aria-live="polite">
+              <span className="text-[10px] uppercase font-bold tracking-wide">Queued</span>
               <span>{queuedPulseCount}</span>
             </div>
           )}

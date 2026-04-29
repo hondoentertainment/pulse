@@ -59,7 +59,7 @@ export function LoginScreen() {
         <AnimatePresence mode="wait">
           {authMode === 'options' ? (
             <motion.div key="options" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4 pt-4">
-              <Button size="lg" className="w-full bg-white text-black hover:bg-gray-100" onClick={() => handleOAuth('google')}>
+              <Button size="lg" variant="outline" className="w-full border-border bg-card/70 hover:bg-card" onClick={() => handleOAuth('google')}>
                 Continue with Google
               </Button>
               <Button size="lg" variant="outline" className="w-full" onClick={() => handleOAuth('apple')}>

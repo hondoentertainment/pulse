@@ -8,6 +8,7 @@ interface LiveCrowdIndicatorProps {
   trend: 'rising' | 'falling' | 'steady'
   friendCount?: number
   avatars?: string[]
+  isEstimated?: boolean
 }
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -77,7 +78,7 @@ const PLACEHOLDER_COLORS = [
   'bg-gradient-to-br from-amber-400 to-orange-600',
 ]
 
-export function LiveCrowdIndicator({ count, trend, friendCount, avatars = [] }: LiveCrowdIndicatorProps) {
+export function LiveCrowdIndicator({ count, trend, friendCount, avatars = [], isEstimated = false }: LiveCrowdIndicatorProps) {
   const maxVisible = 4
   const visibleAvatars = avatars.slice(0, maxVisible)
   const extraCount = Math.max(0, avatars.length - maxVisible)
@@ -174,7 +175,7 @@ export function LiveCrowdIndicator({ count, trend, friendCount, avatars = [] }: 
             transition={{ repeat: Infinity, duration: 1.5 }}
           />
           <span className="text-sm font-medium">
-            <AnimatedCounter value={count} /> people here now
+            {isEstimated ? '~' : ''}<AnimatedCounter value={count} /> {isEstimated ? 'estimated here' : 'people here now'}
           </span>
         </div>
 
@@ -198,6 +199,9 @@ export function LiveCrowdIndicator({ count, trend, friendCount, avatars = [] }: 
               </motion.span>
             )}
           </AnimatePresence>
+          {isEstimated && (
+            <span className="text-xs text-muted-foreground">&middot; based on pulse activity</span>
+          )}
         </div>
       </div>
     </motion.div>

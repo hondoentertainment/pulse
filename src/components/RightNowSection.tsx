@@ -52,15 +52,29 @@ export function RightNowSection({
   )
 
   const hasAnyItems = Object.values(sections).some(items => items.length > 0)
-  if (!hasAnyItems) return null
+  if (!hasAnyItems) {
+    return (
+      <div className="rounded-2xl border border-border bg-card/70 p-4">
+        <div className="flex items-center gap-2">
+          <TrendUp size={20} weight="fill" className="text-primary" />
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wide">Right Now</h3>
+            <p className="text-xs text-muted-foreground">Live signals are still warming up. Open the map or post the first pulse nearby.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
         <TrendUp size={20} weight="fill" className="text-primary" />
         <div>
           <h3 className="text-sm font-bold uppercase tracking-wide">Right Now</h3>
           <p className="text-xs text-muted-foreground">Pick the move, not just the place.</p>
+        </div>
         </div>
       </div>
 
@@ -107,7 +121,7 @@ function RightNowCard({ item, onClick }: { item: RightNowDecision; onClick: () =
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
       onClick={onClick}
-      className="rounded-2xl border border-border bg-card/90 p-4 text-left transition-colors hover:border-primary/30"
+      className="w-full rounded-2xl border border-border bg-card/90 p-4 text-left transition-colors hover:border-primary/30"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">

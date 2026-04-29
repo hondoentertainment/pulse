@@ -30,7 +30,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
               key={tab.id}
               data-testid={`tab-${tab.label}`}
               onClick={() => onTabChange(tab.id)}
-              aria-label={tab.label}
+              aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge} unread` : tab.label}
               aria-current={isActive ? 'page' : undefined}
               className="flex flex-col items-center justify-center flex-1 h-full min-h-11 relative touch-manipulation active:scale-[0.98]"
             >
@@ -62,7 +62,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
                   )}
                 </div>
                 <span
-                  className={`text-[10px] font-medium transition-colors ${
+                  className={`text-[11px] font-medium leading-none transition-colors ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 >

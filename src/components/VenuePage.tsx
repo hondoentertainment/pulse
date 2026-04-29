@@ -441,6 +441,7 @@ export function VenuePage({
           count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
           trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
           friendCount={presenceData?.friendsNearbyCount ?? 0}
+          isEstimated={!presenceData}
         />
 
         {/* Phase 4: Venue Memory Card */}
