@@ -88,18 +88,6 @@ function fuzzyMatch(
 
   // Close last run
   if (runStart !== -1) {
-    const lastMatchIdx =
-      ranges.length > 0 ? ranges[ranges.length - 1][1] : runStart
-    // Walk forward to find actual end of last run
-    let end = runStart
-    for (let ti = runStart; ti < lowerText.length; ti++) {
-      if (ti - runStart < lowerQuery.length - (qi - (lowerQuery.length - (lowerQuery.length - qi)))) break
-      end = ti + 1
-      break
-    }
-    // Simpler: just push the run from runStart to current qi position
-    // We know the last character matched ended at (the last ti that matched)
-    // Recompute: find last ti matched
     let lastTi = 0
     let tmpQi = 0
     for (let ti = 0; ti < lowerText.length && tmpQi < lowerQuery.length; ti++) {
@@ -122,17 +110,6 @@ function fuzzyMatch(
   }
 
   return { score, ranges: merged }
-}
-
-/** Deduplicate an array by a key function. */
-function uniqueBy<T>(arr: T[], keyFn: (item: T) => string): T[] {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const k = keyFn(item)
-    if (seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
 }
 
 // ---------------------------------------------------------------------------

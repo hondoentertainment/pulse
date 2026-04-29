@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { HashtagManager } from './HashtagManager'
 import { SocialPulseGraph } from './SocialPulseGraph'
 import { CorrelationOverlayChart } from './CorrelationOverlayChart'
@@ -173,7 +172,7 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
   const timeSinceUpdate = Math.floor((Date.now() - lastUpdate.getTime()) / 1000)
   const integrationSummary = useMemo(
     () => getIntegrationActionSummary(getEvents()),
-    [lastUpdate]
+    []
   )
 
   const integrationCoverage = useMemo(() => ({

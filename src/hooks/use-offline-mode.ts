@@ -71,7 +71,7 @@ export function useOfflineMode(): OfflineModeState {
 
   const [lastOnline, setLastOnline] = useState<Date | null>(() => loadLastOnline())
 
-  const [cachedVenues, setCachedVenues] = useState<Venue[]>(() =>
+  const [cachedVenues] = useState<Venue[]>(() =>
     loadFromStorage<Venue[]>(CACHED_VENUES_KEY, [])
   )
 

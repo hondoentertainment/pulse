@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
+import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'

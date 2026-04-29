@@ -180,7 +180,9 @@ export function buildVenueRenderPoints(params: {
 
 import Supercluster from 'supercluster'
 
-let clusterIndex: Supercluster<any, any> | null = null
+type VenuePointProperties = { point: VenueRenderPoint }
+
+let clusterIndex: Supercluster<VenuePointProperties, Supercluster.ClusterProperties> | null = null
 let lastPointsSignature = ''
 
 function getPointsSignature(points: VenueRenderPoint[]) {

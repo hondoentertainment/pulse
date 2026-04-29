@@ -13,7 +13,7 @@ interface PredictiveSurgePanelProps {
 }
 
 export function PredictiveSurgePanel({ venues, pulses, events = [], onVenueClick }: PredictiveSurgePanelProps) {
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const currentHour = now.getHours()
   const dayOfWeek = now.getDay()
 

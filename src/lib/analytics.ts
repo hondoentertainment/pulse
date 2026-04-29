@@ -24,6 +24,7 @@ export type AnalyticsEvent =
   | { type: 'neighborhood_hottest_click'; timestamp: number; neighborhoodId: string; city?: string }
   | { type: 'neighborhood_venue_click'; timestamp: number; neighborhoodId: string; venueId: string }
   | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
+  | { type: 'venue_data_fallback'; timestamp: number; source: 'supabase_empty'; count: number }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }

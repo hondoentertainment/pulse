@@ -53,6 +53,10 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   await expect(page.getByTestId('tab-Trending')).toBeVisible({ timeout: 20_000 })
 }
 
+async function clickTab(page: import('@playwright/test').Page, tabName: string) {
+  await page.getByTestId(`tab-${tabName}`).evaluate((element: HTMLElement) => element.click())
+}
+
 // ── Onboarding ──────────────────────────────────────────────
 
 test('has title and renders onboarding for new users', async ({ page }) => {
@@ -79,7 +83,7 @@ test.describe('After onboarding', () => {
   })
 
   test('map tab renders canvas', async ({ page }) => {
-    await page.getByTestId('tab-Map').click()
+    await clickTab(page, 'Map')
     await expect(page.locator('canvas').first()).toBeVisible({ timeout: 15_000 })
   })
 
@@ -99,20 +103,35 @@ test.describe('After onboarding', () => {
     }
   })
 
+  test('market selector switches city venues and map focus', async ({ page }) => {
+    await page.getByRole('combobox', { name: /Select U\.S\. market/i }).click()
+    await page.getByRole('option', { name: /Miami, FL/i }).click()
+
+    await expect(page.getByText('Miami, FL').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/LIV/i).first()).toBeVisible({ timeout: 10_000 })
+
+    await page.getByRole('button', { name: /^Open LIV$/i }).click()
+    await expect(page.getByRole('button', { name: /Back to venues/i }).first()).toBeVisible({ timeout: 10_000 })
+
+    await page.getByRole('button', { name: /Back to venues/i }).first().evaluate((element: HTMLElement) => element.click())
+    await clickTab(page, 'Map')
+    await expect(page.locator('canvas').first()).toBeVisible({ timeout: 15_000 })
+  })
+
   test('notifications tab loads', async ({ page }) => {
-    await page.getByTestId('tab-Notifications').click()
+    await clickTab(page, 'Notifications')
     await expect(
       page.getByRole('heading', { name: /Notifications/i })
     ).toBeVisible({ timeout: 10_000 })
   })
 
   test('bottom navigation switches tabs', async ({ page }) => {
-    await page.getByTestId('tab-Profile').click()
+    await clickTab(page, 'Profile')
     await expect(page.getByText(/Switched to Profile tab/i)).toBeVisible({
       timeout: 10_000,
     })
 
-    await page.getByTestId('tab-Map').click()
+    await clickTab(page, 'Map')
     await expect(page.locator('.mapboxgl-canvas, canvas').first()).toBeVisible({ timeout: 10_000 })
   })
 

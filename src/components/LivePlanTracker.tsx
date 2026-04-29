@@ -307,7 +307,7 @@ export function LivePlanTracker({
 function TrackerStopCard({
   stop,
   isCurrent,
-  isCompleted,
+  isCompleted: _isCompleted,
   liveEnergy,
   formatTime,
   onVenueClick,

@@ -252,8 +252,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   useRealtimeSubscription(hasSupabaseConfig)
 
   useEffect(() => {
-    if (hasSupabaseConfig) return
-
     let isMounted = true
     const startedAt = Date.now()
 
@@ -262,8 +260,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
 
         setPrototypeVenues(catalog.venues)
-        setVenues((current) => isVisualPreviewEnabled ? catalog.venues : current ?? catalog.venues)
-        setPulses((current) => isVisualPreviewEnabled ? catalog.pulses : current ?? catalog.pulses)
+        if (!hasSupabaseConfig) {
+          setVenues((current) => isVisualPreviewEnabled ? catalog.venues : current ?? catalog.venues)
+          setPulses((current) => isVisualPreviewEnabled ? catalog.pulses : current ?? catalog.pulses)
+        }
         trackPerformance('prototype_catalog_ready', Date.now() - startedAt)
       })
       .catch((error) => {
@@ -340,8 +340,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (Array.isArray(serverVenues)) setVenues(serverVenues)
-  }, [serverVenues, setVenues])
+    if (!Array.isArray(serverVenues)) return
+    if (serverVenues.length > 0) {
+      setVenues(serverVenues)
+      return
+    }
+    if (prototypeVenues.length > 0) {
+      setVenues(prototypeVenues)
+      trackEvent({
+        type: 'venue_data_fallback',
+        timestamp: Date.now(),
+        source: 'supabase_empty',
+        count: prototypeVenues.length,
+      })
+    }
+  }, [prototypeVenues, serverVenues, setVenues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)

@@ -2,14 +2,12 @@ import type { Venue, User } from './types'
 import {
   type TimeOfDay,
   type DayType,
-  getTimeOfDay,
-  getDayType,
   getPeakConfig,
   normalizeCategoryKeyPublic,
   getPeakCategories,
 } from './time-contextual-scoring'
 import { buildCategoryPreferences } from './venue-recommendations'
-import { calculateDistance, getEnergyLabel } from './pulse-engine'
+import { calculateDistance } from './pulse-engine'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,7 +254,10 @@ export function getContextualSearchSuggestions(
     late_night: ['nightclub', 'bar'],
   }
 
-  const prioritized = timePriority[timeOfDay] ?? ['bar', 'restaurant']
+  const prioritized = Array.from(new Set([
+    ...peakCategories,
+    ...(timePriority[timeOfDay] ?? ['bar', 'restaurant']),
+  ]))
 
   for (const catKey of prioritized) {
     const counts = catCounts[catKey]

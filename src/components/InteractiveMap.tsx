@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
-import { MapFilters, MapFiltersState } from '@/components/MapFilters'
+import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import {
@@ -229,8 +229,8 @@ export function InteractiveMap({
   const filteredVenues = useMemo(() => {
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
-        const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as any)) {
+        const energyLevel = getEnergyLevelFromScore(venue.pulseScore) as Exclude<EnergyFilter, 'all'>
+        if (!filters.energyLevels.includes(energyLevel)) {
           return false
         }
       }

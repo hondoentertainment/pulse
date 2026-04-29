@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { Venue, Pulse, User, EnergyRating } from '@/lib/types'
+import type { Venue, Pulse, User } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import type { Crew } from '@/lib/crew-mode'
 import { getUserCrews } from '@/lib/crew-mode'
@@ -11,7 +11,7 @@ import {
 } from '@/lib/night-planner'
 import type { NightPlan, PlanStop, PlanPreferences } from '@/lib/night-planner'
 import { LivePlanTracker } from '@/components/LivePlanTracker'
-import { CaretLeft, UsersThree, Sparkle, CurrencyDollar, Clock, ArrowsClockwise, LockSimple, ShareNetwork, MapPin, Car, PersonSimpleWalk, ChatCircleDots, ShieldCheck } from '@phosphor-icons/react'
+import { CaretLeft, UsersThree, Sparkle, CurrencyDollar, Clock, ArrowsClockwise, LockSimple, ShareNetwork, Car, PersonSimpleWalk, ChatCircleDots, ShieldCheck } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
@@ -32,7 +32,7 @@ interface NightPlannerPageProps {
 
 export function NightPlannerPage({
   currentUser,
-  allUsers,
+  allUsers: _allUsers,
   venues,
   pulses,
   crews,

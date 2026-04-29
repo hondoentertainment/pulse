@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
-import { Neighborhood, NeighborhoodScore, getNeighborhoodLeaderboard, getHottestNeighborhood, assignVenueToNeighborhood } from '@/lib/neighborhood-scores'
+import { Neighborhood, getNeighborhoodLeaderboard, getHottestNeighborhood, assignVenueToNeighborhood } from '@/lib/neighborhood-scores'
 import { CaretLeft, MapTrifold, Crown, TrendUp } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { trackEvent } from '@/lib/analytics'

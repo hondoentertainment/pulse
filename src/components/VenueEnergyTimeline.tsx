@@ -1,5 +1,4 @@
-import { useMemo, useId } from 'react'
-import { cn } from '@/lib/utils'
+import { useMemo, useId, useCallback } from 'react'
 import { motion } from 'framer-motion'
 
 interface VenueEnergyTimelineProps {
@@ -94,9 +93,9 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
 
   const width = 360
   const height = 80
-  const padding = { top: 8, bottom: 20, left: 30, right: 10 }
+  const padding = useMemo(() => ({ top: 8, bottom: 20, left: 30, right: 10 }), [])
 
-  const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data])
+  const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data, padding])
 
   // Build fill path (line + close at bottom)
   const fillPath = useMemo(() => {
@@ -105,7 +104,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
     const firstX = padding.left
     const lastX = width - padding.right
     return `${linePath} L ${lastX},${chartBottom} L ${firstX},${chartBottom} Z`
-  }, [linePath])
+  }, [linePath, padding.bottom, padding.left, padding.right])
 
   // Find peak point
   const peakIndex = useMemo(() => {
@@ -119,8 +118,8 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
   const chartW = width - padding.left - padding.right
   const chartH = height - padding.top - padding.bottom
 
-  const getX = (i: number) => padding.left + (i / (data.length - 1)) * chartW
-  const getY = (val: number) => padding.top + chartH - (val / 100) * chartH
+  const getX = useCallback((i: number) => padding.left + (i / (data.length - 1)) * chartW, [chartW, data.length, padding.left])
+  const getY = useCallback((val: number) => padding.top + chartH - (val / 100) * chartH, [chartH, padding.top])
 
   const currentX = getX(data.length - 1)
   const currentY = getY(currentScore)
@@ -136,7 +135,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
       len += Math.sqrt(dx * dx + dy * dy)
     }
     return Math.ceil(len)
-  }, [data])
+  }, [data, getX, getY])
 
   const timeLabels = [
     { label: '6h ago', x: padding.left },

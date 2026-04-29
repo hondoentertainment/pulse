@@ -1,4 +1,4 @@
-import type { Venue, User, Pulse, EnergyRating, ENERGY_CONFIG } from './types'
+import type { Venue, User, Pulse, EnergyRating } from './types'
 
 // ---------------------------------------------------------------------------
 // Types

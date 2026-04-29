@@ -37,7 +37,7 @@ export function TableBookingSheet({
   existingReservations,
   onBook,
 }: TableBookingSheetProps) {
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
   const [selectedDate, setSelectedDate] = useState<string>(
     today.toISOString().split('T')[0]
   )
@@ -78,7 +78,7 @@ export function TableBookingSheet({
       })
     }
     return dates
-  }, [])
+  }, [today])
 
   const deposit = selectedTable ? calculateDeposit(selectedTable.minimumSpend) : 0
 
