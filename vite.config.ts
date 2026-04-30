@@ -83,7 +83,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom',
     exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**'],
   },
 });
