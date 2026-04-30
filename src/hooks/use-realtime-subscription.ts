@@ -19,14 +19,17 @@ import {
   pulseBatcher,
   type BatchFlush,
 } from '@/lib/realtime-batcher'
-import type { Pulse } from '@/lib/types'
+import type { Pulse, Venue } from '@/lib/types'
 import { trackPerformance } from '@/lib/analytics'
+import { mapVenueLiveAggregate, mapVenueLiveReport } from '@/lib/supabase-api'
+import type { LiveReport } from '@/lib/live-intelligence'
 
 /**
  * Flush handler for pulse inserts — merges new pulses into React Query cache.
  */
 function handlePulseBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
     const existing = new Set(old.map(p => p.id))
@@ -39,6 +42,8 @@ function handlePulseBatchFlush(batch: BatchFlush) {
   })
 
   trackPerformance('realtime_pulse_batch_size', batch.events.length)
+  trackPerformance('realtime_pulse_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_pulse_batch_duration_ms', batch.batchDurationMs)
   if (batch.droppedCount > 0) {
     trackPerformance('realtime_pulse_duplicates_collapsed', batch.droppedCount)
   }
@@ -49,6 +54,7 @@ function handlePulseBatchFlush(batch: BatchFlush) {
  */
 function handleReactionBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
     const updates = new Map(batch.events.map(e => [e.key, e.payload as Partial<Pulse>]))
@@ -61,6 +67,8 @@ function handleReactionBatchFlush(batch: BatchFlush) {
   })
 
   trackPerformance('realtime_reaction_batch_size', batch.events.length)
+  trackPerformance('realtime_reaction_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_reaction_batch_duration_ms', batch.batchDurationMs)
 }
 
 /**
@@ -68,6 +76,7 @@ function handleReactionBatchFlush(batch: BatchFlush) {
  */
 function handlePresenceBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
+  const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
   // Presence updates are stored in a dedicated query key
   queryClient.setQueryData<Record<string, unknown>>(['venue-presence'], (old = {}) => {
@@ -78,7 +87,30 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
     return merged
   })
 
+  queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
+    const updates = new Map(batch.events.map(event => [event.key, event.payload as Partial<Venue>]))
+    return old.map(venue => {
+      const update = updates.get(venue.id)
+      if (!update) return venue
+      return {
+        ...venue,
+        pulseScore: update.pulseScore ?? venue.pulseScore,
+        scoreVelocity: update.scoreVelocity ?? venue.scoreVelocity,
+        lastPulseAt: update.lastPulseAt ?? venue.lastPulseAt,
+      }
+    })
+  })
+
   trackPerformance('realtime_presence_batch_size', batch.events.length)
+  trackPerformance('realtime_presence_batch_lag_ms', Date.now() - oldestTimestamp)
+  trackPerformance('realtime_presence_batch_duration_ms', batch.batchDurationMs)
+}
+
+function mergeLiveReport(report: LiveReport) {
+  queryClient.setQueryData<LiveReport[]>(['venue-live-reports', report.venueId], (old = []) => {
+    if (old.some(existing => existing.id === report.id)) return old
+    return [report, ...old]
+  })
 }
 
 /**
@@ -161,6 +193,43 @@ export function useRealtimeSubscription(enabled = true) {
             },
             timestamp: Date.now(),
           })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'venue_live_reports' },
+        (payload) => {
+          const report = mapVenueLiveReport(payload.new as Parameters<typeof mapVenueLiveReport>[0])
+          mergeLiveReport(report)
+          void queryClient.invalidateQueries({ queryKey: ['venues'] })
+          trackPerformance('realtime_venue_live_report', 1)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'venue_live_aggregates' },
+        (payload) => {
+          if (!payload.new) return
+          const summary = mapVenueLiveAggregate(payload.new as Parameters<typeof mapVenueLiveAggregate>[0])
+          const venueId = payload.new.venue_id as string
+          queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
+          queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
+            old.map(venue => {
+              if (venue.id !== venueId) return venue
+              const liveAdjustedScore = summary.crowdLevel > 0
+                ? Math.max(venue.pulseScore, Math.round(venue.pulseScore * 0.7 + summary.crowdLevel * 0.3))
+                : venue.pulseScore
+              return {
+                ...venue,
+                pulseScore: liveAdjustedScore,
+                lastActivity: summary.lastReportAt ?? summary.updatedAt ?? venue.lastActivity,
+                liveSummary: summary,
+              }
+            })
+          )
+          void queryClient.invalidateQueries({ queryKey: ['venues'] })
+          trackPerformance('realtime_venue_live_aggregate', 1)
+          trackPerformance('realtime_venue_live_aggregate_lag_ms', Date.now() - new Date(summary.updatedAt).getTime())
         }
       )
       .subscribe()

@@ -7,33 +7,7 @@
 
 import { track as vercelTrack } from '@vercel/analytics'
 
-/**
- * Lazily forward an error/message to Sentry if and when the SDK is available.
- *
- * We intentionally avoid `import * as Sentry from '@sentry/react'` at module
- * scope — that pulls the 250 KB SDK into every bundle that touches analytics
- * (i.e. almost the whole app). Instead we dynamic-import the SDK only after
- * `AppBootstrap` has scheduled `Sentry.init()`, so at runtime the module is
- * already cached and the call is synchronous-ish (single microtask).
- */
-async function forwardToSentry(
-  payload: Error | string,
-  context?: string,
-): Promise<void> {
-  try {
-    // `sentry-lazy` re-exports only the narrow surface the app uses
-    // (init / capture{Message,Exception}) so Rollup can tree-shake the
-    // rest of the SDK from the async chunk.
-    const lazy = await import('./sentry-lazy')
-    if (typeof payload === 'string') {
-      lazy.reportMessage(payload, context)
-    } else {
-      lazy.reportException(payload, context)
-    }
-  } catch {
-    /* Sentry is an optional dependency at runtime — swallow. */
-  }
-}
+type AnalyticsPropertyValue = string | number | boolean | null | undefined
 
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
@@ -49,9 +23,9 @@ export type AnalyticsEvent =
   | { type: 'neighborhood_view'; timestamp: number; neighborhoodCount: number }
   | { type: 'neighborhood_hottest_click'; timestamp: number; neighborhoodId: string; city?: string }
   | { type: 'neighborhood_venue_click'; timestamp: number; neighborhoodId: string; venueId: string }
-  | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
+  | { type: 'integration_action'; timestamp: number; venueId: string; integrationType: 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets'; actionId: string; provider?: string; outcome: 'success' | 'unavailable' | 'failed'; reason?: string }
+  | { type: 'venue_data_fallback'; timestamp: number; source: 'supabase_empty' | 'supabase_unavailable'; count: number }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
-  | { type: 'friend_presence_layer_toggled'; timestamp: number; enabled: boolean }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
 
@@ -103,13 +77,21 @@ export interface IntegrationActionSummary {
   successCount: number
   unavailableCount: number
   failureCount: number
-  actionsByType: Record<'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts', number>
+  actionsByType: Record<'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets', number>
   topProviders: { provider: string; count: number }[]
   recentFailures: Extract<AnalyticsEvent, { type: 'integration_action' }>[]
 }
 
 const eventLog: AnalyticsEvent[] = []
 const MAX_EVENTS = 10000
+let sentryModulePromise: Promise<typeof import('@sentry/react')> | null = null
+
+function loadSentry() {
+  if (!sentryModulePromise) {
+    sentryModulePromise = import('@sentry/react')
+  }
+  return sentryModulePromise
+}
 
 /**
  * Track an analytics event.
@@ -121,8 +103,14 @@ export function trackEvent(event: AnalyticsEvent): void {
   }
   
   // Broadcast to Vercel Analytics
-  const { type, timestamp: _timestamp, ...properties } = event
-  vercelTrack(type, properties as Record<string, any>)
+  if (typeof window !== 'undefined') {
+    const { type, timestamp: _timestamp, ...properties } = event
+    try {
+      vercelTrack(type, properties as Record<string, AnalyticsPropertyValue>)
+    } catch {
+      // Ignore analytics transport issues so local/test environments stay deterministic.
+    }
+  }
 }
 /**
  * Get all tracked events, optionally filtered by type.
@@ -150,6 +138,7 @@ export function getIntegrationActionSummary(events: AnalyticsEvent[]): Integrati
     reservation: 0,
     maps: 0,
     shortcuts: 0,
+    tickets: 0,
   }
 
   const providerCounts: Record<string, number> = {}
@@ -359,9 +348,18 @@ export function trackError(error: Error | string, context?: string): void {
     context,
   })
 
-  // Fire-and-forget: the SDK is dynamically imported so this never blocks the
-  // synchronous `trackError` contract that callers rely on.
-  void forwardToSentry(error, context)
+  // Broadcast to Sentry
+  void loadSentry()
+    .then((Sentry) => {
+      if (typeof error === 'string') {
+        Sentry.captureMessage(error, { extra: { context } })
+      } else {
+        Sentry.captureException(error, { extra: { context } })
+      }
+    })
+    .catch(() => {
+      // Ignore Sentry transport/bootstrap failures.
+    })
 }
 
 /**

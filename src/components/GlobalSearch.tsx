@@ -10,7 +10,6 @@ import {
 } from '@phosphor-icons/react'
 import { Venue } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { track } from '@/lib/observability/analytics'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,7 +88,6 @@ function fuzzyMatch(
 
   // Close last run
   if (runStart !== -1) {
-    // Find last ti matched and push run
     let lastTi = 0
     let tmpQi = 0
     for (let ti = 0; ti < lowerText.length && tmpQi < lowerQuery.length; ti++) {
@@ -376,15 +374,6 @@ export function GlobalSearch({
   useEffect(() => {
     setActiveIndex(-1)
   }, [debouncedQuery])
-
-  // Emit analytics on the debounced query (not per-keystroke). Only fire when
-  // the user actually typed something to avoid noisy empty events.
-  useEffect(() => {
-    const q = debouncedQuery.trim()
-    if (!q) return
-    const resultCount = sections.reduce((sum, s) => sum + s.results.length, 0)
-    track('search_performed', { query: q, resultCount, kind: 'global' })
-  }, [debouncedQuery, sections])
 
   // ---- Scroll active item into view ----
   useEffect(() => {

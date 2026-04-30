@@ -1,13 +1,8 @@
-import { lazy, Suspense, type ReactElement } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ALL_USERS } from '@/hooks/use-app-state'
-import { useVenueState } from '@/hooks/use-venue-state'
-import { useSocialState } from '@/hooks/use-social-state'
-import { useUIState, type SubPage } from '@/hooks/use-ui-state'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'
-import { PageSkeleton } from '@/components/PageSkeleton'
 import { toast } from 'sonner'
 
 const AchievementsPage = lazy(() => import('@/components/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
@@ -20,63 +15,39 @@ const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({
 const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m => ({ default: m.IntegrationHub })))
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
 const NightPlannerPage = lazy(() => import('@/components/NightPlannerPage').then(m => ({ default: m.NightPlannerPage })))
-const MyTicketsPage = lazy(() => import('@/components/MyTicketsPage').then(m => ({ default: m.MyTicketsPage })))
-const ChallengeFeed = lazy(() => import('@/components/ChallengeFeed').then(m => ({ default: m.ChallengeFeed })))
+const OwnerDashboardPage = lazy(() => import('@/components/OwnerDashboardPage').then(m => ({ default: m.OwnerDashboardPage })))
 
-const pageFallback = <PageSkeleton />
+const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
-interface SubPageRouterProps {
-  page?: NonNullable<SubPage>
-}
-
-export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
-  const navigate = useNavigate()
-  const { activeTab, navigateToTab } = useRouteNavigation()
-  const venueState = useVenueState()
-  const socialState = useSocialState()
-  const uiState = useUIState()
-  const { handleEventsUpdate } = useAppHandlers()
+export function SubPageRouter() {
+  const state = useAppState()
+  const { handleEventsUpdate, handleTabChange } = useAppHandlers()
+  const { updateProfile } = useSupabaseAuth()
   const {
-    unreadNotificationCount,
-    currentUser, moderatedPulses, venues,
+    subPage, setSubPage, activeTab, unreadNotificationCount,
+    currentUser, moderatedPulses, venues, crews, crewCheckIns,
     events, playlists, pulses, contentReports,
-    userLocation, setSimulatedLocation,
-    setCurrentUser, setPlaylists,
+    userLocation, integrationVenue, setIntegrationVenue,
+    integrationsEnabled, setSelectedVenue, setSimulatedLocation,
+    setCrews, setCrewCheckIns, setPlaylists,
     setContentReports,
-  } = venueState
-  const {
-    crews, crewCheckIns,
-    setCrews, setCrewCheckIns,
-  } = socialState
-  const {
-    subPage, integrationVenue, setIntegrationVenue,
-    integrationsEnabled,
-  } = uiState
+  } = state
 
-  // Use the page prop from the route if provided, otherwise fall back to state
-  const page = pageProp ?? subPage
-
-  if (!page || !currentUser || !venues) return null
-
-  const goBack = () => navigate(-1)
-
-  const navigateToVenue = (venue: { id: string }) => {
-    navigate(`/venue/${venue.id}`)
-  }
+  if (!subPage || !currentUser || !venues) return null
 
   const nav = (
     <BottomNav
       activeTab={activeTab}
-      onTabChange={(tab) => navigateToTab(tab)}
+      onTabChange={(tab) => { setSubPage(null); handleTabChange(tab) }}
       unreadNotifications={unreadNotificationCount}
     />
   )
 
-  const config: Record<string, () => ReactElement> = {
+  const config: Record<string, () => ReactNode> = {
     achievements: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <AchievementsPage currentUser={currentUser} pulses={moderatedPulses} venues={venues} crews={crews || []} onBack={goBack} />
+          <AchievementsPage currentUser={currentUser} pulses={moderatedPulses} venues={venues} crews={crews || []} onBack={() => setSubPage(null)} />
         </Suspense>
         {nav}
       </>
@@ -84,7 +55,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     events: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <EventsPage venues={venues} events={events || []} currentUserId={currentUser.id} onBack={goBack} onEventUpdate={handleEventsUpdate} onVenueClick={navigateToVenue} />
+          <EventsPage venues={venues} events={events || []} currentUserId={currentUser.id} onBack={() => setSubPage(null)} onEventUpdate={handleEventsUpdate} onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }} />
         </Suspense>
         {nav}
       </>
@@ -92,7 +63,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     crews: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <CrewPage currentUser={currentUser} allUsers={ALL_USERS} crews={crews || []} crewCheckIns={crewCheckIns || []} venues={venues} onBack={goBack} onCrewsUpdate={setCrews} onCheckInsUpdate={setCrewCheckIns} />
+          <CrewPage currentUser={currentUser} allUsers={ALL_USERS} crews={crews || []} crewCheckIns={crewCheckIns || []} venues={venues} onBack={() => setSubPage(null)} onCrewsUpdate={setCrews} onCheckInsUpdate={setCrewCheckIns} />
         </Suspense>
         {nav}
       </>
@@ -100,7 +71,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     insights: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <InsightsPage currentUser={currentUser} pulses={moderatedPulses} venues={venues} onBack={goBack} />
+          <InsightsPage currentUser={currentUser} pulses={moderatedPulses} venues={venues} onBack={() => setSubPage(null)} />
         </Suspense>
         {nav}
       </>
@@ -108,7 +79,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     neighborhoods: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <NeighborhoodView venues={venues} pulses={moderatedPulses} onBack={goBack} onVenueClick={navigateToVenue} />
+          <NeighborhoodView venues={venues} pulses={moderatedPulses} onBack={() => setSubPage(null)} onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }} />
         </Suspense>
         {nav}
       </>
@@ -116,7 +87,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     playlists: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <PlaylistsPage currentUser={currentUser} playlists={playlists || []} pulses={pulses || []} venues={venues} onBack={goBack} onPlaylistsUpdate={setPlaylists} />
+          <PlaylistsPage currentUser={currentUser} playlists={playlists || []} pulses={pulses || []} venues={venues} onBack={() => setSubPage(null)} onPlaylistsUpdate={setPlaylists} />
         </Suspense>
         {nav}
       </>
@@ -124,7 +95,7 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     settings: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <SettingsPage currentUser={currentUser} onBack={goBack} onUpdateUser={setCurrentUser} onCityChange={(loc) => { setSimulatedLocation(loc); toast.success('Location updated') }} />
+          <SettingsPage currentUser={currentUser} onBack={() => setSubPage(null)} onUpdateUser={updateProfile} onCityChange={(loc) => { setSimulatedLocation(loc); toast.success('Location updated') }} />
         </Suspense>
         {nav}
       </>
@@ -132,7 +103,15 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     moderation: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <ModerationQueuePage reports={contentReports || []} onBack={goBack} onUpdateReports={setContentReports} />
+          <ModerationQueuePage reports={contentReports || []} onBack={() => setSubPage(null)} onUpdateReports={setContentReports} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    'owner-dashboard': () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <OwnerDashboardPage currentUser={currentUser} venues={venues} pulses={pulses || []} onBack={() => setSubPage(null)} />
         </Suspense>
         {nav}
       </>
@@ -140,40 +119,33 @@ export function SubPageRouter({ page: pageProp }: SubPageRouterProps) {
     'night-planner': () => (
       <>
         <Suspense fallback={pageFallback}>
-          <NightPlannerPage currentUser={currentUser} allUsers={ALL_USERS} venues={venues} pulses={moderatedPulses} crews={crews || []} userLocation={userLocation} onBack={goBack} onVenueClick={navigateToVenue} />
-        </Suspense>
-        {nav}
-      </>
-    ),
-    'my-tickets': () => (
-      <>
-        <Suspense fallback={pageFallback}>
-          <MyTicketsPage currentUserId={currentUser.id} tickets={[]} reservations={[]} events={events || []} venues={venues} onBack={goBack} onTicketsUpdate={() => {}} onReservationsUpdate={() => {}} />
-        </Suspense>
-        {nav}
-      </>
-    ),
-    challenges: () => (
-      <>
-        <Suspense fallback={pageFallback}>
-          <ChallengeFeed challenges={[]} venues={venues} currentUserId={currentUser.id} onBack={goBack} onJoinChallenge={() => {}} />
+          <NightPlannerPage
+            currentUser={currentUser}
+            allUsers={ALL_USERS}
+            venues={venues}
+            pulses={pulses || []}
+            crews={crews || []}
+            userLocation={userLocation}
+            onBack={() => setSubPage(null)}
+            onVenueClick={(venue) => { setSubPage(null); setSelectedVenue(venue) }}
+          />
         </Suspense>
         {nav}
       </>
     ),
     integrations: () => {
-      if (!integrationVenue || !integrationsEnabled) return null as unknown as ReactElement
+      if (!integrationVenue || !integrationsEnabled) return null
       return (
         <>
           <Suspense fallback={pageFallback}>
-            <IntegrationHub venue={integrationVenue} userLocation={userLocation} venues={venues} currentUser={currentUser} pulses={pulses || []} onBack={() => { setIntegrationVenue(null); goBack() }} onVenueClick={(venue) => { setIntegrationVenue(null); navigateToVenue(venue) }} />
+            <IntegrationHub venue={integrationVenue} userLocation={userLocation} venues={venues} currentUser={currentUser} pulses={pulses || []} onBack={() => { setSubPage(null); setIntegrationVenue(null) }} onVenueClick={(venue) => { setSubPage(null); setIntegrationVenue(null); setSelectedVenue(venue) }} />
           </Suspense>
-          <BottomNav activeTab={activeTab} onTabChange={(tab) => { setIntegrationVenue(null); navigateToTab(tab) }} unreadNotifications={unreadNotificationCount} />
+          <BottomNav activeTab={activeTab} onTabChange={(tab) => { setSubPage(null); setIntegrationVenue(null); handleTabChange(tab) }} unreadNotifications={unreadNotificationCount} />
         </>
       )
     },
   }
 
-  const render = config[page]
+  const render = config[subPage]
   return render ? render() : null
 }

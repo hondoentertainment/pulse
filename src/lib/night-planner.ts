@@ -17,6 +17,8 @@ export type TransitMode = 'walk' | 'rideshare' | 'transit'
 
 export type PlanStatus = 'draft' | 'active' | 'completed' | 'cancelled'
 
+const ENERGY_VALUES: Record<EnergyRating, number> = { dead: 0, chill: 1, buzzing: 2, electric: 3 }
+
 export interface PlanPreferences {
   vibes: string[]
   musicGenres: string[]
@@ -42,6 +44,11 @@ export interface PlanStop {
   transitDuration: number
   transitDeepLink?: string
   energyPrediction: EnergyRating
+  groupVote: { yes: number; maybe: number; no: number }
+  etaMinutes: number
+  rideSplitEstimate: number
+  entryConfidence: number
+  pivotRisk: 'low' | 'medium' | 'high'
   locked?: boolean
 }
 
@@ -191,6 +198,12 @@ export function generateNightPlan(
       { lat: venue.location.lat, lng: venue.location.lng },
       venue
     )
+    const groupVote = estimateGroupVote(groupSize, venue, purpose, preferences)
+    const rideSplitEstimate = transit.mode === 'rideshare'
+      ? estimateRideCost(transit.duration, transit.mode) / Math.max(1, groupSize)
+      : 0
+    const entryConfidence = estimateEntryConfidence(venue, prediction.predictedEnergyLevel)
+    const pivotRisk = entryConfidence < 45 ? 'high' : entryConfidence < 65 ? 'medium' : 'low'
 
     return {
       venueId: venue.id,
@@ -205,6 +218,11 @@ export function generateNightPlan(
       transitDuration: transit.duration,
       transitDeepLink: transit.deepLink,
       energyPrediction: prediction.predictedEnergyLevel,
+      groupVote,
+      etaMinutes: transit.duration,
+      rideSplitEstimate: Math.round(rideSplitEstimate),
+      entryConfidence,
+      pivotRisk,
     }
   })
 
@@ -444,6 +462,40 @@ export function estimateTransit(
   }
 }
 
+function estimateRideCost(duration: number, mode: TransitMode): number {
+  if (mode !== 'rideshare') return 0
+  return Math.max(10, Math.round(6 + duration * 1.35))
+}
+
+function estimateGroupVote(
+  groupSize: number,
+  venue: Venue,
+  purpose: StopPurpose,
+  preferences: PlanPreferences
+): { yes: number; maybe: number; no: number } {
+  const venueCategory = (venue.category ?? '').toLowerCase()
+  const vibeMatch = preferences.venueTypes.some(type => venueCategory.includes(type.toLowerCase()))
+    || preferences.vibes.some(vibe => (VIBE_CATEGORY_MAP[vibe.toLowerCase()] ?? []).includes(venueCategory))
+  const purposeMatch = CATEGORY_PURPOSE_MAP[venueCategory] === purpose
+  const enthusiasmBoost = venue.pulseScore >= 75 ? 2 : venue.pulseScore >= 55 ? 1 : 0
+  const yes = Math.min(groupSize, Math.max(1, Math.round(groupSize / 2) + (vibeMatch ? 1 : 0) + (purposeMatch ? 1 : 0) + enthusiasmBoost))
+  const no = Math.max(0, groupSize - yes - (groupSize >= 4 ? 1 : 0))
+  const maybe = Math.max(0, groupSize - yes - no)
+  return { yes, maybe, no }
+}
+
+function estimateEntryConfidence(venue: Venue, predictedEnergy: EnergyRating): number {
+  const energyValue = ENERGY_VALUES[predictedEnergy]
+  const velocity = Math.max(0, venue.scoreVelocity ?? 0)
+  return Math.max(
+    25,
+    Math.min(
+      92,
+      42 + venue.pulseScore * 0.35 + energyValue * 8 + velocity * 0.8
+    )
+  )
+}
+
 /**
  * Merge crew members' preferences to find common ground.
  */
@@ -511,10 +563,10 @@ export function adaptPlan(
   _pulses: Pulse[],
   _user: User
 ): { plan: NightPlan; swapSuggestions: SwapSuggestion[] } {
+  void pulses
+  void user
   const now = new Date(currentTime).getTime()
   const swapSuggestions: SwapSuggestion[] = []
-
-  const ENERGY_VALUES: Record<EnergyRating, number> = { dead: 0, chill: 1, buzzing: 2, electric: 3 }
 
   const updatedStops = currentPlan.stops.map((stop, i) => {
     const arrivalMs = new Date(stop.arrivalTime).getTime()
@@ -551,7 +603,7 @@ export function adaptPlan(
           currentVenue: stop.venueName,
           currentEnergy: liveData.energy,
           suggestedVenue: alternatives[0],
-          reason: `${stop.venueName} looks dead right now. ${alternatives[0].name} is looking better.`,
+          reason: `${stop.venueName} looks flat right now. ${alternatives[0].name} has stronger live momentum.`,
         })
       }
     }
@@ -609,6 +661,10 @@ export function swapStop(
     transitMode: transit.mode,
     transitDuration: transit.duration,
     transitDeepLink: transit.deepLink,
+    etaMinutes: transit.duration,
+    rideSplitEstimate: Math.round(estimateRideCost(transit.duration, transit.mode) / Math.max(1, plan.groupSize)),
+    entryConfidence: estimateEntryConfidence(newVenue, prediction.predictedEnergyLevel),
+    pivotRisk: newVenue.pulseScore >= 70 ? 'low' : newVenue.pulseScore >= 45 ? 'medium' : 'high',
   }
 
   return { ...plan, stops }

@@ -180,8 +180,17 @@ export function buildVenueRenderPoints(params: {
 
 import Supercluster from 'supercluster'
 
-let clusterIndex: Supercluster<Record<string, unknown>, Record<string, unknown>> | null = null
-let lastPointsCount = -1
+type VenuePointProperties = { point: VenueRenderPoint }
+
+let clusterIndex: Supercluster<VenuePointProperties, Supercluster.ClusterProperties> | null = null
+let lastPointsSignature = ''
+
+function getPointsSignature(points: VenueRenderPoint[]) {
+  return points
+    .map((point) => `${point.venue.id}:${point.venue.location.lat}:${point.venue.location.lng}`)
+    .sort()
+    .join('|')
+}
 
 export function clusterVenueRenderPoints(
   points: VenueRenderPoint[],
@@ -196,7 +205,8 @@ export function clusterVenueRenderPoints(
   }
 
   // Optimize supercluster caching on static datasets
-  if (!clusterIndex || lastPointsCount !== points.length) {
+  const pointsSignature = getPointsSignature(points)
+  if (!clusterIndex || lastPointsSignature !== pointsSignature) {
     clusterIndex = new Supercluster({
       radius: 54, // Max distance in pixels to cluster points
       maxZoom: 16,
@@ -209,7 +219,7 @@ export function clusterVenueRenderPoints(
     }))
 
     clusterIndex.load(geoJsonPoints)
-    lastPointsCount = points.length
+    lastPointsSignature = pointsSignature
   }
 
   // Map arbitrary local zoom (0.6 - 4.5) to Supercluster zoom levels (0 - 16)

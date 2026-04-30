@@ -164,6 +164,31 @@ describe('getRecommendations', () => {
     const recs = getRecommendations(user, venues, [], undefined, new Date(), 2)
     expect(recs.length).toBeLessThanOrEqual(2)
   })
+
+  it('uses live venue intel as a recommendation reason', () => {
+    const user = makeUser()
+    const liveVenue = makeVenue({
+      id: 'live-venue',
+      category: 'Bar',
+      pulseScore: 35,
+      liveSummary: {
+        reportCount: 4,
+        waitTime: 0,
+        coverCharge: null,
+        crowdLevel: 68,
+        dressCode: null,
+        musicGenre: 'House',
+        nowPlaying: null,
+        confidence: { waitTime: 'medium', crowdLevel: 'medium' },
+        lastReportAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    })
+
+    const recs = getRecommendations(user, [liveVenue], [], { lat: 40, lng: -74 })
+    expect(recs[0]?.reasons.some(reason => reason.type === 'live_intel')).toBe(true)
+    expect(recs[0]?.reasons.some(reason => reason.label === 'Walk right in')).toBe(true)
+  })
 })
 
 describe('getPersonalizedTrending', () => {

@@ -38,7 +38,19 @@ export function RecommendationsSection({
     }
   }, [onPromotionImpression, recommendations, promotedByVenueId])
 
-  if (recommendations.length === 0) return null
+  if (recommendations.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-card/70 p-4">
+        <div className="flex items-center gap-2">
+          <Sparkle size={18} weight="fill" className="text-accent" />
+          <h3 className="text-sm font-bold text-foreground">Personalization warming up</h3>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Follow or favorite a few venues and Pulse will tune this list to your night.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -48,7 +60,7 @@ export function RecommendationsSection({
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkle size={18} weight="fill" className="text-accent" />
-        <h3 className="text-sm font-bold text-foreground">You Might Like</h3>
+        <h3 className="text-sm font-bold text-foreground">Best next moves</h3>
         <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
           Personalized
         </span>

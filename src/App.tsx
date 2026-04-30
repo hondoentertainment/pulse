@@ -1,24 +1,67 @@
-import { AppProviders } from '@/AppProviders'
-import { AppBootstrap } from '@/AppBootstrap'
-import { AppRoutes } from '@/AppRoutes'
+import { lazy, Suspense } from 'react'
 
-/**
- * App — thin composition root.
- *
- *   <AppProviders>    → context providers (query client, router, auth, state)
- *   <AppBootstrap>    → one-shot lifecycle (Sentry, error listeners)
- *   <AppRoutes/>      → tab/sub-page switcher
- *
- * This file deliberately contains **zero** logic so that the boundaries above
- * can evolve independently without re-triggering whole-tree rebuilds.
- */
+import { AppStateProvider, useAppState } from '@/hooks/use-app-state'
+import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { isVisualPreviewEnabled } from '@/lib/supabase'
+import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+
+const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
+const LoginScreen = lazy(() => import('@/components/LoginScreen').then(m => ({ default: m.LoginScreen })))
+const AppShell = lazy(() => import('@/components/AppShell').then(m => ({ default: m.AppShell })))
+
+const pageFallback = (
+  <main className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
+    <p className="text-muted-foreground">Loading...</p>
+  </main>
+)
+
+function AppContent() {
+  const { hasCompletedOnboarding, setHasCompletedOnboarding } = useAppState()
+  const { session, isLoading: authLoading, updateProfile } = useSupabaseAuth()
+
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
+        <p className="text-muted-foreground">Loading Session...</p>
+      </main>
+    )
+  }
+
+  if (!session) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <LoginScreen />
+      </Suspense>
+    )
+  }
+
+  if (!isVisualPreviewEnabled && hasCompletedOnboarding === false) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <OnboardingFlow
+          onComplete={(prefs: OnboardingPreferences) => {
+            void updateProfile({ favoriteCategories: prefs.favoriteCategories })
+            setHasCompletedOnboarding(true)
+          }}
+        />
+      </Suspense>
+    )
+  }
+
+  return (
+    <Suspense fallback={pageFallback}>
+      <AppShell />
+    </Suspense>
+  )
+}
+
 function App() {
   return (
-    <AppProviders>
-      <AppBootstrap>
-        <AppRoutes />
-      </AppBootstrap>
-    </AppProviders>
+    <SupabaseAuthProvider>
+      <AppStateProvider>
+        <AppContent />
+      </AppStateProvider>
+    </SupabaseAuthProvider>
   )
 }
 

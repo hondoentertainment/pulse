@@ -1,7 +1,8 @@
 import type { Recommendation } from '@/lib/venue-recommendations'
+import { memo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Sparkle, Users, Clock, TrendUp, Compass, MapPin } from '@phosphor-icons/react'
+import { Sparkle, Users, Clock, TrendUp, Compass, MapPin, Broadcast } from '@phosphor-icons/react'
 import { getEnergyLabel, getEnergyColor } from '@/lib/pulse-engine'
 import { motion } from 'framer-motion'
 
@@ -18,9 +19,10 @@ const REASON_ICONS: Record<string, typeof Sparkle> = {
   trending: TrendUp,
   new_discovery: Compass,
   nearby: MapPin,
+  live_intel: Broadcast,
 }
 
-export function RecommendationCard({ recommendation, isSponsored = false, onClick }: RecommendationCardProps) {
+export const RecommendationCard = memo(function RecommendationCard({ recommendation, isSponsored = false, onClick }: RecommendationCardProps) {
   const { venue, reasons } = recommendation
   const label = getEnergyLabel(venue.pulseScore)
   const color = getEnergyColor(venue.pulseScore)
@@ -77,4 +79,4 @@ export function RecommendationCard({ recommendation, isSponsored = false, onClic
       </Card>
     </motion.div>
   )
-}
+})

@@ -3,15 +3,17 @@ import { Venue, Pulse } from '@/lib/types'
 import { analyzeVenuePatterns, getVenuesThatWillSurge, generateSmartNotification, VenuePattern } from '@/lib/predictive-surge'
 import { Lightning, Clock, TrendUp } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import type { VenueEvent } from '@/lib/events'
 
 interface PredictiveSurgePanelProps {
   venues: Venue[]
   pulses: Pulse[]
+  events?: VenueEvent[]
   onVenueClick: (venue: Venue) => void
 }
 
-export function PredictiveSurgePanel({ venues, pulses, onVenueClick }: PredictiveSurgePanelProps) {
-  const now = new Date()
+export function PredictiveSurgePanel({ venues, pulses, events = [], onVenueClick }: PredictiveSurgePanelProps) {
+  const now = useMemo(() => new Date(), [])
   const currentHour = now.getHours()
   const dayOfWeek = now.getDay()
 
@@ -24,8 +26,8 @@ export function PredictiveSurgePanel({ venues, pulses, onVenueClick }: Predictiv
   }, [venues, pulses])
 
   const surgeVenues = useMemo(() => {
-    return getVenuesThatWillSurge(venues, patterns, currentHour, dayOfWeek, 3)
-  }, [venues, patterns, currentHour, dayOfWeek])
+    return getVenuesThatWillSurge(venues, patterns, currentHour, dayOfWeek, 3, events, now)
+  }, [venues, patterns, currentHour, dayOfWeek, events, now])
 
   if (surgeVenues.length === 0) return null
 
@@ -54,9 +56,22 @@ export function PredictiveSurgePanel({ venues, pulses, onVenueClick }: Predictiv
                 <span className="text-xs font-medium text-yellow-400">
                   {Math.round(prediction.confidence * 100)}% likely
                 </span>
+                <span className="text-[10px] text-muted-foreground">
+                  · {prediction.momentumScore} momentum
+                </span>
               </div>
               <p className="font-medium text-sm truncate">{venue.name}</p>
-              <p className="text-xs text-muted-foreground mt-1 truncate">{notification}</p>
+              <p className="text-xs text-muted-foreground mt-1">{notification}</p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {prediction.signals.slice(0, 2).map(signal => (
+                  <span
+                    key={`${prediction.venueId}-${signal.source}`}
+                    className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2 py-0.5 text-[10px] text-yellow-200"
+                  >
+                    {signal.label}
+                  </span>
+                ))}
+              </div>
               <div className="flex items-center gap-1 mt-2">
                 <Clock size={12} className="text-muted-foreground" />
                 <span className="text-[10px] text-muted-foreground">

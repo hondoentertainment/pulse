@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { watchPosition as nativeWatch, isNative, requestLocationPermission } from '@/lib/native-bridge'
 
 export interface LocationState {
   lat: number
@@ -27,78 +28,59 @@ export function useRealtimeLocation(options: UseRealtimeLocationOptions = {}) {
   const [location, setLocation] = useState<LocationState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isTracking, setIsTracking] = useState(false)
-  const watchIdRef = useRef<number | null>(null)
   const lastLocationRef = useRef<LocationState | null>(null)
 
   useEffect(() => {
-    if (!('geolocation' in navigator)) {
-      setError('Geolocation is not supported')
-      return
-    }
+    let cleanup: (() => void) | null = null
+    let isMounted = true
 
-    const handleSuccess = (position: GeolocationPosition) => {
-      const newLocation: LocationState = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        heading: position.coords.heading,
-        speed: position.coords.speed,
-        timestamp: position.timestamp
-      }
-
-      if (distanceFilter > 0 && lastLocationRef.current) {
-        const distance = calculateDistance(
-          lastLocationRef.current.lat,
-          lastLocationRef.current.lng,
-          newLocation.lat,
-          newLocation.lng
-        )
-        
-        if (distance < distanceFilter) {
+    const startTracking = async () => {
+      if (isNative) {
+        const granted = await requestLocationPermission()
+        if (!isMounted) return
+        if (!granted) {
+          setError('Location permission denied')
           return
         }
+      } else if (!('geolocation' in navigator)) {
+        setError('Geolocation is not supported')
+        return
       }
 
-      lastLocationRef.current = newLocation
-      setLocation(newLocation)
-      setError(null)
-      setIsTracking(true)
+      cleanup = nativeWatch((pos) => {
+        if (!isMounted) return
+
+        const newLocation: LocationState = {
+          lat: pos.lat,
+          lng: pos.lng,
+          accuracy: 0,
+          heading: null,
+          speed: null,
+          timestamp: Date.now()
+        }
+
+        if (distanceFilter > 0 && lastLocationRef.current) {
+          const distance = calculateDistance(
+            lastLocationRef.current.lat,
+            lastLocationRef.current.lng,
+            newLocation.lat,
+            newLocation.lng
+          )
+          if (distance < distanceFilter) return
+        }
+
+        lastLocationRef.current = newLocation
+        setLocation(newLocation)
+        setError(null)
+        setIsTracking(true)
+      })
     }
 
-    const handleError = (err: GeolocationPositionError) => {
-      let errorMessage = 'Unknown location error'
-      
-      switch (err.code) {
-        case err.PERMISSION_DENIED:
-          errorMessage = 'Location permission denied'
-          break
-        case err.POSITION_UNAVAILABLE:
-          errorMessage = 'Location information unavailable'
-          break
-        case err.TIMEOUT:
-          errorMessage = 'Location request timed out'
-          break
-      }
-      
-      setError(errorMessage)
-      setIsTracking(false)
-    }
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      handleSuccess,
-      handleError,
-      {
-        enableHighAccuracy,
-        maximumAge,
-        timeout
-      }
-    )
+    void startTracking()
 
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-        watchIdRef.current = null
-      }
+      isMounted = false
+      cleanup?.()
       setIsTracking(false)
     }
   }, [enableHighAccuracy, maximumAge, timeout, distanceFilter])
@@ -112,16 +94,16 @@ function calculateDistance(
   lat2: number,
   lon2: number
 ): number {
-  const R = 3958.8
-  const φ1 = (lat1 * Math.PI) / 180
-  const φ2 = (lat2 * Math.PI) / 180
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180
+  const earthRadiusMiles = 3958.8
+  const phi1 = (lat1 * Math.PI) / 180
+  const phi2 = (lat2 * Math.PI) / 180
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180
 
   const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
-  return R * c
+  return earthRadiusMiles * c
 }

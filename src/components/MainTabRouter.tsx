@@ -1,12 +1,8 @@
-import { lazy, Suspense } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ALL_USERS } from '@/hooks/use-app-state'
-import { useVenueState } from '@/hooks/use-venue-state'
-import { useUIState } from '@/hooks/use-ui-state'
+import { lazy, Suspense, useMemo } from 'react'
+import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { TabId } from '@/components/BottomNav'
-import { PageSkeleton } from '@/components/PageSkeleton'
+import { toast } from 'sonner'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -14,7 +10,7 @@ const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ d
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 
-const pageFallback = <PageSkeleton />
+const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
 const tabMotion = {
   initial: { opacity: 0, y: 20 },
@@ -23,19 +19,13 @@ const tabMotion = {
   transition: { duration: 0.2 },
 }
 
-interface MainTabRouterProps {
-  tab?: TabId
-}
-
-export function MainTabRouter({ tab }: MainTabRouterProps) {
-  const navigate = useNavigate()
-  const venueState = useVenueState()
-  const uiState = useUIState()
+export function MainTabRouter() {
+  const state = useAppState()
   const handlers = useAppHandlers()
-  // Use the tab prop (from the route) if provided, otherwise fall back to state
-  const activeTab = tab ?? uiState.activeTab
   const {
+    activeTab,
     venues,
+    visibleVenues,
     moderatedPulses,
     currentUser,
     stories,
@@ -44,20 +34,20 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     followedVenues,
     userLocation,
     unitSystem,
+    trendingSubTab,
+    setTrendingSubTab,
+    setSelectedVenue,
+    setSubPage,
     realtimeLocation,
     isTracking,
     promotions,
-    isFavorite,
-    getPulsesWithUsers,
-  } = venueState
-  const {
-    trendingSubTab,
-    setTrendingSubTab,
     socialDashboardEnabled,
     setShowAdminDashboard,
     setStoryViewerOpen,
     setStoryViewerStories,
-  } = uiState
+    isFavorite,
+    pulsesWithUsers,
+  } = state
 
   const {
     handleReaction,
@@ -70,13 +60,18 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     handlePromotionClick,
   } = handlers
 
-  const navigateToVenue = (venue: { id: string }) => {
-    navigate(`/venue/${venue.id}`)
-  }
-
-  const navigateToSubPage = (page: string) => {
-    navigate(`/${page}`)
-  }
+  const visibleVenueIds = useMemo(
+    () => new Set(visibleVenues.map(venue => venue.id)),
+    [visibleVenues]
+  )
+  const visiblePulses = useMemo(
+    () => moderatedPulses.filter(pulse => visibleVenueIds.has(pulse.venueId)),
+    [moderatedPulses, visibleVenueIds]
+  )
+  const visiblePulsesWithUsers = useMemo(
+    () => pulsesWithUsers.filter(pulse => visibleVenueIds.has(pulse.venueId)),
+    [pulsesWithUsers, visibleVenueIds]
+  )
 
   if (!venues || !currentUser) return null
 
@@ -86,9 +81,9 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
         {activeTab === 'trending' && (
           <motion.div key="trending" {...tabMotion}>
             <TrendingTab
-              venues={venues}
-              pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              pulsesWithUsers={visiblePulsesWithUsers}
               favoriteVenues={favoriteVenues}
               followedVenues={followedVenues}
               userLocation={userLocation}
@@ -97,7 +92,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               allUsers={ALL_USERS}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
-              onVenueClick={navigateToVenue}
+              onVenueClick={setSelectedVenue}
               onToggleFavorite={handleToggleFavorite}
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
@@ -113,17 +108,17 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
         {activeTab === 'discover' && (
           <motion.div key="discover" {...tabMotion}>
             <DiscoverTab
-              venues={venues}
-              pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              pulsesWithUsers={visiblePulsesWithUsers}
               currentUser={currentUser}
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
-              onVenueClick={navigateToVenue}
+              onVenueClick={setSelectedVenue}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
-              onNavigate={navigateToSubPage}
+              onNavigate={(page) => setSubPage(page)}
             />
           </motion.div>
         )}
@@ -132,9 +127,9 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
           <motion.div key="map" {...tabMotion} className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]">
             <div className="h-full">
               <InteractiveMap
-                venues={venues}
+                venues={visibleVenues}
                 userLocation={userLocation}
-                onVenueClick={navigateToVenue}
+                onVenueClick={setSelectedVenue}
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
@@ -147,8 +142,8 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
           <motion.div key="notifications" {...tabMotion}>
             <NotificationFeed
               currentUser={currentUser}
-              pulses={moderatedPulses}
-              venues={venues}
+              pulses={visiblePulses}
+              venues={visibleVenues}
               onNotificationClick={handleNotificationClick}
             />
           </motion.div>
@@ -159,20 +154,19 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
             <ProfileTab
               currentUser={currentUser}
               pulses={moderatedPulses}
-              pulsesWithUsers={getPulsesWithUsers()}
+              pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
-              onVenueClick={navigateToVenue}
+              onVenueClick={setSelectedVenue}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => {
-                if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Admin dashboard is currently unavailable')); return }
+                if (!socialDashboardEnabled) { toast.error('Admin dashboard is currently unavailable'); return }
                 setShowAdminDashboard(true)
               }}
-              onOpenSettings={() => navigateToSubPage('settings')}
+              onOpenSettings={() => setSubPage('settings')}
               onOpenOwnerDashboard={() => {
-                if (!socialDashboardEnabled) { import('sonner').then(s => s.toast.error('Owner dashboard is currently unavailable')); return }
-                setShowAdminDashboard(true)
+                setSubPage('owner-dashboard')
               }}
-              onOpenModerationQueue={() => navigateToSubPage('moderation')}
+              onOpenModerationQueue={() => setSubPage('moderation')}
             />
           </motion.div>
         )}

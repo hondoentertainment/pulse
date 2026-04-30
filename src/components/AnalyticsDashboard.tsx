@@ -3,7 +3,7 @@ import { Venue, Pulse, VenueAnalytics } from '@/lib/types'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
-import { calculateVenueAnalytics } from '@/lib/venue-trending'
+import { calculateVenuesAnalytics } from '@/lib/venue-trending'
 import { ChartBar, Clock } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 
@@ -15,9 +15,7 @@ export function AnalyticsDashboard() {
   useEffect(() => {
     if (venues && pulses) {
       const seededVenues = venues.filter(v => v.seeded || v.preTrending)
-      const analyticsData = seededVenues.map(venue => 
-        calculateVenueAnalytics(venue, pulses)
-      )
+      const analyticsData = calculateVenuesAnalytics(seededVenues, pulses)
       setAnalytics(analyticsData)
     }
   }, [venues, pulses])

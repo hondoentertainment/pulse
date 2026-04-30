@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+export const isE2EAuthBypassEnabled = import.meta.env.VITE_E2E_AUTH_BYPASS === 'true'
+export const isVisualPreviewEnabled = import.meta.env.VITE_VISUAL_PREVIEW === 'true'
+export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey) && !isE2EAuthBypassEnabled && !isVisualPreviewEnabled
 
 const PLACEHOLDER_URL = 'https://placeholder-project.supabase.co'
 const PLACEHOLDER_ANON_KEY = 'placeholder-anon-key'

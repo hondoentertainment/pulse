@@ -27,6 +27,14 @@
         "cap:build": "vite build && cap sync"
     },
     "dependencies": {
+        "@capacitor/app": "^8.0.1",
+        "@capacitor/cli": "^8.2.0",
+        "@capacitor/core": "^8.2.0",
+        "@capacitor/geolocation": "^8.1.0",
+        "@capacitor/haptics": "^8.0.1",
+        "@capacitor/push-notifications": "^8.0.2",
+        "@capacitor/splash-screen": "^8.0.1",
+        "@capacitor/status-bar": "^8.0.1",
         "@github/spark": ">=0.43.1 <1",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^5.2.2",
@@ -126,7 +134,6 @@
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react-swc": "^4.3.0",
-        "@vitejs/plugin-react-swc": "^4.2.2",
         "@vitest/coverage-v8": "4.0.18",
         "eslint": "^9.28.0",
         "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -148,5 +155,8 @@
         "packages": [
             "packages/*"
         ]
+    },
+    "overrides": {
+        "serialize-javascript": "7.0.5"
     }
 }

@@ -253,7 +253,10 @@ export function getContextualSearchSuggestions(
     late_night: ['nightclub', 'bar'],
   }
 
-  const prioritized = timePriority[timeOfDay] ?? ['bar', 'restaurant']
+  const prioritized = Array.from(new Set([
+    ...peakCategories,
+    ...(timePriority[timeOfDay] ?? ['bar', 'restaurant']),
+  ]))
 
   for (const catKey of prioritized) {
     const counts = catCounts[catKey]

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Venue, PulseWithUser } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { Card } from '@/components/ui/card'
@@ -40,9 +41,16 @@ export function MySpotsFeed({
   onReaction,
   onReport
 }: MySpotsFeedProps) {
-  const followedPulses = pulses
-    .filter((p) => followedVenues.some((v) => v.id === p.venueId))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const followedVenueIds = useMemo(
+    () => new Set(followedVenues.map(venue => venue.id)),
+    [followedVenues]
+  )
+  const followedPulses = useMemo(
+    () => pulses
+      .filter((pulse) => followedVenueIds.has(pulse.venueId))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [followedVenueIds, pulses]
+  )
 
   if (followedVenues.length === 0) {
     return (

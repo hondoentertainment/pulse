@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { Venue } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -35,7 +35,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
     resetTranscript
   } = useVoiceSearch()
 
-  const calculateDistance = (
+  const calculateDistance = useCallback((
     lat1: number,
     lon1: number,
     lat2: number,
@@ -53,7 +53,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     return R * c
-  }
+  }, [])
 
   const filteredVenues = query.trim()
     ? venues.filter((venue) => {
@@ -105,6 +105,19 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
       })
     })()
     : filteredVenues
+
+  const suggestedVenues = useMemo(() => {
+    const ranked = [...venues].sort((a, b) => {
+      if (userLocation) {
+        const distA = calculateDistance(userLocation.lat, userLocation.lng, a.location.lat, a.location.lng)
+        const distB = calculateDistance(userLocation.lat, userLocation.lng, b.location.lat, b.location.lng)
+        if (Math.abs(distA - distB) > 0.2) return distA - distB
+      }
+      return b.pulseScore - a.pulseScore
+    })
+
+    return ranked.slice(0, 4)
+  }, [calculateDistance, venues, userLocation])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -184,6 +197,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
   }
 
   const showResults = isFocused && query.trim().length > 0
+  const showSuggestions = isFocused && query.trim().length === 0 && suggestedVenues.length > 0
 
   return (
     <div className="relative w-full">
@@ -196,7 +210,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : 'Search venues...'}
+          placeholder={isListening ? 'Listening...' : 'Search venues, vibes, or categories'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -204,15 +218,10 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             setTimeout(() => setIsFocused(false), 200)
           }}
           onKeyDown={handleKeyDown}
-          aria-label="Search venues"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={isFocused && query.trim().length > 0}
-          aria-controls="map-search-results"
           className={cn(
-            'pl-10 bg-card/95 backdrop-blur-xl border-white/10 h-11 focus:ring-2 focus:ring-[#E1306C] transition-all rounded-2xl',
+            'pl-10 bg-background/70 backdrop-blur-sm border-border/80 h-11 focus:ring-2 focus:ring-accent transition-all shadow-none',
             query ? 'pr-20' : 'pr-12',
-            isListening && 'ring-2 ring-[#E1306C] animate-pulse'
+            isListening && 'ring-2 ring-accent animate-pulse'
           )}
         />
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -220,9 +229,9 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8"
-              onClick={handleClear}
               aria-label="Clear search"
+              className="h-11 w-11"
+              onClick={handleClear}
             >
               <X size={16} weight="bold" />
             </Button>
@@ -230,15 +239,14 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
           <Button
             size="icon"
             variant="ghost"
+            aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
             className={cn(
-              'h-8 w-8 transition-colors',
-              isListening && 'bg-[#E1306C] text-white animate-pulse',
+              'h-11 w-11 transition-colors',
+              isListening && 'bg-accent text-accent-foreground animate-pulse',
               !isSupported && 'opacity-50 cursor-not-allowed'
             )}
             onClick={handleVoiceSearch}
             disabled={!isSupported}
-            aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
-            aria-pressed={isListening}
           >
             <Microphone
               size={18}
@@ -250,7 +258,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
       </div>
 
       <AnimatePresence>
-        {showResults && (
+        {(showResults || showSuggestions) && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -258,10 +266,63 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
             transition={{ duration: 0.15 }}
             className="absolute top-full left-0 right-0 mt-2 z-50"
           >
-            <Card className="bg-card/95 backdrop-blur-xl border-white/10 shadow-2xl overflow-hidden rounded-2xl">
-              {sortedResults.length > 0 ? (
+            <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl overflow-hidden">
+              {showSuggestions ? (
+                <div className="p-2">
+                  <div className="px-2 pb-2 pt-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Suggested nearby
+                    </p>
+                  </div>
+                  <div className="grid gap-1">
+                    {suggestedVenues.map((venue) => {
+                      const distance = userLocation
+                        ? calculateDistance(
+                          userLocation.lat,
+                          userLocation.lng,
+                          venue.location.lat,
+                          venue.location.lng
+                        )
+                        : undefined
+
+                      return (
+                        <button
+                          key={venue.id}
+                          onClick={() => handleSelectVenue(venue)}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left hover:bg-muted/50"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                            <MapPin size={20} weight="fill" className="text-accent" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm truncate">{venue.name}</h4>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {venue.category && (
+                                <span className="text-xs text-muted-foreground uppercase font-mono">
+                                  {venue.category}
+                                </span>
+                              )}
+                              {distance !== undefined && (
+                                <>
+                                  {venue.category && (
+                                    <span className="text-xs text-muted-foreground">•</span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDistance(distance)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <PulseScore score={venue.pulseScore} size="xs" showLabel={false} />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : sortedResults.length > 0 ? (
                 <ScrollArea className="max-h-[300px]">
-                  <div className="p-1" id="map-search-results" role="listbox" aria-label="Venue search results">
+                  <div className="p-1">
                     {sortedResults.map((venue, index) => {
                       const distance = userLocation
                         ? calculateDistance(
@@ -277,22 +338,20 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
                           key={venue.id}
                           onClick={() => handleSelectVenue(venue)}
                           onMouseEnter={() => setSelectedIndex(index)}
-                          role="option"
-                          aria-selected={selectedIndex === index}
                           className={cn(
                             'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
                             selectedIndex === index
-                              ? 'bg-gradient-to-r from-[#833AB4]/10 via-[#E1306C]/10 to-[#F77737]/10 border border-[#E1306C]/20'
+                              ? 'bg-accent/10 border border-accent/20'
                               : 'hover:bg-muted/50'
                           )}
                         >
                           <div className="flex-shrink-0">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#833AB4]/20 via-[#E1306C]/20 to-[#F77737]/20 flex items-center justify-center">
-                              <MapPin size={20} weight="fill" className="text-[#E1306C]" />
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                              <MapPin size={20} weight="fill" className="text-accent" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm truncate">{venue.name}</h4>
+                            <h4 className="font-bold text-sm truncate">{venue.name}</h4>
                             <div className="flex items-center gap-2 mt-0.5">
                               {venue.category && (
                                 <span className="text-xs text-muted-foreground uppercase font-mono">

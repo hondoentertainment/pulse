@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Notification, GroupedNotification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
 import { NotificationCard } from '@/components/NotificationCard'
@@ -25,76 +25,92 @@ export function NotificationFeed({
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const { settings } = useNotificationSettings()
 
-  const enrichNotification = (notification: Notification): NotificationWithData | null => {
-    const pulse = notification.pulseId
-      ? pulses.find((p) => p.id === notification.pulseId)
-      : undefined
+  const pulseById = useMemo(
+    () => new Map(pulses.map((pulse) => [pulse.id, pulse])),
+    [pulses]
+  )
+  const venueById = useMemo(
+    () => new Map(venues.map((venue) => [venue.id, venue])),
+    [venues]
+  )
 
-    const venue = notification.venueId
-      ? venues.find((v) => v.id === notification.venueId)
-      : pulse
-        ? venues.find((v) => v.id === pulse.venueId)
-        : undefined
+  const enrichedNotifications = useMemo(() => {
+    return (notifications || [])
+      .map((notification): NotificationWithData | null => {
+        const pulse = notification.pulseId
+          ? pulseById.get(notification.pulseId)
+          : undefined
 
-    const user =
-      notification.type === 'friend_pulse' || notification.type === 'pulse_reaction'
-        ? currentUser
-        : undefined
+        const venue = notification.venueId
+          ? venueById.get(notification.venueId)
+          : pulse
+            ? venueById.get(pulse.venueId)
+            : undefined
 
-    const recommendedVenue = notification.recommendedVenueId
-      ? venues.find((v) => v.id === notification.recommendedVenueId)
-      : undefined
+        const user =
+          notification.type === 'friend_pulse' || notification.type === 'pulse_reaction'
+            ? currentUser
+            : undefined
 
-    if (!notification.pulseId && !notification.venueId) return null
+        const recommendedVenue = notification.recommendedVenueId
+          ? venueById.get(notification.recommendedVenueId)
+          : undefined
 
-    return {
-      ...notification,
-      user,
-      pulse: pulse
-        ? {
-          ...pulse,
-          user: currentUser,
-          venue: venue!
+        if (!notification.pulseId && !notification.venueId) return null
+
+        return {
+          ...notification,
+          user,
+          pulse: pulse && venue
+            ? {
+              ...pulse,
+              user: currentUser,
+              venue
+            }
+            : undefined,
+          venue,
+          recommendedVenue
         }
-        : undefined,
-      venue,
-      recommendedVenue
-    }
-  }
+      })
+      .filter((n): n is NotificationWithData => n !== null)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [currentUser, notifications, pulseById, venueById])
 
-  const enrichedNotifications = (notifications || [])
-    .map(enrichNotification)
-    .filter((n): n is NotificationWithData => n !== null)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const groupedNotifications = useMemo(() => {
+    return groupNotifications(enrichedNotifications, {
+      groupReactions: settings?.groupReactions ?? true,
+      groupFriendPulses: settings?.groupFriendPulses ?? false,
+      groupTrendingVenues: settings?.groupTrendingVenues ?? false
+    })
+  }, [enrichedNotifications, settings?.groupFriendPulses, settings?.groupReactions, settings?.groupTrendingVenues])
 
-  const groupedNotifications = groupNotifications(enrichedNotifications, {
-    groupReactions: settings?.groupReactions ?? true,
-    groupFriendPulses: settings?.groupFriendPulses ?? false,
-    groupTrendingVenues: settings?.groupTrendingVenues ?? false
-  })
-
-  const filteredNotifications =
-    filter === 'unread'
+  const filteredNotifications = useMemo(
+    () => filter === 'unread'
       ? groupedNotifications.filter((n) => !n.read)
-      : groupedNotifications
+      : groupedNotifications,
+    [filter, groupedNotifications]
+  )
 
-  const unreadCount = groupedNotifications.filter((n) => !n.read).length
+  const unreadCount = useMemo(
+    () => groupedNotifications.filter((n) => !n.read).length,
+    [groupedNotifications]
+  )
 
-  const markAsRead = (notificationId: string) => {
+  const markAsRead = useCallback((notificationId: string) => {
     setNotifications((current) => {
       if (!current) return []
       return current.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     })
-  }
+  }, [setNotifications])
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setNotifications((current) => {
       if (!current) return []
       return current.map((n) => ({ ...n, read: true }))
     })
-  }
+  }, [setNotifications])
 
-  const handleNotificationClick = (notification: GroupedNotification) => {
+  const handleNotificationClick = useCallback((notification: GroupedNotification) => {
     markAsRead(notification.id)
 
     if (notification.groupedUsers && notification.count && notification.count > 1) {
@@ -105,7 +121,7 @@ export function NotificationFeed({
     }
 
     onNotificationClick(notification)
-  }
+  }, [markAsRead, notifications, onNotificationClick])
 
   if (groupedNotifications.length === 0) {
     return (

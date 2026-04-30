@@ -1,4 +1,6 @@
 import type { Pulse, Venue, EnergyRating } from './types'
+import type { VenueEvent } from './events'
+import { getRSVPCounts, predictEventSurge } from './events'
 
 /**
  * Predictive Surge Engine (Phase 6.1)
@@ -22,10 +24,29 @@ export interface SurgePrediction {
   confidence: number
   label: string
   basedOn: 'historical' | 'event' | 'weather' | 'combined'
+  momentumScore: number
+  signals: PredictionSignal[]
 }
+
+export interface PredictionSignal {
+  source: 'historical' | 'event' | 'social' | 'music'
+  label: string
+  strength: number
+}
+
+type SurgePredictionInput = Omit<SurgePrediction, 'momentumScore' | 'signals'> &
+  Partial<Pick<SurgePrediction, 'momentumScore' | 'signals'>>
 
 const ENERGY_VALUES: Record<EnergyRating, number> = { dead: 0, chill: 1, buzzing: 2, electric: 3 }
 const ENERGY_LABELS: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
+
+function normalizeSurgePrediction(prediction: SurgePredictionInput): SurgePrediction {
+  return {
+    ...prediction,
+    momentumScore: prediction.momentumScore ?? Math.round(Math.max(0, Math.min(100, prediction.confidence * 100))),
+    signals: prediction.signals ?? [],
+  }
+}
 
 export function analyzeVenuePatterns(venueId: string, pulses: Pulse[], windowDays: number = 30): VenuePattern[] {
   const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000
@@ -68,7 +89,16 @@ export function analyzeVenuePatterns(venueId: string, pulses: Pulse[], windowDay
 export function predictSurge(venueId: string, patterns: VenuePattern[], currentHour: number, dayOfWeek: number): SurgePrediction {
   const pat = patterns.find(p => p.venueId === venueId && p.dayOfWeek === dayOfWeek)
   if (!pat || Object.keys(pat.hourDistribution).length === 0) {
-    return { venueId, predictedPeakTime: '9PM', predictedEnergyLevel: 'chill', confidence: 0.1, label: 'Not enough data', basedOn: 'historical' }
+    return {
+      venueId,
+      predictedPeakTime: '9PM',
+      predictedEnergyLevel: 'chill',
+      confidence: 0.1,
+      label: 'Not enough data',
+      basedOn: 'historical',
+      momentumScore: 10,
+      signals: [{ source: 'historical', label: 'Limited history', strength: 0.1 }],
+    }
   }
   let bestHour = pat.typicalPeakHour, bestCount = 0
   for (const [hStr, d] of Object.entries(pat.hourDistribution)) {
@@ -85,39 +115,192 @@ export function predictSurge(venueId: string, patterns: VenuePattern[], currentH
     venueId, predictedPeakTime: formatHour(bestHour), predictedEnergyLevel: predictedEnergy,
     confidence, basedOn: 'historical',
     label: hoursUntil <= 1 ? `Expected to be ${cap(predictedEnergy)} soon` : `Expected to peak at ${formatHour(bestHour)}`,
+    momentumScore: Math.round(Math.min(100, confidence * 100)),
+    signals: [{
+      source: 'historical',
+      label: `Usually peaks around ${formatHour(bestHour)}`,
+      strength: confidence,
+    }],
   }
 }
 
-export function applyWeatherModifier(prediction: SurgePrediction, weather: WeatherCondition): SurgePrediction {
+export function applyWeatherModifier(prediction: SurgePredictionInput, weather: WeatherCondition): SurgePrediction {
+  const basePrediction = normalizeSurgePrediction(prediction)
   let cAdj = 0, eAdj = 0
   if (weather === 'rainy' || weather === 'snowy') { cAdj = -0.15; eAdj = -0.5 }
   else if (weather === 'clear') { cAdj = 0.05; eAdj = 0.3 }
   else if (weather === 'hot') { cAdj = 0.03; eAdj = 0.2 }
   else if (weather === 'cold') { cAdj = -0.05; eAdj = -0.2 }
-  const idx = ENERGY_LABELS.indexOf(prediction.predictedEnergyLevel)
+  const idx = ENERGY_LABELS.indexOf(basePrediction.predictedEnergyLevel)
   const newIdx = Math.max(0, Math.min(3, Math.round(idx + eAdj)))
-  return { ...prediction, confidence: Math.max(0.05, Math.min(0.95, prediction.confidence + cAdj)), predictedEnergyLevel: ENERGY_LABELS[newIdx], basedOn: 'combined' }
+  return {
+    ...basePrediction,
+    confidence: Math.max(0.05, Math.min(0.95, basePrediction.confidence + cAdj)),
+    predictedEnergyLevel: ENERGY_LABELS[newIdx],
+    basedOn: 'combined',
+    momentumScore: Math.round(Math.min(100, Math.max(0, basePrediction.momentumScore + cAdj * 100))),
+  }
 }
 
-export function applyEventModifier(prediction: SurgePrediction, rsvpCount: number): SurgePrediction {
-  if (rsvpCount <= 0) return prediction
+export function applyEventModifier(prediction: SurgePredictionInput, rsvpCount: number): SurgePrediction {
+  const basePrediction = normalizeSurgePrediction(prediction)
+  if (rsvpCount <= 0) return basePrediction
   const boost = Math.min(0.3, rsvpCount / 100)
-  const idx = ENERGY_LABELS.indexOf(prediction.predictedEnergyLevel)
+  const idx = ENERGY_LABELS.indexOf(basePrediction.predictedEnergyLevel)
   const eBoost = rsvpCount >= 30 ? 1 : rsvpCount >= 10 ? 0.5 : 0
-  return { ...prediction, confidence: Math.min(0.95, prediction.confidence + boost), predictedEnergyLevel: ENERGY_LABELS[Math.min(3, Math.round(idx + eBoost))], basedOn: 'combined' }
+  return {
+    ...basePrediction,
+    confidence: Math.min(0.95, basePrediction.confidence + boost),
+    predictedEnergyLevel: ENERGY_LABELS[Math.min(3, Math.round(idx + eBoost))],
+    basedOn: 'combined',
+    momentumScore: Math.round(Math.min(100, basePrediction.momentumScore + boost * 100)),
+  }
 }
 
-export function generateSmartNotification(venueName: string, prediction: SurgePrediction): string {
-  if (prediction.confidence < 0.2) return `${venueName} might pick up later tonight`
-  return `Based on patterns, ${venueName} usually surges around ${prediction.predictedPeakTime}`
+export function generateSmartNotification(venueName: string, prediction: SurgePredictionInput): string {
+  const normalizedPrediction = normalizeSurgePrediction(prediction)
+  if (normalizedPrediction.confidence < 0.2) return `${venueName} might pick up later tonight`
+  const signalHint = normalizedPrediction.signals
+    .slice(0, 2)
+    .map(signal => signal.label)
+    .join(' • ')
+  return `${venueName} looks primed for a surge: ${signalHint || `usually surges around ${normalizedPrediction.predictedPeakTime}`}`
 }
 
-export function getVenuesThatWillSurge(venues: Venue[], patterns: VenuePattern[], currentHour: number, dayOfWeek: number, limit: number = 5): SurgePrediction[] {
-  return venues.map(v => ({ ...predictSurge(v.id, patterns, currentHour, dayOfWeek), venueName: v.name }))
-    .filter(p => p.confidence > 0.15).sort((a, b) => b.confidence - a.confidence).slice(0, limit)
+function getSocialSignal(venue: Venue): PredictionSignal {
+  const velocity = venue.scoreVelocity ?? 0
+  const strength = Math.max(0.05, Math.min(0.95, (venue.pulseScore / 100) * 0.6 + Math.max(0, velocity) / 40))
+  const label = velocity > 10
+    ? 'Fast pulse velocity right now'
+    : venue.pulseScore >= 70
+    ? 'Already drawing real-time energy'
+    : 'Steady live activity'
+
+  return {
+    source: 'social',
+    label,
+    strength,
+  }
 }
 
-export function calculatePredictionAccuracy(predictions: SurgePrediction[], actualPulses: Pulse[]): { total: number; correct: number; accuracy: number } {
+function getMusicSignal(venue: Venue, currentHour: number): PredictionSignal | null {
+  const category = (venue.category ?? '').toLowerCase()
+  const hasMusicProgramming =
+    category.includes('music') ||
+    category.includes('nightclub') ||
+    category.includes('lounge') ||
+    Boolean(venue.integrations?.music)
+
+  if (!hasMusicProgramming) return null
+
+  const strength = currentHour >= 20 ? 0.3 : 0.18
+  const label = venue.integrations?.music?.playlistName
+    ? `Programmed around ${venue.integrations.music.playlistName}`
+    : 'Music programming is a tailwind tonight'
+
+  return {
+    source: 'music',
+    label,
+    strength,
+  }
+}
+
+function getEventSignal(venue: Venue, events: VenueEvent[], now: Date): { signal: PredictionSignal; peakTime?: string; energy?: EnergyRating } | null {
+  const upcoming = events
+    .filter(event => event.venueId === venue.id)
+    .filter(event => {
+      const start = new Date(event.startTime).getTime()
+      const diff = start - now.getTime()
+      return diff >= 0 && diff <= 4 * 60 * 60 * 1000
+    })
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0]
+
+  if (!upcoming) return null
+
+  const counts = getRSVPCounts(upcoming)
+  const prediction = predictEventSurge(upcoming)
+  const strength = Math.max(0.2, Math.min(0.95, counts.going / 40 + counts.interested / 120))
+
+  return {
+    signal: {
+      source: 'event',
+      label: `${upcoming.title} has ${counts.going} going`,
+      strength,
+    },
+    peakTime: formatHour(new Date(prediction.predictedPeakTime).getHours()),
+    energy: prediction.predictedEnergyLevel,
+  }
+}
+
+function mergeSignals(
+  venue: Venue,
+  basePrediction: SurgePrediction,
+  events: VenueEvent[],
+  currentHour: number,
+  now: Date
+): SurgePrediction {
+  const signals: PredictionSignal[] = [...basePrediction.signals]
+  const socialSignal = getSocialSignal(venue)
+  signals.push(socialSignal)
+
+  const musicSignal = getMusicSignal(venue, currentHour)
+  if (musicSignal) signals.push(musicSignal)
+
+  const eventSignal = getEventSignal(venue, events, now)
+  if (eventSignal) signals.push(eventSignal.signal)
+
+  const signalStrength = signals.reduce((sum, signal) => sum + signal.strength, 0)
+  const mergedConfidence = Math.max(0.1, Math.min(0.98, basePrediction.confidence * 0.45 + signalStrength * 0.28))
+  const topSignals = [...signals].sort((a, b) => b.strength - a.strength)
+
+  const energyIdx = ENERGY_LABELS.indexOf(basePrediction.predictedEnergyLevel)
+  const boostedIdx = Math.min(
+    3,
+    Math.round(
+      energyIdx +
+      (venue.scoreVelocity ?? 0) / 20 +
+      (eventSignal ? 0.8 : 0) +
+      (musicSignal ? 0.3 : 0)
+    )
+  )
+
+  return {
+    ...basePrediction,
+    predictedPeakTime: eventSignal?.peakTime ?? basePrediction.predictedPeakTime,
+    predictedEnergyLevel: eventSignal?.energy ?? ENERGY_LABELS[boostedIdx],
+    confidence: mergedConfidence,
+    basedOn: topSignals.length > 1 ? 'combined' : topSignals[0]?.source === 'event' ? 'event' : basePrediction.basedOn,
+    momentumScore: Math.round(Math.min(100, mergedConfidence * 100 + Math.max(0, venue.scoreVelocity ?? 0))),
+    signals: topSignals.slice(0, 4),
+    label: topSignals.length > 1
+      ? `${topSignals[0].label} • ${topSignals[1].label}`
+      : topSignals[0]?.label ?? basePrediction.label,
+  }
+}
+
+export function getVenuesThatWillSurge(
+  venues: Venue[],
+  patterns: VenuePattern[],
+  currentHour: number,
+  dayOfWeek: number,
+  limit: number = 5,
+  events: VenueEvent[] = [],
+  now: Date = new Date()
+): SurgePrediction[] {
+  return venues
+    .map((venue) => {
+      const base = { ...predictSurge(venue.id, patterns, currentHour, dayOfWeek), venueName: venue.name }
+      return mergeSignals(venue, base, events, currentHour, now)
+    })
+    .filter(prediction => prediction.confidence > 0.15)
+    .sort((a, b) => b.momentumScore - a.momentumScore)
+    .slice(0, limit)
+}
+
+export function calculatePredictionAccuracy(
+  predictions: Pick<SurgePrediction, 'venueId' | 'predictedPeakTime'>[],
+  actualPulses: Pulse[]
+): { total: number; correct: number; accuracy: number } {
   let correct = 0
   for (const pred of predictions) {
     const peakHour = parseHour(pred.predictedPeakTime)

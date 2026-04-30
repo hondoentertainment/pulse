@@ -2,7 +2,7 @@ import type { Pulse, User, Venue, EnergyRating } from './types'
 
 /** Phase 7.2 - Integration Ecosystem */
 
-export type IntegrationType = 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts'
+export type IntegrationType = 'rideshare' | 'music' | 'reservation' | 'maps' | 'shortcuts' | 'tickets'
 
 export interface RideshareLink {
   provider: 'uber' | 'lyft'
@@ -342,6 +342,13 @@ export function getVenueMapsUrl(venue: Venue): string {
   return `https://www.google.com/maps/search/?api=1&query=${venue.location.lat},${venue.location.lng}`
 }
 
+export function getVenueTicketUrl(venue: Venue): string {
+  if (venue.website) return venue.website
+
+  const query = `${buildVenueQuery(venue)} tickets`
+  return `https://www.google.com/search?q=${encodeURIComponent(query.trim())}`
+}
+
 export function getShortcutActions(): ShortcutAction[] {
   return [
     { id: 'tonight', name: 'Where should I go tonight?', description: 'Get top trending venues near you', type: 'tonight', parameters: {} },
@@ -429,6 +436,7 @@ export function getIntegrationStatus(
     reservation: ['OPENTABLE_API_KEY'],
     maps: ['GOOGLE_MAPS_API_KEY'],
     shortcuts: [],
+    tickets: [],
   }
 
   const configRequired = configs[type]
@@ -458,6 +466,9 @@ export function getVenueIntegrationAvailability(
       ? { available: true }
       : { available: false, reason: 'Map link is not available for this venue.' },
     shortcuts: { available: true },
+    tickets: validateIntegrationUrl(getVenueTicketUrl(venue))
+      ? { available: true }
+      : { available: false, reason: 'Ticket link is not available for this venue.' },
   }
 }
 

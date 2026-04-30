@@ -3,7 +3,7 @@ import type { Venue, Pulse, User, EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import type { NightPlan, SwapSuggestion } from '@/lib/night-planner'
 import { getCurrentStopIndex, adaptPlan, swapStop } from '@/lib/night-planner'
-import { CaretLeft, MapPin, Clock, Lightning, Warning, CheckCircle, Car, PersonSimpleWalk } from '@phosphor-icons/react'
+import { CaretLeft, MapPin, Clock, Lightning, Warning, CheckCircle, Car, PersonSimpleWalk, ChatCircleDots, CurrencyDollar, ShieldCheck } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
@@ -367,7 +367,7 @@ function TrackerStopCard({
       </div>
 
       {/* Live Energy Indicator */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">
           {liveEnergy ? 'Live Vibe:' : 'Predicted:'}
         </span>
@@ -383,6 +383,20 @@ function TrackerStopCard({
         {liveEnergy && (
           <span className="text-xs text-muted-foreground">
             Score: {liveEnergy.score}
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+          <ChatCircleDots size={12} />
+          {stop.groupVote.yes} yes
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+          <ShieldCheck size={12} />
+          Entry {stop.entryConfidence}%
+        </span>
+        {stop.rideSplitEstimate > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+            <CurrencyDollar size={12} />
+            Ride split ~${stop.rideSplitEstimate}/pp
           </span>
         )}
       </div>

@@ -1,173 +1,210 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
-import { User as AuthUser, Session, Provider } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
-import { identify } from '@/lib/observability/analytics'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { User as AuthUser, Session } from '@supabase/supabase-js'
+import { hasSupabaseConfig, isE2EAuthBypassEnabled, supabase } from '@/lib/supabase'
 import type { User as PulseUser } from '@/lib/types'
-
-/**
- * Returns true when the Supabase URL/key are still the built-in placeholders,
- * meaning no real Supabase project has been connected.
- */
-export function hasPlaceholderCredentials(): boolean {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-  return !url || !key || url.includes('placeholder') || key === 'placeholder-anon-key'
-}
+import { createFallbackProfile, fetchOrCreateProfile } from '@/lib/auth-profile'
 
 interface SupabaseAuthContextType {
   session: Session | null
   user: AuthUser | null
   profile: PulseUser | null
   isLoading: boolean
-  isPlaceholder: boolean
-  authError: string | null
-  signInWithOAuth: (provider: Provider) => Promise<void>
-  signInWithOtp: (email: string) => Promise<void>
+  signIn: () => Promise<void>
   signOut: () => Promise<void>
+  updateProfile: (updates: Partial<PulseUser>) => Promise<void>
 }
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined)
 
-export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
-  const isPlaceholder = hasPlaceholderCredentials()
+function createBypassUser(): AuthUser {
+  return {
+    id: '00000000-0000-4000-8000-000000000001',
+    app_metadata: { provider: 'e2e' },
+    user_metadata: {
+      user_name: 'nightowl',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl',
+    },
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+    email: 'nightowl@pulse.test',
+  } as AuthUser
+}
 
+function createBypassSession(user: AuthUser): Session {
+  return {
+    access_token: 'e2e-access-token',
+    refresh_token: 'e2e-refresh-token',
+    expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+    expires_in: 60 * 60,
+    token_type: 'bearer',
+    user,
+  } as Session
+}
+
+function createPreviewAuthState() {
+  const previewUser = createBypassUser()
+  return {
+    user: previewUser,
+    session: createBypassSession(previewUser),
+    profile: createFallbackProfile(previewUser),
+  }
+}
+
+export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<PulseUser | null>(null)
-  const [isLoading, setIsLoading] = useState(!isPlaceholder)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // ── Bootstrap session ────────────────────────────────────
+  const activatePreviewSession = () => {
+    const preview = createPreviewAuthState()
+    setSession(preview.session)
+    setUser(preview.user)
+    setProfile(preview.profile)
+    setIsLoading(false)
+  }
+
   useEffect(() => {
-    if (isPlaceholder) return
+    let isMounted = true
 
+    if (isE2EAuthBypassEnabled) {
+      const bypassUser = createBypassUser()
+      const bypassSession = createBypassSession(bypassUser)
+      setSession(bypassSession)
+      setUser(bypassUser)
+      setProfile(createFallbackProfile(bypassUser))
+      setIsLoading(false)
+      return
+    }
+
+    if (!hasSupabaseConfig) {
+      setSession(null)
+      setUser(null)
+      setProfile(null)
+      setIsLoading(false)
+      return
+    }
+
+    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        identify(session.user.id, {
-          email: session.user.email ?? undefined,
-          createdAt: session.user.created_at,
-        })
-        ensureProfile(session.user)
+        fetchProfile(session.user.id)
       } else {
-        identify(null)
         setIsLoading(false)
       }
-    }).catch(() => {
-      setIsLoading(false)
+    }).catch((error) => {
+      console.error('Error loading auth session:', error)
+      if (isMounted) setIsLoading(false)
     })
 
+    // Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        identify(session.user.id, {
-          email: session.user.email ?? undefined,
-          createdAt: session.user.created_at,
-        })
-        ensureProfile(session.user)
+        fetchProfile(session.user.id)
       } else {
-        identify(null)
         setProfile(null)
         setIsLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [isPlaceholder])
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
-  // ── Profile helpers ──────────────────────────────────────
-  const ensureProfile = async (authUser: AuthUser) => {
+  const fetchProfile = async (userId: string) => {
     try {
       setIsLoading(true)
+      const { data: authData } = await supabase.auth.getUser()
+      const authUser = authData.user
 
-      // Try to fetch an existing profile
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
+      if (!authUser || authUser.id !== userId) {
+        setProfile(null)
+        return
+      }
 
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist yet — auto-create on first sign-in
-        const newProfile = buildProfileFromAuth(authUser)
-        const { data: inserted, error: insertErr } = await supabase
-          .from('profiles')
-          .insert(newProfile)
-          .select('*')
-          .single()
-
-        if (insertErr) {
-          console.error('Error creating profile:', insertErr)
-          // Still set a local-only profile so the app is usable
-          setProfile(mapRowToUser(newProfile))
-        } else if (inserted) {
-          setProfile(mapRowToUser(inserted))
-        }
-      } else if (error) {
-        console.error('Error fetching profile:', error)
-      } else if (data) {
-        setProfile(mapRowToUser(data))
+      const nextProfile = await fetchOrCreateProfile(supabase, authUser)
+      setProfile(nextProfile)
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      const { data: authData } = await supabase.auth.getUser()
+      const authUser = authData.user
+      if (authUser && authUser.id === userId) {
+        setProfile(createFallbackProfile(authUser))
       }
     } finally {
       setIsLoading(false)
     }
   }
 
-  // ── Auth methods ─────────────────────────────────────────
-  const signInWithOAuth = useCallback(async (provider: Provider) => {
-    setAuthError(null)
-    if (isPlaceholder) {
-      setAuthError('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.')
+  const signIn = async () => {
+    if (!hasSupabaseConfig) {
+      activatePreviewSession()
       return
     }
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: window.location.origin },
-    })
-    if (error) {
-      console.error('OAuth sign-in error:', error)
-      setAuthError(error.message)
-    }
-  }, [isPlaceholder])
 
-  const signInWithOtp = useCallback(async (email: string) => {
-    setAuthError(null)
-    if (isPlaceholder) {
-      setAuthError('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.')
+    // For MVP prototyping without real emails, we will just use an anonymous sign-in or a 
+    // mock sign in. Since Supabase allows Anonymous Sign-Ins in edge, we'll try that.
+    // In production, this would be an OAuth or Magic Link sign-in.
+    const { error } = await supabase.auth.signInAnonymously()
+    if (error) console.error('Sign in error:', error)
+  }
+
+  const signOut = async () => {
+    if (!hasSupabaseConfig) {
+      setSession(null)
+      setUser(null)
+      setProfile(null)
       return
     }
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    })
-    if (error) {
-      console.error('OTP sign-in error:', error)
-      setAuthError(error.message)
-    }
-  }, [isPlaceholder])
 
-  const signOut = useCallback(async () => {
-    setAuthError(null)
     const { error } = await supabase.auth.signOut()
     if (error) console.error('Sign out error:', error)
-  }, [])
+  }
+
+  const updateProfile = async (updates: Partial<PulseUser>) => {
+    if (!user || !profile) return
+    const newProfile = { ...profile, ...updates }
+    setProfile(newProfile)
+
+    if (!hasSupabaseConfig || isE2EAuthBypassEnabled) {
+      return
+    }
+    
+    const dbUpdates = {
+      username: newProfile.username,
+      profile_photo_url: newProfile.profilePhoto,
+      friends: newProfile.friends,
+      favorite_venues: newProfile.favoriteVenues,
+      followed_venues: newProfile.followedVenues,
+      favorite_categories: newProfile.favoriteCategories,
+      credibility_score: newProfile.credibilityScore,
+      presence_settings: newProfile.presenceSettings,
+      venue_check_in_history: newProfile.venueCheckInHistory,
+      post_streak: newProfile.postStreak,
+      last_post_date: newProfile.lastPostDate,
+    }
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update(dbUpdates)
+      .eq('id', user.id)
+      
+    if (error) {
+      console.error('Error updating profile in Supabase:', error)
+      // Revert optimistic update
+      fetchProfile(user.id)
+    }
+  }
 
   return (
-    <SupabaseAuthContext.Provider
-      value={{
-        session,
-        user,
-        profile,
-        isLoading,
-        isPlaceholder,
-        authError,
-        signInWithOAuth,
-        signInWithOtp,
-        signOut,
-      }}
-    >
+    <SupabaseAuthContext.Provider value={{ session, user, profile, isLoading, signIn, signOut, updateProfile }}>
       {children}
     </SupabaseAuthContext.Provider>
   )
@@ -179,54 +216,4 @@ export function useSupabaseAuth() {
     throw new Error('useSupabaseAuth must be used within a SupabaseAuthProvider')
   }
   return context
-}
-
-// ── Helpers ──────────────────────────────────────────────────
-
-function buildProfileFromAuth(authUser: AuthUser): Record<string, unknown> {
-  const meta = authUser.user_metadata ?? {}
-  const username =
-    meta.preferred_username ||
-    meta.user_name ||
-    meta.full_name?.replace(/\s+/g, '_').toLowerCase() ||
-    authUser.email?.split('@')[0] ||
-    `user_${authUser.id.slice(0, 8)}`
-
-  return {
-    id: authUser.id,
-    username,
-    profile_photo_url: meta.avatar_url || meta.picture || null,
-    friends: [],
-    favorite_venues: [],
-    followed_venues: [],
-    created_at: new Date().toISOString(),
-    venue_check_in_history: {},
-    favorite_categories: [],
-    credibility_score: 1.0,
-    presence_settings: { enabled: true, visibility: 'everyone', hideAtSensitiveVenues: false },
-    post_streak: 0,
-    last_post_date: null,
-  }
-}
-
-function mapRowToUser(row: Record<string, unknown>): PulseUser {
-  return {
-    id: row.id as string,
-    username: row.username as string,
-    profilePhoto: (row.profile_photo_url as string) || undefined,
-    friends: (row.friends as string[]) || [],
-    favoriteVenues: (row.favorite_venues as string[]) || [],
-    followedVenues: (row.followed_venues as string[]) || [],
-    createdAt: row.created_at as string,
-    venueCheckInHistory: (row.venue_check_in_history as Record<string, number>) || {},
-    favoriteCategories: (row.favorite_categories as string[]) || [],
-    credibilityScore: (row.credibility_score as number) || 1.0,
-    presenceSettings: (row.presence_settings as PulseUser['presenceSettings']) || {
-      enabled: true,
-      visibility: 'everyone',
-      hideAtSensitiveVenues: false,
-    },
-    postStreak: (row.post_streak as number) || 0,
-    lastPostDate: (row.last_post_date as string) || undefined,
-  }
 }

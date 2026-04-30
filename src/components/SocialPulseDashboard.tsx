@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useVenueState } from '@/hooks/use-venue-state'
+import { useAppState } from '@/hooks/use-app-state'
 import Tilt from 'react-parallax-tilt'
 import { useKV } from '@github/spark/hooks'
 import { TrackedHashtag, Venue, Pulse } from '@/lib/types'
@@ -79,7 +79,7 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
   const [integrationDraft, setIntegrationDraft] = useState<IntegrationEditorDraft>(() => buildIntegrationDraft(venues[0]))
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  const { contentReports, setContentReports, setPulses } = useVenueState()
+  const { contentReports, setContentReports, setPulses } = useAppState()
 
   const { socialPosts } = useSocialPulseIngestion(
     trackedHashtags || [],
@@ -172,8 +172,7 @@ export function SocialPulseDashboard({ venues, pulses, onBack }: SocialPulseDash
   const timeSinceUpdate = Math.floor((Date.now() - lastUpdate.getTime()) / 1000)
   const integrationSummary = useMemo(
     () => getIntegrationActionSummary(getEvents()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lastUpdate]
+    []
   )
 
   const integrationCoverage = useMemo(() => ({

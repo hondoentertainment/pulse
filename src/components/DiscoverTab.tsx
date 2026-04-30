@@ -6,10 +6,10 @@ import { StoryRing } from '@/components/StoryRing'
 import { FriendSuggestions } from '@/components/FriendSuggestions'
 import { EventCard } from '@/components/EventCard'
 import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
+import { RightNowSection } from '@/components/RightNowSection'
 import { Separator } from '@/components/ui/separator'
 import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix, Lightning, Ticket, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import ForYouFeed from '@/components/ForYouFeed'
 import MoodSelector from '@/components/MoodSelector'
 import type { MoodType } from '@/lib/personalization-engine'
 import { useState } from 'react'
@@ -50,9 +50,19 @@ export function DiscoverTab({
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Compass size={24} weight="fill" className="text-[#E1306C]" />
-        <h2 className="text-xl font-semibold">Discover</h2>
+      <div className="rounded-3xl border border-border bg-card/75 p-5">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-primary/15 p-2.5 text-primary">
+            <Compass size={24} weight="fill" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Discover</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">Plan less. Move smarter.</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Start with the right-now picks, then jump into events, crews, tickets, or your recap when you need more.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Stories */}
@@ -70,10 +80,20 @@ export function DiscoverTab({
         </>
       )}
 
+      <RightNowSection
+        venues={venues}
+        currentUser={currentUser}
+        userLocation={userLocation ?? null}
+        onVenueClick={onVenueClick}
+      />
+
+      <Separator />
+
       {/* Predictive Surge */}
       <PredictiveSurgePanel
         venues={venues}
         pulses={pulses}
+        events={events}
         onVenueClick={onVenueClick}
       />
 
@@ -83,25 +103,16 @@ export function DiscoverTab({
         selectedMood={selectedMood}
       />
 
-      {/* Phase 4: For You Feed */}
-      <ForYouFeed
-        venues={venues}
-        user={currentUser}
-        pulses={pulses}
-        userLocation={userLocation ?? null}
-        onVenueClick={onVenueClick}
-      />
-
       <Separator />
 
       {/* Night Planner CTA */}
       <button
         onClick={() => onNavigate('night-planner')}
-        className="w-full bg-gradient-to-r from-[#833AB4]/10 via-[#E1306C]/10 to-[#F77737]/10 rounded-2xl p-4 border border-white/10 flex items-center gap-3 hover:border-[#E1306C]/40 transition-colors backdrop-blur-xl"
+        className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/12 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left"
       >
-        <Sparkle size={24} weight="fill" className="text-[#E1306C]" />
+        <Sparkle size={24} weight="fill" className="text-primary" />
         <div className="flex-1 text-left">
-          <p className="font-semibold text-sm">Plan Your Night</p>
+          <p className="font-medium text-sm">Plan Your Night</p>
           <p className="text-xs text-muted-foreground">AI-powered multi-stop itinerary</p>
         </div>
       </button>
@@ -112,64 +123,64 @@ export function DiscoverTab({
           icon={<CalendarBlank size={24} weight="fill" />}
           label="Events"
           sublabel={upcomingEvents.length > 0 ? `${upcomingEvents.length} coming up` : 'Browse events'}
-          color="from-[#405DE6]/20 to-[#833AB4]/20"
-          borderColor="border-white/10"
+          color="from-primary/14 to-accent/10"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('events')}
         />
         <QuickAction
           icon={<UsersThree size={24} weight="fill" />}
           label="Crews"
           sublabel="Group check-ins"
-          color="from-[#833AB4]/20 to-[#E1306C]/20"
-          borderColor="border-white/10"
+          color="from-accent/14 to-primary/10"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('crews')}
         />
         <QuickAction
           icon={<Trophy size={24} weight="fill" />}
           label="Achievements"
           sublabel="Track your badges"
-          color="from-[#FCAF45]/20 to-[#F77737]/20"
-          borderColor="border-white/10"
+          color="from-accent/14 to-card"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('achievements')}
         />
         <QuickAction
           icon={<ChartBar size={24} weight="fill" />}
           label="Insights"
           sublabel="Your weekly recap"
-          color="from-[#833AB4]/20 to-[#E1306C]/20"
-          borderColor="border-white/10"
+          color="from-primary/14 to-card"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('insights')}
         />
         <QuickAction
           icon={<MusicNotes size={24} weight="fill" />}
           label="Playlists"
           sublabel="Curated pulse boards"
-          color="from-[#E1306C]/20 to-[#F77737]/20"
-          borderColor="border-white/10"
+          color="from-primary/12 to-accent/10"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('playlists')}
         />
         <QuickAction
           icon={<Lightning size={24} weight="fill" />}
           label="Challenges"
           sublabel="Earn rewards"
-          color="from-[#F77737]/20 to-[#FCAF45]/20"
-          borderColor="border-white/10"
+          color="from-accent/14 to-card"
+          borderColor="border-accent/20"
           onClick={() => onNavigate('challenges')}
         />
         <QuickAction
           icon={<Ticket size={24} weight="fill" />}
           label="My Tickets"
           sublabel="Tickets & reservations"
-          color="from-[#405DE6]/20 to-[#833AB4]/20"
-          borderColor="border-white/10"
+          color="from-primary/14 to-card"
+          borderColor="border-primary/20"
           onClick={() => onNavigate('my-tickets')}
         />
         <QuickAction
           icon={<GearSix size={24} weight="fill" />}
           label="Settings"
           sublabel="Language, privacy & more"
-          color="from-gray-500/20 to-slate-500/20"
-          borderColor="border-white/10"
+          color="from-muted/40 to-card"
+          borderColor="border-border"
           onClick={() => onNavigate('settings')}
         />
       </div>
@@ -177,11 +188,11 @@ export function DiscoverTab({
       {/* Neighborhood button */}
       <button
         onClick={() => onNavigate('neighborhoods')}
-        className="w-full bg-gradient-to-r from-[#833AB4]/10 via-[#E1306C]/10 to-[#F77737]/10 rounded-2xl p-4 border border-white/10 flex items-center gap-3 hover:border-[#E1306C]/40 transition-colors backdrop-blur-xl"
+        className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left"
       >
-        <MapTrifold size={24} weight="fill" className="text-[#E1306C]" />
+        <MapTrifold size={24} weight="fill" className="text-primary" />
         <div className="flex-1 text-left">
-          <p className="font-semibold text-sm">Neighborhood Scores</p>
+          <p className="font-medium text-sm">Neighborhood Scores</p>
           <p className="text-xs text-muted-foreground">See which areas are hottest right now</p>
         </div>
       </button>
@@ -192,8 +203,8 @@ export function DiscoverTab({
           <Separator />
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Happening Soon</h3>
-              <button onClick={() => onNavigate('events')} className="text-xs text-[#E1306C] font-semibold">
+              <h3 className="font-bold">Happening Soon</h3>
+              <button onClick={() => onNavigate('events')} className="text-xs text-primary font-medium">
                 See All
               </button>
             </div>
@@ -218,7 +229,7 @@ export function DiscoverTab({
         <>
           <Separator />
           <div className="space-y-3">
-            <h3 className="font-semibold">People You May Know</h3>
+            <h3 className="font-bold">People You May Know</h3>
             <FriendSuggestions
               suggestions={suggestions}
               onAddFriend={onAddFriend}
@@ -249,10 +260,11 @@ function QuickAction({
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`bg-gradient-to-br ${color} rounded-2xl p-4 border ${borderColor} text-left backdrop-blur-xl`}
+      aria-label={`${label}: ${sublabel}`}
+      className={`bg-gradient-to-br ${color} rounded-2xl p-4 border ${borderColor} text-left transition-colors hover:border-primary/35`}
     >
       <div className="text-foreground mb-2">{icon}</div>
-      <p className="font-semibold text-sm">{label}</p>
+      <p className="font-medium text-sm">{label}</p>
       <p className="text-xs text-muted-foreground">{sublabel}</p>
     </motion.button>
   )

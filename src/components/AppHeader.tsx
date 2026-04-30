@@ -1,15 +1,20 @@
 import { MapPin, Clock, MagnifyingGlass } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useCurrentTime } from '@/hooks/use-current-time'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ALL_US_MARKETS_KEY, type UsMarket } from '@/lib/us-markets'
 
 interface AppHeaderProps {
   locationName: string
   isTracking: boolean
   hasRealtimeLocation: boolean
   locationPermissionDenied: boolean
-  currentTime: Date
   queuedPulseCount?: number
   onSearchClick?: () => void
+  selectedMarketKey?: string
+  markets?: UsMarket[]
+  onMarketChange?: (key: string) => void
 }
 
 export function AppHeader({
@@ -17,40 +22,63 @@ export function AppHeader({
   isTracking,
   hasRealtimeLocation,
   locationPermissionDenied,
-  currentTime,
   queuedPulseCount = 0,
   onSearchClick,
+  selectedMarketKey,
+  markets = [],
+  onMarketChange,
 }: AppHeaderProps) {
+  const currentTime = useCurrentTime()
+
   return (
-    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
+    <div className="sticky top-0 z-40 border-b border-border bg-background/82 backdrop-blur-xl">
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Pulse
               </span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Where the energy is — right now
+            <p className="text-sm text-foreground/80 mt-1">
+              Pick a spot with fresh crowd, line, and vibe intel.
             </p>
           </div>
           {onSearchClick && (
             <button
               onClick={onSearchClick}
-              className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
+              className="min-h-11 min-w-11 p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary active:scale-[0.98] touch-manipulation transition-colors"
               aria-label="Search venues and cities"
             >
               <MagnifyingGlass size={22} weight="bold" className="text-muted-foreground" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-mono">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {onMarketChange && selectedMarketKey && markets.length > 0 && (
+            <Select value={selectedMarketKey} onValueChange={onMarketChange}>
+              <SelectTrigger
+                size="sm"
+                className="h-8 w-[min(100%,13.5rem)] rounded-full border-border bg-card/70 px-2.5 text-xs"
+                aria-label="Select U.S. market"
+              >
+                <SelectValue placeholder="Choose city" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                <SelectItem value={ALL_US_MARKETS_KEY}>United States</SelectItem>
+                {markets.map((market) => (
+                  <SelectItem key={market.key} value={market.key}>
+                    {market.name} ({market.venueCount})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {locationName && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1">
               <MapPin size={14} weight="fill" className={cn(
                 "transition-colors",
-                isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
+                isTracking ? "text-accent motion-safe:animate-pulse" : "text-muted-foreground"
               )} />
               <span>{locationName}</span>
               {hasRealtimeLocation && (
@@ -73,18 +101,18 @@ export function AppHeader({
               <span>Enable Location</span>
             </button>
           )}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1">
             <Clock size={14} weight="fill" className="text-accent" />
-            <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           {queuedPulseCount > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/15 text-accent">
-              <span className="text-[10px] uppercase font-bold">Queued</span>
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/15 px-2.5 py-1 text-accent" aria-live="polite">
+              <span className="text-[10px] uppercase font-bold tracking-wide">Queued</span>
               <span>{queuedPulseCount}</span>
             </div>
           )}
         </div>
       </div>
-    </header>
+    </div>
   )
 }

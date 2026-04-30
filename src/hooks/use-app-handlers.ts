@@ -1,5 +1,5 @@
+import { useCallback, useMemo } from 'react'
 import { queryClient } from '@/lib/query-client'
-import { useNavigate } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
@@ -17,64 +17,42 @@ import { updateHashtagUsage } from '@/lib/seeded-hashtags'
 import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 
 import { postEventToApi } from '@/lib/server-api'
-import { uploadPulseToSupabase } from '@/lib/supabase-api'
+import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supabase-api'
+import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
-import { track } from '@/lib/observability/analytics'
-import { USE_SUPABASE_BACKEND, ReactionData } from '@/lib/data'
-import { AuthRequiredError } from '@/lib/auth/require-auth'
-import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
 import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import type { TabId } from '@/components/BottomNav'
-
-const TAB_TO_PATH: Record<TabId, string> = {
-  trending: '/',
-  discover: '/discover',
-  map: '/map',
-  notifications: '/notifications',
-  profile: '/profile',
-  video: '/video',
-}
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
 export function useAppHandlers() {
-  const navigate = useNavigate()
   const state = useAppState()
+  const { updateProfile } = useSupabaseAuth()
   const {
-    activeTab: _activeTab,
     venues,
     pulses,
     currentUser,
-    setActiveTab: _setActiveTab,
-    setSelectedVenue: _setSelectedVenue,
+    setActiveTab,
+    setSelectedVenue,
     setPulses,
     setVenues,
-    setCurrentUser,
     setNotifications,
     setHashtags,
     setStories,
     setEvents,
-    setCrews: _setCrews,
     setCrewCheckIns,
-    setPlaylists: _setPlaylists,
     setPromotions,
     setContentReports,
     venueForPulse,
     setVenueForPulse,
-    createDialogOpen: _createDialogOpen,
     setCreateDialogOpen,
     notificationSettings,
     crewCheckIns,
     crews,
-    setQueuedPulseCount: _setQueuedPulseCount,
-    setSubPage: _setSubPage,
-    setIntegrationVenue: _setIntegrationVenue,
-    integrationsEnabled: _integrationsEnabled,
-    socialDashboardEnabled: _socialDashboardEnabled,
-    setShowAdminDashboard: _setShowAdminDashboard,
   } = state
 
-  const handleCreatePulse = (venueId: string) => {
+  const handleCreatePulse = useCallback((venueId: string) => {
     if (!venues || !currentUser || !pulses) return
     const venue = venues.find(v => v.id === venueId)
     if (!venue) return
@@ -87,9 +65,9 @@ export function useAppHandlers() {
     }
     setVenueForPulse(venue)
     setCreateDialogOpen(true)
-  }
+  }, [currentUser, pulses, setCreateDialogOpen, setVenueForPulse, venues])
 
-  const handleSubmitPulse = async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
+  const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
     if (!venueForPulse || !currentUser || !venues) return
 
     const recentActions = (pulses || [])
@@ -152,14 +130,20 @@ export function useAppHandlers() {
       return currentVenues.map(v => v.id === venueForPulse.id ? updateVenueWithCheckIn(v, newPulse) : v)
     })
 
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [], createdAt: new Date().toISOString(), venueCheckInHistory: { [venueForPulse.id]: 1 }, postStreak: 1, lastPostDate: today }
-      let newStreak = user.postStreak || 0
-      if (user.lastPostDate !== today) {
-        if (user.lastPostDate) { const diff = Math.ceil(Math.abs(new Date(today).getTime() - new Date(user.lastPostDate).getTime()) / (1000 * 60 * 60 * 24)); newStreak = diff === 1 ? newStreak + 1 : 1 } else newStreak = 1
+    const history = currentUser.venueCheckInHistory || {}
+    let newStreak = currentUser.postStreak || 0
+    if (currentUser.lastPostDate !== today) {
+      if (currentUser.lastPostDate) {
+        const diff = Math.ceil(Math.abs(new Date(today).getTime() - new Date(currentUser.lastPostDate).getTime()) / (1000 * 60 * 60 * 24))
+        newStreak = diff === 1 ? newStreak + 1 : 1
+      } else {
+        newStreak = 1
       }
-      const history = user.venueCheckInHistory || {}
-      return { ...user, venueCheckInHistory: { ...history, [venueForPulse.id]: (history[venueForPulse.id] || 0) + 1 }, postStreak: newStreak, lastPostDate: today }
+    }
+    void updateProfile({
+      venueCheckInHistory: { ...history, [venueForPulse.id]: (history[venueForPulse.id] || 0) + 1 },
+      postStreak: newStreak,
+      lastPostDate: today,
     })
 
     if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
@@ -206,119 +190,103 @@ export function useAppHandlers() {
     }
 
     setCreateDialogOpen(false)
-  }
+  }, [
+    crewCheckIns,
+    currentUser,
+    notificationSettings?.friendPulses,
+    pulses,
+    setCreateDialogOpen,
+    setHashtags,
+    setNotifications,
+    setPulses,
+    setStories,
+    setVenues,
+    updateProfile,
+    venueForPulse,
+    venues,
+  ])
 
-  const handleReaction = (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
+  const handleReaction = useCallback((pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
     if (!currentUser) return
     const rateCheck = checkUserRateLimit(currentUser.id, 'reaction')
     if (!rateCheck.allowed) return
     trackEvent({ type: 'pulse_reaction', timestamp: Date.now(), pulseId, reactionType: type })
     if (navigator.vibrate) navigator.vibrate([10])
-
-    // Optimistic UI — flip the reaction locally first so feedback is instant.
-    let wasReacted = false
     setPulses(current => {
       if (!current) return []
       const next = current.map(p => {
         if (p.id !== pulseId) return p
         const reactions = p.reactions[type]
-        wasReacted = reactions.includes(currentUser.id)
-        return {
-          ...p,
-          reactions: {
-            ...p.reactions,
-            [type]: wasReacted
-              ? reactions.filter(id => id !== currentUser.id)
-              : [...reactions, currentUser.id],
-          },
-        }
+        const hasReacted = reactions.includes(currentUser.id)
+        return { ...p, reactions: { ...p.reactions, [type]: hasReacted ? reactions.filter(id => id !== currentUser.id) : [...reactions, currentUser.id] } }
       })
       queryClient.setQueryData(['pulses'], next)
       return next
     })
 
-    if (!USE_SUPABASE_BACKEND) return
-
-    // Persist through the data layer. On failure, roll back the optimistic
-    // update and surface an auth-aware toast.
-    ReactionData.toggleReaction(pulseId, type).catch((error: unknown) => {
-      setPulses(current => {
-        if (!current) return []
-        return current.map(p => {
-          if (p.id !== pulseId) return p
-          const reactions = p.reactions[type]
-          return {
-            ...p,
-            reactions: {
-              ...p.reactions,
-              [type]: wasReacted
-                ? [...reactions, currentUser.id]
-                : reactions.filter(id => id !== currentUser.id),
-            },
-          }
+    if (hasSupabaseConfig) {
+      void togglePulseReactionInSupabase(pulseId, type)
+        .then(reactions => {
+          if (!reactions) return
+          setPulses(current => {
+            if (!current) return []
+            const next = current.map(pulse => pulse.id === pulseId ? { ...pulse, reactions } : pulse)
+            queryClient.setQueryData(['pulses'], next)
+            return next
+          })
         })
-      })
-      if (error instanceof AuthRequiredError) {
-        toast.error('Sign in to react', { description: error.message })
-      } else if (error instanceof RlsDeniedError) {
-        toast.error('Reaction blocked', { description: error.message })
-      } else {
-        console.warn('[pulse] toggleReaction failed', error)
-      }
-    })
-  }
-
-  const handleNotificationClick = (notification: GroupedNotification) => {
-    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) {
-      navigate(`/venue/${notification.venue.id}`)
-      return
+        .catch(() => {
+          toast.error('Could not sync reaction', { description: 'Your reaction is saved locally for now.' })
+        })
     }
-    if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) {
-      navigate(`/venue/${notification.venue.id}`)
-      return
-    }
-    navigate('/')
-  }
+  }, [currentUser, setPulses])
 
-  const handleAddFriend = (userId: string) => {
+  const handleNotificationClick = useCallback((notification: GroupedNotification) => {
+    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) setSelectedVenue(notification.venue)
+    else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) setSelectedVenue(notification.venue)
+    setActiveTab('trending')
+  }, [setActiveTab, setSelectedVenue])
+
+  const handleAddFriend = useCallback((userId: string) => {
     if (!currentUser) return
-    track('friend_added', { friendUserId: userId, method: 'suggestion' })
-    setCurrentUser(prev => { if (!prev) return prev!; if (prev.friends.includes(userId)) return prev; return { ...prev, friends: [...prev.friends, userId] } })
+    trackEvent({ type: 'friend_add', timestamp: Date.now(), method: 'suggestion' })
+    if (currentUser.friends.includes(userId)) return
+    void updateProfile({ friends: [...currentUser.friends, userId] })
     toast.success('Friend added!')
     if (navigator.vibrate) navigator.vibrate([30])
-  }
+  }, [currentUser, updateProfile])
 
-  const handleStoryReact = (_storyId: string, emoji: string) => { toast.success(`Reacted ${emoji}`) }
+  const handleStoryReact = useCallback((_storyId: string, emoji: string) => { toast.success(`Reacted ${emoji}`) }, [])
 
-  const handleEventsUpdate = (updatedEvents: VenueEvent[]) => {
+  const handleEventsUpdate = useCallback((updatedEvents: VenueEvent[]) => {
     setEvents(updatedEvents)
     Promise.allSettled(updatedEvents.map(e => postEventToApi(e))).then(results => {
       const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value === false)).length
       if (failures > 0) toast.warning(`Saved locally. ${failures} event sync${failures > 1 ? 's' : ''} pending.`)
     })
-  }
+  }, [setEvents])
 
-  const handleTabChange = (tab: TabId) => {
-    navigate(TAB_TO_PATH[tab])
+  const handleTabChange = useCallback((tab: TabId) => {
+    setActiveTab(tab)
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile', video: 'Video' }
+    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
     announce(`Switched to ${labels[tab]} tab`)
-  }
+  }, [setActiveTab])
 
-  const handlePulseReport = (report: ContentReport) => {
+  const handlePulseReport = useCallback((report: ContentReport) => {
     setContentReports(current => [report, ...(current || [])])
     toast.success('Report submitted. Thanks for keeping Pulse safe.')
-  }
+  }, [setContentReports])
 
-  const handlePromotionImpression = (promotionId: string) => {
+  const handlePromotionImpression = useCallback((promotionId: string) => {
     setPromotions(current => { if (!current) return []; return current.map(promo => promo.id !== promotionId || !isPromotionActive(promo) ? promo : recordImpression(promo)) })
-  }
+  }, [setPromotions])
 
-  const handlePromotionClick = (promotionId: string) => {
+  const handlePromotionClick = useCallback((promotionId: string) => {
     setPromotions(current => { if (!current) return []; return current.map(promo => promo.id !== promotionId || !isPromotionActive(promo) ? promo : recordClick(promo)) })
-  }
+  }, [setPromotions])
 
-  const handleStartCrewCheckIn = (venueId: string) => {
+  const handleStartCrewCheckIn = useCallback((venueId: string) => {
     if (!currentUser) return
     const userCrews = getUserCrews(crews || [], currentUser.id)
     const targetCrew = userCrews.find(crew => crew.memberIds.length > 1)
@@ -328,31 +296,41 @@ export function useAppHandlers() {
     const newCheckIn = initiateCrewCheckIn(targetCrew, venueId, currentUser.id, 'buzzing')
     setCrewCheckIns(current => [newCheckIn, ...(current || [])])
     toast.success(`Crew check-in started for ${targetCrew.name}`)
-  }
+  }, [crewCheckIns, crews, currentUser, setCrewCheckIns])
 
-  const handleToggleFavorite = (venueId: string) => {
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [venueId], followedVenues: [], createdAt: new Date().toISOString() }
-      const favorites = user.favoriteVenues || []
-      if (favorites.includes(venueId)) { toast.success('Removed from favorites'); return { ...user, favoriteVenues: favorites.filter(id => id !== venueId) } }
-      if (favorites.length >= 4) { toast.error('Maximum 4 favorites', { description: 'Remove one to add another' }); return user }
+  const handleToggleFavorite = useCallback((venueId: string) => {
+    if (!currentUser) return
+    const favorites = currentUser.favoriteVenues || []
+    if (favorites.includes(venueId)) { 
+      toast.success('Removed from favorites')
+      updateProfile({ favoriteVenues: favorites.filter(id => id !== venueId) })
+    } else {
+      if (favorites.length >= 4) { 
+        toast.error('Maximum 4 favorites', { description: 'Remove one to add another' })
+        return 
+      }
       toast.success('Added to favorites')
-      return { ...user, favoriteVenues: [...favorites, venueId] }
-    })
-  }
+      updateProfile({ favoriteVenues: [...favorites, venueId] })
+    }
+  }, [currentUser, updateProfile])
 
-  const handleToggleFollow = (venueId: string) => {
-    setCurrentUser(user => {
-      if (!user) return { id: 'user-1', username: 'nightowl', profilePhoto: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nightowl', friends: [], favoriteVenues: [], followedVenues: [venueId], createdAt: new Date().toISOString() }
-      const followed = user.followedVenues || []
-      if (followed.includes(venueId)) { toast.success('Unfollowed venue'); return { ...user, followedVenues: followed.filter(id => id !== venueId) } }
-      if (followed.length >= 10) { toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' }); return user }
+  const handleToggleFollow = useCallback((venueId: string) => {
+    if (!currentUser) return
+    const followed = currentUser.followedVenues || []
+    if (followed.includes(venueId)) { 
+      toast.success('Unfollowed venue')
+      updateProfile({ followedVenues: followed.filter(id => id !== venueId) })
+    } else {
+      if (followed.length >= 10) { 
+        toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' })
+        return 
+      }
       toast.success('Following venue')
-      return { ...user, followedVenues: [...followed, venueId] }
-    })
-  }
+      updateProfile({ followedVenues: [...followed, venueId] })
+    }
+  }, [currentUser, updateProfile])
 
-  return {
+  return useMemo(() => ({
     handleCreatePulse,
     handleSubmitPulse,
     handleReaction,
@@ -367,5 +345,20 @@ export function useAppHandlers() {
     handleStartCrewCheckIn,
     handleToggleFavorite,
     handleToggleFollow,
-  }
+  }), [
+    handleAddFriend,
+    handleCreatePulse,
+    handleEventsUpdate,
+    handleNotificationClick,
+    handlePromotionClick,
+    handlePromotionImpression,
+    handlePulseReport,
+    handleReaction,
+    handleStartCrewCheckIn,
+    handleStoryReact,
+    handleSubmitPulse,
+    handleTabChange,
+    handleToggleFavorite,
+    handleToggleFollow,
+  ])
 }

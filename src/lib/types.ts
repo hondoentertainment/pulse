@@ -1,19 +1,5 @@
 export type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 
-/**
- * Structured venue metadata tokens (additive — all fields on Venue are
- * optional to keep every seeded / mock / legacy record valid).
- */
-export type VenueDressCode =
-  | 'casual'
-  | 'smart_casual'
-  | 'upscale'
-  | 'formal'
-  | 'costume_required'
-  | 'no_code'
-
-export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
-
 export type AccessibilityFeature =
   | 'wheelchair_accessible'
   | 'step_free_entry'
@@ -36,40 +22,6 @@ export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
   'signer_on_request',
   'braille_menu',
 ] as const
-
-export type WaitTimeConfidence = 'low' | 'med' | 'high'
-
-export interface VenueWaitTime {
-  venueId: string
-  estimatedMinutes: number
-  confidence: WaitTimeConfidence
-  sampleSize: number
-  computedAt: string
-}
-
-/**
- * Weather payload returned by the /api/weather/current Edge Function and
- * consumed by `applyWeatherBoost` + `useWeather`. Kept in shared types so
- * both the client bundle and the Edge Function can reference it without
- * crossing tsconfig boundaries.
- */
-export type WeatherCondition =
-  | 'clear'
-  | 'cloudy'
-  | 'rain'
-  | 'snow'
-  | 'storm'
-  | 'fog'
-  | 'unknown'
-
-export interface WeatherPayload {
-  condition: WeatherCondition
-  tempC: number
-  precipitationPct: number
-  windKph: number
-  visibilityKm: number
-  observedAt: string
-}
 
 export interface User {
   id: string
@@ -141,18 +93,24 @@ export interface Venue {
       appleMapsUrl?: string
     }
   }
-  // Structured venue metadata (differentiator pack). All optional & additive.
-  dressCode?: VenueDressCode
-  coverChargeCents?: number
-  coverChargeNote?: string
+  liveSummary?: VenueLiveSummary
   accessibilityFeatures?: AccessibilityFeature[]
-  indoorOutdoor?: VenueIndoorOutdoor
-  /** Rough occupancy hint (used by the wait-time estimator). */
-  capacityHint?: number
-  /** Latest wait-time snapshot (hydrated at read time, not persisted on venues). */
-  waitTime?: VenueWaitTime
-  /** Transient scoring bonus applied by weather-aware ranking. */
-  contextualScore?: number
+}
+
+export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'
+
+export interface VenueLiveSummary {
+  reportCount: number
+  waitTime: number | null
+  coverCharge: number | null
+  coverChargeNote?: string
+  crowdLevel: number
+  dressCode: string | null
+  musicGenre: string | null
+  nowPlaying: { track: string; artist: string } | null
+  confidence: Record<string, 'low' | 'medium' | 'high'>
+  lastReportAt: string | null
+  updatedAt: string
 }
 
 export interface Pulse {

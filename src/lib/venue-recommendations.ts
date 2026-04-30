@@ -19,7 +19,7 @@ export interface Recommendation {
 }
 
 export interface RecommendationReason {
-  type: 'category_match' | 'time_appropriate' | 'friend_activity' | 'trending' | 'new_discovery' | 'nearby'
+  type: 'category_match' | 'time_appropriate' | 'friend_activity' | 'trending' | 'new_discovery' | 'nearby' | 'live_intel'
   label: string
 }
 
@@ -146,6 +146,29 @@ export function getRecommendations(
     if (venue.pulseScore >= 50) {
       score += (venue.pulseScore / 100) * 20
       reasons.push({ type: 'trending', label: 'Trending right now' })
+    }
+
+    // 4b. Real-time venue intelligence (0-22 points)
+    if (venue.liveSummary && venue.liveSummary.reportCount > 0) {
+      const live = venue.liveSummary
+      const highConfidenceSignals = Object.values(live.confidence).filter(level => level === 'high').length
+      score += Math.min(12, live.reportCount * 2) + highConfidenceSignals * 3
+
+      if (live.waitTime !== null && live.waitTime <= 5) {
+        score += 7
+        reasons.push({ type: 'live_intel', label: 'Walk right in' })
+      } else if (live.waitTime !== null && live.waitTime >= 25) {
+        score -= 8
+        reasons.push({ type: 'live_intel', label: 'Line risk reported' })
+      } else if (live.crowdLevel >= 70) {
+        score += 5
+        reasons.push({ type: 'live_intel', label: 'High-confidence crowd' })
+      } else if (live.musicGenre || live.nowPlaying) {
+        score += 4
+        reasons.push({ type: 'live_intel', label: 'Music confirmed' })
+      } else {
+        reasons.push({ type: 'live_intel', label: 'Fresh live intel' })
+      }
     }
 
     // 5. New discovery bonus (0-10 points) — venues user hasn't visited

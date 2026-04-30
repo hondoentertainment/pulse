@@ -41,9 +41,7 @@ describe('getTimeAwareCategoryBoost', () => {
   it('boosts nightlife venues at night', () => {
     const club = makeVenue({ category: 'Nightclub' })
     const cafe = makeVenue({ category: 'Cafe' })
-    // Use a date where getHours() returns 21 in local TZ
-    const night = new Date()
-    night.setHours(21, 0, 0, 0)
+    const night = new Date('2026-03-13T21:00:00.000-07:00')
 
     expect(getTimeAwareCategoryBoost(club, night)).toBeGreaterThan(getTimeAwareCategoryBoost(cafe, night))
   })
@@ -71,14 +69,14 @@ describe('buildVenueRenderPoints', () => {
 })
 
 describe('clusterVenueRenderPoints', () => {
-  it.skip('groups nearby points into a cluster when clustering is enabled (TODO: supercluster radius tuning)', () => {
+  it('groups nearby points into a cluster when clustering is enabled', () => {
     const points = [
       { venue: makeVenue({ id: 'a', pulseScore: 30, location: { lat: 37.7749, lng: -122.4194, address: '' } }), x: 100, y: 100 },
-      { venue: makeVenue({ id: 'b', pulseScore: 80, location: { lat: 37.7750, lng: -122.4195, address: '' } }), x: 112, y: 108 },
-      { venue: makeVenue({ id: 'c', pulseScore: 50, location: { lat: 38.9, lng: -121.0, address: '' } }), x: 300, y: 280 },
+      { venue: makeVenue({ id: 'b', pulseScore: 80, location: { lat: 37.775, lng: -122.4193, address: '' } }), x: 112, y: 108 },
+      { venue: makeVenue({ id: 'c', pulseScore: 50, location: { lat: 37.8044, lng: -122.2711, address: '' } }), x: 300, y: 280 },
     ]
 
-    const result = clusterVenueRenderPoints(points, 2.5, true)
+    const result = clusterVenueRenderPoints(points, 4, true)
 
     expect(result.clusters).toHaveLength(1)
     expect(result.clusters[0].venues).toHaveLength(2)

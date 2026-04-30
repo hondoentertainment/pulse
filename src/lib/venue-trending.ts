@@ -16,42 +16,72 @@ export interface TrendingSection {
   updatedAt: string
 }
 
+const ENERGY_VALUES = { dead: 0, chill: 25, buzzing: 50, electric: 100 } as const
+
+interface VenuePulseStats {
+  all: Pulse[]
+  recent: Pulse[]
+  previous: Pulse[]
+  uniqueUsers: Set<string>
+  recentUniqueUsers: Set<string>
+  velocity: number
+}
+
+function createEmptyStats(): VenuePulseStats {
+  return {
+    all: [],
+    recent: [],
+    previous: [],
+    uniqueUsers: new Set(),
+    recentUniqueUsers: new Set(),
+    velocity: 0,
+  }
+}
+
+function getOrCreateStats(statsByVenue: Map<string, VenuePulseStats>, venueId: string): VenuePulseStats {
+  const existing = statsByVenue.get(venueId)
+  if (existing) return existing
+
+  const stats = createEmptyStats()
+  statsByVenue.set(venueId, stats)
+  return stats
+}
+
+function buildVenuePulseStats(pulses: Pulse[], now: Date): Map<string, VenuePulseStats> {
+  const fifteenMinutesAgoMs = now.getTime() - TRENDING_THRESHOLDS.TIME_WINDOW_MINUTES * 60 * 1000
+  const thirtyMinutesAgoMs = now.getTime() - 30 * 60 * 1000
+  const statsByVenue = new Map<string, VenuePulseStats>()
+
+  for (const pulse of pulses) {
+    const stats = getOrCreateStats(statsByVenue, pulse.venueId)
+    const createdAtMs = new Date(pulse.createdAt).getTime()
+
+    stats.all.push(pulse)
+    stats.uniqueUsers.add(pulse.userId)
+
+    if (createdAtMs > fifteenMinutesAgoMs) {
+      stats.recent.push(pulse)
+      stats.recentUniqueUsers.add(pulse.userId)
+      stats.velocity += ENERGY_VALUES[pulse.energyRating]
+    } else if (createdAtMs > thirtyMinutesAgoMs) {
+      stats.previous.push(pulse)
+      stats.velocity -= ENERGY_VALUES[pulse.energyRating]
+    }
+  }
+
+  return statsByVenue
+}
+
 export function shouldRemovePreTrending(venue: Venue, pulses: Pulse[]): boolean {
   if (!venue.preTrending) return false
   
-  const venuePulses = pulses.filter(p => p.venueId === venue.id)
-  const uniqueUsers = new Set(venuePulses.map(p => p.userId))
+  const stats = buildVenuePulseStats(pulses, new Date()).get(venue.id)
   
-  return uniqueUsers.size >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS
+  return (stats?.uniqueUsers.size ?? 0) >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS
 }
 
 export function calculateScoreVelocity(venue: Venue, pulses: Pulse[]): number {
-  const now = new Date()
-  const fifteenMinutesAgo = new Date(now.getTime() - TRENDING_THRESHOLDS.TIME_WINDOW_MINUTES * 60 * 1000)
-  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000)
-  
-  const recentPulses = pulses.filter(p => 
-    p.venueId === venue.id && 
-    new Date(p.createdAt) > fifteenMinutesAgo
-  )
-  
-  const previousPulses = pulses.filter(p => 
-    p.venueId === venue.id && 
-    new Date(p.createdAt) > thirtyMinutesAgo &&
-    new Date(p.createdAt) <= fifteenMinutesAgo
-  )
-  
-  const recentScore = recentPulses.reduce((sum, p) => {
-    const energyValues = { dead: 0, chill: 25, buzzing: 50, electric: 100 }
-    return sum + energyValues[p.energyRating]
-  }, 0)
-  
-  const previousScore = previousPulses.reduce((sum, p) => {
-    const energyValues = { dead: 0, chill: 25, buzzing: 50, electric: 100 }
-    return sum + energyValues[p.energyRating]
-  }, 0)
-  
-  return recentScore - previousScore
+  return buildVenuePulseStats(pulses, new Date()).get(venue.id)?.velocity ?? 0
 }
 
 export function getTrendingSections(
@@ -60,40 +90,43 @@ export function getTrendingSections(
 ): TrendingSection[] {
   const now = new Date()
   const updatedAt = now.toISOString()
-  const fifteenMinutesAgo = new Date(now.getTime() - TRENDING_THRESHOLDS.TIME_WINDOW_MINUTES * 60 * 1000)
+  const statsByVenue = buildVenuePulseStats(pulses, now)
+  const velocityByVenue = new Map<string, number>()
+  const getVelocity = (venue: Venue) => {
+    const cached = velocityByVenue.get(venue.id)
+    if (cached !== undefined) return cached
+
+    const velocity = statsByVenue.get(venue.id)?.velocity ?? 0
+    velocityByVenue.set(venue.id, velocity)
+    return velocity
+  }
   
   const trendingNow = venues.filter(venue => {
-    const venuePulses = pulses.filter(p => 
-      p.venueId === venue.id && 
-      new Date(p.createdAt) > fifteenMinutesAgo
-    )
-    const uniqueUsers = new Set(venuePulses.map(p => p.userId))
+    const stats = statsByVenue.get(venue.id)
     
     return (
       !venue.preTrending &&
-      uniqueUsers.size >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS &&
-      venuePulses.length >= TRENDING_THRESHOLDS.MIN_PULSES_15MIN &&
+      (stats?.recentUniqueUsers.size ?? 0) >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS &&
+      (stats?.recent.length ?? 0) >= TRENDING_THRESHOLDS.MIN_PULSES_15MIN &&
       venue.pulseScore >= 50
     )
   }).sort((a, b) => b.pulseScore - a.pulseScore)
   
   const justPopped = venues.filter(venue => {
-    const velocity = calculateScoreVelocity(venue, pulses)
+    const velocity = getVelocity(venue)
     return (
       !venue.preTrending &&
       velocity >= TRENDING_THRESHOLDS.RAPID_SCORE_INCREASE &&
       venue.pulseScore >= 40
     )
   }).sort((a, b) => {
-    const aVelocity = calculateScoreVelocity(a, pulses)
-    const bVelocity = calculateScoreVelocity(b, pulses)
-    return bVelocity - aVelocity
+    return getVelocity(b) - getVelocity(a)
   })
   
   const gainingEnergy = venues.filter(venue => {
     const isAlreadyTrending = trendingNow.includes(venue)
     const isJustPopped = justPopped.includes(venue)
-    const velocity = calculateScoreVelocity(venue, pulses)
+    const velocity = getVelocity(venue)
     
     return (
       !venue.preTrending &&
@@ -157,8 +190,7 @@ export function calculateVenueAnalytics(
   pulses: Pulse[],
   allHashtags?: { venueId: string; hashtags: string[]; verified: boolean }[]
 ): VenueAnalytics {
-  const venuePulses = pulses.filter(p => p.venueId === venue.id)
-  const uniqueUsers = new Set(venuePulses.map(p => p.userId))
+  const uniqueUsers = buildVenuePulseStats(pulses, new Date()).get(venue.id)?.uniqueUsers ?? new Set<string>()
   
   let preTrendingConversionRate: number | undefined
   let timeToFirstRealActivity: number | undefined
@@ -197,6 +229,56 @@ export function calculateVenueAnalytics(
     totalVerifiedCheckIns: uniqueUsers.size,
     lastAnalyzedAt: new Date().toISOString()
   }
+}
+
+export function calculateVenuesAnalytics(
+  venues: Venue[],
+  pulses: Pulse[],
+  allHashtags?: { venueId: string; hashtags: string[]; verified: boolean }[]
+): VenueAnalytics[] {
+  const statsByVenue = buildVenuePulseStats(pulses, new Date())
+  const hashtagsByVenue = new Map<string, { total: number; verified: number }>()
+
+  for (const item of allHashtags ?? []) {
+    const stats = hashtagsByVenue.get(item.venueId) ?? { total: 0, verified: 0 }
+    stats.total += item.hashtags.length
+    if (item.verified) stats.verified += item.hashtags.length
+    hashtagsByVenue.set(item.venueId, stats)
+  }
+
+  return venues.map((venue) => {
+    const uniqueUsers = statsByVenue.get(venue.id)?.uniqueUsers ?? new Set<string>()
+    const hashtagStats = hashtagsByVenue.get(venue.id)
+
+    let preTrendingConversionRate: number | undefined
+    let timeToFirstRealActivity: number | undefined
+
+    if (venue.seeded && venue.firstRealCheckInAt) {
+      const createdAt = new Date(venue.firstRealCheckInAt)
+      const firstCheckIn = new Date(venue.firstRealCheckInAt)
+      timeToFirstRealActivity = (firstCheckIn.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+
+      if (uniqueUsers.size >= TRENDING_THRESHOLDS.MIN_UNIQUE_USERS) {
+        preTrendingConversionRate = 1.0
+      } else {
+        const hoursSinceSeed = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+        if (hoursSinceSeed > TRENDING_THRESHOLDS.PRE_TRENDING_CONVERSION_HOURS) {
+          preTrendingConversionRate = uniqueUsers.size / TRENDING_THRESHOLDS.MIN_UNIQUE_USERS
+        }
+      }
+    }
+
+    return {
+      venueId: venue.id,
+      preTrendingConversionRate,
+      timeToFirstRealActivity,
+      seededHashtagConversionRate: hashtagStats && hashtagStats.total > 0
+        ? hashtagStats.verified / hashtagStats.total
+        : undefined,
+      totalVerifiedCheckIns: uniqueUsers.size,
+      lastAnalyzedAt: new Date().toISOString(),
+    }
+  })
 }
 
 export function getPreTrendingLabel(venue: Venue): string {

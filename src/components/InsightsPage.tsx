@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
 import { User, Pulse, Venue, EnergyRating } from '@/lib/types'
 import { generateWeeklyInsights, determineVibeType, generateActivityHeatmap, getInsightHighlights } from '@/lib/personal-insights'
+import { generateNightRecap } from '@/lib/retention-engine'
 import { CaretLeft, ChartBar, Lightning, MapPin, Fire, Clock } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { NightRecapCard } from '@/components/NightRecapCard'
+import { ALL_USERS } from '@/hooks/use-app-state'
 
 interface InsightsPageProps {
   currentUser: User
@@ -31,6 +34,29 @@ export function InsightsPage({ currentUser, pulses, venues, onBack }: InsightsPa
   const vibeResult = useMemo(() => determineVibeType(userPulses, currentUser), [userPulses, currentUser])
   const heatmap = useMemo(() => generateActivityHeatmap(currentUser.id, pulses), [currentUser.id, pulses])
   const highlights = useMemo(() => getInsightHighlights(insights), [insights])
+  const latestPulseDate = useMemo(
+    () => [...userPulses]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      ?.createdAt?.split('T')[0] ?? null,
+    [userPulses]
+  )
+  const latestRecap = useMemo(() => {
+    if (!latestPulseDate) return null
+    return generateNightRecap(
+      currentUser.id,
+      pulses,
+      venues,
+      ALL_USERS.filter(user => currentUser.friends.includes(user.id)),
+      latestPulseDate
+    )
+  }, [currentUser.friends, currentUser.id, latestPulseDate, pulses, venues])
+  const memoryMoments = useMemo(() => {
+    const visitedVenueIds = new Set(userPulses.map(pulse => pulse.venueId))
+    return venues
+      .filter(venue => visitedVenueIds.has(venue.id) && venue.pulseScore >= 70)
+      .sort((a, b) => b.pulseScore - a.pulseScore)
+      .slice(0, 3)
+  }, [userPulses, venues])
 
   const energyEntries = Object.entries(insights.energyContributed) as [EnergyRating, number][]
   const totalEnergy = energyEntries.reduce((sum, [, count]) => sum + count, 0)
@@ -66,6 +92,29 @@ export function InsightsPage({ currentUser, pulses, venues, onBack }: InsightsPa
           <StatCard icon={<Fire size={20} weight="fill" />} label="High Energy" value={totalEnergy > 0 ? `${Math.round((insights.energyContributed.electric + insights.energyContributed.buzzing) / totalEnergy * 100)}%` : '0%'} />
           <StatCard icon={<Clock size={20} weight="fill" />} label="Miles Explored" value={insights.milesExplored.toFixed(1)} />
         </div>
+
+        {latestRecap && (
+          <div className="space-y-3">
+            <h3 className="font-bold">Night Recap</h3>
+            <NightRecapCard recap={latestRecap} />
+          </div>
+        )}
+
+        {memoryMoments.length > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border space-y-3">
+            <h3 className="font-bold">You Were Early</h3>
+            <div className="space-y-2">
+              {memoryMoments.map(venue => (
+                <div key={venue.id} className="rounded-lg bg-background px-3 py-2">
+                  <p className="text-sm font-medium">{venue.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    You pulsed here before it climbed to {venue.pulseScore}. Nice call.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-card rounded-xl p-4 border border-border space-y-3">
           <h3 className="font-bold">Energy Breakdown</h3>

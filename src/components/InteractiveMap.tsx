@@ -1,52 +1,32 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { Venue, User, Pulse } from '@/lib/types'
+import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
-import { MapFilters, MapFiltersState } from '@/components/MapFilters'
-import { venuePassesAccessibilityFilter } from '@/components/filters/AccessibilityFilter'
+import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
-import { MapboxBaseLayer, type MapboxBaseLayerHandle } from '@/components/MapboxBaseLayer'
-import FriendMapDots from '@/components/FriendMapDots'
 import {
-  MapPin, NavigationArrow, Plus, Minus,
+  MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, UsersThree, Fire
+  Users, Fire, Lightning
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
-import { calculatePresence, type PresenceContext } from '@/lib/presence-engine'
-import { trackEvent } from '@/lib/analytics'
 import {
   buildVenueRenderPoints,
   clampCenter,
   clampZoom,
   clusterVenueRenderPoints,
+  getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
   type VenueRenderPoint
 } from '@/lib/interactive-map'
-
-/**
- * Session-storage key for the friend-on-map layer toggle. Persisted per tab
- * so users who opt-in on one device/tab don't leak the preference across
- * sessions — aligns with the privacy-first stance of `presence-engine.ts`.
- */
-export const FRIEND_LAYER_STORAGE_KEY = 'pulse.map.friendLayer'
-
-export interface FriendPresenceInput {
-  /** The signed-in user. If null/undefined the layer fully hides. */
-  currentUser?: User | null
-  /** All known users (friends + familiar faces). Empty = nothing to show. */
-  allUsers?: User[]
-  /** Pulses used by the engine to infer co-presence / familiar faces. */
-  allPulses?: Pulse[]
-  /** Latest known locations keyed by userId. The engine applies a 5-min freshness rule. */
-  userLocations?: Record<string, { lat: number; lng: number; lastUpdate: string }>
-}
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -55,58 +35,10 @@ interface InteractiveMapProps {
   isTracking?: boolean
   locationAccuracy?: number
   locationHeading?: number | null
-  /**
-   * Presence context for the optional "Friends on map" layer. The layer is
-   * default OFF and even when ON every position is routed through
-   * `calculatePresence` so jitter, the 2+ familiar-face threshold, and
-   * per-venue suppression apply. Never bypass.
-   */
-  friendPresence?: FriendPresenceInput
 }
 
 const ZOOM_STEP = 1.35
 const MAP_SCALE = 500000
-
-/**
- * Read the friend-layer preference from sessionStorage. Defaults to `false`.
- * Guarded for SSR / unavailable storage (private mode, quota errors).
- */
-function readFriendLayerPref(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return window.sessionStorage.getItem(FRIEND_LAYER_STORAGE_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-function writeFriendLayerPref(enabled: boolean): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.sessionStorage.setItem(FRIEND_LAYER_STORAGE_KEY, enabled ? 'true' : 'false')
-  } catch {
-    /* storage unavailable — the toggle still works for this session. */
-  }
-}
-
-/**
- * Deterministic per-venue jitter so repeated renders don't jump. Offsets
- * are ~10–30m at mid latitudes. We jitter position rather than counts to
- * complement the engine's count jitter (`applyJitter`) — no user's real
- * location is ever used for the map dot.
- */
-function jitterForVenue(venueId: string): { dLat: number; dLng: number } {
-  let hash = 0
-  for (let i = 0; i < venueId.length; i++) {
-    hash = ((hash << 5) - hash + venueId.charCodeAt(i)) | 0
-  }
-  // Two independent offsets from the hash bits.
-  const a = ((hash & 0xffff) / 0xffff) * 2 - 1
-  const b = (((hash >> 16) & 0xffff) / 0xffff) * 2 - 1
-  // ~0.0001° ≈ 11 metres at the equator — enough to be visibly non-exact
-  // while keeping the dot within the venue's footprint.
-  return { dLat: a * 0.00015, dLng: b * 0.00015 }
-}
 
 export function InteractiveMap({
   venues,
@@ -114,8 +46,7 @@ export function InteractiveMap({
   onVenueClick,
   isTracking = false,
   locationAccuracy,
-  locationHeading,
-  friendPresence
+  locationHeading
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -133,26 +64,21 @@ export function InteractiveMap({
     maxDistance: Infinity
   })
   const [nearMeActive, setNearMeActive] = useState(false)
-  // Friends-on-map layer is default OFF and persisted in sessionStorage so
-  // the preference resets when the tab is closed — deliberate privacy default.
-  const [showFriendLayer, setShowFriendLayer] = useState<boolean>(() => readFriendLayerPref())
-
+  const [showLegend, setShowLegend] = useState(false)
+  const [showFullHeatmap, setShowFullHeatmap] = useState(false)
+  const [comparedVenueIds, setComparedVenueIds] = useState<string[]>([])
   const [showOnboardingTips, setShowOnboardingTips] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null)
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
-  const [accessibilityMode, _setAccessibilityMode] = useState(false)
+  const [accessibilityMode, setAccessibilityMode] = useState(false)
   const [isCameraMoving, setIsCameraMoving] = useState(false)
-  const hasMapboxToken = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
-  // When Mapbox is available, it drives all interactions (Uber-style)
-  const mapboxDrives = hasMapboxToken
-  const mapboxRef = useRef<MapboxBaseLayerHandle>(null)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
-  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const cameraSettleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const venueSelectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hoverClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loadingTimeoutRef = useRef<number | null>(null)
+  const cameraSettleTimeoutRef = useRef<number | null>(null)
+  const venueSelectTimeoutRef = useRef<number | null>(null)
+  const hoverClearTimeoutRef = useRef<number | null>(null)
   const inertialFrameRef = useRef<number | null>(null)
   const panVelocityRef = useRef({ lat: 0, lng: 0 })
   const lastPanFrameRef = useRef<{ x: number; y: number; ts: number } | null>(null)
@@ -182,7 +108,7 @@ export function InteractiveMap({
 
   useEffect(() => {
     // If no location after 3s, default to first venue or SF
-    loadingTimeoutRef.current = setTimeout(() => {
+    loadingTimeoutRef.current = window.setTimeout(() => {
       if (!center && !userLocation && venues.length > 0) {
         setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
         setFollowUser(false)
@@ -219,7 +145,7 @@ export function InteractiveMap({
   useEffect(() => {
     setIsCameraMoving(true)
     if (cameraSettleTimeoutRef.current) clearTimeout(cameraSettleTimeoutRef.current)
-    cameraSettleTimeoutRef.current = setTimeout(() => {
+    cameraSettleTimeoutRef.current = window.setTimeout(() => {
       setIsCameraMoving(false)
     }, isDragging ? 260 : 140)
   }, [center, zoom, isDragging])
@@ -282,26 +208,29 @@ export function InteractiveMap({
     }
   }
 
-  // Instagram-style gradient palette
   const getEnergyColor = (score: number) => {
-    if (score >= 80) return '#E1306C' // IG pink
-    if (score >= 60) return '#F77737' // IG orange
-    if (score >= 30) return '#FCAF45' // IG gold
-    return '#833AB4'                  // IG purple (muted)
+    if (score >= 80) return 'oklch(0.65 0.28 320)'
+    if (score >= 60) return 'oklch(0.65 0.25 25)'
+    if (score >= 30) return 'oklch(0.65 0.18 240)'
+    return 'oklch(0.40 0.05 260)'
   }
 
-  const getEnergyGradientColors = (score: number): [string, string] => {
-    if (score >= 80) return ['#833AB4', '#E1306C'] // purple → pink
-    if (score >= 60) return ['#E1306C', '#F77737'] // pink → orange
-    if (score >= 30) return ['#F77737', '#FCAF45'] // orange → gold
-    return ['#405DE6', '#833AB4']                  // blue → purple
+  const getLiveIntelLabel = (venue: Venue) => {
+    const live = venue.liveSummary
+    if (!live || live.reportCount === 0) return null
+    if (live.waitTime !== null && live.waitTime <= 5) return 'Walk right in'
+    if (live.waitTime !== null && live.waitTime >= 25) return 'Line risk'
+    if (live.crowdLevel >= 75) return 'Packed now'
+    if (live.nowPlaying) return 'Track confirmed'
+    if (live.musicGenre) return `${live.musicGenre} now`
+    return `${live.reportCount} live report${live.reportCount === 1 ? '' : 's'}`
   }
 
   const filteredVenues = useMemo(() => {
     const filtered = venues.filter((venue) => {
       if (filters.energyLevels.length > 0) {
-        const energyLevel = getEnergyLevelFromScore(venue.pulseScore)
-        if (!filters.energyLevels.includes(energyLevel as any)) {
+        const energyLevel = getEnergyLevelFromScore(venue.pulseScore) as Exclude<EnergyFilter, 'all'>
+        if (!filters.energyLevels.includes(energyLevel)) {
           return false
         }
       }
@@ -336,18 +265,22 @@ export function InteractiveMap({
         }
       }
 
-      // Accessibility filter: venue must advertise every selected feature.
-      if (filters.accessibilityFeatures && filters.accessibilityFeatures.length > 0) {
-        if (!venuePassesAccessibilityFilter(venue.accessibilityFeatures, filters.accessibilityFeatures)) {
-          return false
-        }
-      }
-
       return true
     })
 
+    // Progressive disclosure: show top 5 surging venues by default
+    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
+      // Only nearby venues (within 50mi of center or user) sorted by pulseScore
+      const nearby = userLocation
+        ? filtered
+          .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
+          .sort((a, b) => b.pulseScore - a.pulseScore)
+        : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
+      return nearby.slice(0, 5)
+    }
+
     return filtered
-  }, [venues, filters, userLocation, nearMeActive])
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap])
 
   const availableCategories = Array.from(
     new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
@@ -482,18 +415,26 @@ export function InteractiveMap({
   ) => {
     ctx.clearRect(0, 0, dims.width, dims.height)
 
-    // When Mapbox tiles are active the canvas is a transparent overlay;
-    // otherwise draw the Instagram-style dark gradient background.
-    if (!hasMapboxToken) {
-      const bgGradient = ctx.createRadialGradient(
-        dims.width / 2, dims.height / 2, 0,
-        dims.width / 2, dims.height / 2, Math.max(dims.width, dims.height) * 0.75
-      )
-      bgGradient.addColorStop(0, '#1a1a2e')
-      bgGradient.addColorStop(0.6, '#16132b')
-      bgGradient.addColorStop(1, '#0d0d1a')
-      ctx.fillStyle = bgGradient
-      ctx.fillRect(0, 0, dims.width, dims.height)
+    // Clean dark background with subtle vignette
+    const bgGradient = ctx.createRadialGradient(
+      dims.width / 2, dims.height / 2, 0,
+      dims.width / 2, dims.height / 2, Math.max(dims.width, dims.height) * 0.7
+    )
+    bgGradient.addColorStop(0, 'oklch(0.18 0.01 260)')
+    bgGradient.addColorStop(1, 'oklch(0.12 0 0)')
+    ctx.fillStyle = bgGradient
+    ctx.fillRect(0, 0, dims.width, dims.height)
+
+    // Subtle dot grid pattern instead of lines
+    ctx.fillStyle = 'oklch(0.25 0 0 / 0.3)'
+    const dotSpacing = 40 * mapZoom
+    const dotSize = 1.5
+    for (let x = dotSpacing; x < dims.width; x += dotSpacing) {
+      for (let y = dotSpacing; y < dims.height; y += dotSpacing) {
+        ctx.beginPath()
+        ctx.arc(x, y, dotSize, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
 
     if (!offscreenCanvasRef.current) {
@@ -523,19 +464,18 @@ export function InteractiveMap({
 
       const gradient = heatmapCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius)
 
-      // Instagram gradient heatmap glows
       if (venue.pulseScore >= 80) {
-        gradient.addColorStop(0, `rgba(225, 48, 108, ${intensity * 0.9})`) // IG pink
-        gradient.addColorStop(0.5, `rgba(131, 58, 180, ${intensity * 0.5})`) // IG purple
+        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 1.0})`) // Neon Fuchsia - boosted
+        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.6})`)
       } else if (venue.pulseScore >= 60) {
-        gradient.addColorStop(0, `rgba(247, 119, 55, ${intensity * 0.85})`) // IG orange
-        gradient.addColorStop(0.5, `rgba(225, 48, 108, ${intensity * 0.4})`) // IG pink
+        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.9})`) // Neon Rose - boosted
+        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.5})`)
       } else if (venue.pulseScore >= 30) {
-        gradient.addColorStop(0, `rgba(252, 175, 69, ${intensity * 0.7})`) // IG gold
-        gradient.addColorStop(0.5, `rgba(247, 119, 55, ${intensity * 0.35})`) // IG orange
+        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.8})`) // Neon Sky - boosted
+        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.4})`)
       } else {
-        gradient.addColorStop(0, `rgba(131, 58, 180, ${intensity * 0.5})`) // IG purple
-        gradient.addColorStop(0.5, `rgba(64, 93, 230, ${intensity * 0.25})`) // IG blue
+        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.6})`) // Indigo - boosted
+        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.3})`)
       }
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
@@ -589,24 +529,14 @@ export function InteractiveMap({
   const handleZoomIn = () => {
     triggerHapticFeedback('light')
     setExpandedClusterId(null)
-    if (mapboxDrives && mapboxRef.current && center) {
-      const newZoom = clampZoom(zoom * ZOOM_STEP)
-      mapboxRef.current.easeTo(center, newZoom, 300)
-    } else {
-      setZoom((z) => clampZoom(z * ZOOM_STEP))
-    }
+    setZoom((z) => clampZoom(z * ZOOM_STEP))
     setFollowUser(false)
   }
 
   const handleZoomOut = () => {
     triggerHapticFeedback('light')
     setExpandedClusterId(null)
-    if (mapboxDrives && mapboxRef.current && center) {
-      const newZoom = clampZoom(zoom / ZOOM_STEP)
-      mapboxRef.current.easeTo(center, newZoom, 300)
-    } else {
-      setZoom((z) => clampZoom(z / ZOOM_STEP))
-    }
+    setZoom((z) => clampZoom(z / ZOOM_STEP))
     setFollowUser(false)
   }
 
@@ -614,21 +544,16 @@ export function InteractiveMap({
     if (userLocation) {
       triggerHapticFeedback('medium')
       setExpandedClusterId(null)
-      if (mapboxDrives && mapboxRef.current) {
-        // Uber-style smooth flyTo with pitch reset
-        mapboxRef.current.flyTo(userLocation, 1, {
-          pitch: 45,
-          bearing: 0,
-          duration: 1500,
-        })
-      } else {
-        setCenter(userLocation)
-        setZoom(1)
-      }
+      setCenter(userLocation)
+      setZoom(1)
       setFollowUser(true)
     }
   }
 
+  const handleToggleFullHeatmap = () => {
+    triggerHapticFeedback('light')
+    setShowFullHeatmap(prev => !prev)
+  }
 
   const handleWheelZoom = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -774,22 +699,13 @@ export function InteractiveMap({
     if (hoverClearTimeoutRef.current) clearTimeout(hoverClearTimeoutRef.current)
     triggerHapticFeedback('medium')
     setExpandedClusterId(null)
-
-    if (mapboxDrives && mapboxRef.current) {
-      // Uber-style smooth flyTo with zoom-in and slight pitch
-      const targetZoom = clampZoom(Math.max(2.5, zoom * 1.3))
-      mapboxRef.current.flyTo(
-        { lat: venue.location.lat, lng: venue.location.lng },
-        targetZoom,
-        { pitch: 50, duration: 1200 }
-      )
-    } else if (center) {
+    if (center) {
       setCenter({
         lat: (center.lat + venue.location.lat) / 2,
         lng: (center.lng + venue.location.lng) / 2
       })
       setZoom((z) => clampZoom(Math.max(0.9, Math.min(1.4, z))))
-      venueSelectTimeoutRef.current = setTimeout(() => {
+      venueSelectTimeoutRef.current = window.setTimeout(() => {
         setCenter({ lat: venue.location.lat, lng: venue.location.lng })
         setZoom((z) => clampZoom(Math.max(2.1, z * 1.1)))
       }, 170)
@@ -798,9 +714,9 @@ export function InteractiveMap({
       setZoom(2.1)
     }
     setFollowUser(false)
-    setTimeout(() => {
+    window.setTimeout(() => {
       setHoveredVenue(venue)
-      hoverClearTimeoutRef.current = setTimeout(() => {
+      hoverClearTimeoutRef.current = window.setTimeout(() => {
         setHoveredVenue(null)
       }, 2500)
     }, 220)
@@ -811,6 +727,15 @@ export function InteractiveMap({
     return latLngToPixel(venue.location.lat, venue.location.lng, center, zoom, dimensions)
   }
 
+  const handleFitToVenues = () => {
+    const viewport = getFittedViewport(filteredVenues, dimensions)
+    if (!viewport) return
+    stopInertia()
+    triggerHapticFeedback('medium')
+    setCenter(viewport.center)
+    setZoom(viewport.zoom)
+    setFollowUser(false)
+  }
 
   const venueRenderPoints = useMemo<VenueRenderPoint[]>(() => {
     if (!center) return []
@@ -822,84 +747,6 @@ export function InteractiveMap({
       userLocation
     })
   }, [center, filteredVenues, zoom, dimensions, userLocation])
-
-  // ── Friend presence layer ────────────────────────────────────
-  // Route every venue through `calculatePresence` so the engine's privacy
-  // rules (5-min freshness, 2+ familiar-face threshold, per-venue
-  // suppression, visibility settings) apply. The layer renders ONE dot per
-  // non-suppressed venue — no raw user positions are ever exposed.
-  //
-  // Conditions that fully hide the layer:
-  //   1. Toggle is OFF
-  //   2. No signed-in user (currentUser is null/undefined)
-  //   3. Engine returns `isSuppressed` for every venue (< 2 familiar faces)
-  const friendLayerDots = useMemo(() => {
-    if (!showFriendLayer) return []
-    const ctx = friendPresence
-    if (!ctx?.currentUser) return []
-    const allUsers = ctx.allUsers ?? []
-    const allPulses = ctx.allPulses ?? []
-    const userLocations = ctx.userLocations ?? {}
-
-    const dots: Array<{
-      id: string
-      username: string
-      avatar: string
-      lat: number
-      lng: number
-      venueId: string
-      venueName: string
-    }> = []
-
-    for (const venue of filteredVenues) {
-      const presenceCtx: PresenceContext = {
-        currentUser: ctx.currentUser,
-        allUsers,
-        allPulses,
-        venueLocation: { lat: venue.location.lat, lng: venue.location.lng },
-        userLocations
-      }
-      const presence = calculatePresence(venue.id, presenceCtx)
-      // The engine's own privacy gate. NEVER bypass.
-      if (presence.isSuppressed) continue
-
-      const { dLat, dLng } = jitterForVenue(venue.id)
-      // Use the first prioritised avatar as the cluster face; the engine
-      // already ordered friends-here > friends-nearby > familiar-faces.
-      const avatar = presence.prioritizedAvatars[0] ?? ''
-      dots.push({
-        id: `friend-cluster-${venue.id}`,
-        username: `${presence.friendsHereNowCount + presence.friendsNearbyCount + presence.familiarFacesCount} here`,
-        avatar,
-        lat: venue.location.lat + dLat,
-        lng: venue.location.lng + dLng,
-        venueId: venue.id,
-        venueName: venue.name
-      })
-    }
-    return dots
-  }, [showFriendLayer, friendPresence, filteredVenues])
-
-  const friendLayerLatLngToPixel = useMemo(() => {
-    return (lat: number, lng: number) => {
-      if (!center) return { x: 0, y: 0 }
-      return latLngToPixel(lat, lng, center, zoom, dimensions)
-    }
-  }, [center, zoom, dimensions])
-
-  const handleFriendLayerToggle = () => {
-    triggerHapticFeedback('light')
-    setShowFriendLayer((prev) => {
-      const next = !prev
-      writeFriendLayerPref(next)
-      trackEvent({
-        type: 'friend_presence_layer_toggled',
-        timestamp: Date.now(),
-        enabled: next
-      })
-      return next
-    })
-  }
 
   const shouldClusterMarkers = zoom < 1.05 && !isDragging
 
@@ -960,6 +807,8 @@ export function InteractiveMap({
     return ids
   }, [clusteredMapData.singles, isDragging, isCameraMoving, zoom, hoveredVenue, accessibilityMode])
 
+  const activeFilterCount = filters.energyLevels.length + filters.categories.length + (filters.maxDistance !== Infinity ? 1 : 0)
+
   const previewVenues = useMemo(() => {
     if (!center) return [] as VenueRenderPoint[]
     return getPreviewVenuePoints({
@@ -970,12 +819,52 @@ export function InteractiveMap({
     })
   }, [center, venueRenderPoints, locationHeading, userLocation])
 
-  // Compare mode removed — premature complexity for a discovery map
+  const comparedVenues = useMemo(() => {
+    const map = new Map(previewVenues.map((point) => [point.venue.id, point]))
+    return comparedVenueIds
+      .map((id) => map.get(id))
+      .filter((point): point is VenueRenderPoint => !!point)
+  }, [comparedVenueIds, previewVenues])
+
+  const bestNextVenue = previewVenues[0] ?? null
+
+  const mapModeLabel = nearMeActive
+    ? 'Near Me'
+    : activeFilterCount > 0
+      ? 'Filtered'
+      : showFullHeatmap
+        ? 'Full Map'
+        : 'Top Surges'
+  const mapSummary = activeFilterCount > 0
+    ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
+    : showFullHeatmap
+      ? `${filteredVenues.length} venues in view`
+      : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
+  const showCuratedToggle = !nearMeActive
+    && filters.energyLevels.length === 0
+    && filters.categories.length === 0
+    && filters.maxDistance === Infinity
+
+  useEffect(() => {
+    if (comparedVenueIds.length === 0) return
+    const validIds = new Set(previewVenues.map((point) => point.venue.id))
+    setComparedVenueIds((prev) => prev.filter((id) => validIds.has(id)))
+  }, [previewVenues, comparedVenueIds.length])
+
+  const toggleCompareVenue = (venueId: string) => {
+    triggerHapticFeedback('light')
+    setComparedVenueIds((prev) => {
+      if (prev.includes(venueId)) return prev.filter((id) => id !== venueId)
+      if (prev.length >= 3) return [...prev.slice(1), venueId]
+      return [...prev, venueId]
+    })
+  }
 
   const onboardingTips = [
-    'Pinch or scroll to zoom. Double-tap to zoom in quickly.',
-    'Tap a venue to see details. Swipe the cards below to explore.',
-    'Use filter pills to find bars, clubs, or trending spots nearby.',
+    'Pinch or scroll to zoom. Double tap to zoom quickly.',
+    'Tap clusters to expand nearby venues or zoom deeper.',
+    'Use the bottom cards to compare hotspots and jump fast.',
+    'Turn on A11y mode for larger markers and calmer motion.'
   ]
 
   const completeOnboarding = () => {
@@ -986,27 +875,16 @@ export function InteractiveMap({
     setTipIndex(0)
   }
 
+  const handleSmartRoute = () => {
+    if (!bestNextVenue) return
+    triggerHapticFeedback('medium')
+    handleVenueSelect(bestNextVenue.venue)
+  }
 
   if (!center) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center rounded-xl gap-5"
-        style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%)' }}
-      >
-        <div className="relative">
-          <div className="w-14 h-14 rounded-full animate-spin"
-            style={{
-              background: 'conic-gradient(from 0deg, transparent 0%, #833AB4 25%, #E1306C 50%, #F77737 75%, transparent 100%)',
-              padding: '2.5px'
-            }}
-          >
-            <div className="w-full h-full rounded-full bg-[#1a1a2e]" />
-          </div>
-          <MapPin size={20} weight="fill" className="absolute inset-0 m-auto text-[#E1306C]" />
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-semibold text-white">Finding your location</p>
-          <p className="text-xs text-white/50 mt-1">Discovering nearby venues...</p>
-        </div>
+      <div className="w-full h-full flex items-center justify-center bg-secondary rounded-xl">
+        <p className="text-muted-foreground">Loading map...</p>
       </div>
     )
   }
@@ -1017,140 +895,55 @@ export function InteractiveMap({
       className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      role="application"
-      aria-label="Interactive venue map. Use arrow keys to pan, plus and minus to zoom."
     >
-      {/* Keyboard/screen-reader-accessible venue list. Visually hidden,
-          but provides a linear way to discover venues for AT users who
-          cannot interact with the canvas/WebGL map. */}
-      <ul
-        className="sr-only"
-        aria-label={`Venues on map, ${filteredVenues.length} total`}
-      >
-        {filteredVenues.slice(0, 50).map((venue) => {
-          const distance = userLocation
-            ? calculateDistance(
-                userLocation.lat,
-                userLocation.lng,
-                venue.location.lat,
-                venue.location.lng
-              )
-            : undefined
-          return (
-            <li key={`sr-${venue.id}`}>
-              <button
-                type="button"
-                onClick={() => onVenueClick(venue)}
-                aria-label={`${venue.name}${venue.category ? `, ${venue.category}` : ''}, pulse score ${venue.pulseScore} out of 100${distance !== undefined ? `, ${formatDistance(distance, unitSystem)} away` : ''}`}
-              >
-                {venue.name}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-      {/* Mapbox tile layer — when available, drives all map interactions (Uber-style) */}
-      {hasMapboxToken && center && (
-        <MapboxBaseLayer
-          ref={mapboxRef}
-          center={center}
-          zoom={zoom}
-          interactive={mapboxDrives}
-          pitch={45}
-          bearing={0}
-          onMove={(c) => {
-            if (mapboxDrives) {
-              setCenter(clampCenter(c))
-              setFollowUser(false)
-            }
-          }}
-          onZoom={(z) => {
-            if (mapboxDrives) {
-              setZoom(clampZoom(z))
-            }
-          }}
-        />
-      )}
-
       <canvas
         ref={canvasRef}
         className={cn(
-          'absolute inset-0 w-full h-full',
-          mapboxDrives ? 'pointer-events-none' : 'touch-none',
-          !mapboxDrives && (isDragging ? 'cursor-grabbing' : 'cursor-grab')
+          'absolute inset-0 w-full h-full touch-none',
+          isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
-        style={{ zIndex: mapboxDrives ? -1 : 1 }}
-        {...(!mapboxDrives ? {
-          onMouseDown: handleMouseDown,
-          onMouseMove: handleMouseMove,
-          onMouseUp: handleMouseUp,
-          onMouseLeave: handleMouseUp,
-          onTouchStart: handleTouchStart,
-          onTouchMove: handleTouchMove,
-          onTouchEnd: handleTouchEnd,
-          onWheel: handleWheelZoom,
-          onDoubleClick: handleDoubleClick,
-        } : {})}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheelZoom}
+        onDoubleClick={handleDoubleClick}
       />
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
-        {/* Instagram-style gradient definitions */}
-        <defs>
-          <linearGradient id="ig-gradient-hot" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#833AB4" />
-            <stop offset="50%" stopColor="#E1306C" />
-            <stop offset="100%" stopColor="#F77737" />
-          </linearGradient>
-          <linearGradient id="ig-gradient-warm" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#E1306C" />
-            <stop offset="50%" stopColor="#F77737" />
-            <stop offset="100%" stopColor="#FCAF45" />
-          </linearGradient>
-          <linearGradient id="ig-gradient-chill" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F77737" />
-            <stop offset="100%" stopColor="#FCAF45" />
-          </linearGradient>
-          <linearGradient id="ig-gradient-quiet" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#405DE6" />
-            <stop offset="100%" stopColor="#833AB4" />
-          </linearGradient>
-        </defs>
-
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
         {clusteredMapData.clusters.map((cluster) => {
           const clusterSize = Math.min(42, 20 + cluster.venues.length * 1.8)
-          const gradientId = cluster.maxPulseScore >= 80 ? 'ig-gradient-hot'
-            : cluster.maxPulseScore >= 60 ? 'ig-gradient-warm'
-            : cluster.maxPulseScore >= 30 ? 'ig-gradient-chill'
-            : 'ig-gradient-quiet'
+          const clusterColor = getEnergyColor(cluster.maxPulseScore)
           const isExpanded = expandedClusterId === cluster.id
           return (
             <g key={cluster.id} className="pointer-events-none">
-              {/* Outer glow ring — story-ring style */}
               <circle
                 cx={cluster.x}
                 cy={cluster.y}
-                r={clusterSize + 4}
-                fill="none"
-                stroke={`url(#${gradientId})`}
-                strokeWidth={3}
-                opacity={isExpanded ? 0.3 : 0.9}
+                r={clusterSize * 1.35}
+                fill={clusterColor}
+                opacity={isExpanded ? 0.1 : 0.22}
               />
               <circle
                 cx={cluster.x}
                 cy={cluster.y}
                 r={clusterSize}
-                fill="#1a1a2e"
-                stroke="none"
+                fill={clusterColor}
+                stroke="oklch(0.98 0 0 / 0.85)"
+                strokeWidth={2}
+                filter={`drop-shadow(0 0 8px ${clusterColor})`}
                 opacity={isExpanded ? 0.4 : 1}
               />
               <text
                 x={cluster.x}
-                y={cluster.y + 5}
+                y={cluster.y + 4}
                 textAnchor="middle"
                 fill="white"
-                fontSize={Math.max(11, Math.min(16, clusterSize * 0.5))}
-                fontWeight="600"
-                fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                fontSize={Math.max(10, Math.min(15, clusterSize * 0.45))}
+                fontWeight="700"
               >
                 {cluster.venues.length}
               </text>
@@ -1158,28 +951,26 @@ export function InteractiveMap({
           )
         })}
 
-        {expandedCluster && expandedClusterNodes.map((node) => {
-          const nodeGradientId = node.venue.pulseScore >= 80 ? 'ig-gradient-hot'
-            : node.venue.pulseScore >= 60 ? 'ig-gradient-warm'
-            : node.venue.pulseScore >= 30 ? 'ig-gradient-chill'
-            : 'ig-gradient-quiet'
-          const nodeR = Math.max(11, 12 * zoom * 0.5)
-          return (
-            <g key={`expanded-${node.venue.id}`}>
-              <line
-                x1={expandedCluster.x}
-                y1={expandedCluster.y}
-                x2={node.sx}
-                y2={node.sy}
-                stroke="rgba(255,255,255,0.15)"
-                strokeWidth={1}
-                strokeDasharray="4 3"
-              />
-              <circle cx={node.sx} cy={node.sy} r={nodeR + 2.5} fill="none" stroke={`url(#${nodeGradientId})`} strokeWidth={2.5} />
-              <circle cx={node.sx} cy={node.sy} r={nodeR} fill="#1a1a2e" />
-            </g>
-          )
-        })}
+        {expandedCluster && expandedClusterNodes.map((node) => (
+          <g key={`expanded-${node.venue.id}`}>
+            <line
+              x1={expandedCluster.x}
+              y1={expandedCluster.y}
+              x2={node.sx}
+              y2={node.sy}
+              stroke="oklch(0.92 0 0 / 0.35)"
+              strokeWidth={1.5}
+            />
+            <circle
+              cx={node.sx}
+              cy={node.sy}
+              r={Math.max(11, (accessibilityMode ? 14 : 12) * zoom * 0.5)}
+              fill={getEnergyColor(node.venue.pulseScore)}
+              stroke="white"
+              strokeWidth={1.5}
+            />
+          </g>
+        ))}
 
         {clusteredMapData.singles.map(({ venue, x, y }) => {
           const baseSize = accessibilityMode ? 24 : 18
@@ -1192,45 +983,42 @@ export function InteractiveMap({
             : venue.pulseScore >= 50
 
           const Icon = getCategoryIcon(venue.category)
-          const iconSize = markerSize * 1.1
-          const gradientId = venue.pulseScore >= 80 ? 'ig-gradient-hot'
-            : venue.pulseScore >= 60 ? 'ig-gradient-warm'
-            : venue.pulseScore >= 30 ? 'ig-gradient-chill'
-            : 'ig-gradient-quiet'
+          const iconSize = markerSize * 1.2
 
           return (
             <g key={venue.id} className="pointer-events-none">
-              {/* Soft glow for active venues */}
               {(isHighEnergy || hasRecentActivity) && !isCameraMoving && !accessibilityMode && (
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={markerSize * 2.2}
-                  fill={getEnergyColor(venue.pulseScore)}
-                  opacity={0.12}
-                  className="animate-pulse"
-                  style={{ animationDuration: '3s' }}
-                />
+                <>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={markerSize * 2.5}
+                    fill={getEnergyColor(venue.pulseScore)}
+                    opacity={0.15}
+                    className="animate-pulse-glow"
+                    style={{ animationDuration: '3s' }}
+                  />
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={markerSize * 1.8}
+                    fill={getEnergyColor(venue.pulseScore)}
+                    opacity={0.25}
+                    className="animate-pulse"
+                    style={{ animationDuration: '2s' }}
+                  />
+                </>
               )}
 
-              {/* Story-ring gradient border */}
-              <circle
-                cx={x}
-                cy={y}
-                r={markerSize + (isHighlighted ? 3.5 : 2.5)}
-                fill="none"
-                stroke={`url(#${gradientId})`}
-                strokeWidth={isHighlighted ? 3 : 2}
-                className="transition-all duration-300"
-              />
-
-              {/* Inner dark fill */}
               <circle
                 cx={x}
                 cy={y}
                 r={markerSize}
-                fill={venue.pulseScore > 0 ? '#1a1a2e' : '#111'}
+                fill={venue.pulseScore > 0 ? getEnergyColor(venue.pulseScore) : 'oklch(0.25 0.05 260)'}
+                stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
+                strokeWidth={isHighlighted ? 3 : 1.5}
                 className="transition-all duration-300"
+                filter={venue.pulseScore >= 30 ? `drop-shadow(0 0 ${venue.pulseScore >= 80 ? '8px' : '4px'} ${venue.pulseScore >= 80 ? 'rgba(217, 70, 239, 0.6)' : venue.pulseScore >= 60 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(14, 165, 233, 0.4)'})` : undefined}
               />
 
               <foreignObject
@@ -1240,19 +1028,30 @@ export function InteractiveMap({
                 height={iconSize}
                 className="pointer-events-none"
               >
-                <div className="w-full h-full flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center text-white">
                   <Icon
                     weight="fill"
                     className={cn(
-                      "w-full h-full drop-shadow-sm",
-                      venue.pulseScore >= 80 ? "text-[#E1306C]" :
-                      venue.pulseScore >= 60 ? "text-[#F77737]" :
-                      venue.pulseScore >= 30 ? "text-[#FCAF45]" :
-                      "text-[#833AB4]/60"
+                      "w-full h-full drop-shadow-md",
+                      venue.pulseScore === 0 && "text-white/50"
                     )}
                   />
                 </div>
               </foreignObject>
+
+              {hasRecentActivity && !isCameraMoving && !accessibilityMode && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={markerSize * 1.5}
+                  fill="none"
+                  stroke={getEnergyColor(venue.pulseScore)}
+                  strokeWidth={2}
+                  opacity={0}
+                  className="animate-ping"
+                  style={{ animationDuration: '1.5s' }}
+                />
+              )}
             </g>
           )
         })}
@@ -1274,28 +1073,28 @@ export function InteractiveMap({
                   cx={userPos.x}
                   cy={userPos.y}
                   r={accuracyRadius}
-                  fill="#405DE6"
-                  opacity={0.1}
-                  stroke="#405DE6"
+                  fill="oklch(0.75 0.18 195)"
+                  opacity={0.15}
+                  stroke="oklch(0.75 0.18 195)"
                   strokeWidth={1}
-                  strokeOpacity={0.2}
+                  strokeOpacity={0.3}
                 />
               )}
               <circle
                 cx={userPos.x}
                 cy={userPos.y}
                 r={12 * zoom}
-                fill="#405DE6"
-                opacity={0.25}
+                fill="oklch(0.75 0.18 195)"
+                opacity={0.3}
                 className={accessibilityMode ? undefined : "animate-pulse"}
               />
               <circle
                 cx={userPos.x}
                 cy={userPos.y}
                 r={(accessibilityMode ? 8 : 6) * zoom}
-                fill="#405DE6"
-                stroke="white"
-                strokeWidth={2.5 * zoom}
+                fill="oklch(0.75 0.18 195)"
+                stroke="oklch(0.98 0 0)"
+                strokeWidth={2 * zoom}
               />
               {locationHeading !== null && locationHeading !== undefined && !Number.isNaN(locationHeading) && (
                 <g
@@ -1303,23 +1102,14 @@ export function InteractiveMap({
                 >
                   <path
                     d="M0 -16 L4 -6 L0 -8 L-4 -6 Z"
-                    fill="#405DE6"
-                    opacity={0.85}
+                    fill="oklch(0.92 0.11 210)"
+                    opacity={0.9}
                   />
                 </g>
               )}
             </g>
           )
         })()}
-
-        {/* Friend presence layer — gated by toggle + engine privacy rules */}
-        {showFriendLayer && friendLayerDots.length > 0 && center && (
-          <FriendMapDots
-            friends={friendLayerDots}
-            latLngToPixel={friendLayerLatLngToPixel}
-            zoom={zoom}
-          />
-        )}
       </svg>
 
       {/* Empty State Message */}
@@ -1329,23 +1119,22 @@ export function InteractiveMap({
           animate={{ opacity: 1, y: 0 }}
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
         >
-          <div className="bg-card/95 backdrop-blur-xl border border-white/10 rounded-3xl p-6 text-center max-w-xs shadow-2xl">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] flex items-center justify-center">
-              <MapPin size={24} weight="fill" className="text-white" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-1">No Venues Here</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+          <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
+            <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
+            <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
+            <p className="text-sm text-muted-foreground mb-3">
               Zoom out or pan to discover nearby spots
             </p>
             <Button
               size="sm"
-              className="pointer-events-auto rounded-full bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white border-0 hover:opacity-90"
+              variant="outline"
+              className="pointer-events-auto"
               onClick={handleCenterOnUser}
             >
               <NavigationArrow size={14} weight="fill" className="mr-1.5" />
               Center on Me
             </Button>
-          </div>
+          </Card>
         </motion.div>
       )}
 
@@ -1379,8 +1168,8 @@ export function InteractiveMap({
           </button>
           {!isCameraMoving && (
             <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10">
-              <div className="bg-card/95 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-0.5 shadow-lg">
-                <p className="text-[10px] font-medium text-foreground">
+              <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1 shadow-lg">
+                <p className="text-[10px] font-semibold text-foreground">
                   {cluster.venues.length} venues
                 </p>
               </div>
@@ -1435,7 +1224,6 @@ export function InteractiveMap({
                 triggerHapticFeedback('medium')
                 onVenueClick(venue)
               }}
-              aria-label={`${venue.name}${venue.category ? `, ${venue.category}` : ''}, pulse score ${venue.pulseScore}`}
             >
               <div className="w-10 h-10" />
             </button>
@@ -1448,17 +1236,36 @@ export function InteractiveMap({
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="absolute top-full mt-3 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10"
                 >
+                  {isHovered && (
+                    <motion.div
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gradient-to-t from-border to-transparent mb-0.5 origin-bottom"
+                    />
+                  )}
                   <div className={cn(
-                    "rounded-full px-2.5 py-1 shadow-lg transition-all",
-                    "bg-card/95 backdrop-blur-xl border border-white/10",
-                    isHovered && "bg-card shadow-xl scale-105"
+                    "bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1.5 shadow-lg transition-all",
+                    isHovered && "bg-card border-accent shadow-2xl scale-110",
+                    venue.pulseScore >= 70 && "border-accent/50"
                   )}>
-                    <p className="text-[11px] font-semibold text-center">{venue.name}</p>
-                    {distance !== undefined && (
-                      <p className="text-[9px] text-muted-foreground text-center">
-                        {formatDistance(distance, unitSystem)}
-                      </p>
-                    )}
+                    <p className="text-xs font-bold">{venue.name}</p>
+                    <div className="flex items-center gap-2">
+                      {venue.category && (
+                        <p className="text-[10px] text-muted-foreground uppercase font-mono">
+                          {venue.category}
+                        </p>
+                      )}
+                      {distance !== undefined && (
+                        <>
+                          {venue.category && (
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                          )}
+                          <p className="text-[10px] text-accent font-mono font-bold">
+                            {formatDistance(distance, unitSystem)}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -1512,80 +1319,222 @@ export function InteractiveMap({
                 transform: 'translateX(-50%)'
               }}
             >
-              <div className="rounded-2xl bg-card/98 backdrop-blur-xl shadow-xl border border-white/10 relative overflow-hidden">
-                {/* IG gradient top accent */}
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737]" />
+              <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl relative overflow-hidden">
+                {/* Header Decoration */}
+                <div
+                  className={cn(
+                    "absolute top-0 left-0 right-0 h-1",
+                    hoveredVenue.pulseScore >= 80 ? "bg-gradient-to-r from-fuchsia-500 to-cyan-500" :
+                      hoveredVenue.pulseScore >= 60 ? "bg-rose-500" :
+                        hoveredVenue.pulseScore >= 30 ? "bg-sky-500" : "bg-slate-700"
+                  )}
+                />
 
-                <div className="p-3 pt-3.5 space-y-2">
+                <div className="p-3 pt-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm truncate">{hoveredVenue.name}</h3>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <h3 className="font-bold text-sm truncate">{hoveredVenue.name}</h3>
+                        {hoveredVenue.pulseScore >= 80 && (
+                          <Fire size={14} weight="fill" className="text-orange-500 animate-pulse" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
                           {hoveredVenue.category || 'Venue'}
-                        </span>
+                        </Badge>
+                        {getLiveIntelLabel(hoveredVenue) && (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
+                            {getLiveIntelLabel(hoveredVenue)}
+                          </Badge>
+                        )}
                         {distance !== undefined && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground/50">·</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {formatDistance(distance, unitSystem)}
-                            </span>
-                          </>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {formatDistance(distance, unitSystem)}
+                          </span>
                         )}
                       </div>
                     </div>
                     <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
                   </div>
 
-                  <div className="flex items-center gap-3 pt-1.5">
-                    {(hoveredVenue.verifiedCheckInCount ?? 0) > 0 && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Users size={11} />
-                        <span>{hoveredVenue.verifiedCheckInCount} here</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Fire size={11} className={hoveredVenue.pulseScore > 50 ? "text-[#F77737]" : ""} />
-                      <span>{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
+                  {hoveredVenue.location.address && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin size={12} weight="fill" />
+                      <p className="text-[10px] line-clamp-1">
+                        {hoveredVenue.location.address}
+                      </p>
                     </div>
+                  )}
+
+                  {/* Social Signals / Stats simulated */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Users size={12} />
+                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
+                        <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
                   </div>
                 </div>
                 {/* Pointer arrow */}
                 <div
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-card/98 rotate-45 border-r border-b border-white/10"
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-card/98"
+                  style={{ filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}
                 />
-              </div>
+              </Card>
             </motion.div>
           )
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-4 left-4 right-14 z-10 flex flex-col gap-2">
-        <div className="flex-1 max-w-md">
-          <MapSearch
-            venues={venues}
-            onVenueSelect={handleVenueSelect}
-            userLocation={userLocation}
-          />
+      <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+        <div className="max-w-xl pointer-events-auto">
+          <Card className="bg-card/92 backdrop-blur-xl border-border/80 shadow-2xl overflow-hidden">
+            <div className="p-2.5">
+              <MapSearch
+                venues={venues}
+                onVenueSelect={handleVenueSelect}
+                userLocation={userLocation}
+              />
+            </div>
+
+            <div className="border-t border-border/50 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="h-5 px-2 text-[10px] font-bold bg-primary/12 text-primary border-primary/20">
+                      {mapModeLabel}
+                    </Badge>
+                    {followUser && userLocation && (
+                      <span className="text-[10px] font-medium text-muted-foreground">Following you</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground truncate">{mapSummary}</p>
+                </div>
+                {showCuratedToggle && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggleFullHeatmap}
+                    className="h-8 shrink-0 px-3 text-[11px] font-semibold"
+                  >
+                    {showFullHeatmap ? "Top only" : "Show all"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div className="mt-2 flex max-w-xl gap-2 overflow-x-auto pb-1 pointer-events-auto [scrollbar-width:none]">
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              if (filters.categories.includes('bar')) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.categories.includes('bar')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <BeerBottle size={14} weight="fill" className="inline mr-1" />
+            Bars
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
+              if (hasClub) {
+                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
+              } else {
+                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.categories.includes('club') || filters.categories.includes('nightclub')
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MusicNotes size={14} weight="fill" className="inline mr-1" />
+            Clubs
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              setNearMeActive(!nearMeActive)
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              nearMeActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <MapPin size={14} weight="fill" className="inline mr-1" />
+            Near Me
+          </button>
+          <button
+            onClick={() => {
+              triggerHapticFeedback('light')
+              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+              if (hasHot) {
+                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
+              } else {
+                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
+              }
+            }}
+            className={cn(
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "border backdrop-blur-md shadow-sm",
+              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+            )}
+          >
+            <Fire size={14} weight="fill" className="inline mr-1" />
+            Hot
+          </button>
         </div>
 
         {showOnboardingTips && (
-          <div className="max-w-md bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl p-3.5">
-            <p className="text-[11px] font-semibold text-[#E1306C] mb-1.5">
-              Tip {tipIndex + 1}/{onboardingTips.length}
+          <Card className="mt-2 max-w-xl bg-card/95 backdrop-blur-sm border border-border shadow-lg p-3 pointer-events-auto">
+            <p className="text-[11px] font-semibold text-primary mb-1.5">
+              Map tips {tipIndex + 1}/{onboardingTips.length}
             </p>
             <p className="text-xs text-foreground">
               {onboardingTips[tipIndex]}
             </p>
-            <div className="mt-3 flex gap-2 justify-end">
-              <button
-                className="h-7 px-3 text-[11px] text-muted-foreground hover:text-foreground rounded-full transition-colors"
+            <div className="mt-2.5 flex gap-2 justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-[11px]"
                 onClick={completeOnboarding}
               >
                 Skip
-              </button>
-              <button
-                className="h-7 px-4 text-[11px] font-semibold text-white rounded-full bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 transition-opacity"
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-[11px]"
                 onClick={() => {
                   if (tipIndex >= onboardingTips.length - 1) {
                     completeOnboarding()
@@ -1595,120 +1544,191 @@ export function InteractiveMap({
                 }}
               >
                 {tipIndex >= onboardingTips.length - 1 ? 'Done' : 'Next'}
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         )}
-
-        {/* Instagram-style filter pills */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide max-w-[calc(100vw-5rem)]">
-          {([
-            { label: 'Bars', icon: BeerBottle, active: filters.categories.includes('bar'), toggle: () => {
-              if (filters.categories.includes('bar')) setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
-              else setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
-            }},
-            { label: 'Clubs', icon: MusicNotes, active: filters.categories.includes('club') || filters.categories.includes('nightclub'), toggle: () => {
-              const has = filters.categories.includes('club') || filters.categories.includes('nightclub')
-              if (has) setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
-              else setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
-            }},
-            { label: 'Near Me', icon: MapPin, active: nearMeActive, toggle: () => setNearMeActive(!nearMeActive) },
-            { label: 'Hot', icon: Fire, active: filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing'), toggle: () => {
-              const has = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-              if (has) setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
-              else setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
-            }},
-            { label: 'Food', icon: ForkKnife, active: filters.categories.includes('restaurant') || filters.categories.includes('food'), toggle: () => {
-              const has = filters.categories.includes('restaurant') || filters.categories.includes('food')
-              if (has) setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'restaurant' && c !== 'food') }))
-              else setFilters(f => ({ ...f, categories: [...f.categories, 'restaurant', 'food'] }))
-            }},
-          ] as const).map(({ label, icon: ChipIcon, active, toggle }) => (
-            <button
-              key={label}
-              onClick={() => { triggerHapticFeedback('light'); toggle() }}
-              aria-pressed={active}
-              aria-label={`Filter: ${label}`}
-              className={cn(
-                "flex-shrink-0 flex items-center gap-1.5 px-4 h-9 rounded-full text-[13px] font-medium transition-all touch-manipulation active:scale-[0.96]",
-                active
-                  ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-md"
-                  : "bg-card/90 backdrop-blur-xl text-foreground border border-white/10 hover:bg-card"
-              )}
-            >
-              <ChipIcon size={14} weight="fill" />
-              {label}
-            </button>
-          ))}
-          {/* Friends-on-map toggle. Default OFF; the engine's suppression
-              rules still gate what actually renders. */}
-          <button
-            data-testid="friend-layer-toggle"
-            onClick={handleFriendLayerToggle}
-            aria-pressed={showFriendLayer}
-            aria-label="Show friends on map"
-            className={cn(
-              "flex-shrink-0 flex items-center gap-1.5 px-4 h-9 rounded-full text-[13px] font-medium transition-all touch-manipulation active:scale-[0.96]",
-              showFriendLayer
-                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-md"
-                : "bg-card/90 backdrop-blur-xl text-foreground border border-white/10 hover:bg-card"
-            )}
-          >
-            <UsersThree size={14} weight="fill" />
-            Show friends
-          </button>
-        </div>
       </div>
 
-      {/* Right Controls — Instagram-style floating buttons */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+      {/* Consolidated Map Controls */}
+      <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
+        <Button
+          size="sm"
+          variant={accessibilityMode ? "default" : "secondary"}
+          className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
+          onClick={() => {
+            triggerHapticFeedback('light')
+            setAccessibilityMode((prev) => !prev)
+          }}
+        >
+          A11y
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
+          onClick={handleFitToVenues}
+        >
+          <MapPin size={14} weight="fill" className="mr-1.5" />
+          Fit view
+        </Button>
+        {!followUser && userLocation && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
+            onClick={handleCenterOnUser}
+          >
+            <NavigationArrow size={14} weight="fill" className="mr-1.5" />
+            Re-center
+          </Button>
+        )}
         <MapFilters
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
         />
 
-        <div className="flex flex-col gap-1.5">
-          <button
-            className="w-10 h-10 rounded-full bg-card/90 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center text-foreground hover:bg-card transition-colors touch-manipulation"
-            onClick={handleZoomIn}
-            aria-label="Zoom in"
-          >
-            <Plus size={18} weight="bold" />
-          </button>
-          <button
-            className="w-10 h-10 rounded-full bg-card/90 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center text-foreground hover:bg-card transition-colors touch-manipulation"
-            onClick={handleZoomOut}
-            aria-label="Zoom out"
-          >
-            <Minus size={18} weight="bold" />
-          </button>
-          <button
-            className={cn(
-              "w-10 h-10 rounded-full backdrop-blur-xl border shadow-lg flex items-center justify-center transition-colors touch-manipulation",
-              followUser
-                ? "bg-gradient-to-br from-[#833AB4] to-[#E1306C] text-white border-white/20"
-                : "bg-card/90 text-foreground border-white/10 hover:bg-card"
-            )}
-            onClick={handleCenterOnUser}
-            aria-label="Center map on my location"
-          >
-            <NavigationArrow size={18} weight="fill" />
-          </button>
+        {/* Unified Control Group */}
+        <Card className="bg-card/95 backdrop-blur-sm border-border p-1.5 shadow-lg">
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-11 w-11 hover:bg-secondary touch-manipulation"
+                onClick={handleZoomIn}
+                title="Zoom in (+)"
+                aria-label="Zoom in"
+              >
+                <Plus size={18} weight="bold" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-11 w-11 hover:bg-secondary touch-manipulation"
+                onClick={handleZoomOut}
+                title="Zoom out (-)"
+                aria-label="Zoom out"
+              >
+                <Minus size={18} weight="bold" />
+              </Button>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-11 w-11 touch-manipulation",
+                  followUser && "bg-accent text-accent-foreground"
+                )}
+                onClick={handleCenterOnUser}
+                title="Center on me"
+                aria-label="Center map on my location"
+              >
+                <NavigationArrow size={18} weight="fill" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  "h-11 w-11 touch-manipulation",
+                  nearMeActive && "bg-accent text-accent-foreground"
+                )}
+                onClick={() => {
+                  triggerHapticFeedback('light')
+                  setNearMeActive(!nearMeActive)
+                }}
+                title="Near me (0.5 mi)"
+                aria-label="Toggle near me venues"
+              >
+                <MapPin size={18} weight="fill" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Zoom Level Indicator */}
+        <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1 shadow-sm">
+          {zoom.toFixed(1)}x
         </div>
       </div>
 
-      {/* Bottom venue carousel — Uber-style single row */}
-      {previewVenues.length > 0 && !isDragging && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-4 left-0 right-0 z-20 pointer-events-none"
-        >
-          <div className="flex gap-2.5 overflow-x-auto pb-1 px-4 snap-x snap-mandatory scrollbar-hide">
-            {previewVenues.map((point, index) => {
-              const Icon = getCategoryIcon(point.venue.category)
-              const isFirst = index === 0
+      {previewVenues.length > 0 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[min(94%,720px)] pointer-events-none">
+          {bestNextVenue && (
+            <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">Smart Route</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Best next stop: {bestNextVenue.venue.name}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={handleSmartRoute}
+                >
+                  Take Me
+                </Button>
+              </div>
+            </Card>
+          )}
+          <AnimatePresence>
+            {comparedVenues.length > 0 && (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 14, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-foreground">
+                      Compare ({comparedVenues.length}/3)
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px]"
+                      onClick={() => setComparedVenueIds([])}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {comparedVenues.map((point) => (
+                      <motion.button
+                        layout
+                        key={`compare-${point.venue.id}`}
+                        className="text-left rounded-md border border-border/70 bg-background/40 px-2 py-1.5 hover:bg-background/60 transition-colors"
+                        onClick={() => onVenueClick(point.venue)}
+                      >
+                        <p className="text-[11px] font-semibold truncate">{point.venue.name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase truncate">
+                          {point.venue.category || 'Venue'}
+                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                          {point.distance !== undefined && (
+                            <span className="text-[10px] text-accent font-mono">
+                              {formatDistance(point.distance, unitSystem)}
+                            </span>
+                          )}
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-2 overflow-x-auto pb-1 px-1">
+            {previewVenues.map((point) => {
+              const isCompared = comparedVenueIds.includes(point.venue.id)
               const headingDelta = (locationHeading !== null && locationHeading !== undefined && userLocation)
                 ? getHeadingDelta(calculateBearing(
                   userLocation.lat,
@@ -1719,74 +1739,127 @@ export function InteractiveMap({
                 : null
               const isAhead = headingDelta !== null && headingDelta < 30
 
-              const [gradStart, gradEnd] = getEnergyGradientColors(point.venue.pulseScore)
-
               return (
-                <motion.button
-                  key={`preview-${point.venue.id}`}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  aria-label={`Open ${point.venue.name}${point.venue.category ? `, ${point.venue.category}` : ''}, pulse score ${point.venue.pulseScore}`}
-                  className={cn(
-                    "pointer-events-auto snap-start flex-shrink-0 w-[180px] text-left transition-all active:scale-[0.96]",
-                    "rounded-2xl overflow-hidden",
-                    hoveredVenue?.id === point.venue.id && "scale-[1.02]"
-                  )}
-                  style={{
-                    padding: '2px',
-                    background: isFirst
-                      ? `linear-gradient(135deg, ${gradStart}, ${gradEnd})`
-                      : 'rgba(255,255,255,0.08)'
-                  }}
-                  onClick={() => {
-                    triggerHapticFeedback('medium')
-                    onVenueClick(point.venue)
-                  }}
-                >
-                  <div className="bg-card/98 backdrop-blur-xl rounded-[14px] p-3 h-full">
-                    {isFirst && (
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <NavigationArrow size={10} weight="fill" className="text-[#E1306C]" />
-                        <span className="text-[9px] font-bold text-[#E1306C] uppercase tracking-wider">Suggested</span>
-                      </div>
+                <motion.div layout key={`preview-wrap-${point.venue.id}`}>
+                  <Card
+                    className={cn(
+                      "pointer-events-auto min-w-[180px] p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg",
+                      hoveredVenue?.id === point.venue.id && "border-accent/70 shadow-accent/30",
+                      isCompared && "border-primary/70 shadow-primary/20"
                     )}
-                    <div className="flex items-start gap-2">
-                      {/* Story-ring icon */}
-                      <div className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
-                        style={{ background: `linear-gradient(135deg, ${gradStart}, ${gradEnd})`, padding: '2px' }}
-                      >
-                        <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-                          <Icon size={14} weight="fill" style={{ color: gradEnd }} />
+                  >
+                    <button
+                      className="w-full text-left"
+                      onClick={() => handleVenueSelect(point.venue)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate">{point.venue.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase truncate">
+                            {point.venue.category || 'Venue'}
+                          </p>
+                          {isAhead && (
+                            <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
+                              Ahead
+                            </Badge>
+                          )}
+                          {point.distance !== undefined && (
+                            <p className="text-[10px] text-accent font-mono mt-0.5">
+                              {formatDistance(point.distance, unitSystem)}
+                            </p>
+                          )}
                         </div>
+                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold truncate leading-tight">{point.venue.name}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {point.venue.category || 'Venue'}
-                          {point.distance !== undefined && ` · ${formatDistance(point.distance, unitSystem)}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
-                      {isAhead && (
-                        <span className="text-[9px] font-semibold text-[#E1306C]">Ahead</span>
-                      )}
-                    </div>
-                  </div>
-                </motion.button>
+                    </button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-7 w-full text-[11px]"
+                      onClick={() => {
+                        triggerHapticFeedback('medium')
+                        onVenueClick(point.venue)
+                      }}
+                    >
+                      Open
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isCompared ? "default" : "ghost"}
+                      className="mt-1 h-7 w-full text-[11px]"
+                      onClick={() => toggleCompareVenue(point.venue.id)}
+                    >
+                      {isCompared ? 'Compared' : 'Compare'}
+                    </Button>
+                  </Card>
+                </motion.div>
               )
             })}
           </div>
-        </motion.div>
+        </div>
       )}
 
-      {/* Bottom Left — GPS only */}
-      <div className="absolute bottom-4 left-4 z-10">
+      {/* Bottom Left Controls */}
+      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
         <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
+
+        {(filters.energyLevels.length > 0 ||
+          filters.categories.length > 0 ||
+          filters.maxDistance !== Infinity) && (
+            <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}
+                {venues.length} venues
+              </p>
+            </Card>
+          )}
+
+        {/* Collapsible Legend */}
+        <Card className="bg-card/95 backdrop-blur-sm border-border overflow-hidden">
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+          >
+            <span className="text-xs font-bold text-foreground">Energy Levels</span>
+            {showLegend ? (
+              <CaretUp size={14} className="text-muted-foreground" />
+            ) : (
+              <CaretDown size={14} className="text-muted-foreground" />
+            )}
+          </button>
+          <AnimatePresence>
+            {showLegend && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
+                    <span className="text-xs text-muted-foreground">Dead</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.60_0.15_150)] border border-foreground/20" />
+                    <span className="text-xs text-muted-foreground">Chill</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.70_0.22_60)] border border-foreground/20 shadow-sm" />
+                    <span className="text-xs text-muted-foreground">Buzzing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[oklch(0.65_0.28_340)] border border-foreground/20 shadow-sm animate-pulse-glow" />
+                    <span className="text-xs text-muted-foreground">Electric</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
       </div>
+
     </div>
   )
 }

@@ -1,22 +1,18 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Venue, PulseWithUser, User } from '@/lib/types'
 import { Favorites } from '@/components/Favorites'
-import { TrendingSections } from '@/components/TrendingSections'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
-import { RecommendationsSection } from '@/components/RecommendationsSection'
-import { LiveActivityFeed } from '@/components/LiveActivityFeed'
+import { VenueReel } from '@/components/VenueReel'
+import { HomeSocialFeed } from '@/components/HomeSocialFeed'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Star, Megaphone, Scales } from '@phosphor-icons/react'
+import { Star, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
 import { getRecommendations } from '@/lib/venue-recommendations'
 import { getDayType, getPeakCategories, getTimeOfDay } from '@/lib/time-contextual-scoring'
 import { getSmartVenueSort } from '@/lib/contextual-intelligence'
 import { PromotedVenue, isPromotionActive, sortWithPromotions } from '@/lib/promoted-discoveries'
-import { PulseScore } from '@/components/PulseScore'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Pulse } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 
@@ -91,6 +87,7 @@ export function TrendingTab({
     )
     return smartSorted.slice(0, 3).map(venue => venue.id)
   }, [currentUser, venues])
+  const trendingSections = useMemo(() => getTrendingSections(venues, pulses), [venues, pulses])
 
   useEffect(() => {
     for (const promotion of activePromotions.slice(0, 2)) {
@@ -103,13 +100,13 @@ export function TrendingTab({
   return (
     <>
       <div className="max-w-2xl mx-auto px-4 pt-4">
-        <div className="flex gap-1 p-1 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex gap-1 p-1 bg-card/50 rounded-lg border border-border/50">
           <button
             onClick={() => onSubTabChange('trending')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-semibold transition-all",
+              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all",
               trendingSubTab === 'trending'
-                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -118,15 +115,15 @@ export function TrendingTab({
           <button
             onClick={() => onSubTabChange('my-spots')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-semibold transition-all relative",
+              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all relative",
               trendingSubTab === 'my-spots'
-                ? "bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             My Spots
             {followedVenues.length > 0 && trendingSubTab !== 'my-spots' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E1306C] text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold">
                 {followedVenues.length}
               </span>
             )}
@@ -134,13 +131,17 @@ export function TrendingTab({
         </div>
       </div>
 
+      {trendingSubTab === 'trending' && (
+        <VenueReel venues={venues} pulses={pulses} onVenueClick={onVenueClick} />
+      )}
+
       {/* Compare button */}
       {onCompareVenues && trendingSubTab === 'trending' && (
-        <div className="max-w-2xl mx-auto px-4 pt-4">
+        <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
           <Button
             variant="outline"
             size="sm"
-            className="w-full border-[#833AB4]/20 text-[#833AB4] hover:bg-[#833AB4]/10"
+            className="w-full border-primary/20 text-primary hover:bg-primary/10"
             onClick={() => {
               onCompareVenues(topVenueIdsForCompare)
             }}
@@ -148,37 +149,46 @@ export function TrendingTab({
             <Scales size={16} className="mr-2" />
             Compare Top Venues
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Side-by-side pulse, line, and live-intel context before you head out.
+          </p>
         </div>
       )}
 
       {trendingSubTab === 'trending' && (
         <>
           {venues.length === 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-              {[1, 2, 3].map(i => (
-                <Skeleton key={i} className="w-full h-32 rounded-xl" />
-              ))}
+            <div className="max-w-2xl mx-auto px-4 pt-4">
+              <div className="rounded-2xl border border-border bg-card/70 p-6 text-center">
+                <p className="font-semibold">No venues loaded yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Try refreshing, enabling location, or checking your Supabase connection.</p>
+              </div>
             </div>
           )}
 
-          {favoriteVenues.length > 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
-              <div className="space-y-3">
+          <div className="max-w-2xl mx-auto px-4 pt-6 pb-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Star size={20} weight="fill" className="text-[#FCAF45]" />
-                  <h2 className="text-xl font-semibold">Favorites</h2>
+                  <Star size={20} weight="fill" className="text-accent" />
+                  <h2 className="text-xl font-bold">Your saved spots</h2>
                 </div>
-                <Favorites
-                  favoriteVenues={favoriteVenues}
-                  userLocation={userLocation}
-                  unitSystem={unitSystem}
-                  onVenueClick={onVenueClick}
-                  onToggleFavorite={onToggleFavorite}
-                />
+                {favoriteVenues.length > 0 && (
+                  <span className="rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">
+                    {favoriteVenues.length} saved
+                  </span>
+                )}
               </div>
-              <Separator className="mt-6" />
+              <Favorites
+                favoriteVenues={favoriteVenues}
+                userLocation={userLocation}
+                unitSystem={unitSystem}
+                onVenueClick={onVenueClick}
+                onToggleFavorite={onToggleFavorite}
+              />
             </div>
-          )}
+            <Separator className="mt-6" />
+          </div>
 
           {/* Peak categories hint */}
           {(() => {
@@ -193,64 +203,17 @@ export function TrendingTab({
             )
           })()}
 
-          {/* Personalized recommendations */}
-          <div className="max-w-2xl mx-auto px-4 pt-4">
-            <RecommendationsSection
-              recommendations={recommended}
-              onVenueClick={onVenueClick}
-              promotions={activePromotions}
-              onPromotionImpression={onPromotionImpression}
-              onPromotionClick={onPromotionClick}
-            />
-          </div>
-
-          {/* Friend Activity Feed */}
-          <div className="max-w-2xl mx-auto px-4 pt-4">
-            <LiveActivityFeed
-              currentUser={currentUser}
-              allUsers={allUsers}
-              venues={venues}
-              pulses={pulses}
-              onVenueClick={onVenueClick}
-            />
-          </div>
-
-          {/* Promoted Venues */}
-          {activePromotions.length > 0 && (
-            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
-              {activePromotions.slice(0, 2).map(promo => {
-                const venue = venues.find(v => v.id === promo.venueId)
-                if (!venue) return null
-                return (
-                  <button
-                    key={promo.id}
-                    onClick={() => {
-                      onPromotionClick?.(promo.id)
-                      onVenueClick(venue)
-                    }}
-                    className="w-full p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 flex items-center gap-3 hover:border-[#FCAF45]/40 transition-colors text-left shadow-lg"
-                  >
-                    <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold truncate">{venue.name}</p>
-                        <Badge variant="outline" className="text-[10px] border-[#FCAF45]/40 text-[#FCAF45] flex-shrink-0">
-                          <Megaphone size={8} className="mr-0.5" />
-                          Sponsored
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{venue.category}{venue.city ? ` · ${venue.city}` : ''}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          <TrendingSections
-            sections={getTrendingSections(venues, pulses)}
+          <HomeSocialFeed
+            recommendations={recommended}
+            sections={trendingSections}
+            venues={venues}
+            pulses={pulses}
+            currentUser={currentUser}
+            allUsers={allUsers}
             userLocation={userLocation}
+            promotions={activePromotions}
             onVenueClick={onVenueClick}
+            onPromotionClick={onPromotionClick}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
           />

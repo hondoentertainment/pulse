@@ -1,4 +1,4 @@
-import { Venue } from '@/lib/types'
+import { Pulse, Venue } from '@/lib/types'
 import { VenueCard } from './VenueCard'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
@@ -14,6 +14,7 @@ export interface TrendingSection {
 
 interface TrendingSectionsProps {
   sections: TrendingSection[]
+  pulses?: Pulse[]
   userLocation: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
   isFavorite: (venueId: string) => boolean
@@ -66,6 +67,7 @@ function getTimeSinceUpdate(updatedAt: string): string {
 
 export function TrendingSections({
   sections,
+  pulses = [],
   userLocation,
   onVenueClick,
   isFavorite,
@@ -83,6 +85,14 @@ export function TrendingSections({
         </p>
       </div>
     )
+  }
+
+  const mediaByVenueId = new Map<string, string>()
+  for (const pulse of pulses) {
+    const photo = pulse.photos?.[0]
+    if (photo && !mediaByVenueId.has(pulse.venueId)) {
+      mediaByVenueId.set(pulse.venueId, photo)
+    }
   }
 
   return (
@@ -135,6 +145,7 @@ export function TrendingSections({
                     key={venue.id}
                     venue={venue}
                     distance={distance}
+                    mediaUrl={mediaByVenueId.get(venue.id)}
                     onClick={() => onVenueClick(venue)}
                     isJustPopped={section.title === 'Just Popped Off'}
                     isFavorite={isFavorite(venue.id)}

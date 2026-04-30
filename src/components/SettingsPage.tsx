@@ -25,7 +25,7 @@ import { motion } from 'framer-motion'
 interface SettingsPageProps {
   currentUser: User
   onBack: () => void
-  onUpdateUser: (user: User) => void
+  onUpdateUser: (user: User) => void | Promise<void>
   onCityChange?: (location: { lat: number; lng: number }) => void
   onOpenSafetyContacts?: () => void
 }

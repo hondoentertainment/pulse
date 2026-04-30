@@ -1,10 +1,32 @@
 import type { Venue } from './types'
 import { calculateDistance } from './pulse-engine'
+import {
+  type GuestListStatus,
+  formatGuestListStatus,
+  getVenueOperatorStatus,
+  seedVenueOperatorStatus,
+} from './venue-operator-live'
 
 // --- Types ---
 
 export type DressCode = 'casual' | 'smart-casual' | 'dressy' | 'formal'
 export type ConfidenceLevel = 'low' | 'medium' | 'high'
+
+export interface SignalConfidenceDetail {
+  level: ConfidenceLevel
+  reportCount: number
+  freshnessMinutes: number | null
+  operatorVerified: boolean
+  summary: string
+}
+
+export interface DoorMode {
+  lineStatus: 'walk-right-in' | 'moving' | 'slow' | 'door-risk'
+  entryConfidence: number
+  guestListStatus: GuestListStatus | null
+  tableMinimum: number | null
+  reasons: string[]
+}
 
 export interface NowPlaying {
   track: string
@@ -25,6 +47,11 @@ export interface VenueLiveData {
   capacity: { current: number | null; max: number | null; percentFull: number } | null
   lastUpdated: string
   confidence: Record<string, ConfidenceLevel>
+  confidenceDetails: Record<string, SignalConfidenceDetail>
+  doorMode: DoorMode
+  operatorNote?: string
+  djStatus?: string
+  special?: string
 }
 
 export interface LiveReport {
@@ -52,19 +79,31 @@ function generateId(): string {
   return `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-// --- Report functions ---
-
-export function reportWaitTime(venueId: string, userId: string, minutes: number): LiveReport {
-  const report: LiveReport = {
+export function createLiveReport(
+  venueId: string,
+  userId: string,
+  type: LiveReport['type'],
+  value: unknown
+): LiveReport {
+  return {
     id: generateId(),
     venueId,
     userId,
-    type: 'wait_time',
-    value: minutes,
+    type,
+    value,
     createdAt: new Date().toISOString(),
   }
+}
+
+export function addLocalLiveReport(report: LiveReport): LiveReport {
   reportStore.push(report)
   return report
+}
+
+// --- Report functions ---
+
+export function reportWaitTime(venueId: string, userId: string, minutes: number): LiveReport {
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'wait_time', minutes))
 }
 
 export function reportCoverCharge(
@@ -73,16 +112,7 @@ export function reportCoverCharge(
   amount: number | null,
   note?: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'cover_charge',
-    value: { amount, note },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'cover_charge', { amount, note }))
 }
 
 export function reportMusicPlaying(
@@ -90,16 +120,7 @@ export function reportMusicPlaying(
   userId: string,
   genre: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'music',
-    value: genre,
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'music', genre))
 }
 
 export function reportCrowdLevel(
@@ -107,16 +128,7 @@ export function reportCrowdLevel(
   userId: string,
   level: number
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'crowd_level',
-    value: Math.max(0, Math.min(100, level)),
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'crowd_level', Math.max(0, Math.min(100, level))))
 }
 
 export function reportDressCode(
@@ -124,16 +136,7 @@ export function reportDressCode(
   userId: string,
   code: DressCode
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'dress_code',
-    value: code,
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'dress_code', code))
 }
 
 export function reportNowPlaying(
@@ -142,16 +145,7 @@ export function reportNowPlaying(
   track: string,
   artist: string
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'now_playing',
-    value: { track, artist },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'now_playing', { track, artist }))
 }
 
 export function reportAgeRange(
@@ -160,25 +154,20 @@ export function reportAgeRange(
   min: number,
   max: number
 ): LiveReport {
-  const report: LiveReport = {
-    id: generateId(),
-    venueId,
-    userId,
-    type: 'age_range',
-    value: { min, max },
-    createdAt: new Date().toISOString(),
-  }
-  reportStore.push(report)
-  return report
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'age_range', { min, max }))
 }
 
 // --- Aggregation helpers ---
 
 const REPORT_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 
-function getRecentReports(venueId: string, type?: LiveReport['type']): LiveReport[] {
+function getRecentReports(
+  venueId: string,
+  type?: LiveReport['type'],
+  reports: LiveReport[] = reportStore
+): LiveReport[] {
   const cutoff = Date.now() - REPORT_WINDOW_MS
-  return reportStore.filter(
+  return reports.filter(
     r =>
       r.venueId === venueId &&
       (!type || r.type === type) &&
@@ -198,6 +187,35 @@ function computeConfidence(reports: LiveReport[]): ConfidenceLevel {
   if (reports.length >= 5 && totalWeight >= 3) return 'high'
   if (reports.length >= 2 && totalWeight >= 1) return 'medium'
   return 'low'
+}
+
+function getFreshnessMinutes(reports: LiveReport[]): number | null {
+  if (reports.length === 0) return null
+  const latest = reports.reduce((best, current) =>
+    new Date(current.createdAt).getTime() > new Date(best.createdAt).getTime() ? current : best
+  )
+  return Math.max(0, Math.round((Date.now() - new Date(latest.createdAt).getTime()) / 60000))
+}
+
+function buildConfidenceDetail(
+  reports: LiveReport[],
+  level: ConfidenceLevel,
+  opts?: { operatorVerified?: boolean; fallback?: string }
+): SignalConfidenceDetail {
+  const freshnessMinutes = getFreshnessMinutes(reports)
+  const operatorVerified = opts?.operatorVerified ?? false
+  const freshnessLabel = freshnessMinutes === null ? 'No recent reports' : `${freshnessMinutes}m ago`
+  const summary = reports.length > 0
+    ? `${reports.length} recent report${reports.length === 1 ? '' : 's'} • ${freshnessLabel}${operatorVerified ? ' • owner confirmed' : ''}`
+    : opts?.fallback ?? `No recent reports${operatorVerified ? ' • owner confirmed' : ''}`
+
+  return {
+    level,
+    reportCount: reports.length,
+    freshnessMinutes,
+    operatorVerified,
+    summary,
+  }
 }
 
 function weightedAverage(reports: LiveReport[]): number {
@@ -233,16 +251,19 @@ function mostReportedValue<T>(reports: LiveReport[]): T | null {
 
 // --- Main aggregation ---
 
-export function getVenueLiveData(venueId: string): VenueLiveData {
+function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore): VenueLiveData {
   const now = new Date().toISOString()
+  seedVenueOperatorStatus(venueId, venueId)
+  const operatorStatus = getVenueOperatorStatus(venueId)
+  const hasVerifiedOperatorUpdate = !!operatorStatus && operatorStatus.updatedBy !== 'owner-demo'
 
-  const waitReports = getRecentReports(venueId, 'wait_time')
-  const coverReports = getRecentReports(venueId, 'cover_charge')
-  const musicReports = getRecentReports(venueId, 'music')
-  const crowdReports = getRecentReports(venueId, 'crowd_level')
-  const dressReports = getRecentReports(venueId, 'dress_code')
-  const nowPlayingReports = getRecentReports(venueId, 'now_playing')
-  const ageReports = getRecentReports(venueId, 'age_range')
+  const waitReports = getRecentReports(venueId, 'wait_time', reports)
+  const coverReports = getRecentReports(venueId, 'cover_charge', reports)
+  const musicReports = getRecentReports(venueId, 'music', reports)
+  const crowdReports = getRecentReports(venueId, 'crowd_level', reports)
+  const dressReports = getRecentReports(venueId, 'dress_code', reports)
+  const nowPlayingReports = getRecentReports(venueId, 'now_playing', reports)
+  const ageReports = getRecentReports(venueId, 'age_range', reports)
 
   // Wait time: weighted average
   const waitTime = waitReports.length > 0 ? Math.round(weightedAverage(waitReports)) : null
@@ -312,11 +333,80 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     ageRange: computeConfidence(ageReports),
   }
 
+  const confidenceDetails: Record<string, SignalConfidenceDetail> = {
+    waitTime: buildConfidenceDetail(waitReports, confidence.waitTime, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.doorNote,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.doorNote ? 'Owner shared a door update' : 'No recent line reports yet',
+    }),
+    coverCharge: buildConfidenceDetail(coverReports, confidence.coverCharge, {
+      operatorVerified: hasVerifiedOperatorUpdate && operatorStatus?.tableMinimum !== null,
+      fallback: 'No recent cover reports yet',
+    }),
+    musicGenre: buildConfidenceDetail(musicReports, confidence.musicGenre, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.djStatus,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.djStatus ? 'Owner shared a DJ update' : 'No recent music reports yet',
+    }),
+    crowdLevel: buildConfidenceDetail(crowdReports, confidence.crowdLevel, {
+      fallback: 'No recent crowd reports yet',
+    }),
+    dressCode: buildConfidenceDetail(dressReports, confidence.dressCode, {
+      fallback: 'No recent dress code reports yet',
+    }),
+    nowPlaying: buildConfidenceDetail(nowPlayingReports, confidence.nowPlaying, {
+      operatorVerified: hasVerifiedOperatorUpdate && !!operatorStatus?.djStatus,
+      fallback: hasVerifiedOperatorUpdate && operatorStatus?.djStatus ? 'Owner shared a DJ update' : 'No recent track reports yet',
+    }),
+    ageRange: buildConfidenceDetail(ageReports, confidence.ageRange, {
+      fallback: 'No recent crowd demographic reports yet',
+    }),
+  }
+
   // lastUpdated = most recent report timestamp
-  const allReports = getRecentReports(venueId)
+  const allReports = getRecentReports(venueId, undefined, reports)
   const lastUpdated = allReports.length > 0
     ? allReports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
     : now
+
+  const reasons: string[] = []
+  const lineStatus: DoorMode['lineStatus'] =
+    waitTime === null ? 'moving'
+    : waitTime <= 5 ? 'walk-right-in'
+    : waitTime <= 15 ? 'moving'
+    : waitTime <= 30 ? 'slow'
+    : 'door-risk'
+
+  if (waitTime !== null) {
+    reasons.push(waitTime === 0 ? 'No meaningful line reported' : `Door reports are averaging ${waitTime} min`)
+  }
+  if (crowdLevel > 0) {
+    reasons.push(`${crowdLevel}% crowd level reported in the last 30 minutes`)
+  }
+  if (operatorStatus?.guestListStatus) {
+    const guestListLabel = formatGuestListStatus(operatorStatus.guestListStatus)
+    if (guestListLabel) reasons.push(guestListLabel)
+  }
+  if (operatorStatus?.doorNote) {
+    reasons.push(operatorStatus.doorNote)
+  }
+  if (operatorStatus?.tableMinimum) {
+    reasons.push(`Tables starting around $${operatorStatus.tableMinimum}`)
+  }
+
+  const entryConfidenceBase =
+    45 +
+    (crowdReports.length > 0 ? 10 : 0) +
+    (waitReports.length > 0 ? 10 : 0) +
+    (operatorStatus ? 20 : 0) +
+    (confidence.waitTime === 'high' ? 10 : confidence.waitTime === 'medium' ? 5 : 0)
+  const entryConfidence = Math.max(
+    20,
+    Math.min(
+      95,
+      entryConfidenceBase -
+        (lineStatus === 'door-risk' ? 20 : lineStatus === 'slow' ? 10 : 0) -
+        (operatorStatus?.guestListStatus === 'closed' ? 15 : operatorStatus?.guestListStatus === 'limited' ? 5 : 0)
+    )
+  )
 
   return {
     venueId,
@@ -332,7 +422,26 @@ export function getVenueLiveData(venueId: string): VenueLiveData {
     capacity,
     lastUpdated,
     confidence,
+    confidenceDetails,
+    doorMode: {
+      lineStatus,
+      entryConfidence,
+      guestListStatus: operatorStatus?.guestListStatus ?? null,
+      tableMinimum: operatorStatus?.tableMinimum ?? null,
+      reasons,
+    },
+    operatorNote: operatorStatus?.doorNote,
+    djStatus: operatorStatus?.djStatus,
+    special: operatorStatus?.special,
   }
+}
+
+export function getVenueLiveData(venueId: string): VenueLiveData {
+  return buildVenueLiveData(venueId, reportStore)
+}
+
+export function getVenueLiveDataFromReports(venueId: string, reports: LiveReport[]): VenueLiveData {
+  return buildVenueLiveData(venueId, reports)
 }
 
 // --- Crowd forecast ---
