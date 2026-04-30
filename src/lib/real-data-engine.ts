@@ -243,26 +243,9 @@ export function calculateVelocity(venue: Venue, now: Date): number {
 }
 
 /**
- * Get simulated check-in count based on pulse score and venue capacity.
+ * @deprecated Removed — was generating fake check-in counts from pulse scores.
+ * Use venue.verifiedCheckInCount for real data instead.
  */
-export function getSimulatedCheckIns(venue: Venue, now: Date): number {
-  const score = calculateRealisticPulseScore(venue, now)
-  const venueHash = hashCode(venue.id)
-  const rng = seededRandom(venueHash + 999)
-  // Capacity estimate by category
-  const capacities: Record<string, number> = {
-    'Nightclub': 400, 'Dance Club': 300, 'Bar': 120, 'Lounge': 80,
-    'Music Venue': 500, 'Brewery': 150, 'Café': 50, 'Restaurant': 100,
-    'Gallery': 60,
-  }
-  const capacity = capacities[venue.category ?? ''] ?? 100
-  const capacityVariance = 0.7 + rng() * 0.6 // 70-130% of base capacity
-  const effectiveCapacity = capacity * capacityVariance
-
-  // Check-ins = fraction of capacity based on pulse score
-  const occupancy = (score / 100) * 0.8 // Max 80% of capacity at score 100
-  return Math.round(effectiveCapacity * occupancy)
-}
 
 /**
  * Get a realistic "last activity" timestamp.
@@ -288,7 +271,6 @@ export function enrichVenuesWithRealtimeData(venues: Venue[], now: Date): Venue[
     const pulseScore = calculateRealisticPulseScore(venue, now)
     const velocity = calculateVelocity(venue, now)
     const trending = isVenueTrending(venue, now)
-    const checkIns = getSimulatedCheckIns(venue, now)
     const lastActivity = getLastActivity(venue, now)
 
     return {
@@ -296,7 +278,6 @@ export function enrichVenuesWithRealtimeData(venues: Venue[], now: Date): Venue[
       pulseScore,
       scoreVelocity: velocity,
       preTrending: trending,
-      verifiedCheckInCount: checkIns,
       lastActivity,
       lastPulseAt: pulseScore > 0 ? lastActivity : venue.lastPulseAt,
     }

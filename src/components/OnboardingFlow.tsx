@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { applyReferralCode } from '@/lib/creators-client'
 
 interface OnboardingFlowProps {
   onComplete: (preferences: OnboardingPreferences) => void
@@ -33,7 +36,13 @@ const TIME_PREFERENCES = [
   { id: 'weekend-brunch', label: 'Weekend Brunch', time: '10 AM - 2 PM', emoji: '🥂' },
 ]
 
-const STEPS = ['welcome', 'categories', 'times', 'permissions', 'ready'] as const
+const BASE_STEPS = ['welcome', 'categories', 'times', 'permissions'] as const
+const CREATOR_STEP = 'referral' as const
+const LAST_STEP = 'ready' as const
+
+const STEPS = (isFeatureEnabled('creatorEconomy')
+  ? [...BASE_STEPS, CREATOR_STEP, LAST_STEP]
+  : [...BASE_STEPS, LAST_STEP]) as readonly ('welcome' | 'categories' | 'times' | 'permissions' | 'referral' | 'ready')[]
 type Step = typeof STEPS[number]
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
@@ -42,6 +51,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [selectedTimes, setSelectedTimes] = useState<string[]>([])
   const [locationEnabled, setLocationEnabled] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [referralCode, setReferralCode] = useState('')
+  const [referralError, setReferralError] = useState<string | null>(null)
+  const [referralSubmitting, setReferralSubmitting] = useState(false)
 
   const currentStepIndex = STEPS.indexOf(step)
 
@@ -290,6 +302,69 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Continue
                 <ArrowRight size={18} className="ml-2" />
               </Button>
+            </motion.div>
+          )}
+
+          {step === 'referral' && (
+            <motion.div
+              key="referral"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              className="space-y-6 max-w-sm w-full"
+            >
+              <div className="text-center space-y-2">
+                <Fire size={32} weight="fill" className="text-primary mx-auto" />
+                <h2 className="text-2xl font-bold">Got a referral code?</h2>
+                <p className="text-sm text-muted-foreground">
+                  Optional. Give a creator credit for sending you here.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Input
+                  id="referral-code"
+                  aria-label="Referral code"
+                  placeholder="ABCDEF"
+                  value={referralCode}
+                  onChange={(e) => {
+                    setReferralCode(e.target.value.toUpperCase())
+                    setReferralError(null)
+                  }}
+                  maxLength={8}
+                  autoCapitalize="characters"
+                />
+                {referralError && (
+                  <p className="text-xs text-red-400" role="alert">{referralError}</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  onClick={nextStep}
+                >
+                  Skip
+                </Button>
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  disabled={referralCode.length < 6 || referralSubmitting}
+                  onClick={async () => {
+                    setReferralSubmitting(true)
+                    try {
+                      await applyReferralCode(referralCode)
+                      nextStep()
+                    } catch (e) {
+                      setReferralError((e as Error).message)
+                    } finally {
+                      setReferralSubmitting(false)
+                    }
+                  }}
+                >
+                  {referralSubmitting ? 'Applying...' : 'Apply'}
+                </Button>
+              </div>
             </motion.div>
           )}
 

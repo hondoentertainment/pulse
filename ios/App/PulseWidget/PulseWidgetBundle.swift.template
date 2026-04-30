@@ -1,0 +1,17 @@
+// PulseWidgetBundle.swift — TEMPLATE
+// Rename to .swift AFTER adding the Widget Extension target in Xcode.
+// See: ios/App/PulseWidget/README.md
+//
+// TODO(widget): verify target membership before compiling.
+
+import WidgetKit
+import SwiftUI
+
+@main
+struct PulseWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        PulseWidget()
+        // TODO(widget): enable once Live Activity target is configured.
+        // PulseSafetyLiveActivity()
+    }
+}

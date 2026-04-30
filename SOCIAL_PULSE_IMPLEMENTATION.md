@@ -1,7 +1,8 @@
-# Social Pulse Correlation System - Implementation Summary
+# Social Pulse Correlation System — Implementation Summary
 
 ## Overview
-Built a real-time Social Pulse ingestion and correlation system that pulls posts from X (Twitter) for configurable hashtags and correlates that activity with existing Venue Pulse scores.
+
+A real-time Social Pulse ingestion and correlation system that pulls posts from X (Twitter) for configurable hashtags and correlates that activity with existing Venue Pulse scores. This powers the Admin Social Pulse Dashboard for monitoring how social media activity relates to physical venue energy.
 
 ## Core Components Created
 
@@ -196,20 +197,34 @@ Twitter API Polling ← TwitterIngestionService (60s interval)
               Admin Dashboard Visualization
 ```
 
-## Files Created
-1. `src/lib/types.ts` - Extended with Social Pulse types
-2. `src/lib/social-pulse-engine.ts` - Core scoring and correlation logic
-3. `src/lib/twitter-ingestion.ts` - API polling and data ingestion
-4. `src/lib/demo-hashtags.ts` - Demo data for quick setup
-5. `src/hooks/use-social-pulse.ts` - React hooks for data management
-6. `src/hooks/use-social-buzz.ts` - Social buzz detection utility
-7. `src/components/HashtagManager.tsx` - Hashtag configuration UI
-8. `src/components/SocialPulseGraph.tsx` - Social activity visualization
-9. `src/components/CorrelationOverlayChart.tsx` - Dual-line comparison chart
-10. `src/components/CorrelationInsights.tsx` - Correlation results display
-11. `src/components/SocialPulseDashboard.tsx` - Main admin dashboard
+## Files
 
-## Files Modified
-1. `src/App.tsx` - Added dashboard access state and navigation
-2. `src/components/Settings.tsx` - Added dashboard access button
-3. `PRD.md` - Updated with Social Pulse feature documentation
+### Created
+
+| File | Purpose |
+|------|---------|
+| `src/lib/social-pulse-engine.ts` | Core scoring and correlation logic |
+| `src/lib/twitter-ingestion.ts` | API polling and data ingestion |
+| `src/lib/demo-hashtags.ts` | Demo data for quick setup |
+| `src/hooks/use-social-pulse.ts` | React hooks for data management |
+| `src/hooks/use-social-buzz.ts` | Social buzz detection utility |
+| `src/components/HashtagManager.tsx` | Hashtag configuration UI |
+| `src/components/SocialPulseGraph.tsx` | Social activity visualization |
+| `src/components/CorrelationOverlayChart.tsx` | Dual-line comparison chart |
+| `src/components/CorrelationInsights.tsx` | Correlation results display |
+| `src/components/SocialPulseDashboard.tsx` | Main admin dashboard |
+
+### Modified
+
+| File | Changes |
+|------|---------|
+| `src/lib/types.ts` | Extended with Social Pulse types |
+| `src/App.tsx` | Added dashboard access state and navigation |
+| `src/components/Settings.tsx` | Added dashboard access button |
+| `PRD.md` | Updated with Social Pulse feature documentation |
+
+## Related Documentation
+
+- [PRD.md](PRD.md) — product requirements including Social Pulse feature spec
+- [ARCHITECTURE.md](ARCHITECTURE.md) — system architecture and data flow
+- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) — core feature implementation details

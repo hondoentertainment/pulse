@@ -1,165 +1,214 @@
 # Pulse
 
-Pulse is a mobile-first social nightlife discovery app prototype built with React, TypeScript, Vite, and Spark storage hooks. It helps users discover nearby venues, view live energy signals, post short-lived "pulses", and explore maps, events, crews, insights, and social activity.
+**Real-time venue energy discovery for nightlife.**
+
+Pulse is a mobile-first PWA that shows users where the energy is happening right now. Check into venues, post short-lived "pulses" with energy ratings, and discover what's buzzing nearby through live scores, interactive maps, social feeds, and crew coordination.
+
+## How It Works
+
+1. **Open the app** — see nearby venues ranked by live energy scores
+2. **Check in** — post a pulse with an energy rating (Chill → Buzzing → Electric)
+3. **Score updates** — your pulse raises the venue's live score, triggering friend and surge notifications
+4. **Friends discover** — the cycle repeats, amplifying where the energy is right now
+
+Pulses decay after 90 minutes, so scores always reflect what's happening now — not last night.
 
 ## Current Status
 
-This repository is an advanced product prototype, not a production deployment yet.
+Pulse is an **advanced product prototype**. The feature surface is broad and functional, but production infrastructure (backend persistence, auth, observability) is not yet complete.
 
-What is working today:
-- Multi-tab app shell for map, discovery, trending, notifications, and profile flows
-- Venue pages, pulse creation, stories, events, playlists, and crew features
-- A richer interactive map with clustering, compare mode, smart preview ranking, fit-to-view, and accessibility controls
-- A large unit test suite for core scoring, recommendations, analytics, sharing, moderation, and map helper logic
+**Working today:**
 
-What is still prototype-grade:
-- Venue and user state are seeded from mock data and Spark KV storage
-- Simulated location fallback is still present
-- Reverse geocoding is called directly from the client
-- Auth, backend APIs, durable persistence, and production observability are not fully implemented
+- Multi-tab app shell — map, discover, trending, notifications, profile
+- Venue pages with live energy scores, score breakdowns, pulse feeds, and stories
+- Pulse creation with energy ratings, media, pending states, and sharing
+- Interactive map with clustering, compare mode, route-aware previews, accessibility controls
+- Social features — crews, presence, stories, playlists, friend activity, venue following
+- Venue owner dashboards, analytics, social pulse correlation, and moderation tools
+- 470+ unit tests across scoring, recommendations, analytics, sharing, moderation, map helpers, and UI components
+- CI pipeline with lint, test, build, smoke checks, and dependency audit
+- PWA support with offline queue and service worker
+
+**Still prototype-grade:**
+
+- Venue and user data seeded from mock datasets and Spark KV storage
+- Simulated location fallback still present
+- Reverse geocoding called directly from the client
+- Auth, backend APIs, durable persistence, and production observability not fully implemented
 
 ## Tech Stack
 
-- React 19
-- TypeScript
-- Vite 7
-- Tailwind CSS 4
-- Vitest
-- Spark hooks for local app state
+| Layer | Technologies |
+|-------|-------------|
+| **Framework** | React 19, TypeScript, Vite 7 |
+| **Styling** | Tailwind CSS 4, CSS variables, dark theme |
+| **UI Components** | Shadcn/Radix UI primitives, Lucide icons, Phosphor icons |
+| **State** | Spark KV hooks, TanStack React Query v5, custom hooks |
+| **Forms** | React Hook Form, Zod validation |
+| **Maps** | Supercluster (clustering), interactive canvas with heatmaps |
+| **Animations** | Framer Motion, Embla Carousel, React Parallax Tilt |
+| **Charts** | Recharts, D3, Three.js |
+| **Backend** | Supabase (PostgreSQL, Auth, Realtime, Storage) |
+| **Testing** | Vitest (unit), Playwright (E2E smoke) |
+| **Quality** | ESLint, TypeScript strict mode |
+| **PWA** | Vite PWA plugin, service worker, offline queue |
+| **Monitoring** | Vercel Analytics, Sentry error tracking, Lighthouse CI |
+| **Integrations** | Spotify, Uber, Lyft, X/Twitter social pulse (library-level prototypes) |
 
 ## Local Development
 
-Prerequisites:
-- Node.js 20+
-- npm
-
-Install dependencies:
+**Prerequisites:** Node.js 20+, npm
 
 ```bash
+# Install dependencies
 npm install
-```
 
-Start the app:
-
-```bash
+# Start dev server
 npm run dev
-```
 
-Create a production build:
-
-```bash
+# Production build
 npm run build
-```
 
-Run the test suite:
-
-```bash
+# Run unit tests
 npm run test
-```
 
-Run browser smoke tests:
+# Run tests in watch mode
+npm run test:watch
 
-```bash
+# Run Playwright smoke tests
 npm run test:smoke
-```
 
-Run linting:
-
-```bash
+# Lint
 npm run lint
-```
 
-Preview the production build locally:
+# Full release check (lint + test + build + audit)
+npm run release-check
 
-```bash
+# Preview production build
 npm run preview
 ```
 
-## Scripts
-
-- `npm run dev`: start the Vite dev server
-- `npm run build`: type-check build inputs and create a production bundle
-- `npm run test`: run the Vitest suite once
-- `npm run test:watch`: run tests in watch mode
-- `npm run test:smoke`: run Playwright smoke tests against a local preview build
-- `npm run lint`: run ESLint
-- `npm run audit`: fail on high/critical dependency vulnerabilities
-- `npm run release-check`: lint + unit tests + build + audit
-- `npm run preview`: serve the built app locally
-
 ## Project Structure
 
-- [src/App.tsx](C:/Users/kyle/OneDrive/Desktop/pulse/src/App.tsx): main app shell, state orchestration, tab routing, and seeded app flows
-- [src/components](C:/Users/kyle/OneDrive/Desktop/pulse/src/components): UI views and feature components
-- [src/lib](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib): domain logic, scoring, analytics, moderation, utilities, and testable helpers
-- [src/hooks](C:/Users/kyle/OneDrive/Desktop/pulse/src/hooks): location, notifications, unit preferences, and other client hooks
-- [public](C:/Users/kyle/OneDrive/Desktop/pulse/public): PWA assets and service worker
+```
+src/
+├── App.tsx                 # App shell, state orchestration, tab routing
+├── main.tsx                # React 19 entry point
+├── components/             # 125 UI views and feature components
+│   ├── ui/                 # Shadcn/Radix UI primitives
+│   └── __tests__/          # Component test suites
+├── lib/                    # 69 domain logic modules
+│   ├── __tests__/          # 34 unit test files
+│   ├── types.ts            # Shared TypeScript interfaces
+│   ├── mock-data.ts        # Seeded venue and user data (prototype)
+│   ├── pulse-engine.ts     # Core pulse scoring algorithm
+│   ├── venue-trending.ts   # Trending and surge detection
+│   ├── social-pulse-engine.ts  # Social correlation scoring
+│   └── ...                 # Recommendations, analytics, moderation, etc.
+├── hooks/                  # 19 custom React hooks
+│   ├── use-app-state.tsx   # Main app state provider
+│   ├── use-app-handlers.ts # Event handlers
+│   ├── use-realtime-location.ts
+│   ├── use-supabase-auth.tsx
+│   └── ...                 # Social pulse, offline, voice, haptics, etc.
+└── styles/                 # Global styles
 
-## Notable Product Areas
+public/                     # PWA manifest, service worker, privacy policy
+e2e/                        # Playwright smoke tests
+api/                        # API utilities
+supabase/                   # Supabase configuration
+.github/workflows/          # CI (ci.yml), Deploy (deploy.yml), Lighthouse (lighthouse.yml)
+docs/                       # Operational runbooks
+```
 
-- Discovery and trending venue exploration
-- Live venue energy scoring and score breakdowns
-- Pulse creation, reactions, pending states, and sharing
-- Interactive map exploration with clustering and route-oriented previews
-- Presence, social graph, stories, crews, playlists, and notifications
-- Venue-owner, analytics, and developer-platform experiments
+## Features
 
-## Testing and Quality
+### Core Experience
 
-Current baseline:
-- `npm run build` passes
-- `npm run test` passes
-- `npm run lint` passes with warnings only
+- **Venue Discovery** — browse trending venues by map or list, with "Trending Now", "Just Popped Off", and "Gaining Energy" categories
+- **Live Energy Scores** — real-time 0–100 score per venue based on pulse volume, ratings, engagement, and velocity; auto-decays after 90 minutes
+- **Score Transparency** — expandable "Why this score?" panel showing pulse count, average energy, recent change, and last pulse time
+- **Pulse Creation** — quick posts with energy rating (Dead/Chill/Buzzing/Electric), optional photos/video, contextual hashtags, haptic feedback
+- **Interactive Map** — clustering, energy heatmap, compare mode, voice search, route-aware previews, accessibility controls
 
-The test suite currently covers a broad set of pure logic modules in [src/lib](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib), including the extracted interactive map helpers in [src/lib/interactive-map.ts](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib/interactive-map.ts).
+### Social
 
-Remaining quality gaps:
-- Smoke-level browser coverage exists, but critical flow depth is still limited
-- CI exists with lint, unit tests, build, smoke checks, and dependency audit
-- Existing lint warnings remain in some older components and shared UI files
+- **Friend Activity** — follow friends and venues, see recent pulses, add emoji reactions
+- **Crews** — group check-ins, coordination, meet-up suggestions
+- **Stories** — venue and user stories with reactions
+- **Presence** — privacy-first "who's here" with jittered counts and familiar-face detection
+- **Impact Notifications** — "Your pulse pushed [Venue] into Electric" when your contribution crosses a threshold
 
-## Production Readiness Gaps
+### Venue Owner & Admin
 
-The biggest blockers to shipping this as a production app are:
+- **Venue Owner Dashboard** — analytics, guest list, engagement metrics
+- **Social Pulse Dashboard** — X/Twitter hashtag correlation with venue energy
+- **Moderation Queue** — content reports and takedown tools
+- **Analytics** — creator economy metrics, brand partnership tools
 
-1. Real backend services
-Replace mock and local-first state with durable persistence for users, venues, pulses, notifications, moderation actions, and analytics.
+### Platform
 
-2. Authentication and authorization
-Add real account flows, sessions, protected admin surfaces, and role-based permissions for venue-owner and developer features.
+- **Events & Tickets** — event listings, ticket management
+- **Playlists** — curated venue playlists
+- **Night Planner** — plan nights with friends, suggest meet-up venues
+- **Achievements** — badges, streaks, milestones, venue challenges
+- **Settings** — imperial/metric toggle, notification preferences, accessibility options
 
-3. Server-side API boundaries
-Move external API calls, webhook signing, API key issuance, and rate limiting behind server routes instead of handling them only in the client or utility modules.
+## Testing
 
-4. Persistence upgrades
-Replace prototype localStorage behavior and Spark-only state with a clear split between server state, offline cache, and local preferences.
+The test suite covers:
 
-5. Release engineering
-Add CI, environment management, deployment documentation, and end-to-end regression coverage.
+- **Library logic** (34 test files) — scoring, recommendations, trending, analytics, sharing, moderation, social pulse, interactive map helpers
+- **UI components** (component test files) — UI primitives, cards, navigation, venue features, presentational components, feeds/lists
+- **E2E smoke** (Playwright) — app load, basic navigation
 
-6. Observability and security
-Add error tracking, logs, performance monitoring, dependency remediation, and a repository-specific security policy.
+```bash
+# Run all tests
+npm run test
 
-## Known Prototype Assumptions
+# Run with coverage
+npx vitest run --coverage
 
-- The app seeds venues from mock and expansion datasets in [src/lib/mock-data.ts](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib/mock-data.ts).
-- App state is heavily driven by `useKV` in [src/App.tsx](C:/Users/kyle/OneDrive/Desktop/pulse/src/App.tsx).
-- Reverse geocoding currently calls OpenStreetMap Nominatim directly from the client.
-- Public API and webhook helpers in [src/lib/public-api.ts](C:/Users/kyle/OneDrive/Desktop/pulse/src/lib/public-api.ts) are library-level prototypes, not deployed production services.
+# Run specific test file
+npx vitest run src/lib/__tests__/pulse-engine.test.ts
+```
 
-## Suggested Next Milestones
+## CI/CD
 
-1. Stand up a backend and real data model for venues, pulses, users, and notifications.
-2. Add authentication, session handling, and admin authorization.
-3. Replace mock bootstrapping with seeded server data and feature flags.
-4. Add Playwright smoke tests for onboarding, map, pulse creation, and venue flows.
-5. Reduce bundle size and set performance budgets for mobile devices.
-6. Add deploy, rollback, monitoring, and incident-response documentation.
+Three GitHub Actions workflows:
 
-## Related Docs
+| Workflow | Trigger | Steps |
+|----------|---------|-------|
+| **ci.yml** | Push/PR | Lint, unit tests, build |
+| **deploy.yml** | Push to main | Production deployment |
+| **lighthouse.yml** | Scheduled | Performance, accessibility, best practices audits |
 
-- [PRD.md](C:/Users/kyle/OneDrive/Desktop/pulse/PRD.md): product requirements and scope
-- [IMPLEMENTATION_SUMMARY.md](C:/Users/kyle/OneDrive/Desktop/pulse/IMPLEMENTATION_SUMMARY.md): recent feature implementation notes
-- [SECURITY.md](C:/Users/kyle/OneDrive/Desktop/pulse/SECURITY.md): repository security policy and disclosure guidance
-- [PRODUCTION_ROLLOUT.md](C:/Users/kyle/OneDrive/Desktop/pulse/PRODUCTION_ROLLOUT.md): phased rollout plan from prototype to launch readiness
-- [RELEASE_CHECKS.md](C:/Users/kyle/OneDrive/Desktop/pulse/RELEASE_CHECKS.md): minimum automated and manual checks to run before deployment
+## Production Readiness
+
+See [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) for the full phased plan. Key gaps:
+
+1. **Backend** — replace mock data with Supabase-backed persistence
+2. **Auth** — real account flows, sessions, role-based permissions
+3. **Server boundaries** — move geocoding, API keys, webhooks behind server routes
+4. **Persistence** — clear split between server state, offline cache, local preferences
+5. **Observability** — error tracking, structured logging, uptime monitoring
+6. **Release engineering** — environment management, rollback procedures
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [PRD.md](PRD.md) | Product requirements, feature specs, design direction, edge cases |
+| [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
+| [NEXT_PHASES.md](NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
+| [RELEASE_CHECKS.md](RELEASE_CHECKS.md) | Pre-deployment automated and manual checks |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
+| [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | Core loop, score transparency, impact notifications |
+| [SOCIAL_PULSE_IMPLEMENTATION.md](SOCIAL_PULSE_IMPLEMENTATION.md) | Social pulse correlation system details |
+| [docs/SUPPORT_RUNBOOK.md](docs/SUPPORT_RUNBOOK.md) | Operational procedures, rollback, moderation |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, code style, PR process |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, module boundaries |
+
+## License
+
+Private repository. All rights reserved.

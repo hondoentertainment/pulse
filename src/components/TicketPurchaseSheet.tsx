@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -11,12 +11,10 @@ import {
   TICKET_TYPE_CONFIG,
   calculateDynamicPrice,
   getDefaultTicketTiers,
-  reserveTicket,
-  confirmPurchase,
-  createGroupOrder,
   GroupOrder,
 } from '@/lib/ticketing'
-import { formatPrice, createPaymentIntent, processPayment } from '@/lib/payment-processing'
+import { formatPrice } from '@/lib/payment-processing'
+import { purchaseTicket } from '@/lib/ticketing-client'
 import { Ticket as TicketIcon, Users, Minus, Plus, Lightning, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -27,6 +25,13 @@ interface TicketPurchaseSheetProps {
   event: VenueEvent | null
   currentUser: User
   allUsers: User[]
+  /**
+   * Legacy callback — retained for parents that wanted to append tickets to
+   * client-side KV state. With Stripe Checkout we redirect away before
+   * tickets exist in `paid` state, so this fires with an empty list on
+   * successful redirect. Server-issued ticket rows appear via
+   * `ticketing-client.listTickets()` on return.
+   */
   onPurchase: (tickets: Ticket[], groupOrder?: GroupOrder) => void
 }
 
@@ -43,6 +48,7 @@ export function TicketPurchaseSheet({
   const [splitWithCrew, setSplitWithCrew] = useState(false)
   const [selectedCrewMembers, setSelectedCrewMembers] = useState<string[]>([])
   const [purchasing, setPurchasing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const tiers = useMemo(() => {
     if (!event) return []
@@ -84,88 +90,40 @@ export function TicketPurchaseSheet({
     )
   }
 
-  const handlePurchase = async () => {
-    if (!event || !selectedTier || !dynamicPricing) return
+  const handlePurchase = useCallback(async () => {
+    if (!event) return
     setPurchasing(true)
+    setError(null)
 
-    try {
-      // Simulate brief processing delay
-      await new Promise(resolve => setTimeout(resolve, 800))
+    const buyQuantity = splitWithCrew && selectedCrewMembers.length > 0
+      ? selectedCrewMembers.length + 1
+      : quantity
 
-      const tickets: Ticket[] = []
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
-      if (splitWithCrew && selectedCrewMembers.length > 0) {
-        // Group order flow
-        const allMembers = [currentUser.id, ...selectedCrewMembers]
-        const groupOrder = createGroupOrder(
-          event.id,
-          currentUser.id,
-          allMembers,
-          selectedType,
-          unitPrice
-        )
+    const result = await purchaseTicket({
+      eventId: event.id,
+      quantity: buyQuantity,
+      ticketType: selectedType,
+      successUrl: origin ? `${origin}/my-tickets?session_id={CHECKOUT_SESSION_ID}` : undefined,
+      cancelUrl: origin ? `${origin}/venues/${event.venueId}?ticket_cancelled=1` : undefined,
+    })
 
-        for (const memberId of allMembers) {
-          const reserved = reserveTicket(
-            event.id,
-            event.venueId,
-            memberId,
-            selectedType,
-            unitPrice,
-            true
-          )
-          const purchased = confirmPurchase({ ...reserved, groupOrderId: groupOrder.id })
-          tickets.push(purchased)
-        }
-
-        // Process payment
-        const intent = createPaymentIntent(
-          totalPrice,
-          'ticket',
-          currentUser.id,
-          event.venueId,
-          event.id,
-          { groupOrderId: groupOrder.id }
-        )
-        processPayment(intent)
-
-        onPurchase(tickets, groupOrder)
-      } else {
-        // Standard purchase
-        for (let i = 0; i < quantity; i++) {
-          const reserved = reserveTicket(
-            event.id,
-            event.venueId,
-            currentUser.id,
-            selectedType,
-            unitPrice,
-            true
-          )
-          const purchased = confirmPurchase(reserved)
-          tickets.push(purchased)
-        }
-
-        const intent = createPaymentIntent(
-          totalPrice,
-          'ticket',
-          currentUser.id,
-          event.venueId,
-          event.id
-        )
-        processPayment(intent)
-
-        onPurchase(tickets)
-      }
-
-      // Reset state
-      setQuantity(1)
-      setSplitWithCrew(false)
-      setSelectedCrewMembers([])
-      onOpenChange(false)
-    } finally {
+    if (!result.ok) {
+      setError(result.error)
       setPurchasing(false)
+      return
     }
-  }
+
+    // Server created pending tickets + Stripe session. Tell the parent that
+    // a purchase was initiated so it can clear UI state, then redirect to
+    // Stripe Checkout. The ticket rows materialize as `paid` via webhook.
+    onPurchase([])
+
+    if (typeof window !== 'undefined' && result.data.checkoutUrl) {
+      window.location.assign(result.data.checkoutUrl)
+    }
+  }, [event, splitWithCrew, selectedCrewMembers, quantity, selectedType, onPurchase])
 
   if (!event) return null
 
@@ -407,9 +365,16 @@ export function TicketPurchaseSheet({
               </div>
             )}
 
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+
             <Button
               onClick={handlePurchase}
               disabled={purchasing}
+              aria-busy={purchasing}
               className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90"
             >
               {purchasing ? (

@@ -70,13 +70,15 @@ function generateActivity(venueId: string, index: number): ActivityItem {
   let text: string
   switch (type) {
     case 'checkin':
-      text = `${name} checked in ${minutesAgo}m ago`
+      // Skip — don't fabricate check-in activity
+      text = `${name} rated it ${RATING_WORDS[Math.floor(random() * RATING_WORDS.length)]} ${String.fromCodePoint(0x26A1)}`
       break
     case 'rating':
       text = `${name} rated it ${RATING_WORDS[Math.floor(random() * RATING_WORDS.length)]} ${String.fromCodePoint(0x26A1)}`
       break
     case 'arrival':
-      text = `${Math.floor(random() * 5) + 2} new people arrived`
+      // Skip — don't fabricate arrival counts
+      text = 'Energy just went up!'
       break
     case 'energy':
       text = 'Energy just went up!'

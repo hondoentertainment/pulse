@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Venue } from '@/lib/types'
 import { VenueEvent } from '@/lib/events'
 import {
   Ticket,
+  TicketType,
   TICKET_TYPE_CONFIG,
   getUpcomingTickets,
   getPastTickets,
@@ -11,6 +12,7 @@ import {
   applyRefund,
   initiateTransfer,
 } from '@/lib/ticketing'
+import { listTickets, type TicketRow } from '@/lib/ticketing-client'
 import {
   TableReservation,
   getUpcomingReservations,
@@ -35,6 +37,7 @@ import {
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { renderQrDataUrl } from '@/lib/qr'
 
 interface MyTicketsPageProps {
   currentUserId: string
@@ -48,6 +51,48 @@ interface MyTicketsPageProps {
 }
 
 type TabFilter = 'upcoming' | 'past'
+
+function isTicketType(value: string): value is TicketType {
+  return (
+    value === 'general_admission' ||
+    value === 'vip' ||
+    value === 'table_reservation' ||
+    value === 'guest_list'
+  )
+}
+
+/**
+ * Convert a server-side ticket row into the client `Ticket` shape used by
+ * the rest of the app (it predates the Supabase schema). Amounts are in
+ * cents on the server; UI uses dollars.
+ */
+function rowToTicket(row: TicketRow): Ticket {
+  const type: TicketType = isTicketType(row.ticket_type) ? row.ticket_type : 'general_admission'
+  const priceDollars = row.price_cents / 100
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    venueId: '',
+    userId: row.user_id,
+    type,
+    price: priceDollars,
+    originalPrice: priceDollars,
+    status:
+      row.status === 'paid'
+        ? 'purchased'
+        : row.status === 'refunded'
+        ? 'refunded'
+        : row.status === 'transferred'
+        ? 'transferred'
+        : row.status === 'cancelled'
+        ? 'refunded'
+        : 'reserved',
+    purchasedAt: row.paid_at ?? row.created_at,
+    qrCode: row.qr_code_secret ?? '',
+    transferable: true,
+    transferHistory: [],
+  }
+}
 
 export function MyTicketsPage({
   currentUserId,
@@ -63,6 +108,74 @@ export function MyTicketsPage({
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [showTransferDialog, setShowTransferDialog] = useState<string | null>(null)
   const [transferToUser, setTransferToUser] = useState('')
+  const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({})
+  const [serverTickets, setServerTickets] = useState<Ticket[]>([])
+  const [serverLoading, setServerLoading] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  // Hydrate tickets from /api/ticketing/mine. The server-backed list is
+  // merged with any client-side (KV) tickets passed in via props so the page
+  // works both in the legacy mock flow and the real Supabase flow.
+  useEffect(() => {
+    let cancelled = false
+    setServerLoading(true)
+    setServerError(null)
+    listTickets()
+      .then(result => {
+        if (cancelled) return
+        if (!result.ok) {
+          setServerError(result.error)
+          return
+        }
+        setServerTickets(result.data.map(rowToTicket))
+      })
+      .catch(err => {
+        if (cancelled) return
+        setServerError(err instanceof Error ? err.message : 'network_error')
+      })
+      .finally(() => {
+        if (!cancelled) setServerLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const mergedTickets = useMemo(() => {
+    const seen = new Set<string>()
+    const out: Ticket[] = []
+    for (const t of serverTickets) {
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      out.push(t)
+    }
+    for (const t of tickets) {
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      out.push(t)
+    }
+    return out
+  }, [serverTickets, tickets])
+
+  useEffect(() => {
+    // Render a QR for whichever ticket is currently expanded. We lazily load
+    // the qrcode module on first demand (keeps it off the main bundle).
+    if (!expandedTicketId) return
+    if (qrDataUrls[expandedTicketId]) return
+    const ticket = tickets.find(t => t.id === expandedTicketId)
+    if (!ticket?.qrCode) return
+    let cancelled = false
+    renderQrDataUrl(ticket.qrCode)
+      .then(url => {
+        if (!cancelled) setQrDataUrls(prev => ({ ...prev, [ticket.id]: url }))
+      })
+      .catch(() => {
+        /* leave placeholder in place */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [expandedTicketId, tickets, qrDataUrls])
 
   const eventMap = useMemo(() => {
     const map = new Map<string, VenueEvent>()
@@ -82,14 +195,28 @@ export function MyTicketsPage({
   )
 
   const upcomingTickets = useMemo(
-    () => getUpcomingTickets(tickets, currentUserId, eventsForTickets),
-    [tickets, currentUserId, eventsForTickets]
+    () => getUpcomingTickets(mergedTickets, currentUserId, eventsForTickets),
+    [mergedTickets, currentUserId, eventsForTickets]
   )
 
   const pastTickets = useMemo(
-    () => getPastTickets(tickets, currentUserId, eventsForTickets),
-    [tickets, currentUserId, eventsForTickets]
+    () => getPastTickets(mergedTickets, currentUserId, eventsForTickets),
+    [mergedTickets, currentUserId, eventsForTickets]
   )
+
+  // Pending tickets haven't passed a checkout session yet; expose them
+  // separately so the UI can surface "payment in progress" state.
+  const pendingTickets = useMemo(() => {
+    const now = Date.now()
+    const futureEventIds = new Set(
+      eventsForTickets
+        .filter(e => new Date(e.startTime).getTime() > now)
+        .map(e => e.id),
+    )
+    return serverTickets
+      .filter(t => t.userId === currentUserId && t.status === 'reserved')
+      .filter(t => futureEventIds.has(t.eventId) || !eventMap.has(t.eventId))
+  }, [serverTickets, currentUserId, eventsForTickets, eventMap])
 
   const upcomingReservations = useMemo(
     () => getUpcomingReservations(reservations, currentUserId),
@@ -258,10 +385,18 @@ export function MyTicketsPage({
                         >
                           <Separator />
                           <div className="p-4 space-y-4">
-                            {/* QR Code placeholder */}
+                            {/* QR Code (real when qrcode lib has rendered, placeholder otherwise) */}
                             <div className="flex flex-col items-center py-4">
-                              <div className="w-40 h-40 bg-white rounded-xl flex items-center justify-center">
-                                <QrCode size={120} className="text-black" />
+                              <div className="w-40 h-40 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+                                {qrDataUrls[ticket.id] ? (
+                                  <img
+                                    src={qrDataUrls[ticket.id]}
+                                    alt="Ticket QR code"
+                                    className="w-full h-full"
+                                  />
+                                ) : (
+                                  <QrCode size={120} className="text-black" />
+                                )}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2 font-mono">
                                 {ticket.qrCode.slice(0, 20)}...
@@ -459,8 +594,56 @@ export function MyTicketsPage({
           </>
         )}
 
+        {/* Pending tickets (payment in progress) — only shown in the upcoming tab. */}
+        {tab === 'upcoming' && pendingTickets.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="font-bold text-sm uppercase tracking-wide text-muted-foreground">
+              Payment in progress ({pendingTickets.length})
+            </h2>
+            {pendingTickets.map(t => {
+              const event = eventMap.get(t.eventId)
+              return (
+                <Card key={t.id} className="p-4 border-dashed border-primary/40">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="font-semibold">{event?.title ?? 'Event ticket'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Waiting for payment confirmation. If you already completed
+                        checkout, this will update in a moment.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs border-primary/40 text-primary">
+                      Pending
+                    </Badge>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Loading & server-error indicator. */}
+        {serverLoading && currentTickets.length === 0 && (
+          <div className="text-center py-6">
+            <p className="text-sm text-muted-foreground" role="status">
+              Loading your tickets…
+            </p>
+          </div>
+        )}
+        {serverError && (
+          <div
+            className="rounded-md bg-red-500/10 border border-red-500/30 p-3 text-red-400 text-xs"
+            role="alert"
+          >
+            Could not load tickets: {serverError}
+          </div>
+        )}
+
         {/* Empty State */}
-        {currentTickets.length === 0 && currentReservations.length === 0 && (
+        {!serverLoading &&
+          currentTickets.length === 0 &&
+          currentReservations.length === 0 &&
+          (tab !== 'upcoming' || pendingTickets.length === 0) && (
           <div className="text-center py-12 space-y-3">
             <TicketIcon size={48} className="mx-auto text-muted-foreground/50" />
             <p className="text-muted-foreground">

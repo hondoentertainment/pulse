@@ -1,0 +1,54 @@
+name: Native Sync
+
+on:
+  push:
+    tags:
+      - 'native-*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  capacitor-sync:
+    runs-on: ubuntu-latest
+    name: Capacitor sync (web → native projects)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.1'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build web bundle
+        run: bun run build
+
+      # NOTE: we intentionally do NOT build the native app here. That requires
+      # Xcode (macOS runner) and Android Studio / a full Android SDK, which
+      # are out of scope for this workflow. It only verifies that `cap sync`
+      # succeeds and publishes the synced output as an artifact for review.
+      - name: Capacitor sync
+        run: bunx cap sync
+        continue-on-error: true
+        # If native projects have not yet been committed, `cap sync` is a no-op
+        # but must not fail the workflow.
+
+      - name: Collect sync output
+        run: |
+          mkdir -p native-sync-artifact
+          cp -r dist native-sync-artifact/dist || true
+          cp capacitor.config.ts native-sync-artifact/ || true
+          if [ -d ios ]; then cp -r ios native-sync-artifact/ios; fi
+          if [ -d android ]; then cp -r android native-sync-artifact/android; fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-sync-${{ github.ref_name }}
+          path: native-sync-artifact/
+          retention-days: 14

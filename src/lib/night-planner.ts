@@ -560,8 +560,8 @@ export function adaptPlan(
   currentTime: string,
   liveEnergyScores: Record<string, { energy: EnergyRating; score: number }>,
   venues: Venue[],
-  pulses: Pulse[],
-  user: User
+  _pulses: Pulse[],
+  _user: User
 ): { plan: NightPlan; swapSuggestions: SwapSuggestion[] } {
   void pulses
   void user

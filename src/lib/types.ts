@@ -1,5 +1,28 @@
 export type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 
+export type AccessibilityFeature =
+  | 'wheelchair_accessible'
+  | 'step_free_entry'
+  | 'accessible_restroom'
+  | 'gender_neutral_restroom'
+  | 'sensory_friendly'
+  | 'quiet_hours'
+  | 'service_animal_friendly'
+  | 'signer_on_request'
+  | 'braille_menu'
+
+export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
+  'wheelchair_accessible',
+  'step_free_entry',
+  'accessible_restroom',
+  'gender_neutral_restroom',
+  'sensory_friendly',
+  'quiet_hours',
+  'service_animal_friendly',
+  'signer_on_request',
+  'braille_menu',
+] as const
+
 export interface User {
   id: string
   username: string
@@ -71,6 +94,7 @@ export interface Venue {
     }
   }
   liveSummary?: VenueLiveSummary
+  accessibilityFeatures?: AccessibilityFeature[]
 }
 
 export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'
