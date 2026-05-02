@@ -1,5 +1,26 @@
 export type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 
+export type WaitTimeConfidence = 'low' | 'med' | 'high'
+
+export interface VenueWaitTime {
+  venueId: string
+  estimatedMinutes: number
+  confidence: WaitTimeConfidence
+  sampleSize: number
+  computedAt: string
+}
+
+export type WeatherCondition = 'clear' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm' | 'unknown'
+
+export interface WeatherPayload {
+  condition: WeatherCondition
+  tempC: number
+  precipitationPct: number
+  windKph: number
+  visibilityKm: number
+  observedAt: string
+}
+
 export type AccessibilityFeature =
   | 'wheelchair_accessible'
   | 'step_free_entry'

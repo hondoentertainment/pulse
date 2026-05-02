@@ -149,11 +149,14 @@ export default function handler(req: RequestLike, res: ResponseLike) {
   }
 
   // Moderation gate — caption + hashtags.
-  const moderation = checkContent({ caption: validated.caption, hashtags: validated.hashtags })
-  if (!moderation.ok) {
+  const moderation = checkContent({
+    content: [validated.caption, ...validated.hashtags].filter(Boolean).join(' '),
+    kind: 'pulse',
+  })
+  if (!moderation.allowed) {
     res.status(422).json({
       error: 'Content violates policy',
-      findings: moderation.findings,
+      findings: moderation.reasons,
     })
     return
   }
@@ -204,6 +207,6 @@ export default function handler(req: RequestLike, res: ResponseLike) {
   insertVideoPulse(row)
   created(res, {
     pulse: row,
-    moderation: { severity: moderation.severity, findings: moderation.findings },
+    moderation: { severity: moderation.severity, findings: moderation.reasons },
   })
 }

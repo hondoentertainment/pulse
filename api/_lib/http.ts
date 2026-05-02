@@ -52,7 +52,7 @@ export function handlePreflight(req: RequestLike, res: ResponseLike): boolean {
   return false
 }
 
-export function methodNotAllowed(res: ResponseLike, allowed: string[]): void {
+export function methodNotAllowed(res: ResponseLike, allowed: string[] = ['GET', 'POST', 'OPTIONS']): void {
   res.setHeader('Allow', allowed.join(', '))
   res.status(405).json({ error: 'Method not allowed' })
 }
@@ -77,9 +77,13 @@ export function notFound(res: ResponseLike, message = 'Not found'): void {
 
 export function tooManyRequests(
   res: ResponseLike,
-  message = 'Rate limit exceeded',
+  message: string | number = 'Rate limit exceeded',
   retryAfterSeconds?: number
 ): void {
+  if (typeof message === 'number') {
+    retryAfterSeconds = message
+    message = 'Rate limit exceeded'
+  }
   if (retryAfterSeconds !== undefined) {
     res.setHeader('Retry-After', String(retryAfterSeconds))
   }
@@ -88,10 +92,15 @@ export function tooManyRequests(
 
 export function serverError(
   res: ResponseLike,
-  message = 'Internal server error',
+  message: string | Error | unknown = 'Internal server error',
   details?: unknown
 ): void {
-  const payload: Record<string, unknown> = { error: message }
+  const resolvedMessage = typeof message === 'string'
+    ? message
+    : message instanceof Error
+      ? message.message
+      : 'Internal server error'
+  const payload: Record<string, unknown> = { error: resolvedMessage }
   if (details !== undefined) payload.details = details
   res.status(500).json(payload)
 }
@@ -99,6 +108,10 @@ export function serverError(
 /** Success envelope: `{ data }`. */
 export function ok<T>(res: ResponseLike, data: T, status: number = 200): void {
   res.status(status).json({ data })
+}
+
+export function created<T>(res: ResponseLike, data: T): void {
+  ok(res, data, 201)
 }
 
 /** Error envelope: `{ error: { code, message, ...extra } }`. */
@@ -144,4 +157,45 @@ export async function readJson<T = unknown>(req: RequestLike): Promise<T> {
     return JSON.parse(req.body) as T
   }
   throw new Error('Invalid or missing JSON body')
+}
+
+export function getAuthUserId(req: RequestLike): string | null {
+  const auth = getHeader(req, 'authorization')
+  const match = auth ? /^Bearer\s+(.+)$/i.exec(auth.trim()) : null
+  const token = match?.[1]
+  if (!token) return null
+
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = payload + (payload.length % 4 === 0 ? '' : '='.repeat(4 - (payload.length % 4)))
+    const decoded = typeof atob === 'function'
+      ? atob(padded)
+      : Buffer.from(padded, 'base64').toString('utf8')
+    const claims = JSON.parse(decoded) as { sub?: unknown; exp?: unknown }
+    if (typeof claims.exp === 'number' && claims.exp * 1000 < Date.now()) return null
+    return typeof claims.sub === 'string' && claims.sub.length > 0 ? claims.sub : null
+  } catch {
+    return null
+  }
+}
+
+export function parseQueryInt(
+  value: string | string[] | undefined,
+  fallback: number,
+  min = Number.MIN_SAFE_INTEGER,
+  max = Number.MAX_SAFE_INTEGER,
+): number {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = raw !== undefined ? Number.parseInt(raw, 10) : NaN
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(min, Math.min(max, parsed))
+}
+
+export function parseQueryFloat(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (raw === undefined) return null
+  const parsed = Number.parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : null
 }

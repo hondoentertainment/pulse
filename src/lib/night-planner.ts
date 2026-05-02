@@ -563,8 +563,8 @@ export function adaptPlan(
   _pulses: Pulse[],
   _user: User
 ): { plan: NightPlan; swapSuggestions: SwapSuggestion[] } {
-  void pulses
-  void user
+  void _pulses
+  void _user
   const now = new Date(currentTime).getTime()
   const swapSuggestions: SwapSuggestion[] = []
 

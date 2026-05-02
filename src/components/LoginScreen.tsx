@@ -1,126 +1,121 @@
 import { useState } from 'react'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Lightning, EnvelopeSimple } from '@phosphor-icons/react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Brain, ChartLine, Lightning, ShieldCheck } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+
+const easeOut = [0.22, 1, 0.36, 1] as const
 
 export function LoginScreen() {
   const { signIn } = useSupabaseAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [authMode, setAuthMode] = useState<'options' | 'email'>('options')
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email || !password) return toast.error('Please enter email and password')
-    
+  const handleStart = async () => {
     setLoading(true)
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) toast.error(error.message)
-      else toast.success('Check your email for the confirmation link!')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) toast.error(error.message)
-      // On success, the session listener in useSupabaseAuth will trigger re-render
+    try {
+      await signIn()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not start tracking')
+      setLoading(false)
     }
-    setLoading(false)
-  }
-
-  const handleOAuth = async (provider: 'google' | 'apple') => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: window.location.origin }
-    })
-    if (error) toast.error(error.message)
   }
 
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6" aria-labelledby="login-title">
-      <div className="w-full max-w-sm space-y-8 text-center">
+    <main
+      className="min-h-dvh overflow-x-hidden bg-background text-foreground [background-image:radial-gradient(circle_at_20%_-10%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_28rem),radial-gradient(circle_at_90%_20%,color-mix(in_oklch,var(--accent)_16%,transparent),transparent_24rem)] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))]"
+      aria-labelledby="login-title"
+    >
+      <div className="mx-auto flex min-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2.5rem)] w-full max-w-md flex-col">
         <motion.div
-           initial={{ scale: 0 }}
-           animate={{ scale: 1 }}
-           className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center shadow-lg shadow-primary/30"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: easeOut }}
+          className="flex items-center gap-2"
         >
-          <Lightning size={40} weight="fill" className="text-white" />
+          <span className="text-xl font-bold tracking-tight [font-family:var(--font-heading)]">Pulse</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card/80 px-3 py-1 text-xs font-bold text-primary backdrop-blur-sm">
+            <Lightning size={14} weight="fill" aria-hidden />
+            Signal
+          </span>
         </motion.div>
-        
-        <div className="space-y-2">
-          <h1 id="login-title" className="text-3xl font-bold">Pulse</h1>
-          <p className="text-foreground/75">Discover the city's live energy.</p>
+
+        <div className="mt-8 flex flex-1 flex-col justify-center sm:mt-12">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: easeOut, delay: 0.04 }}
+          >
+            <h1 id="login-title" className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl">
+              Your daily state, in 10 seconds.
+            </h1>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              One check-in. Trends, streaks, and one clear next step—no long forms.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: easeOut, delay: 0.08 }}
+            className="mt-8"
+          >
+            <Button
+              size="lg"
+              className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-primary/25"
+              onClick={handleStart}
+              disabled={loading}
+            >
+              {loading ? 'Starting…' : 'Continue'}
+            </Button>
+            <p className="mt-3 text-center text-xs text-muted-foreground">First insight right after your first check-in.</p>
+          </motion.div>
         </div>
 
-        <AnimatePresence mode="wait">
-          {authMode === 'options' ? (
-            <motion.div key="options" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4 pt-4">
-              <Button size="lg" variant="outline" className="w-full border-border bg-card/70 hover:bg-card" onClick={() => handleOAuth('google')}>
-                Continue with Google
-              </Button>
-              <Button size="lg" variant="outline" className="w-full" onClick={() => handleOAuth('apple')}>
-                Continue with Apple
-              </Button>
-              <Button size="lg" variant="ghost" className="w-full" onClick={() => signIn()}>
-                Continue as Guest
-              </Button>
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or</span></div>
-              </div>
-              <Button size="lg" variant="secondary" className="w-full" onClick={() => setAuthMode('email')}>
-                <EnvelopeSimple size={20} className="mr-2" /> Continue with Email
-              </Button>
-            </motion.div>
-          ) : (
-            <motion.div key="email" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4 pt-4 text-left">
-              <form onSubmit={handleEmailAuth} className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="login-email" className="text-sm font-medium">Email</label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    inputMode="email"
-                    spellCheck={false}
-                    required
-                  />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: easeOut, delay: 0.1 }}
+          className="-mx-1 mt-6 shrink-0"
+        >
+          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preview</p>
+          <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1 pl-0.5 pr-4">
+            <div className="w-[min(18rem,calc(100vw-2.5rem))] shrink-0 rounded-[1.5rem] border border-border/80 bg-card p-4 shadow-lg">
+              <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
+                <p className="text-xs font-bold opacity-90">Today&apos;s signal</p>
+                <div className="mt-3 flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-5xl font-black tabular-nums">82</p>
+                    <p className="text-sm font-semibold opacity-90">Trending up</p>
+                  </div>
+                  <ChartLine size={40} weight="bold" className="opacity-90" aria-hidden />
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="login-password" className="text-sm font-medium">Password</label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full h-11" disabled={loading}>
-                  {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Log In'}
-                </Button>
-              </form>
-              <div className="text-center text-sm pt-2">
-                <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-primary hover:underline">
-                  {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-                </button>
               </div>
-              <Button variant="ghost" className="w-full mt-2" onClick={() => setAuthMode('options')}>Back</Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+            <div className="w-[min(16rem,calc(100vw-3rem))] shrink-0 rounded-[1.5rem] border border-border/80 bg-card p-4 shadow-md">
+              <div className="flex items-start gap-3">
+                <span className="rounded-full bg-primary/15 p-2.5 text-primary">
+                  <Brain size={20} weight="fill" aria-hidden />
+                </span>
+                <div>
+                  <p className="font-bold">Insight</p>
+                  <p className="mt-1 text-sm text-muted-foreground leading-snug">Sharper after low-stress mornings.</p>
+                </div>
+              </div>
+            </div>
+            <div className="w-[min(16rem,calc(100vw-3rem))] shrink-0 rounded-[1.5rem] border border-border/80 bg-card p-4 shadow-md">
+              <div className="flex items-start gap-3">
+                <span className="rounded-full bg-emerald-500/15 p-2.5 text-emerald-400">
+                  <ShieldCheck size={20} weight="fill" aria-hidden />
+                </span>
+                <div>
+                  <p className="font-bold">Streak</p>
+                  <p className="mt-1 text-sm text-muted-foreground leading-snug">Daily loop & one recommendation.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </main>
   )
