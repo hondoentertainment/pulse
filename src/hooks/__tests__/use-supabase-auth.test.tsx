@@ -28,6 +28,7 @@ const { authState, profilesData, supabaseMock } = vi.hoisted(() => {
           },
         }
       },
+      signInAnonymously: async () => ({ error: authState.error }),
       signInWithOAuth: async () => ({ error: authState.error }),
       signInWithOtp: async () => ({ error: authState.error }),
       signOut: async () => ({ error: null }),
@@ -61,9 +62,16 @@ const { authState, profilesData, supabaseMock } = vi.hoisted(() => {
   return { authState, profilesData, supabaseMock }
 })
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: supabaseMock,
-}))
+vi.mock('@/lib/supabase', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/supabase')>('@/lib/supabase')
+  return {
+    ...actual,
+    supabase: supabaseMock,
+    /** Unit tests must not depend on a developer's local `.env` credentials. */
+    hasSupabaseConfig: false,
+    hasPlaceholderCredentials: () => true,
+  }
+})
 
 // ── Import after mocks ─────────────────────────────────────────
 import {

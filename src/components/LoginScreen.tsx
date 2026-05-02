@@ -17,6 +17,7 @@ export function LoginScreen() {
       await signIn()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not start tracking')
+    } finally {
       setLoading(false)
     }
   }
