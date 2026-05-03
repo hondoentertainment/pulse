@@ -1,10 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Pulse } from '@/lib/types'
-import {
-  isSupabaseConfigured,
-  fetchPulses as fetchPulsesFromApi,
-  createPulse as createPulseInApi,
-} from '@/lib/api-client'
+import { PulseData, hasSupabaseEnv } from '@/lib/data'
 import { venueKeys } from './use-venues'
 
 /** Query key factory for pulse-related queries. */
@@ -13,36 +9,49 @@ export const pulseKeys = {
   byVenue: (venueId: string) => ['pulses', { venueId }] as const,
 }
 
+function mapPulseToCreateInput(pulse: Pulse) {
+  return {
+    venueId: pulse.venueId,
+    energyRating: pulse.energyRating,
+    caption: pulse.caption,
+    photos: pulse.photos,
+    video: pulse.video,
+    hashtags: pulse.hashtags,
+    crewId: pulse.crewId,
+    credibilityWeight: pulse.credibilityWeight,
+    isPioneer: pulse.isPioneer,
+  }
+}
+
 /**
- * Fetch pulses, optionally filtered by venue.
- * Falls back to an empty array when Supabase is not configured (mock
- * pulses live in KV state managed by use-app-state, not in this layer).
+ * Fetch pulses — all live pulses, or recent pulses for one venue when `venueId` is set.
+ * Returns [] in mock-only mode (KV / mock state owns pulses there).
  */
 export function usePulses(venueId?: string) {
   return useQuery<Pulse[], Error>({
     queryKey: venueId ? pulseKeys.byVenue(venueId) : pulseKeys.all,
     queryFn: async () => {
-      if (!isSupabaseConfigured()) return []
-      return fetchPulsesFromApi(venueId)
+      if (!hasSupabaseEnv()) return []
+      if (venueId) {
+        return PulseData.listRecentPulsesAtVenue(venueId)
+      }
+      return PulseData.listLivePulses()
     },
   })
 }
 
 /**
- * Create a new pulse.
- * On success, invalidates both pulses and the relevant venue detail so
- * pulse scores refresh.
+ * Create a pulse via Supabase. In mock-only mode echoes the pulse back (local state owns persistence).
  */
 export function useCreatePulse() {
   const queryClient = useQueryClient()
 
   return useMutation<Pulse, Error, Pulse>({
     mutationFn: async (pulse) => {
-      if (!isSupabaseConfigured()) {
-        // In mock mode just echo the pulse back; local state handles persistence.
+      if (!hasSupabaseEnv()) {
         return pulse
       }
-      return createPulseInApi(pulse)
+      return PulseData.createPulse(mapPulseToCreateInput(pulse))
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: pulseKeys.all })

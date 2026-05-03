@@ -31,7 +31,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => {
   const icons = [
     'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
-    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Buildings','Calendar','CalendarBlank',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Broadcast','Buildings','Calendar','CalendarBlank',
     'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
     'ChartBar','ChartLine','ChatCircle','ChatText','Check','CheckCircle','CircleNotch','Clock',
     'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
@@ -42,8 +42,7 @@ vi.mock('@phosphor-icons/react', () => {
     'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
     'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
     'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
-    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Quotes',
-    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse',    'QrCode','Question','Quotes','Queue','Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
     'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
     'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
     'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',

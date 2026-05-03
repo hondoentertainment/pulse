@@ -23,6 +23,8 @@ interface HomeSocialFeedProps {
   onPromotionClick?: (promotionId: string) => void
   isFavorite: (venueId: string) => boolean
   onToggleFavorite: (venueId: string) => void
+  isFollowed: (venueId: string) => boolean
+  onToggleFollow: (venueId: string) => void
 }
 
 export function HomeSocialFeed({
@@ -38,6 +40,8 @@ export function HomeSocialFeed({
   onPromotionClick,
   isFavorite,
   onToggleFavorite,
+  isFollowed,
+  onToggleFollow,
 }: HomeSocialFeedProps) {
   const promotedByVenueId = new Map(promotions.map(promo => [promo.venueId, promo.id]))
 
@@ -52,6 +56,8 @@ export function HomeSocialFeed({
                   key={rec.venue.id}
                   recommendation={rec}
                   isSponsored={promotedByVenueId.has(rec.venue.id)}
+                  isFollowed={isFollowed(rec.venue.id)}
+                  onToggleFollow={onToggleFollow}
                   onClick={() => {
                     const promoId = promotedByVenueId.get(rec.venue.id)
                     if (promoId) onPromotionClick?.(promoId)
@@ -86,6 +92,8 @@ export function HomeSocialFeed({
               onVenueClick={onVenueClick}
               isFavorite={isFavorite}
               onToggleFavorite={onToggleFavorite}
+              isFollowed={isFollowed}
+              onToggleFollow={onToggleFollow}
             />
           </div>
         </FeedBlock>

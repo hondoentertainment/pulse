@@ -2,13 +2,15 @@ import type { Recommendation } from '@/lib/venue-recommendations'
 import { memo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Sparkle, Users, Clock, TrendUp, Compass, MapPin, Broadcast } from '@phosphor-icons/react'
+import { Sparkle, Users, Clock, TrendUp, Compass, MapPin, Broadcast, HeartStraight } from '@phosphor-icons/react'
 import { getEnergyLabel, getEnergyColor } from '@/lib/pulse-engine'
 import { motion } from 'framer-motion'
 
 interface RecommendationCardProps {
   recommendation: Recommendation
   isSponsored?: boolean
+  isFollowed?: boolean
+  onToggleFollow?: (venueId: string) => void
   onClick: () => void
 }
 
@@ -22,7 +24,13 @@ const REASON_ICONS: Record<string, typeof Sparkle> = {
   live_intel: Broadcast,
 }
 
-export const RecommendationCard = memo(function RecommendationCard({ recommendation, isSponsored = false, onClick }: RecommendationCardProps) {
+export const RecommendationCard = memo(function RecommendationCard({
+  recommendation,
+  isSponsored = false,
+  isFollowed = false,
+  onToggleFollow,
+  onClick,
+}: RecommendationCardProps) {
   const { venue, reasons } = recommendation
   const label = getEnergyLabel(venue.pulseScore)
   const color = getEnergyColor(venue.pulseScore)
@@ -36,10 +44,27 @@ export const RecommendationCard = memo(function RecommendationCard({ recommendat
       whileTap={{ scale: 0.98 }}
     >
       <Card
-        className="p-3 bg-card/80 border-border hover:border-accent/40 cursor-pointer transition-colors"
+        className="relative p-3 bg-card/80 border-border hover:border-accent/40 cursor-pointer transition-colors"
         onClick={onClick}
       >
-        <div className="flex items-start justify-between gap-2">
+        {onToggleFollow && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleFollow(venue.id)
+            }}
+            aria-label={isFollowed ? `Unfollow ${venue.name}` : `Follow ${venue.name}`}
+            className="absolute top-2 right-2 z-10 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-background/85 backdrop-blur-sm transition-colors hover:bg-background"
+          >
+            <HeartStraight
+              size={16}
+              weight={isFollowed ? 'fill' : 'regular'}
+              className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
+            />
+          </button>
+        )}
+        <div className="flex items-start justify-between gap-2 pr-10">
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-foreground truncate">{venue.name}</p>
             <p className="text-xs text-muted-foreground truncate">

@@ -310,6 +310,7 @@ describe('TrendingTab', () => {
         onToggleFollow={vi.fn()}
         onReaction={vi.fn()}
         isFavorite={() => false}
+        isFollowed={() => false}
       />
     )
 
@@ -545,7 +546,7 @@ describe('RecommendationsSection', () => {
       />
     )
 
-    expect(screen.getByText('You Might Like')).toBeDefined()
+    expect(screen.getByText('Best next moves')).toBeDefined()
   })
 })
 
@@ -587,7 +588,7 @@ describe('Favorites', () => {
       />
     )
 
-    expect(screen.getByText('No favorite venues yet')).toBeDefined()
+    expect(screen.getByText('Build your shortlist')).toBeDefined()
   })
 })
 

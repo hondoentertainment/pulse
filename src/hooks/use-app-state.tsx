@@ -610,15 +610,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const favoriteVenues = useMemo(
     () => (currentUser?.favoriteVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
-    [currentUser?.favoriteVenues, venueById, visibleVenues]
+      .filter((v): v is Venue => v !== undefined),
+    [currentUser?.favoriteVenues, venueById]
   )
 
   const followedVenues = useMemo(
     () => (currentUser?.followedVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
-    [currentUser?.followedVenues, venueById, visibleVenues]
+      .filter((v): v is Venue => v !== undefined),
+    [currentUser?.followedVenues, venueById]
   )
 
   const isFavorite = useCallback((venueId: string) => favoriteVenueIds.has(venueId), [favoriteVenueIds])

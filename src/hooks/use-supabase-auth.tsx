@@ -183,8 +183,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signInWithOAuth = async (provider: Provider) => {
     setAuthError(null)
     if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
-      setAuthError('Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
-      return
+      const msg = 'Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+      setAuthError(msg)
+      throw new Error(msg)
     }
 
     const redirectTo = authRedirectBaseUrl() || undefined
@@ -194,14 +195,16 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     })
     if (error) {
       setAuthError(error.message)
+      throw new Error(error.message)
     }
   }
 
   const signInWithOtp = async (email: string) => {
     setAuthError(null)
     if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
-      setAuthError('Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
-      return
+      const msg = 'Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+      setAuthError(msg)
+      throw new Error(msg)
     }
 
     const emailRedirectTo = authRedirectBaseUrl() || undefined
@@ -211,6 +214,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     })
     if (error) {
       setAuthError(error.message)
+      throw new Error(error.message)
     }
   }
 

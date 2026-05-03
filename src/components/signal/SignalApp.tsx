@@ -8,6 +8,7 @@ import { toast, Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { fetchSignalEntries } from '@/lib/signal-data'
+import { hasSupabaseConfig } from '@/lib/supabase'
 import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -16,6 +17,7 @@ import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
 import { FirstWinDialog } from '@/components/signal/FirstWinDialog'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics'
 
 const navItems = [
   { to: '/home', label: 'Home', icon: House },
@@ -26,6 +28,10 @@ const navItems = [
 
 function Shell({ children }: { children: ReactNode }) {
   const location = useLocation()
+
+  useEffect(() => {
+    trackEvent({ type: 'signal_nav', timestamp: Date.now(), to: location.pathname })
+  }, [location.pathname])
 
   return (
     <main className="min-h-dvh bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))] text-foreground [background-image:radial-gradient(circle_at_20%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_32rem),radial-gradient(circle_at_85%_10%,color-mix(in_oklch,var(--accent)_14%,transparent),transparent_28rem)]">
@@ -41,6 +47,7 @@ function Shell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors',
                   active ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
@@ -57,9 +64,15 @@ function Shell({ children }: { children: ReactNode }) {
   )
 }
 
+function formatTrendDirection(direction: TrendDirection): string {
+  if (direction === 'up') return 'Up'
+  if (direction === 'down') return 'Down'
+  return 'Steady'
+}
+
 function TrendIcon({ direction }: { direction: TrendDirection }) {
-  if (direction === 'up') return <TrendUp size={22} weight="bold" className="text-emerald-600" />
-  if (direction === 'down') return <TrendDown size={22} weight="bold" className="text-amber-600" />
+  if (direction === 'up') return <TrendUp size={22} weight="bold" className="text-emerald-400" />
+  if (direction === 'down') return <TrendDown size={22} weight="bold" className="text-amber-300" />
   return <Lightning size={22} weight="fill" className="text-primary" />
 }
 
@@ -95,7 +108,11 @@ function HomePage({ userId }: { userId: string }) {
     focusLabel && goalShort ? `${focusLabel} · ${goalShort}` : 'Your daily signal'
 
   const handleSave = () => {
+    const wasFirst = entries.length === 0
     saveEntry(userId)
+    const score = useSignalStore.getState().entries[0]?.score ?? 0
+    const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
+    trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
     toast.success('Saved', { description: 'Your daily signal is now part of your trend.' })
   }
 
@@ -165,7 +182,7 @@ function TrendsPage() {
       <SignalChart data={buildChartSeries(entries)} />
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard label="Average" value={metrics.sevenDayAverage || '--'} detail="last 7 days" />
-        <MetricCard label="Direction" value={metrics.trendDirection} detail="current pattern" />
+        <MetricCard label="Direction" value={formatTrendDirection(metrics.trendDirection)} detail="current pattern" />
         <MetricCard label="Streak" value={metrics.streakCount} detail="daily loop" />
       </div>
       <section className="rounded-[2rem] border border-border bg-card p-5">
@@ -177,6 +194,7 @@ function TrendsPage() {
 }
 
 function HistoryPage() {
+  const navigate = useNavigate()
   const entries = useSignalStore((state) => state.entries)
 
   return (
@@ -190,6 +208,9 @@ function HistoryPage() {
           <div className="rounded-[2rem] border border-dashed border-border bg-card p-8 text-center">
             <p className="font-black">No entries yet</p>
             <p className="mt-2 text-sm text-muted-foreground">Your first check-in will appear here.</p>
+            <Button className="mt-6 w-full rounded-2xl" onClick={() => navigate('/home')}>
+              Log today&apos;s signal
+            </Button>
           </div>
         )}
         {entries.map((entry) => (
@@ -216,6 +237,7 @@ function SettingsPage() {
   const profile = useSignalStore((state) => state.profile)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
+  const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
 
   return (
     <div className="space-y-5">
@@ -223,6 +245,42 @@ function SettingsPage() {
         <p className="text-sm font-bold text-primary">Settings</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Keep the loop simple.</h1>
       </div>
+      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+        <p className="font-black">Pulse Pro pilot</p>
+        <p className="text-sm text-muted-foreground">
+          We are lining up pricing and premium insights. Raise your hand if you want early access.
+        </p>
+        <Button
+          variant="secondary"
+          className="h-12 w-full rounded-2xl"
+          onClick={() => {
+            trackEvent({ type: 'signal_research_cta_click', timestamp: Date.now(), target: 'pro_pilot' })
+            toast.message('Thanks!', { description: 'We will reach out when the pilot opens.' })
+          }}
+        >
+          Join the pilot list
+        </Button>
+      </section>
+      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+        <p className="font-black">Research</p>
+        <p className="text-sm text-muted-foreground">
+          {researchUrl
+            ? 'Book a short call or survey — it helps us prioritize what to build.'
+            : 'Add VITE_RESEARCH_FEEDBACK_URL (survey or Calendly) to surface a link here.'}
+        </p>
+        {researchUrl ? (
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-2xl"
+            onClick={() => {
+              trackEvent({ type: 'signal_research_cta_click', timestamp: Date.now(), target: 'feedback' })
+              window.open(researchUrl, '_blank', 'noopener,noreferrer')
+            }}
+          >
+            Share feedback
+          </Button>
+        ) : null}
+      </section>
       <section className="rounded-[2rem] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -262,6 +320,7 @@ function SignalRoutes() {
     queryKey: ['signal-entries', userId],
     queryFn: () => fetchSignalEntries(userId),
     enabled: Boolean(userId),
+    retry: 1,
   })
 
   useEffect(() => {
@@ -274,6 +333,31 @@ function SignalRoutes() {
 
   return (
     <Shell>
+      {hasSupabaseConfig && remoteEntries.isError && (
+        <div
+          className="mb-4 rounded-2xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-foreground"
+          role="status"
+        >
+          <p className="font-bold text-destructive">Couldn&apos;t sync history</p>
+          <p className="mt-1 text-muted-foreground">Your entries on this device are unchanged.</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 rounded-xl"
+            onClick={() => {
+              trackEvent({ type: 'signal_sync_retry', timestamp: Date.now() })
+              void remoteEntries.refetch()
+            }}
+          >
+            Retry sync
+          </Button>
+        </div>
+      )}
+      {hasSupabaseConfig && remoteEntries.isPending && !remoteEntries.isFetched && (
+        <p className="mb-3 text-center text-xs text-muted-foreground" aria-live="polite">
+          Syncing history…
+        </p>
+      )}
       {!profile && <SignalOnboarding userId={userId} onFinished={finishOnboarding} />}
       <Routes>
         <Route path="/" element={<Navigate to="/home" replace />} />
@@ -289,6 +373,10 @@ function SignalRoutes() {
 }
 
 export function SignalApp() {
+  useEffect(() => {
+    trackEvent({ type: 'signal_app_shell_mount', timestamp: Date.now(), path: '/signal' })
+  }, [])
+
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />

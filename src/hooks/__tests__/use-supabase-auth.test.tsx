@@ -116,7 +116,7 @@ describe('useSupabaseAuth — initial state with placeholder credentials', () =>
   it('sets authError when calling signInWithOAuth in placeholder mode', async () => {
     const { result } = renderHook(() => useSupabaseAuth(), { wrapper: Wrapper })
     await act(async () => {
-      await result.current.signInWithOAuth('google' as any)
+      await expect(result.current.signInWithOAuth('google' as any)).rejects.toThrow(/not configured/i)
     })
     expect(result.current.authError).toMatch(/not configured/i)
   })
@@ -124,7 +124,7 @@ describe('useSupabaseAuth — initial state with placeholder credentials', () =>
   it('sets authError when calling signInWithOtp in placeholder mode', async () => {
     const { result } = renderHook(() => useSupabaseAuth(), { wrapper: Wrapper })
     await act(async () => {
-      await result.current.signInWithOtp('test@example.com')
+      await expect(result.current.signInWithOtp('test@example.com')).rejects.toThrow(/not configured/i)
     })
     expect(result.current.authError).toMatch(/not configured/i)
   })

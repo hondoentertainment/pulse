@@ -47,6 +47,9 @@ const VenueMetadataRoute = lazy(() =>
  * (Onboarding, AuthGate, Dashboards, StoryViewer, CreatePulseDialog) is wrapped
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
+ *
+ * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
+ * This file remains the venue / discovery experience for reuse or future entry switches.
  */
 export function AppRoutes() {
   const state = useAppState()

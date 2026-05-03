@@ -60,6 +60,23 @@ jobs:
       - name: Build
         run: npm run build
 
+  typecheck-strict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript (strict project build)
+        run: npx tsc -b
+
   smoke-preview:
     runs-on: ubuntu-latest
     timeout-minutes: 20

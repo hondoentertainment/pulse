@@ -37,6 +37,7 @@ interface TrendingTabProps {
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onReportPulse?: (report: ContentReport) => void
   isFavorite: (venueId: string) => boolean
+  isFollowed: (venueId: string) => boolean
   onCompareVenues?: (venueIds: string[]) => void
 }
 
@@ -58,6 +59,7 @@ export function TrendingTab({
   onReaction,
   onReportPulse,
   isFavorite,
+  isFollowed,
   promotions,
   onPromotionImpression,
   onPromotionClick,
@@ -216,6 +218,8 @@ export function TrendingTab({
             onPromotionClick={onPromotionClick}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
+            isFollowed={isFollowed}
+            onToggleFollow={onToggleFollow}
           />
         </>
       )}

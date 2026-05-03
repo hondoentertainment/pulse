@@ -1,6 +1,12 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 
+/**
+ * Root app: unauthenticated users see `LoginScreen`; authenticated users get `SignalApp`
+ * (daily check-in + trends). The venue tab shell lives in `AppRoutes.tsx` and is not
+ * mounted from here unless you change this entry.
+ */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { trackEvent } from '@/lib/analytics'
 import { Lightning } from '@phosphor-icons/react'
 
 const LoginScreen = lazy(() => import('@/components/LoginScreen').then((m) => ({ default: m.LoginScreen })))
@@ -31,7 +37,13 @@ function AppLoadingFallback({ label }: { label: string }) {
 const pageFallback = <AppLoadingFallback label="Loading Pulse…" />
 
 function AppContent() {
-  const { session, isLoading: authLoading } = useSupabaseAuth()
+  const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
+
+  useEffect(() => {
+    if (!authLoading && session) {
+      trackEvent({ type: 'signal_auth_session_ready', timestamp: Date.now(), isPlaceholder })
+    }
+  }, [authLoading, session, isPlaceholder])
 
   if (authLoading) {
     return <AppLoadingFallback label="Restoring session…" />

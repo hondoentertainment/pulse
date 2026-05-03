@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArrowRight, CaretLeft, CheckCircle, Target } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import type { SignalGoal, TrackingFocus } from '@/lib/signal-insights'
@@ -22,8 +23,14 @@ interface SignalOnboardingProps {
 }
 
 export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) {
+  const reduceMotion = useReducedMotion()
   const [step, setStep] = useState(0)
   const [slideDir, setSlideDir] = useState(1)
+  const onboardingStartedAt = useRef(Date.now())
+
+  useEffect(() => {
+    trackEvent({ type: 'signal_onboarding_step', timestamp: Date.now(), step: step as 0 | 1 | 2, action: 'view' })
+  }, [step])
   const [trackingFocus, setTrackingFocus] = useState<TrackingFocus>('energy')
   const [goal, setGoal] = useState<SignalGoal>('more_energy')
   const setProfile = useSignalStore((state) => state.setProfile)
@@ -32,23 +39,42 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
   const progress = ((step + 1) / 3) * 100
 
   const goNext = () => {
+    trackEvent({ type: 'signal_onboarding_step', timestamp: Date.now(), step: step as 0 | 1 | 2, action: 'next' })
     setSlideDir(1)
     setStep((s) => Math.min(2, s + 1))
   }
 
   const goBack = () => {
+    trackEvent({ type: 'signal_onboarding_step', timestamp: Date.now(), step: step as 0 | 1 | 2, action: 'back' })
     setSlideDir(-1)
     setStep((s) => Math.max(0, s - 1))
   }
 
   const finish = () => {
+    const wasFirst = useSignalStore.getState().entries.length === 0
     setProfile(userId, { trackingFocus, goal, reminderTime: '09:00' })
     saveEntry(userId, trackingFocus)
+    trackEvent({
+      type: 'signal_onboarding_complete',
+      timestamp: Date.now(),
+      durationMs: Date.now() - onboardingStartedAt.current,
+      trackingFocus,
+    })
+    const score = useSignalStore.getState().entries[0]?.score ?? 0
+    const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
+    trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
     onFinished()
   }
 
+  const slideTransition = { duration: reduceMotion ? 0 : 0.22, ease }
+
   return (
-    <main className="fixed inset-0 z-50 overflow-y-auto bg-background/98 backdrop-blur-xl px-4 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-8">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-dialog-title"
+      className="fixed inset-0 z-50 overflow-y-auto bg-background/98 px-4 pb-8 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] backdrop-blur-xl"
+    >
       <div className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center">
         <div className="mb-4">
           <div className="mb-3 flex items-center gap-2">
@@ -68,7 +94,9 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
             )}
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-bold text-primary">Step {step + 1} of 3</p>
+                <p id="onboarding-dialog-title" className="truncate text-sm font-bold text-primary">
+                  Step {step + 1} of 3 — set up Pulse Signal
+                </p>
                 <p className="shrink-0 text-xs text-muted-foreground">Under 30s</p>
               </div>
               <Progress value={progress} className="h-1.5" />
@@ -96,7 +124,7 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
               initial="initial"
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.22, ease }}
+              transition={slideTransition}
               className="space-y-5"
             >
               <div>
@@ -153,7 +181,7 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
               initial="initial"
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.22, ease }}
+              transition={slideTransition}
               className="space-y-5"
             >
               <div>
@@ -210,7 +238,7 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
               initial="initial"
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.22, ease }}
+              transition={slideTransition}
               className="space-y-4"
             >
               <SignalCheckIn onSave={finish} />
@@ -218,6 +246,6 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
           )}
         </AnimatePresence>
       </div>
-    </main>
+    </div>
   )
 }

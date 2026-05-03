@@ -51,8 +51,8 @@ export async function fetchSignalEntries(userId: string): Promise<SignalEntry[]>
     .limit(60)
 
   if (error) {
-    console.warn('Signal entries unavailable, using local store only', error.message)
-    return []
+    console.warn('Signal entries fetch failed', error.message)
+    throw new Error(error.message || 'Could not load signal history')
   }
 
   return ((data ?? []) as SignalEntryRow[]).map(fromRow)
