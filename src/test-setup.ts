@@ -36,8 +36,8 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   } as any
 }
 
-// matchMedia
-if (typeof window !== 'undefined' && !window.matchMedia) {
+// matchMedia — always override to guarantee a consistent mock in jsdom
+if (typeof window !== 'undefined') {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
