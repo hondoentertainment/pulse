@@ -219,6 +219,7 @@ export function getContextualSearchSuggestions(
   userLocation: { lat: number; lng: number } | null,
   timeOfDay: TimeOfDay,
 ): ContextualSearchSuggestion[] {
+  const peakCategories = getPeakCategories().map(label => normalizeCategoryKeyPublic(label))
   const suggestions: ContextualSearchSuggestion[] = []
 
   // Build counts per normalized category
