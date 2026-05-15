@@ -41,7 +41,7 @@ describe('getTimeAwareCategoryBoost', () => {
   it('boosts nightlife venues at night', () => {
     const club = makeVenue({ category: 'Nightclub' })
     const cafe = makeVenue({ category: 'Cafe' })
-    const night = new Date('2026-03-13T21:00:00.000-07:00')
+    const night = new Date('2026-03-13T22:00:00.000Z')
 
     expect(getTimeAwareCategoryBoost(club, night)).toBeGreaterThan(getTimeAwareCategoryBoost(cafe, night))
   })
