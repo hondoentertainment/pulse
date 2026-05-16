@@ -31,20 +31,20 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => {
   const icons = [
     'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
-    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Buildings','Calendar','CalendarBlank',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Broadcast','Buildings','Calendar','CalendarBlank',
     'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
-    'ChartBar','ChartLine','ChatCircle','ChatText','Check','CheckCircle','CircleNotch','Clock',
+    'ChartBar','ChartLine','ChatCircle','ChatCircleDots','ChatText','Check','CheckCircle','CircleNotch','Clock',
     'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
-    'CursorClick','Diamond','DownloadSimple','Envelope','EnvelopeSimple','Export','Eye','EyeSlash',
+    'CursorClick','Diamond','Disc','DownloadSimple','Envelope','EnvelopeSimple','Export','Eye','EyeSlash',
     'Eyeglasses','Faders','Fire','Flag','Flame','Footprints','ForkKnife','FunnelSimple',
     'Gear','GearSix','Globe','Handshake','Hash','HashStraight','Heart','HeartStraight',
     'House','Info','InstagramLogo','Lightbulb','Lightning','Link','LinkSimple','ListChecks',
     'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
     'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
     'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
-    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Quotes',
-    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
-    'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Queue','Quotes',
+    'Ruler','Scales','SealCheck','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Stack','Star','Storefront',
     'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
     'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
     'UsersThree','VideoCamera','Warning','WarningCircle','WifiHigh','WifiSlash','Wrench','X',
@@ -236,7 +236,8 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
 
-    expect(screen.getByText('testuser')).toBeTruthy()
+    // Username renders in both the header and the caption byline.
+    expect(screen.getAllByText('testuser').length).toBeGreaterThan(0)
     // Energy badge label
     expect(screen.getByText(/Buzzing/)).toBeTruthy()
     expect(screen.getByText('Great vibes tonight!')).toBeTruthy()
@@ -266,10 +267,10 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
-    // mock renders motion.button as a <div>, so query by aria-label instead of
-    // role=button.
-    const fireButton = screen.getByLabelText(/Fire reaction/)
+    // Fire reaction target is labelled "React with fire. <count> reactions".
+    // Framer-motion mock renders motion.button as a <div>, so query by
+    // aria-label instead of role=button.
+    const fireButton = screen.getByLabelText(/React with fire/i)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -286,11 +287,11 @@ describe('VenueCard', () => {
     expect(screen.getByText('Bar')).toBeTruthy()
   })
 
-  it('shows "Just Popped" badge when isJustPopped', () => {
+  it('shows "Just popped" badge when isJustPopped', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 
-    expect(screen.getByText('Just Popped')).toBeTruthy()
+    expect(screen.getByText('Just popped')).toBeTruthy()
   })
 
   it('calls onClick when clicked', () => {

@@ -242,33 +242,38 @@ describe('VenueQuickActions', () => {
   it('renders action buttons', async () => {
     render(
       <VenueQuickActions
-        venue={makeVenue()}
         onCheckIn={() => {}}
         onShare={() => {}}
         onDirections={() => {}}
+        onRide={() => {}}
+        onReserve={() => {}}
+        onWatchSurge={() => {}}
         onSave={() => {}}
         isSaved={false}
       />
     )
-    expect(screen.getByText('Check In')).toBeDefined()
-    expect(screen.getByText('Share')).toBeDefined()
-    expect(screen.getByText('Directions')).toBeDefined()
+    expect(screen.getByText('Pulse')).toBeDefined()
+    expect(screen.getByText('Go')).toBeDefined()
+    expect(screen.getByText('Ride')).toBeDefined()
+    expect(screen.getByText('Reserve')).toBeDefined()
     expect(screen.getByText('Save')).toBeDefined()
   })
 
-  it('calls onCheckIn when check-in button clicked', async () => {
+  it('calls onCheckIn when the pulse button is clicked', async () => {
     const onCheckIn = vi.fn()
     render(
       <VenueQuickActions
-        venue={makeVenue()}
         onCheckIn={onCheckIn}
         onShare={() => {}}
         onDirections={() => {}}
+        onRide={() => {}}
+        onReserve={() => {}}
+        onWatchSurge={() => {}}
         onSave={() => {}}
         isSaved={false}
       />
     )
-    fireEvent.click(screen.getByText('Check In'))
+    fireEvent.click(screen.getByText('Pulse'))
     expect(onCheckIn).toHaveBeenCalledOnce()
   })
 })
@@ -321,6 +326,13 @@ describe('VenueHeroCarousel', () => {
 
 describe('VenueLivePanel', () => {
   it('renders live data fields', async () => {
+    const signal = (level: 'low' | 'medium' | 'high') => ({
+      level,
+      reportCount: 2,
+      freshnessMinutes: 5,
+      operatorVerified: false,
+      summary: 'Based on recent guest reports',
+    })
     const liveData = {
       venueId: 'venue-1',
       timestamp: new Date().toISOString(),
@@ -342,6 +354,22 @@ describe('VenueLivePanel', () => {
         dressCode: 'low' as const,
         ageRange: 'low' as const,
         musicGenre: 'medium' as const,
+      },
+      confidenceDetails: {
+        waitTime: signal('high'),
+        coverCharge: signal('medium'),
+        crowdLevel: signal('high'),
+        nowPlaying: signal('medium'),
+        dressCode: signal('low'),
+        ageRange: signal('low'),
+        musicGenre: signal('medium'),
+      },
+      doorMode: {
+        lineStatus: 'moving' as const,
+        entryConfidence: 72,
+        guestListStatus: null,
+        tableMinimum: null,
+        reasons: ['Steady flow at the door'],
       },
     }
     render(

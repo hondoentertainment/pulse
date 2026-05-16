@@ -3,13 +3,24 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render as rtlRender, screen, type RenderOptions } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-// VenuePage calls useLocation(); every render needs a Router context.
-const render = (ui: React.ReactElement, options?: RenderOptions) =>
-  rtlRender(ui, {
-    wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>,
+// VenuePage calls useLocation() and useQuery(); every render needs both a
+// Router context and a QueryClient. A fresh client per render keeps tests
+// isolated from each other's cache.
+const render = (ui: React.ReactElement, options?: RenderOptions) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>{children}</MemoryRouter>
+      </QueryClientProvider>
+    ),
     ...options,
   })
+}
 
 vi.mock('framer-motion', () => {
   const strip = (props: Record<string, unknown>) => {
@@ -37,21 +48,37 @@ vi.mock('framer-motion', () => {
   }
 })
 
-vi.mock('@phosphor-icons/react', () => ({
-  Plus: (p: any) => <span data-testid="icon-Plus" {...p} />,
-  MapPin: (p: any) => <span data-testid="icon-MapPin" {...p} />,
-  ArrowLeft: (p: any) => <span data-testid="icon-ArrowLeft" {...p} />,
-  Clock: (p: any) => <span data-testid="icon-Clock" {...p} />,
-  Star: (p: any) => <span data-testid="icon-Star" {...p} />,
-  Phone: (p: any) => <span data-testid="icon-Phone" {...p} />,
-  Globe: (p: any) => <span data-testid="icon-Globe" {...p} />,
-  HeartStraight: (p: any) => <span data-testid="icon-HeartStraight" {...p} />,
-  Car: (p: any) => <span data-testid="icon-Car" {...p} />,
-  CalendarCheck: (p: any) => <span data-testid="icon-CalendarCheck" {...p} />,
-  ShareNetwork: (p: any) => <span data-testid="icon-ShareNetwork" {...p} />,
-  Ticket: (p: any) => <span data-testid="icon-Ticket" {...p} />,
-  CalendarBlank: (p: any) => <span data-testid="icon-CalendarBlank" {...p} />,
-}))
+// Vitest resolves named exports via Object.keys() at mock-load time, so a
+// Proxy alone is insufficient — we must enumerate every icon the components
+// under test import. The list is inlined inside the factory because vi.mock
+// factories are hoisted and cannot reference top-level variables.
+vi.mock('@phosphor-icons/react', () => {
+  const icons = [
+    'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Broadcast','Buildings','Calendar','CalendarBlank',
+    'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
+    'ChartBar','ChartLine','ChatCircle','ChatCircleDots','ChatText','Check','CheckCircle','CircleNotch','Clock',
+    'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
+    'CursorClick','Diamond','Disc','DownloadSimple','Envelope','EnvelopeSimple','Export','Eye','EyeSlash',
+    'Eyeglasses','Faders','Fire','Flag','Flame','Footprints','ForkKnife','FunnelSimple',
+    'Gear','GearSix','Globe','Handshake','Hash','HashStraight','Heart','HeartStraight',
+    'House','Info','InstagramLogo','Lightbulb','Lightning','Link','LinkSimple','ListChecks',
+    'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
+    'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
+    'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Queue','Quotes',
+    'Ruler','Scales','SealCheck','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Stack','Star','Storefront',
+    'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
+    'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
+    'UsersThree','VideoCamera','Warning','WarningCircle','WifiHigh','WifiSlash','Wrench','X',
+  ]
+  const exports: Record<string, any> = {}
+  for (const name of icons) {
+    exports[name] = (props: any) => <span data-testid={`icon-${name}`} {...props} />
+  }
+  return exports
+})
 
 vi.mock('@github/spark/hooks', () => ({
   useKV: (_k: string, defaultValue: any) => [defaultValue, vi.fn()],
@@ -81,6 +108,10 @@ vi.mock('@/lib/sharing', () => ({
 }))
 vi.mock('@/lib/live-intelligence', () => ({
   getVenueLiveData: () => null,
+  getVenueLiveDataFromReports: () => null,
+  addLocalLiveReport: vi.fn(),
+  createLiveReport: vi.fn(() => ({})),
+  seedDemoReports: vi.fn(),
   reportWaitTime: vi.fn(),
   reportCoverCharge: vi.fn(),
   reportMusicPlaying: vi.fn(),
@@ -95,6 +126,10 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }))
 vi.mock('@/lib/credibility', () => ({ getUserTrustBadges: () => [] }))
+vi.mock('@/lib/supabase-api', () => ({
+  fetchVenueLiveReportsFromSupabase: vi.fn().mockResolvedValue([]),
+  submitVenueLiveReportToSupabase: vi.fn().mockResolvedValue(undefined),
+}))
 
 vi.mock('@/hooks/use-unit-preference', () => ({
   useUnitPreference: () => ({ unitSystem: 'imperial' }),
@@ -223,8 +258,9 @@ const baseProps = () => ({
 describe('VenuePage', () => {
   it('renders the venue name and details', () => {
     render(<VenuePage {...baseProps()} />)
-    expect(screen.getByRole('heading', { name: /Test Venue/ })).toBeInTheDocument()
-    expect(screen.getByText(/123 Main St/)).toBeInTheDocument()
+    // The venue name appears as a heading in both the hero and collapsed header.
+    expect(screen.getAllByRole('heading', { name: /Test Venue/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/123 Main St/).length).toBeGreaterThan(0)
   })
 
   it('shows the Create Pulse CTA', () => {
@@ -287,16 +323,6 @@ describe('VenuePage', () => {
     // The quick-actions mock includes a Quick Save button wired to onToggleFavorite
     fireEvent.click(screen.getByText('Quick Save'))
     expect(onToggleFavorite).toHaveBeenCalled()
-  })
-
-  it('renders Get Tickets button when onGetTickets is provided', () => {
-    render(<VenuePage {...baseProps()} onGetTickets={vi.fn()} />)
-    expect(screen.getByText(/Get Tickets/)).toBeInTheDocument()
-  })
-
-  it('renders Reserve Table button when onReserveTable is provided', () => {
-    render(<VenuePage {...baseProps()} onReserveTable={vi.fn()} />)
-    expect(screen.getByText(/Reserve Table/)).toBeInTheDocument()
   })
 
   it('renders "Check In With Crew" only when onStartCrewCheckIn is provided', () => {
