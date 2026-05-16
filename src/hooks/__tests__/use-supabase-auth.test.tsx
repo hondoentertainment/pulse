@@ -63,6 +63,10 @@ const { authState, profilesData, supabaseMock } = vi.hoisted(() => {
 
 vi.mock('@/lib/supabase', () => ({
   supabase: supabaseMock,
+  hasSupabaseConfig: false,
+  isE2EAuthBypassEnabled: false,
+  isVisualPreviewEnabled: false,
+  hasPlaceholderCredentials: () => true,
 }))
 
 // ── Import after mocks ─────────────────────────────────────────
