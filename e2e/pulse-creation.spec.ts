@@ -25,7 +25,7 @@ test.describe('Pulse creation flow', () => {
 
     await venueCard.click()
 
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Create.*[Pp]ulse/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
@@ -48,7 +48,7 @@ test.describe('Pulse creation flow', () => {
     }
 
     await venueCard.click()
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Create.*[Pp]ulse/i }).first()
     await createBtn.click()
 
     const caption = page.getByPlaceholder(/What's the vibe/i)
@@ -72,7 +72,7 @@ test.describe('Pulse creation flow', () => {
     }
 
     await venueCard.click()
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Create.*[Pp]ulse/i }).first()
     await createBtn.click()
 
     const cancel = page.getByRole('button', { name: /^Cancel$/i })
