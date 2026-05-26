@@ -531,7 +531,7 @@ describe('ChallengeFeed', () => {
 // ---------------------------------------------------------------------------
 
 describe('RecommendationsSection', () => {
-  it('renders You Might Like heading', async () => {
+  it('renders personalized recommendations heading', async () => {
 
     const recommendations = [
       { venue: makeVenue(), score: 0.85, reasons: ['Popular with friends'] },
@@ -545,7 +545,7 @@ describe('RecommendationsSection', () => {
       />
     )
 
-    expect(screen.getByText('You Might Like')).toBeDefined()
+    expect(screen.getByText('Best next moves')).toBeDefined()
   })
 })
 
@@ -587,7 +587,7 @@ describe('Favorites', () => {
       />
     )
 
-    expect(screen.getByText('No favorite venues yet')).toBeDefined()
+    expect(screen.getByText('Build your shortlist')).toBeDefined()
   })
 })
 

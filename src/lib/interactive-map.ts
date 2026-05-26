@@ -114,7 +114,7 @@ export function pixelToLatLng(
 }
 
 export function getTimeAwareCategoryBoost(venue: Venue, now = new Date()): number {
-  const hour = now.getHours()
+  const hour = now.getUTCHours()
   const category = (venue.category || '').toLowerCase()
   const isNight = hour >= 20 || hour <= 3
   const isMorning = hour >= 6 && hour <= 11

@@ -3,6 +3,7 @@ import {
   type TimeOfDay,
   type DayType,
   getPeakConfig,
+  getPeakConfigForTimeOfDay,
   getPeakCategories,
   normalizeCategoryKeyPublic,
 } from './time-contextual-scoring'
@@ -161,7 +162,7 @@ export function getSmartVenueSort(
   const scored = venues.map((venue) => {
     let score = 0
     const catKey = normalizeCategoryKeyPublic(venue.category)
-    const config = getPeakConfig(venue.category)
+    const config = getPeakConfigForTimeOfDay(venue.category, timeOfDay)
 
     // Time relevance (0-40): boost venues in their peak hours
     score += config.multiplier * 16 // max ~40 for multiplier=2.5
