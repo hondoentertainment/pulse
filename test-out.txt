@@ -1,0 +1,254 @@
+﻿[icon-proxy] Checking for exports in directory: C:\Users\kyle\pulse\node_modules\@phosphor-icons\react
+[icon-proxy] Found package file: C:\Users\kyle\pulse\node_modules\@phosphor-icons\react\dist\index.d.ts
+[icon-proxy] Loaded 1514 exports from C:\Users\kyle\pulse\node_modules\@phosphor-icons\react\dist\index.d.ts
+[icon-proxy] Checking for exports in directory: C:\Users\kyle\pulse\node_modules\@phosphor-icons\react
+[icon-proxy] Found package file: C:\Users\kyle\pulse\node_modules\@phosphor-icons\react\dist\index.d.ts
+[icon-proxy] Loaded 1514 exports from C:\Users\kyle\pulse\node_modules\@phosphor-icons\react\dist\index.d.ts
+
+ RUN  v4.0.18 C:/Users/kyle/pulse
+
+ Γåô src/components/__tests__/InteractiveMap.friendLayer.test.tsx (5 tests | 5 skipped)
+node.exe : stderr | src/components/__tests__/venue-features.test.tsx > PresenceSheet > when open renders presence info
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | src/co...s presence info:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Unknown event handler property `onCheckedChange`. It will be ignored.
+You provided a `checked` prop to a form field without an `onChange` handler. This will render a read-only field. If 
+the field should be mutable use `defaultChecked`. Otherwise, set either `onChange` or `readOnly`.
+
+ Γ¥» src/components/__tests__/venue-features.test.tsx (17 tests | 1 failed) 203ms
+     Γ£ô renders action buttons 33ms
+     Γ£ô calls onCheckIn when check-in button clicked 7ms
+     Γ£ô renders with SVG element and "Now" label 12ms
+     Γ£ô renders venue name 10ms
+     Γ£ô calls onBack when back button clicked 7ms
+     ├ù renders live data fields 9ms
+     Γ£ô renders venue name in heading 11ms
+     Γ£ô when open=true renders compare content with venue names 20ms
+     Γ£ô renders time slots 31ms
+     Γ£ô renders venue name and category 11ms
+     Γ£ô renders breakdown info 2ms
+     Γ£ô renders selected venue name 11ms
+     Γ£ô when open renders presence info 6ms
+     Γ£ô renders friend count text 2ms
+     Γ£ô when open renders venue name and report fields 8ms
+     Γ£ô renders activity messages 8ms
+     Γ£ô when visible renders heatmap container and close button 14ms
+ Γ£ô src/components/__tests__/OnboardingFlow.test.tsx (6 tests) 687ms
+ Γ£ô src/components/__tests__/VenueMetadataForm.test.tsx (5 tests) 986ms
+ Γ£ô src/__tests__/integration/offline-queue.test.ts (15 tests) 2028ms
+       Γ£ô retries failed items on next processQueue call  2010ms
+stdout | src/components/__tests__/CreatePulseDialog.test.tsx > CreatePulseDialog > submits with caption, energy, and photos
+[analytics] pulse_created {
+  pulseId: 'pulse-1779825583246',
+  venueId: 'venue-1',
+  hasPhoto: true,
+  hashtagCount: 0,
+  energyRating: 'buzzing',
+  isFirstPulse: true
+}
+[debug] analytics:pulse_created {
+  timestamp: '2026-05-26T19:59:43.248Z',
+  sessionId: undefined,
+  action: 'pulse_created',
+  component: 'analytics',
+  userId: undefined,
+  route: undefined,
+  extra: {
+    pulseId: 'pulse-1779825583246',
+    venueId: 'venue-1',
+    hasPhoto: true,
+    hashtagCount: 0,
+    energyRating: 'buzzing',
+    isFirstPulse: true
+  },
+  error: undefined
+}
+
+ Γ£ô src/components/__tests__/CreatePulseDialog.test.tsx (9 tests) 634ms
+ Γ£ô src/components/__tests__/TicketPurchaseSheet.test.tsx (4 tests) 622ms
+     Γ£ô renders the event title + total price  351ms
+stderr | src/components/__tests__/ui-primitives.test.tsx > ResizablePanelGroup > renders resizable panels
+WARNING: Panel defaultSize prop recommended to avoid layout shift after server rendering
+WARNING: Panel defaultSize prop recommended to avoid layout shift after server rendering
+
+ Γ£ô src/components/__tests__/ui-primitives.test.tsx (48 tests) 773ms
+ Γ£ô src/hooks/__tests__/use-app-state-backend.test.tsx (7 tests) 504ms
+ Γ£ô src/components/__tests__/cards.test.tsx (25 tests) 338ms
+ Γ£ô api/_lib/__tests__/referral-code-gen.test.ts (9 tests) 189ms
+ Γ£ô src/components/__tests__/feeds.test.tsx (17 tests) 254ms
+stderr | src/components/__tests__/PaymentElementMount.test.tsx > PaymentElementMount > renders a container div
+An update to PaymentElementMount inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at 
+https://react.dev/link/wrap-tests-with-act
+
+ Γ£ô src/components/__tests__/PaymentElementMount.test.tsx (3 tests) 161ms
+ Γ£ô src/lib/__tests__/venue-trending.test.ts (23 tests) 56ms
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > resolves to false when only 
+VITE_SUPABASE_ANON_KEY is set
+GoTrueClient@sb-placeholder-project-auth-token:1 (2.99.3) 2026-05-26T19:59:46.262Z Multiple GoTrueClient instances 
+detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined 
+behavior when used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > resolves to false when both env 
+vars are placeholders
+GoTrueClient@sb-placeholder-project-auth-token:2 (2.99.3) 2026-05-26T19:59:46.264Z Multiple GoTrueClient instances 
+detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined 
+behavior when used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > honours 
+VITE_USE_SUPABASE_BACKEND=false even with real creds
+GoTrueClient@sb-abcdefgh-auth-token:1 (2.99.3) 2026-05-26T19:59:46.267Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > ignores 
+VITE_USE_SUPABASE_BACKEND=true when env vars are missing
+GoTrueClient@sb-placeholder-project-auth-token:3 (2.99.3) 2026-05-26T19:59:46.268Z Multiple GoTrueClient instances 
+detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined 
+behavior when used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=0
+GoTrueClient@sb-abcdefgh-auth-token:2 (2.99.3) 2026-05-26T19:59:46.268Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=false
+GoTrueClient@sb-abcdefgh-auth-token:3 (2.99.3) 2026-05-26T19:59:46.269Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=no
+GoTrueClient@sb-abcdefgh-auth-token:4 (2.99.3) 2026-05-26T19:59:46.271Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=off
+GoTrueClient@sb-abcdefgh-auth-token:5 (2.99.3) 2026-05-26T19:59:46.272Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=FALSE
+GoTrueClient@sb-abcdefgh-auth-token:6 (2.99.3) 2026-05-26T19:59:46.273Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > USE_SUPABASE_BACKEND resolution > disables backend when 
+VITE_USE_SUPABASE_BACKEND=Off
+GoTrueClient@sb-abcdefgh-auth-token:7 (2.99.3) 2026-05-26T19:59:46.274Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > warnIfUsingMockBackend > does not log when backend is enabled
+GoTrueClient@sb-abcdefgh-auth-token:8 (2.99.3) 2026-05-26T19:59:46.275Z Multiple GoTrueClient instances detected in 
+the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when 
+used concurrently under the same storage key.
+
+stderr | src/lib/__tests__/data-toggle.test.ts > warnIfUsingMockBackend > is guarded by a once-per-module-load latch
+GoTrueClient@sb-placeholder-project-auth-token:4 (2.99.3) 2026-05-26T19:59:46.276Z Multiple GoTrueClient instances 
+detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined 
+behavior when used concurrently under the same storage key.
+
+ Γ£ô src/lib/__tests__/data-toggle.test.ts (15 tests) 59ms
+ Γ£ô src/components/__tests__/VideoFeed.test.tsx (4 tests) 42ms
+ Γ£ô src/hooks/__tests__/use-supabase-auth.test.tsx (4 tests) 34ms
+ Γ£ô src/lib/__tests__/personalization-engine.test.ts (20 tests) 23ms
+ Γ£ô src/lib/__tests__/i18n.test.ts (15 tests) 20ms
+ Γ£ô src/components/__tests__/IntegrationHub.test.tsx (3 tests) 181ms
+ Γ£ô src/lib/__tests__/events.test.ts (18 tests) 22ms
+ Γ£ô src/lib/__tests__/time-contextual-scoring.test.ts (24 tests) 19ms
+ Γ£ô api/webhooks/__tests__/stripe.test.ts (5 tests) 12ms
+ Γ£ô src/lib/__tests__/concierge-client.test.ts (9 tests) 12ms
+stderr | api/_lib/__tests__/concierge-tools.test.ts > executeToolCall ΓÇö search_venues > surfaces DB errors as 
+structured { error } content
+[concierge] search_venues supabase failed { component: 'concierge', extra: { error: 'rls denied' } }
+
+ Γ£ô api/_lib/__tests__/concierge-tools.test.ts (11 tests) 14ms
+ Γ£ô src/lib/__tests__/night-planner.test.ts (31 tests) 11ms
+stderr | src/__tests__/integration/pulse-creation.test.ts > Pulse creation integration > pulse pending state > pulse 
+gets uploadError flag when upload fails
+Error uploading pulse: { message: 'Network error' }
+
+stderr | src/__tests__/integration/pulse-creation.test.ts > Pulse creation integration > offline fallback for pulse 
+creation > queues pulse in offline queue when upload fails
+Error uploading pulse: { message: 'Network error' }
+
+ Γ£ô src/__tests__/integration/pulse-creation.test.ts (21 tests) 12ms
+ Γ£ô src/lib/__tests__/creators-client.test.ts (8 tests) 10ms
+ Γ£ô src/lib/__tests__/social-pulse-engine.test.ts (28 tests) 11ms
+ Γ£ô src/lib/__tests__/retention-engine.test.ts (40 tests) 10ms
+ Γ£ô src/lib/__tests__/venue-admin-client.test.ts (16 tests) 11ms
+ Γ£ô api/_lib/__tests__/anthropic.test.ts (7 tests) 10ms
+ Γ£ô src/__tests__/integration/auth-flow.test.ts (11 tests) 11ms
+ Γ£ô api/_lib/__tests__/notify.test.ts (9 tests) 10ms
+ Γ£ô api/_lib/__tests__/ticket-verify.test.ts (17 tests) 9ms
+ Γ£ô src/lib/__tests__/integrations.test.ts (27 tests) 9ms
+ Γ£ô src/lib/__tests__/seeded-hashtags.test.ts (22 tests) 8ms
+ Γ£ô api/admin/__tests__/venue-metadata.test.ts (17 tests) 8ms
+ Γ£ô src/lib/__tests__/server-moderation.test.ts (13 tests) 8ms
+ Γ£ô src/lib/__tests__/video-client.test.ts (10 tests) 7ms
+ Γ£ô src/lib/__tests__/contextual-intelligence.test.ts (26 tests) 7ms
+ Γ£ô src/lib/__tests__/auth-profile.test.ts (8 tests) 7ms
+ Γ£ô src/lib/__tests__/wait-time-estimator.test.ts (13 tests) 6ms
+ Γ£ô src/lib/__tests__/crew-mode.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/achievements.test.ts (17 tests) 7ms
+ Γ£ô src/lib/__tests__/offline-queue-replay.test.ts (8 tests) 8ms
+ Γ£ô src/lib/__tests__/playlists.test.ts (17 tests) 8ms
+ Γ£ô api/ticketing/__tests__/purchase.test.ts (8 tests) 8ms
+ Γ£ô src/lib/__tests__/moderation-client.test.ts (8 tests) 7ms
+ Γ£ô src/lib/__tests__/stories.test.ts (15 tests) 6ms
+ Γ£ô src/lib/__tests__/sanitize.test.ts (29 tests) 7ms
+ Γ£ô src/lib/__tests__/venue-analytics-pro.test.ts (10 tests) 7ms
+ Γ£ô src/lib/__tests__/interactive-map.test.ts (7 tests) 7ms
+ Γ£ô src/lib/__tests__/personal-insights.test.ts (11 tests) 6ms
+ Γ£ô src/lib/__tests__/credibility.test.ts (15 tests) 7ms
+ Γ£ô src/lib/__tests__/venue-recommendations.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/white-label.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/predictive-surge.test.ts (13 tests) 6ms
+ Γ£ô src/lib/__tests__/social-graph.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/ticketing-client.test.ts (8 tests) 6ms
+ Γ£ô src/lib/__tests__/public-api.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/promoted-discoveries.test.ts (16 tests) 6ms
+ Γ£ô src/lib/__tests__/staff-scanner-client.test.ts (6 tests) 6ms
+ Γ£ô src/lib/__tests__/pulse-engine.test.ts (26 tests) 6ms
+ Γ£ô api/_lib/__tests__/video-feed-scoring.test.ts (15 tests) 6ms
+ Γ£ô src/lib/__tests__/right-now-decisions.test.ts (3 tests) 6ms
+ Γ£ô src/lib/__tests__/weather-boost.test.ts (13 tests) 5ms
+ Γ£ô src/lib/__tests__/content-moderation.test.ts (17 tests) 5ms
+ Γ£ô src/lib/__tests__/neighborhood-scores.test.ts (9 tests) 5ms
+ Γ£ô src/lib/__tests__/analytics.test.ts (11 tests) 6ms
+ Γ£ô src/lib/__tests__/venue-owner.test.ts (12 tests) 5ms
+ Γ£ô src/lib/__tests__/safety-client.test.ts (5 tests) 4ms
+ Γ£ô src/lib/__tests__/sharing.test.ts (12 tests) 5ms
+ Γ£ô src/lib/__tests__/offline-queue.test.ts (8 tests) 5ms
+ Γ£ô src/lib/__tests__/presence-engine.test.ts (9 tests) 4ms
+ Γ£ô src/lib/__tests__/cdn-optimizer.test.ts (10 tests) 4ms
+ Γ£ô api/_lib/__tests__/referral-attribution.test.ts (17 tests) 5ms
+ Γ£ô src/lib/__tests__/venue-action-ctas.test.ts (3 tests) 5ms
+ Γ£ô src/lib/__tests__/units.test.ts (20 tests) 5ms
+ Γ£ô src/lib/__tests__/rate-limiter.test.ts (9 tests) 4ms
+ Γ£ô src/lib/__tests__/accessibility.test.ts (7 tests) 4ms
+ Γ£ô src/lib/__tests__/live-intelligence.test.ts (3 tests) 4ms
+ Γ£ô src/lib/__tests__/notification-grouping.test.ts (5 tests) 4ms
+ Γ£ô src/lib/__tests__/feature-flags.test.ts (6 tests) 3ms
+ Γ£ô src/lib/__tests__/deep-links.test.ts (7 tests) 3ms
+ Γ£ô src/lib/__tests__/venue-freshness.test.ts (5 tests) 3ms
+ Γ£ô src/lib/__tests__/platform-detect.test.ts (3 tests) 3ms
+ Γ£ô src/lib/__tests__/venue-integration-seeds.test.ts (1 test) 2ms
+ Γ£ô src/hooks/__tests__/use-app-state-bootstrap.test.ts (2 tests) 3ms

@@ -246,7 +246,7 @@ export function generateNightPlan(
  * Select stop purposes based on number of stops and start time.
  */
 function selectPurposes(numStops: number, startTime: string): StopPurpose[] {
-  const startHour = new Date(startTime).getHours()
+  const startHour = new Date(startTime).getUTCHours()
 
   // If starting late (after 10pm), skip dinner
   if (startHour >= 22) {

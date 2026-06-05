@@ -69,7 +69,7 @@ export function generateDailyDrop(
   const teaser = template.replace('{category}', category)
 
   // Reveal at 7 PM on the current date
-  const revealAt = new Date(currentDate + 'T19:00:00').toISOString()
+  const revealAt = new Date(currentDate + 'T19:00:00Z').toISOString()
 
   return {
     id: `drop-${currentDate}`,
@@ -104,7 +104,7 @@ export function generateNightRecap(
   friends: User[],
   date: string
 ): NightRecap | null {
-  const nightStart = new Date(date + 'T18:00:00')
+  const nightStart = new Date(date + 'T18:00:00Z')
   const nightEnd = new Date(nightStart.getTime() + 12 * 60 * 60 * 1000) // +12h → 6 AM next day
 
   const nightPulses = pulses.filter(p => {

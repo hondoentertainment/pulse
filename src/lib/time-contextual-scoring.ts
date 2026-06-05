@@ -155,6 +155,14 @@ export function getPeakConfig(category?: string, date?: Date): PeakHourConfig {
   return PEAK_HOURS[key]?.[tod] ?? { multiplier: 1.0, expectedBaseline: 30 }
 }
 
+export function getPeakConfigForTimeOfDay(
+  category?: string,
+  timeOfDay: TimeOfDay = 'evening',
+): PeakHourConfig {
+  const key = normalizeCategoryKey(category)
+  return PEAK_HOURS[key]?.[timeOfDay] ?? { multiplier: 1.0, expectedBaseline: 30 }
+}
+
 /**
  * Calculate a time-contextual score that normalizes raw pulse score
  * relative to expected activity for this venue's category and time.

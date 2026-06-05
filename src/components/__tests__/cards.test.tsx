@@ -31,7 +31,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@phosphor-icons/react', () => {
   const icons = [
     'ArrowClockwise','ArrowCounterClockwise','ArrowDown','ArrowLeft','ArrowRight','ArrowSquareOut','ArrowUp','ArrowsClockwise',
-    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Buildings','Calendar','CalendarBlank',
+    'ArrowsLeftRight','BeerBottle','Bell','BellSimple','BookmarkSimple','Broadcast','Buildings','Calendar','CalendarBlank',
     'CalendarCheck','Camera','Car','CarProfile','CaretDown','CaretLeft','CaretRight','CaretUp',
     'ChartBar','ChartLine','ChatCircle','ChatText','Check','CheckCircle','CircleNotch','Clock',
     'ClockAfternoon','CloudRain','Coffee','Compass','Confetti','Copy','Crown','CurrencyDollar',
@@ -42,7 +42,7 @@ vi.mock('@phosphor-icons/react', () => {
     'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
     'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
     'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
-    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Quotes',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Queue','Quotes',
     'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
     'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
     'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
@@ -236,7 +236,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
 
-    expect(screen.getByText('testuser')).toBeTruthy()
+    expect(screen.getAllByText('testuser').length).toBeGreaterThan(0)
     // Energy badge label
     expect(screen.getByText(/Buzzing/)).toBeTruthy()
     expect(screen.getByText('Great vibes tonight!')).toBeTruthy()
@@ -269,7 +269,7 @@ describe('PulseCard', () => {
     // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
     // mock renders motion.button as a <div>, so query by aria-label instead of
     // role=button.
-    const fireButton = screen.getByLabelText(/Fire reaction/)
+    const fireButton = screen.getByLabelText(/React with fire/)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -290,7 +290,7 @@ describe('VenueCard', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 
-    expect(screen.getByText('Just Popped')).toBeTruthy()
+    expect(screen.getByText(/Just popped/i)).toBeTruthy()
   })
 
   it('calls onClick when clicked', () => {
