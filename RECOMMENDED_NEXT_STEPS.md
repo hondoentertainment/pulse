@@ -1,150 +1,80 @@
 # Pulse — Recommended Next Steps
 
-> Generated 2026-04-04 from a full codebase audit. Prioritized by impact and unblock potential.
+> Originally generated 2026-04-04 from a full codebase audit. Updated 2026-06-11
+> after the production-readiness pass (telemetry pipeline, CSP, security
+> headers, lint ratchet). Prioritized by impact and unblock potential.
 
-## Current Health Snapshot
+## Current Health Snapshot (2026-06-11)
 
 | Metric | Status |
 |--------|--------|
-| **Build** | Passes (chunk warning: `react-vendor` ~672 KB) |
-| **Lint** | Warnings present (unused vars/imports) |
-| **Unit tests (lib/)** | 519 passing, 1 failing (`interactive-map` clustering) |
-| **Component tests** | 6 of 7 suites failing (icon mock gap) |
+| **Build** | Passes (route-split; largest chunk `react-vendor` ~576 KB / 159 KB gzip) |
+| **Lint** | 0 errors, ~158 warnings (all `no-explicit-any`, mostly test mocks; budget ratcheted to 160) |
+| **Unit tests** | 1145 passing, 19 skipped (90 files) |
 | **E2E** | Smoke suite passing |
-| **Backend** | Mock data only — Supabase schema exists but not wired |
+| **Backend** | Supabase data layer wired behind `USE_SUPABASE_BACKEND` flag (`src/lib/data/`); falls back to mock fixtures without credentials |
+| **Observability** | Sentry lazy-init after first paint via `sentry-lazy`; buffered telemetry flushes on init |
+| **Security headers** | CSP (meta + Vercel header), HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
 
 ---
 
-## Immediate Priority: Fix Test Suite (1-2 days)
+## Completed (April–June 2026)
 
-### 1. Fix component test icon mock
-
-**Root cause:** The Phosphor icon proxy mock in tests doesn't export all icons used by components (e.g., `Users`, `Crown`, `Heart` in `GuestCRM.tsx`). This breaks **6 of 7 component test suites** — not actual component bugs.
-
-**Fix:** Update the icon mock (likely in `vitest.setup.ts` or a shared mock file) to use `importOriginal` so all Phosphor icons are available:
-
-```ts
-vi.mock("@phosphor-icons/react", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual };
-});
-```
-
-Or add the missing icon exports (`Users`, `Crown`, `Heart`, `TrendUp`, `TrendDown`, etc.) to the existing mock.
-
-**Impact:** Fixes 28 of the 29 failing tests in one change.
-
-### 2. Fix interactive-map clustering test
-
-**Root cause:** `clusterVenueRenderPoints` clustering test has a flaky distance/grouping assertion.
-
-**File:** `src/lib/__tests__/interactive-map.test.ts`
-
-**Action:** Review the test's coordinate inputs and clustering radius — likely needs a tolerance adjustment or the clustering algorithm changed without updating the test.
+- ~~Fix component test icon mock~~ — all component suites green
+- ~~Fix interactive-map clustering test~~ — passing
+- ~~Dead code audit~~ — `white-label.ts` removed (see NOTES.md); unused `AppBootstrap.tsx` / `AppProviders.tsx` parallel bootstrap removed
+- ~~Bundle optimization~~ — Sentry dynamically imported post-paint; routes lazy-loaded; vendor chunks split
+- ~~Route-based code splitting~~ — Settings, Achievements, Events, Playlists, Night Planner, dashboards, moderation queue all lazy
+- ~~Supabase data layer~~ — `src/lib/data/*` reads/writes Supabase when `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set
+- ~~Sentry telemetry pipeline~~ — `main.tsx` now initialises through `sentry-lazy.initSentry()`, so events queued by `logger.ts`/`web-vitals.ts`/`analytics.ts` are flushed instead of dropped
+- ~~CSP correctness~~ — policy now allows Stripe.js (PCI-required CDN), Stripe payment iframes, Mapbox API + blob workers, Sentry ingest, and Vercel vitals while staying default-deny
+- ~~HSTS + header-level CSP~~ — added to `vercel.json` (including `frame-ancestors 'none'`)
+- ~~Lint ratchet~~ — unused vars/imports and a11y defects fixed; `--max-warnings` lowered 500 → 160
 
 ---
 
-## Short-Term: Code Health (1 week)
+## Remaining Path to Launch
 
-### 3. Lint cleanup
+### 1. Production environment & data seeding (highest priority)
 
-- Fix unused imports/vars flagged by ESLint (or prefix with `_`)
-- Target: zero lint errors, warnings below 20
-- Prevents lint noise from hiding real issues
+The code path exists; production config does not. To go live:
 
-### 4. Dead code audit
+- [ ] Provision production Supabase project; set `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in Vercel
+- [ ] Apply migrations (`npx supabase db push`), including `20260429000000_realtime_venue_intelligence.sql` (see docs/PRODUCTION_DATA_PATH.md)
+- [ ] Seed nationwide venue catalog into the `venues` table (replaces `us-venues.ts` prototype coverage)
+- [ ] Set `VITE_SENTRY_DSN`, `VITE_MAPBOX_TOKEN`, `VITE_STRIPE_PUBLISHABLE_KEY` and server-side Stripe/webhook secrets
+- [ ] Verify per docs/PRODUCTION_DATA_PATH.md checklist
 
-Candidates with no component consumers:
-- `src/lib/white-label.ts` — white-label theming (unused)
-- `src/lib/public-api.ts` — API key generation (client-side, should be server-side or removed)
-- `src/lib/twitter-ingestion.ts` — Twitter data pipeline (prototype only)
+### 2. Security hardening (before public launch)
 
-**Impact:** Reduces bundle size and maintenance surface.
+Tracked in SECURITY.md:
 
-### 5. Bundle size optimization
+- [ ] Enforce auth on all write paths server-side (RLS policy audit across tables)
+- [ ] Server-verified roles for admin/moderation/owner surfaces
+- [ ] Retire `src/lib/public-api.ts` client prototype once `api/keys/generate.ts` fully replaces it (tracked in NOTES.md)
+- [ ] Server-side content moderation before persistence (client-side exists)
+- [ ] Rate limiting on public API routes (client-side limiter exists; server enforcement needed)
+- [ ] Tighten lint `no-explicit-any` budget toward zero (currently ~158, all in tests/mocks)
 
-| Target | Action |
-|--------|--------|
-| Sentry (~257 KB) | Lazy-load after first render |
-| Three.js | Defer until 3D features accessed |
-| Index chunk (~202 KB) | Route-split sub-pages (settings, achievements, events) |
-| `react-vendor` (~672 KB) | Audit — may need React import optimization |
+### 3. State management split (scalability)
 
----
+`src/hooks/use-app-state.tsx` is still a monolithic provider. Split into
+VenueContext / SocialContext / UIContext to reduce re-renders. Also remove the
+duplicated mock-friends lists in `use-app-state.tsx` and `hooks/api/use-user.ts`.
 
-## Medium-Term: Architecture (2-3 weeks)
+### 4. Integration tests for critical flows
 
-### 6. Split monolithic state provider
+- [ ] Supabase auth flow (OAuth + magic link) against a local Supabase
+- [ ] Offline queue → Supabase sync on reconnect
+- [ ] Real-time subscription lifecycle
+- [ ] Stripe checkout happy path (test mode) in E2E
 
-`src/hooks/use-app-state.tsx` manages all app state in one provider. Split into:
-- **VenueContext** — venue data, selections, filters
-- **SocialContext** — crews, friends, follows, reactions
-- **UIContext** — tabs, modals, navigation state
+### 5. Ops & compliance
 
-This reduces re-renders and makes the codebase easier to reason about.
-
-### 7. Replace mock data with API layer
-
-- `src/lib/mock-data.ts` (~280 KB) contains hardcoded venue/user data
-- `src/lib/global-venues.ts`, `src/lib/us-venues.ts` are static datasets
-- Wire TanStack Query (already configured via `query-client.ts`) to Supabase
-- Move mock data to test fixtures only
-
-### 8. Route-based code splitting
-
-Sub-pages that should be lazy-loaded:
-- Settings, Achievements, Events, Playlists, Night Planner
-- Venue Owner Dashboard, Creator Dashboard, Moderation Queue
-- Crew Page, Insights Page
-
----
-
-## Medium-Long Term: Backend & Production (4-6 weeks)
-
-### 9. Supabase backend wiring
-
-Supabase schema and migrations exist in `supabase/` but aren't connected to the app:
-
-- [ ] Wire auth enforcement on all protected routes
-- [ ] Implement CRUD for venues, pulses, reactions, stories via Edge Functions
-- [ ] Enable real-time subscriptions for live venue scores
-- [ ] Move geocoding, API key management, webhook signing server-side
-- [ ] Enforce RLS policies for multi-tenant data access
-
-### 10. Security hardening
-
-Critical items before any public launch:
-- [ ] Server-side content moderation (currently client-only)
-- [ ] Move API secrets out of client bundle (`public-api.ts`)
-- [ ] Server-side rate limiting
-- [ ] Input sanitization on all user content (captions, hashtags, media)
-- [ ] CSP headers and HTTPS-only enforcement
-- [ ] Auth token rotation and session management
-
-### 11. Integration tests for critical flows
-
-- Supabase auth flow (OAuth + magic link)
-- Offline queue sync (queue → Supabase when back online)
-- Real-time subscription lifecycle
-- Pulse creation end-to-end
-
----
-
-## Suggested Execution Order
-
-| # | Task | Effort | Unblocks |
-|---|------|--------|----------|
-| 1 | Fix icon mock (28 tests) | 30 min | Green CI |
-| 2 | Fix interactive-map test | 1 hr | Green CI |
-| 3 | Lint cleanup | 1 day | Clean CI output |
-| 4 | Dead code audit | 1 day | Smaller bundle |
-| 5 | Bundle optimization | 1-2 days | Performance |
-| 6 | State management split | 1-2 weeks | Scalability |
-| 7 | API layer + mock removal | 2-3 weeks | Real product |
-| 8 | Route code splitting | 1 week | Performance |
-| 9 | Supabase backend | 3-4 weeks | Launch readiness |
-| 10 | Security hardening | 1-2 weeks | Public launch |
-| 11 | Integration tests | 1-2 weeks | Confidence |
+- [ ] Uptime monitoring + alerting (docs/observability.md)
+- [ ] Enable Dependabot/Renovate
+- [ ] App Store / Play Store submission per docs/native/release-checklist.md
+- [ ] Privacy policy + ToS review for payment and location data
 
 ---
 
@@ -155,3 +85,4 @@ Critical items before any public launch:
 - [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) — rollout plan
 - [SECURITY.md](SECURITY.md) — security priorities
 - [RELEASE_CHECKS.md](RELEASE_CHECKS.md) — pre-deploy checklist
+- [docs/PRODUCTION_DATA_PATH.md](docs/PRODUCTION_DATA_PATH.md) — Supabase production data path

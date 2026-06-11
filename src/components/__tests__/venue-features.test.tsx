@@ -114,7 +114,7 @@ vi.mock('@/components/ui/label', () => ({
 
 vi.mock('@/components/ui/avatar', () => ({
   Avatar: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  AvatarImage: (props: any) => <img {...props} />,
+  AvatarImage: (props: any) => <img alt="" {...props} />,
   AvatarFallback: ({ children, ...props }: any) => <span {...props}>{children}</span>,
 }))
 

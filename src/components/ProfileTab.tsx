@@ -32,7 +32,6 @@ export function ProfileTab({
   favoriteVenues,
   onVenueClick,
   onReaction,
-  onOpenSocialPulseDashboard,
   onOpenSettings,
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,

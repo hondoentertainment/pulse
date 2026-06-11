@@ -9,7 +9,7 @@
  *   it inside `index.js` and blocking first paint.
  * - This bridge forwards calls via `import('./sentry-lazy')` so Rollup keeps
  *   `@sentry/react` in its own async `sentry` chunk, loaded only when
- *   `AppBootstrap` schedules the dynamic import post-paint.
+ *   `main.tsx` schedules the dynamic import post-paint.
  *
  * Pre-init calls (breadcrumbs, exceptions, messages, measurements) are
  * buffered inside `sentry-lazy.ts` itself and flushed once `initSentry()`

@@ -65,7 +65,7 @@ export function StaffScannerPage({ currentUserId }: StaffScannerPageProps) {
     return () => {
       stopCamera()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [])
 
   function stopCamera() {

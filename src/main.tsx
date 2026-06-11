@@ -30,19 +30,11 @@ function initializeSentryWhenIdle() {
   if (!dsn || typeof window === 'undefined') return
 
   scheduleIdle(() => {
-    import('@sentry/react')
-      .then((Sentry) => {
-        Sentry.init({
-          dsn,
-          integrations: [
-            Sentry.browserTracingIntegration(),
-            Sentry.replayIntegration(),
-          ],
-          tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
-          replaysSessionSampleRate: import.meta.env.PROD ? 0.01 : 0.1,
-          replaysOnErrorSampleRate: 1.0,
-        })
-      })
+    // Route through sentry-lazy (not @sentry/react directly) so telemetry
+    // buffered via sentry-bridge (logger, web-vitals, analytics) is flushed
+    // on init instead of being dropped.
+    import('./lib/sentry-lazy')
+      .then((m) => m.initSentry(dsn))
       .catch((error) => {
         trackError(error instanceof Error ? error : String(error), 'sentry_init')
       })

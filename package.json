@@ -8,7 +8,7 @@
         "kill": "fuser -k 5000/tcp",
         "build": "tsc -b --noCheck && vite build",
         "typecheck": "tsc -b --noCheck",
-        "lint": "eslint . --max-warnings=500",
+        "lint": "eslint . --max-warnings=160",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
         "test:watch": "vitest",

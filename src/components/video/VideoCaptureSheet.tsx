@@ -126,7 +126,6 @@ export function VideoCaptureSheet({
   clientOptions,
 }: VideoCaptureSheetProps) {
   const [step, setStep] = useState<Step>('pick')
-  const [file, setFile] = useState<File | null>(null)
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [durationMs, setDurationMs] = useState<number>(0)
@@ -143,24 +142,7 @@ export function VideoCaptureSheet({
 
   const needsTrim = useMemo(() => durationMs > 30_000, [durationMs])
 
-  const handlePickNative = useCallback(async () => {
-    setError(null)
-    const camera = getPlatformCamera()
-    if (!camera) {
-      // Fall back to `<input>`.
-      fileInputRef.current?.click()
-      return
-    }
-    try {
-      const captured = await camera.captureVideo({ maxDurationSeconds: 60 })
-      await ingestFile(captured)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not record video')
-    }
-  }, [])
-
   const ingestFile = useCallback(async (f: File) => {
-    setFile(f)
     setIsCompressing(true)
     try {
       const compressed = await compressVideo(
@@ -184,6 +166,22 @@ export function VideoCaptureSheet({
       setIsCompressing(false)
     }
   }, [])
+
+  const handlePickNative = useCallback(async () => {
+    setError(null)
+    const camera = getPlatformCamera()
+    if (!camera) {
+      // Fall back to `<input>`.
+      fileInputRef.current?.click()
+      return
+    }
+    try {
+      const captured = await camera.captureVideo({ maxDurationSeconds: 60 })
+      await ingestFile(captured)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record video')
+    }
+  }, [ingestFile])
 
   const handleFileInput = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
