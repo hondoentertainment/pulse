@@ -59,6 +59,8 @@ export type SubPage =
   | 'challenges'
   | 'my-tickets'
   | 'night-planner'
+  | 'privacy'
+  | 'terms'
   | null
 
 export const ALL_USERS: User[] = [

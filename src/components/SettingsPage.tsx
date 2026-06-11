@@ -28,9 +28,10 @@ interface SettingsPageProps {
   onUpdateUser: (user: User) => void | Promise<void>
   onCityChange?: (location: { lat: number; lng: number }) => void
   onOpenSafetyContacts?: () => void
+  onOpenLegal?: (doc: 'privacy' | 'terms') => void
 }
 
-export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, onOpenSafetyContacts }: SettingsPageProps) {
+export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, onOpenSafetyContacts, onOpenLegal }: SettingsPageProps) {
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
   const [offlineCount, setOfflineCount] = useState(getPendingCount())
@@ -521,6 +522,32 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
                 <span className="font-mono">{currentUser.favoriteVenues?.length ?? 0}</span>
               </p>
             </div>
+
+            {onOpenLegal && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenLegal('privacy')}
+                    className="w-full flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
+                    data-testid="settings-privacy-link"
+                  >
+                    <span className="text-sm font-medium">Privacy Policy</span>
+                    <span className="text-xs text-muted-foreground">Open</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenLegal('terms')}
+                    className="w-full flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
+                    data-testid="settings-terms-link"
+                  >
+                    <span className="text-sm font-medium">Terms of Service</span>
+                    <span className="text-xs text-muted-foreground">Open</span>
+                  </button>
+                </div>
+              </>
+            )}
           </Card>
         </motion.div>
       </div>

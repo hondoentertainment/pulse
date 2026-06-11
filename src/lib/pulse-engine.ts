@@ -68,6 +68,38 @@ export function calculatePulseScore(pulses: Pulse[], useCredibilityWeighting: bo
   return Math.min(100, Math.round(totalScore + velocityBonus))
 }
 
+export type ScoreSignalMode = 'live' | 'forecast'
+
+export interface ScoreSignal {
+  mode: ScoreSignalMode
+  activePulseCount: number
+}
+
+/**
+ * Distinguish live-confirmed scores (backed by at least one unexpired pulse)
+ * from forecast scores (baseline/seeded values with no current activity).
+ * Surfacing this distinction keeps seeded baseline scores honest in the UI.
+ */
+export function getScoreSignal(pulses: Pulse[], now: number = Date.now()): ScoreSignal {
+  const decayMs = PULSE_DECAY_MINUTES * 60 * 1000
+  let activePulseCount = 0
+  pulses.forEach((pulse) => {
+    const age = now - new Date(pulse.createdAt).getTime()
+    if (age >= 0 && age <= decayMs) activePulseCount++
+  })
+  return { mode: activePulseCount > 0 ? 'live' : 'forecast', activePulseCount }
+}
+
+/**
+ * Same live/forecast distinction for surfaces that only have the venue's
+ * lastPulseAt timestamp rather than the full pulse list.
+ */
+export function isScoreLive(lastPulseAt: string | undefined, now: number = Date.now()): boolean {
+  if (!lastPulseAt) return false
+  const age = now - new Date(lastPulseAt).getTime()
+  return age >= 0 && age <= PULSE_DECAY_MINUTES * 60 * 1000
+}
+
 export function getEnergyLabel(score: number): string {
   if (score >= 75) return 'Electric'
   if (score >= 50) return 'Buzzing'
