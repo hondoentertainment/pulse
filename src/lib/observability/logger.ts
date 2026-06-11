@@ -19,7 +19,7 @@
  *   any subsequent captured error. error-level entries are captured
  *   as Sentry messages so they surface in the issue stream even when
  *   there is no thrown exception.
- * - Sentry forwards that happen before `AppBootstrap` has initialised
+ * - Sentry forwards that happen before `main.tsx` has initialised
  *   the SDK are buffered inside `sentry-lazy.ts` and flushed on init.
  */
 

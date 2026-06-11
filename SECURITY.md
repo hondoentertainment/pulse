@@ -98,8 +98,8 @@ Before a production launch, this repository should have:
 - [ ] Audit logs for privileged actions (moderation, admin changes)
 - [ ] Error monitoring and alerting (Sentry is integrated, needs verification)
 - [ ] Dependency and supply-chain review
-- [ ] Content Security Policy (CSP) headers
-- [ ] HTTPS-only enforcement
+- [x] Content Security Policy (CSP) headers — enforced via `index.html` meta tag and the `Content-Security-Policy` header in `vercel.json` (keep the two in sync)
+- [x] HTTPS-only enforcement — `Strict-Transport-Security` header in `vercel.json`
 - [ ] A documented response plan for account abuse, privacy incidents, and service outages
 
 ## Security-Relevant Files

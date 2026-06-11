@@ -56,7 +56,7 @@ describe('generateUniqueCode', () => {
     // Most calls won't hit ABCDEF. Run many iterations to confirm the
     // function reliably avoids the banned value.
     for (let i = 0; i < 500; i++) {
-      // eslint-disable-next-line no-await-in-loop
+       
       const code = await generateUniqueCode(async (c) => banned.has(c))
       expect(code).not.toBe('ABCDEF')
     }

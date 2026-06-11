@@ -10,7 +10,7 @@
  *
  * ## Buffer / flush pattern
  *
- * `AppBootstrap` schedules `initSentry()` via `requestIdleCallback` AFTER
+ * `main.tsx` schedules `initSentry()` via `requestIdleCallback` AFTER
  * first paint, which means anything the app wants to report before the SDK
  * finishes loading would otherwise be dropped on the floor.
  *
@@ -102,8 +102,8 @@ export function initSentry(dsn: string): void {
   init({
     dsn,
     integrations: [browserTracingIntegration(), replayIntegration()],
-    tracesSampleRate: 1.0,
-    replaysSessionSampleRate: 0.1,
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
+    replaysSessionSampleRate: import.meta.env.PROD ? 0.01 : 0.1,
     replaysOnErrorSampleRate: 1.0,
   })
   initialised = true

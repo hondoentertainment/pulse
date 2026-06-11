@@ -11,7 +11,7 @@
  * first — otherwise the call will throw at runtime.
  */
 export async function loadNativeModule<T = unknown>(specifier: string): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+   
   const loader = new Function('s', 'return import(s)') as (s: string) => Promise<T>
   return loader(specifier)
 }

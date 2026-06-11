@@ -50,7 +50,7 @@ export async function generateUniqueCode(
   let length = startLength
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const code = generateCode(length)
-    // eslint-disable-next-line no-await-in-loop
+     
     if (!(await exists(code))) return code
     // after 3 collisions at a given length, widen
     if (attempt >= 3 && length < 8) length += 1
