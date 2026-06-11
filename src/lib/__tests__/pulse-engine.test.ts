@@ -3,6 +3,8 @@ import {
   calculateDistance,
   isWithinRadius,
   calculatePulseScore,
+  getScoreSignal,
+  isScoreLive,
   getEnergyLabel,
   getEnergyColor,
   formatTimeAgo,
@@ -111,6 +113,53 @@ describe('calculatePulseScore', () => {
     expect(calculatePulseScore([highCred])).toBeGreaterThan(
       calculatePulseScore([lowCred])
     )
+  })
+})
+
+describe('getScoreSignal', () => {
+  it('returns forecast mode with no pulses', () => {
+    expect(getScoreSignal([])).toEqual({ mode: 'forecast', activePulseCount: 0 })
+  })
+
+  it('returns live mode when at least one pulse is unexpired', () => {
+    const fresh = makePulse({ createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() })
+    const signal = getScoreSignal([fresh])
+    expect(signal.mode).toBe('live')
+    expect(signal.activePulseCount).toBe(1)
+  })
+
+  it('returns forecast mode when all pulses have decayed', () => {
+    const stale = makePulse({ createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString() })
+    expect(getScoreSignal([stale])).toEqual({ mode: 'forecast', activePulseCount: 0 })
+  })
+
+  it('counts only unexpired pulses', () => {
+    const now = Date.now()
+    const pulses = [
+      makePulse({ createdAt: new Date(now - 5 * 60 * 1000).toISOString() }),
+      makePulse({ createdAt: new Date(now - 30 * 60 * 1000).toISOString() }),
+      makePulse({ createdAt: new Date(now - 120 * 60 * 1000).toISOString() }),
+    ]
+    expect(getScoreSignal(pulses, now)).toEqual({ mode: 'live', activePulseCount: 2 })
+  })
+
+  it('ignores pulses with future timestamps', () => {
+    const future = makePulse({ createdAt: new Date(Date.now() + 60 * 1000).toISOString() })
+    expect(getScoreSignal([future]).mode).toBe('forecast')
+  })
+})
+
+describe('isScoreLive', () => {
+  it('returns false for undefined lastPulseAt', () => {
+    expect(isScoreLive(undefined)).toBe(false)
+  })
+
+  it('returns true for a recent pulse timestamp', () => {
+    expect(isScoreLive(new Date(Date.now() - 10 * 60 * 1000).toISOString())).toBe(true)
+  })
+
+  it('returns false once the pulse has decayed', () => {
+    expect(isScoreLive(new Date(Date.now() - 120 * 60 * 1000).toISOString())).toBe(false)
   })
 })
 

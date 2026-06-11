@@ -68,6 +68,7 @@ vi.mock('@/lib/pulse-engine', () => ({
   },
   getEnergyColor: () => '#ff00ff',
   calculateDistance: () => 1,
+  isScoreLive: (lastPulseAt?: string) => Boolean(lastPulseAt),
 }))
 
 vi.mock('@/lib/credibility', () => ({
@@ -311,6 +312,30 @@ describe('VenueCard', () => {
     const starButton = starIcon.closest('button')!
     fireEvent.click(starButton)
     expect(onToggleFavorite).toHaveBeenCalledWith('venue-1')
+  })
+
+  it('shows "Live" badge when the score is backed by a recent pulse', () => {
+    const venue = makeVenue({ lastPulseAt: new Date().toISOString() })
+    render(<VenueCard venue={venue} />)
+
+    expect(screen.getByText('Live')).toBeTruthy()
+    expect(screen.queryByText('Forecast')).toBeNull()
+  })
+
+  it('shows "Forecast" badge when the score has no live signal', () => {
+    const venue = makeVenue({ lastPulseAt: undefined, pulseScore: 40 })
+    render(<VenueCard venue={venue} />)
+
+    expect(screen.getByText('Forecast')).toBeTruthy()
+    expect(screen.queryByText('Live')).toBeNull()
+  })
+
+  it('shows no signal badge when the score is zero', () => {
+    const venue = makeVenue({ lastPulseAt: undefined, pulseScore: 0 })
+    render(<VenueCard venue={venue} />)
+
+    expect(screen.queryByText('Forecast')).toBeNull()
+    expect(screen.queryByText('Live')).toBeNull()
   })
 })
 

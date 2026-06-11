@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
+import { trackEvent } from '@/lib/analytics'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
 import { toast } from 'sonner'
@@ -58,6 +59,7 @@ export function ProfileTab({
     const text = `Join me on Pulse! Use code ${invite.inviteCode}: ${link.url}`
     try {
       await navigator.clipboard.writeText(text)
+      trackEvent({ type: 'share', timestamp: Date.now(), contentType: 'invite', method: 'clipboard' })
       setInviteCopied(true)
       toast.success('Invite link copied!')
       setTimeout(() => setInviteCopied(false), 2000)

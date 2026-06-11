@@ -12,6 +12,7 @@ type AnalyticsPropertyValue = string | number | boolean | null | undefined
 export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
   | { type: 'onboarding_start'; timestamp: number }
+  | { type: 'age_gate'; timestamp: number; confirmed: boolean }
   | { type: 'onboarding_complete'; timestamp: number; durationMs: number }
   | { type: 'venue_view'; timestamp: number; venueId: string; source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' }
   | { type: 'pulse_start'; timestamp: number; venueId: string }

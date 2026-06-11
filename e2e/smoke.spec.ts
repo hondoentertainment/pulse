@@ -32,6 +32,10 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   const getStarted = page.getByRole('button', { name: /Get Started/i })
   await getStarted.click()
 
+  // Step: Age gate
+  await expect(page.getByRole('heading', { name: /Pulse is for adults/i })).toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: /I'm 18 or older/i }).click()
+
   // Step: Categories
   await expect(page.getByRole('heading', { name: /What's your scene\?/i })).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: /Bars & Pubs/i }).click()

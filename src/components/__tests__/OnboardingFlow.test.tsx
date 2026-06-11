@@ -32,9 +32,21 @@ vi.mock('@phosphor-icons/react', () => ({
   Compass: (p: any) => <span data-testid="icon-Compass" {...p} />,
   ArrowRight: (p: any) => <span data-testid="icon-ArrowRight" {...p} />,
   Check: (p: any) => <span data-testid="icon-Check" {...p} />,
+  ShieldCheck: (p: any) => <span data-testid="icon-ShieldCheck" {...p} />,
+}))
+
+const trackEvent = vi.fn()
+vi.mock('@/lib/analytics', () => ({
+  trackEvent: (...args: any[]) => trackEvent(...args),
 }))
 
 import { OnboardingFlow } from '@/components/OnboardingFlow'
+
+/** Advance from the welcome step past the age gate. */
+function passAgeGate() {
+  fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+  fireEvent.click(screen.getByRole('button', { name: /I'm 18 or older/i }))
+}
 
 describe('OnboardingFlow', () => {
   it('renders welcome step by default', () => {
@@ -47,8 +59,8 @@ describe('OnboardingFlow', () => {
     const onComplete = vi.fn()
     render(<OnboardingFlow onComplete={onComplete} />)
 
-    // Welcome -> Categories
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+    // Welcome -> Age gate -> Categories
+    passAgeGate()
     expect(screen.getByText(/What's your scene/i)).toBeInTheDocument()
 
     // Select a category (Continue is disabled otherwise)
@@ -79,12 +91,13 @@ describe('OnboardingFlow', () => {
       preferredTimes: [],
       enableLocation: true,
       enableNotifications: true,
+      ageConfirmed: true,
     })
   })
 
   it('disables continue on categories step when nothing selected', () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+    passAgeGate()
     const continueBtn = screen.getByRole('button', { name: /^Continue/i })
     expect(continueBtn).toBeDisabled()
   })
@@ -93,7 +106,7 @@ describe('OnboardingFlow', () => {
     const onComplete = vi.fn()
     render(<OnboardingFlow onComplete={onComplete} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+    passAgeGate()
 
     // Select 2 categories
     fireEvent.click(screen.getByRole('button', { name: /Bars & Pubs/i }))
@@ -122,7 +135,7 @@ describe('OnboardingFlow', () => {
     const onComplete = vi.fn()
     render(<OnboardingFlow onComplete={onComplete} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+    passAgeGate()
     const barBtn = screen.getByRole('button', { name: /Bars & Pubs/i })
     fireEvent.click(barBtn)
     fireEvent.click(barBtn)
@@ -132,11 +145,49 @@ describe('OnboardingFlow', () => {
 
   it('shows "Continue" label on times step when selections exist', () => {
     render(<OnboardingFlow onComplete={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+    passAgeGate()
     fireEvent.click(screen.getByRole('button', { name: /Bars & Pubs/i }))
     fireEvent.click(screen.getByRole('button', { name: /^Continue/i }))
     fireEvent.click(screen.getByRole('button', { name: /Late Night/i }))
     expect(screen.getByRole('button', { name: /^Continue/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
+  })
+
+  describe('age gate', () => {
+    it('shows the age gate after the welcome step', () => {
+      render(<OnboardingFlow onComplete={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+      expect(screen.getByText(/Pulse is for adults/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /I'm 18 or older/i })).toBeInTheDocument()
+    })
+
+    it('blocks users who decline the age gate', () => {
+      render(<OnboardingFlow onComplete={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+      fireEvent.click(screen.getByRole('button', { name: /I'm under 18/i }))
+      expect(screen.getByRole('alert')).toHaveTextContent(/isn't available for you yet/i)
+      expect(screen.queryByRole('button', { name: /I'm 18 or older/i })).not.toBeInTheDocument()
+      // Still on the age step — no way to reach categories
+      expect(screen.queryByText(/What's your scene/i)).not.toBeInTheDocument()
+    })
+
+    it('tracks confirm and decline analytics events', () => {
+      trackEvent.mockClear()
+      const { unmount } = render(<OnboardingFlow onComplete={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+      fireEvent.click(screen.getByRole('button', { name: /I'm 18 or older/i }))
+      expect(trackEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'age_gate', confirmed: true })
+      )
+      unmount()
+
+      trackEvent.mockClear()
+      render(<OnboardingFlow onComplete={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Get Started/i }))
+      fireEvent.click(screen.getByRole('button', { name: /I'm under 18/i }))
+      expect(trackEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'age_gate', confirmed: false })
+      )
+    })
   })
 })

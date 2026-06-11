@@ -24,6 +24,7 @@ export async function completeOnboarding(page: Page, options?: {
   const timePref = options?.timePreference ?? 'skip'
 
   await getStarted.click()
+  await page.getByRole('button', { name: /I'm 18 or older/i }).click()
   await page.getByRole('button', { name: category }).click()
   await page.getByRole('button', { name: /^Continue$/i }).click()
 

@@ -199,6 +199,7 @@ See [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) for the full phased plan. Key
 | Document | Description |
 |----------|-------------|
 | [PRD.md](PRD.md) | Product requirements, feature specs, design direction, edge cases |
+| [COMMERCIAL_ROADMAP.md](COMMERCIAL_ROADMAP.md) | Path to commercial viability and fundraising readiness |
 | [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
 | [RELEASE_CHECKS.md](RELEASE_CHECKS.md) | Pre-deployment automated and manual checks |

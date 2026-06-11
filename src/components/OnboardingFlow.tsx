@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check } from '@phosphor-icons/react'
+import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check, ShieldCheck } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { applyReferralCode } from '@/lib/creators-client'
+import { trackEvent } from '@/lib/analytics'
 
 interface OnboardingFlowProps {
   onComplete: (preferences: OnboardingPreferences) => void
@@ -16,6 +17,7 @@ export interface OnboardingPreferences {
   preferredTimes: string[]
   enableLocation: boolean
   enableNotifications: boolean
+  ageConfirmed: boolean
 }
 
 const VENUE_CATEGORIES = [
@@ -36,13 +38,13 @@ const TIME_PREFERENCES = [
   { id: 'weekend-brunch', label: 'Weekend Brunch', time: '10 AM - 2 PM', emoji: '🥂' },
 ]
 
-const BASE_STEPS = ['welcome', 'categories', 'times', 'permissions'] as const
+const BASE_STEPS = ['welcome', 'age', 'categories', 'times', 'permissions'] as const
 const CREATOR_STEP = 'referral' as const
 const LAST_STEP = 'ready' as const
 
 const STEPS = (isFeatureEnabled('creatorEconomy')
   ? [...BASE_STEPS, CREATOR_STEP, LAST_STEP]
-  : [...BASE_STEPS, LAST_STEP]) as readonly ('welcome' | 'categories' | 'times' | 'permissions' | 'referral' | 'ready')[]
+  : [...BASE_STEPS, LAST_STEP]) as readonly ('welcome' | 'age' | 'categories' | 'times' | 'permissions' | 'referral' | 'ready')[]
 type Step = typeof STEPS[number]
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
@@ -54,6 +56,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [referralCode, setReferralCode] = useState('')
   const [referralError, setReferralError] = useState<string | null>(null)
   const [referralSubmitting, setReferralSubmitting] = useState(false)
+  const [ageDeclined, setAgeDeclined] = useState(false)
 
   const currentStepIndex = STEPS.indexOf(step)
 
@@ -70,7 +73,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       preferredTimes: selectedTimes,
       enableLocation: locationEnabled,
       enableNotifications: notificationsEnabled,
+      ageConfirmed: true,
     })
+  }
+
+  const handleAgeConfirm = () => {
+    trackEvent({ type: 'age_gate', timestamp: Date.now(), confirmed: true })
+    nextStep()
+  }
+
+  const handleAgeDecline = () => {
+    trackEvent({ type: 'age_gate', timestamp: Date.now(), confirmed: false })
+    setAgeDeclined(true)
   }
 
   const toggleCategory = (id: string) => {
@@ -141,6 +155,44 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Get Started
                 <ArrowRight size={18} className="ml-2" />
               </Button>
+            </motion.div>
+          )}
+
+          {step === 'age' && (
+            <motion.div
+              key="age"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              className="space-y-6 max-w-sm w-full"
+            >
+              <div className="text-center space-y-2">
+                <ShieldCheck size={32} weight="fill" className="text-primary mx-auto" />
+                <h2 className="text-2xl font-bold">Pulse is for adults</h2>
+                <p className="text-sm text-foreground/75">
+                  Pulse features nightlife venues, including bars and clubs. You must be
+                  18 or older to use Pulse.
+                </p>
+              </div>
+
+              {ageDeclined ? (
+                <div className="p-4 rounded-xl border border-border bg-card text-center space-y-2" role="alert">
+                  <p className="text-sm font-medium">Sorry, Pulse isn't available for you yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    Come back when you're 18. We'll keep the energy up for you.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Button size="lg" className="w-full" onClick={handleAgeConfirm}>
+                    I'm 18 or older
+                    <ArrowRight size={18} className="ml-2" />
+                  </Button>
+                  <Button size="lg" variant="outline" className="w-full" onClick={handleAgeDecline}>
+                    I'm under 18
+                  </Button>
+                </div>
+              )}
             </motion.div>
           )}
 

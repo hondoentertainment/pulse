@@ -16,6 +16,7 @@ const IntegrationHub = lazy(() => import('@/components/IntegrationHub').then(m =
 const ModerationQueuePage = lazy(() => import('@/components/ModerationQueuePage').then(m => ({ default: m.ModerationQueuePage })))
 const NightPlannerPage = lazy(() => import('@/components/NightPlannerPage').then(m => ({ default: m.NightPlannerPage })))
 const OwnerDashboardPage = lazy(() => import('@/components/OwnerDashboardPage').then(m => ({ default: m.OwnerDashboardPage })))
+const LegalPage = lazy(() => import('@/components/LegalPage').then(m => ({ default: m.LegalPage })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -95,7 +96,23 @@ export function SubPageRouter() {
     settings: () => (
       <>
         <Suspense fallback={pageFallback}>
-          <SettingsPage currentUser={currentUser} onBack={() => setSubPage(null)} onUpdateUser={updateProfile} onCityChange={(loc) => { setSimulatedLocation(loc); toast.success('Location updated') }} />
+          <SettingsPage currentUser={currentUser} onBack={() => setSubPage(null)} onUpdateUser={updateProfile} onCityChange={(loc) => { setSimulatedLocation(loc); toast.success('Location updated') }} onOpenLegal={(doc) => setSubPage(doc)} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    privacy: () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <LegalPage doc="privacy" onBack={() => setSubPage('settings')} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    terms: () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <LegalPage doc="terms" onBack={() => setSubPage('settings')} />
         </Suspense>
         {nav}
       </>

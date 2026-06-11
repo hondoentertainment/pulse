@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { PulseScore } from './PulseScore'
 import { Badge } from '@/components/ui/badge'
 import { MapPin, Clock, Star, HeartStraight, Broadcast, Queue } from '@phosphor-icons/react'
-import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatTimeAgo, isScoreLive } from '@/lib/pulse-engine'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
@@ -29,7 +29,8 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
   const liveReportCount = venue.liveSummary?.reportCount ?? 0
-  
+  const scoreIsLive = liveReportCount > 0 || isScoreLive(venue.lastPulseAt)
+
   return (
     <motion.div
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
@@ -66,10 +67,14 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                     Just popped
                   </Badge>
                 )}
-                {liveReportCount > 0 && (
+                {scoreIsLive ? (
                   <Badge variant="outline" className="border-white/25 bg-black/35 text-xs text-white backdrop-blur">
                     <Broadcast size={11} weight="fill" className="mr-1" />
                     Live
+                  </Badge>
+                ) : venue.pulseScore > 0 && (
+                  <Badge variant="outline" className="border-white/25 bg-black/35 text-xs text-white/80 backdrop-blur">
+                    Forecast
                   </Badge>
                 )}
               </div>
