@@ -27,6 +27,8 @@ interface DiscoverTabProps {
   onStoryClick: (stories: PulseStory[], index: number) => void
   onAddFriend: (userId: string) => void
   onNavigate: (page: 'events' | 'crews' | 'achievements' | 'insights' | 'neighborhoods' | 'playlists' | 'settings' | 'integrations' | 'challenges' | 'my-tickets' | 'night-planner') => void
+  isFollowed: (venueId: string) => boolean
+  onToggleFollow: (venueId: string) => void
 }
 
 export function DiscoverTab({
@@ -41,7 +43,9 @@ export function DiscoverTab({
   onStoryClick,
   userLocation,
   onAddFriend,
-  onNavigate
+  onNavigate,
+  isFollowed,
+  onToggleFollow,
 }: DiscoverTabProps) {
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null)
   const activeStories = getActiveStories(stories)
@@ -85,6 +89,8 @@ export function DiscoverTab({
         currentUser={currentUser}
         userLocation={userLocation ?? null}
         onVenueClick={onVenueClick}
+        isFollowed={isFollowed}
+        onToggleFollow={onToggleFollow}
       />
 
       <Separator />

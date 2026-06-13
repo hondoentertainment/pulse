@@ -8,6 +8,7 @@ import type { PromotedVenue } from '@/lib/promoted-discoveries'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendingSections } from '@/components/TrendingSections'
 import { LiveActivityFeed } from '@/components/LiveActivityFeed'
+import { Button } from '@/components/ui/button'
 import type { User } from '@/lib/types'
 
 interface HomeSocialFeedProps {
@@ -15,6 +16,11 @@ interface HomeSocialFeedProps {
   sections: TrendingSection[]
   venues: Venue[]
   pulses: Pulse[]
+  /** Subset for "Friends are moving" when using paginated live pulses (defaults to `pulses`). */
+  activityPulses?: Pulse[]
+  onLoadMoreActivityPulses?: () => void
+  hasMoreActivityPulses?: boolean
+  isLoadingMoreActivityPulses?: boolean
   currentUser: User
   allUsers: User[]
   userLocation: { lat: number; lng: number } | null
@@ -32,6 +38,10 @@ export function HomeSocialFeed({
   sections,
   venues,
   pulses,
+  activityPulses,
+  onLoadMoreActivityPulses,
+  hasMoreActivityPulses,
+  isLoadingMoreActivityPulses,
   currentUser,
   allUsers,
   userLocation,
@@ -44,6 +54,7 @@ export function HomeSocialFeed({
   onToggleFollow,
 }: HomeSocialFeedProps) {
   const promotedByVenueId = new Map(promotions.map(promo => [promo.venueId, promo.id]))
+  const pulsesForActivity = activityPulses ?? pulses
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5">
@@ -78,9 +89,20 @@ export function HomeSocialFeed({
             currentUser={currentUser}
             allUsers={allUsers}
             venues={venues}
-            pulses={pulses}
+            pulses={pulsesForActivity}
             onVenueClick={onVenueClick}
           />
+          {onLoadMoreActivityPulses && hasMoreActivityPulses ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full"
+              disabled={isLoadingMoreActivityPulses}
+              onClick={onLoadMoreActivityPulses}
+            >
+              {isLoadingMoreActivityPulses ? 'Loading…' : 'Load more activity'}
+            </Button>
+          ) : null}
         </FeedBlock>
 
         <FeedBlock icon={<TrendUp size={18} weight="fill" />} title="City pulse" kicker="Verified momentum, live reports, and likely surges">

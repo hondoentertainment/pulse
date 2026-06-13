@@ -66,6 +66,32 @@ vi.mock('@github/spark/hooks', () => ({
   useKV: (_key: string, defaultValue: any) => [defaultValue, vi.fn()],
 }))
 
+vi.mock('@/hooks/use-supabase-auth', () => ({
+  useSupabaseAuth: () => ({
+    session: null,
+    user: null,
+    profile: null,
+    isLoading: false,
+    isPlaceholder: true,
+    authError: null,
+    signIn: vi.fn(),
+    signInWithOAuth: vi.fn(),
+    signInWithOtp: vi.fn(),
+    signOut: vi.fn(),
+    updateProfile: vi.fn(),
+  }),
+}))
+
+vi.mock('@/hooks/api/use-pulses', () => ({
+  useLivePulsesInfinite: vi.fn(() => ({
+    data: undefined,
+    isFetched: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+  })),
+}))
+
 // ---------------------------------------------------------------------------
 // Component mocks (only for child components used by parents under test)
 // ---------------------------------------------------------------------------

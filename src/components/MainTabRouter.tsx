@@ -117,10 +117,13 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
+              userLocation={userLocation}
               onVenueClick={setSelectedVenue}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
               onNavigate={(page) => setSubPage(page)}
+              isFollowed={isFollowed}
+              onToggleFollow={handleToggleFollow}
             />
           </motion.div>
         )}

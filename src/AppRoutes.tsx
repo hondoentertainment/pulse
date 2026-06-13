@@ -8,6 +8,7 @@ import { useAppState } from '@/hooks/use-app-state'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { useCurrentTime } from '@/hooks/use-current-time'
 import { BottomNav } from '@/components/BottomNav'
 import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
@@ -55,6 +56,7 @@ export function AppRoutes() {
   const state = useAppState()
   const { activeTab, navigateToTab } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
+  const currentTime = useCurrentTime()
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -64,7 +66,7 @@ export function AppRoutes() {
     createDialogOpen, setCreateDialogOpen,
     venueForPulse,
     locationName, isTracking, realtimeLocation,
-    locationPermissionDenied, currentTime, queuedPulseCount,
+    locationPermissionDenied, queuedPulseCount,
     sortedVenues,
     unreadNotificationCount,
     setCurrentUser,

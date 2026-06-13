@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import type { Pulse } from '@/lib/types'
-import { PulseData, hasSupabaseEnv } from '@/lib/data'
+import { PulseData, hasSupabaseEnv, type PulsePage } from '@/lib/data'
+import { fetchPulseListPage } from '@/lib/api-client'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { venueKeys } from './use-venues'
 
 /** Query key factory for pulse-related queries. */
@@ -41,6 +43,77 @@ export function usePulses(venueId?: string) {
 }
 
 /**
+ * Paginated live pulses (`useInfiniteQuery`). No-op pages when Supabase env is missing.
+ * Uses `GET /api/pulses/list` when a session token exists (Wave 4); otherwise reads via `PulseData`.
+ */
+export function useLivePulsesInfinite(pageSize = 50) {
+  const { session } = useSupabaseAuth()
+  const accessToken = session?.access_token ?? null
+
+  return useInfiniteQuery<PulsePage, Error>({
+    queryKey: [...pulseKeys.all, 'infinite', 'live', pageSize, accessToken ? 'api' : 'direct'],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      if (!hasSupabaseEnv()) return { items: [], nextOffset: null }
+      const offset = pageParam as number
+      if (accessToken) {
+        const result = await fetchPulseListPage({
+          accessToken,
+          limit: pageSize,
+          offset,
+        })
+        if (result.ok) {
+          const { pulses, hasMore, limit } = result.data
+          return {
+            items: pulses as Pulse[],
+            nextOffset: hasMore ? offset + limit : null,
+          }
+        }
+      }
+      return PulseData.listLivePulsesPaged(pageSize, offset)
+    },
+    getNextPageParam: (last) => last.nextOffset,
+  })
+}
+
+/**
+ * Paginated pulses for one venue.
+ */
+export function useVenuePulsesInfinite(venueId: string | undefined, pageSize = 50) {
+  const { session } = useSupabaseAuth()
+  const accessToken = session?.access_token ?? null
+
+  return useInfiniteQuery<PulsePage, Error>({
+    queryKey: venueId
+      ? [...pulseKeys.byVenue(venueId), 'infinite', pageSize, accessToken ? 'api' : 'direct']
+      : ['pulses', 'venue', 'disabled'],
+    initialPageParam: 0,
+    enabled: Boolean(venueId),
+    queryFn: async ({ pageParam }) => {
+      if (!venueId || !hasSupabaseEnv()) return { items: [], nextOffset: null }
+      const offset = pageParam as number
+      if (accessToken) {
+        const result = await fetchPulseListPage({
+          accessToken,
+          venueId,
+          limit: pageSize,
+          offset,
+        })
+        if (result.ok) {
+          const { pulses, hasMore, limit } = result.data
+          return {
+            items: pulses as Pulse[],
+            nextOffset: hasMore ? offset + limit : null,
+          }
+        }
+      }
+      return PulseData.listRecentPulsesAtVenuePaged(venueId, pageSize, offset)
+    },
+    getNextPageParam: (last) => last.nextOffset,
+  })
+}
+
+/**
  * Create a pulse via Supabase. In mock-only mode echoes the pulse back (local state owns persistence).
  */
 export function useCreatePulse() {
@@ -54,7 +127,7 @@ export function useCreatePulse() {
       return PulseData.createPulse(mapPulseToCreateInput(pulse))
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: pulseKeys.all })
+      void queryClient.invalidateQueries({ queryKey: [...pulseKeys.all] })
       if (variables.venueId) {
         queryClient.invalidateQueries({ queryKey: pulseKeys.byVenue(variables.venueId) })
         queryClient.invalidateQueries({ queryKey: venueKeys.detail(variables.venueId) })
