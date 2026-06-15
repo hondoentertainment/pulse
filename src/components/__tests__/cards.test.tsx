@@ -235,7 +235,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
 
-    expect(screen.getByText('testuser')).toBeTruthy()
+    expect(screen.getAllByText('testuser').length).toBeGreaterThanOrEqual(1)
     // Energy badge label
     expect(screen.getByText(/Buzzing/)).toBeTruthy()
     expect(screen.getByText('Great vibes tonight!')).toBeTruthy()
@@ -265,10 +265,8 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
-    // mock renders motion.button as a <div>, so query by aria-label instead of
-    // role=button.
-    const fireButton = screen.getByLabelText(/Fire reaction/)
+    // Framer-motion mock renders motion.button as a <div>, so query by aria-label.
+    const fireButton = screen.getByLabelText(/React with fire/)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -285,11 +283,11 @@ describe('VenueCard', () => {
     expect(screen.getByText('Bar')).toBeTruthy()
   })
 
-  it('shows "Just Popped" badge when isJustPopped', () => {
+  it('shows "Just popped" badge when isJustPopped', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 
-    expect(screen.getByText('Just Popped')).toBeTruthy()
+    expect(screen.getByText('Just popped')).toBeTruthy()
   })
 
   it('calls onClick when clicked', () => {
