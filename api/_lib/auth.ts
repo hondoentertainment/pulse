@@ -21,6 +21,7 @@
  */
 
 import { getHeader, readHeader, type RequestLike } from './http'
+import { createAdminClient } from './supabase-server'
 
 // ─── Authoritative verification via Supabase ───
 
@@ -220,4 +221,32 @@ export const requireAuth = (req: RequestLike): AuthSuccess | AuthError => {
 export function getAuthenticatedUserId(req: RequestLike): string | null {
   const result = requireAuth(req)
   return result.ok ? result.context.userId : null
+}
+
+export type AuthenticatedRequestUser = {
+  userId: string
+  email?: string
+  token: string
+}
+
+export async function authenticate(req: RequestLike): Promise<AuthenticatedRequestUser | null> {
+  const result = requireAuth(req)
+  if (!result.ok) return null
+  return {
+    userId: result.context.userId,
+    email: result.context.claims.email,
+    token: result.context.token,
+  }
+}
+
+export async function isVenueStaff(userId: string, venueId: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  if (!supabase) return false
+  const { data, error } = await supabase
+    .from('venue_staff')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('venue_id', venueId)
+    .maybeSingle()
+  return !error && !!data
 }

@@ -1,15 +1,29 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import type { Provider } from '@supabase/supabase-js'
 import { User as AuthUser, Session } from '@supabase/supabase-js'
-import { hasSupabaseConfig, isE2EAuthBypassEnabled, supabase } from '@/lib/supabase'
 import type { User as PulseUser } from '@/lib/types'
+import {
+  hasPlaceholderCredentials,
+  hasSupabaseConfig,
+  isE2EAuthBypassEnabled,
+  supabase,
+} from '@/lib/supabase'
 import { createFallbackProfile, fetchOrCreateProfile } from '@/lib/auth-profile'
+
+/** Re-export for tests and callers that branch on demo vs real backend. */
+export { hasPlaceholderCredentials }
 
 interface SupabaseAuthContextType {
   session: Session | null
   user: AuthUser | null
   profile: PulseUser | null
   isLoading: boolean
+  /** True when there is no real Supabase project configured (demo / local fixtures). */
+  isPlaceholder: boolean
+  authError: string | null
   signIn: () => Promise<void>
+  signInWithOAuth: (provider: Provider) => Promise<void>
+  signInWithOtp: (email: string) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<PulseUser>) => Promise<void>
 }
@@ -50,11 +64,19 @@ function createPreviewAuthState() {
   }
 }
 
+function authRedirectBaseUrl(): string {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}${window.location.pathname.replace(/\/$/, '') || ''}`
+}
+
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<PulseUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  const isPlaceholder = !hasSupabaseConfig || hasPlaceholderCredentials()
 
   const activatePreviewSession = () => {
     const preview = createPreviewAuthState()
@@ -144,20 +166,61 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async () => {
-    if (!hasSupabaseConfig) {
+    setAuthError(null)
+    if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
       activatePreviewSession()
       return
     }
 
-    // For MVP prototyping without real emails, we will just use an anonymous sign-in or a 
-    // mock sign in. Since Supabase allows Anonymous Sign-Ins in edge, we'll try that.
-    // In production, this would be an OAuth or Magic Link sign-in.
     const { error } = await supabase.auth.signInAnonymously()
-    if (error) console.error('Sign in error:', error)
+    if (error) {
+      const msg = error.message || 'Sign-in failed'
+      setAuthError(msg)
+      throw new Error(msg)
+    }
+  }
+
+  const signInWithOAuth = async (provider: Provider) => {
+    setAuthError(null)
+    if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
+      const msg = 'Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+      setAuthError(msg)
+      throw new Error(msg)
+    }
+
+    const redirectTo = authRedirectBaseUrl() || undefined
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: redirectTo ? { redirectTo } : undefined,
+    })
+    if (error) {
+      setAuthError(error.message)
+      throw new Error(error.message)
+    }
+  }
+
+  const signInWithOtp = async (email: string) => {
+    setAuthError(null)
+    if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
+      const msg = 'Supabase is not configured; add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+      setAuthError(msg)
+      throw new Error(msg)
+    }
+
+    const emailRedirectTo = authRedirectBaseUrl() || undefined
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    })
+    if (error) {
+      setAuthError(error.message)
+      throw new Error(error.message)
+    }
   }
 
   const signOut = async () => {
-    if (!hasSupabaseConfig) {
+    setAuthError(null)
+    if (!hasSupabaseConfig || hasPlaceholderCredentials()) {
       setSession(null)
       setUser(null)
       setProfile(null)
@@ -204,7 +267,21 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SupabaseAuthContext.Provider value={{ session, user, profile, isLoading, signIn, signOut, updateProfile }}>
+    <SupabaseAuthContext.Provider
+      value={{
+        session,
+        user,
+        profile,
+        isLoading,
+        isPlaceholder,
+        authError,
+        signIn,
+        signInWithOAuth,
+        signInWithOtp,
+        signOut,
+        updateProfile,
+      }}
+    >
       {children}
     </SupabaseAuthContext.Provider>
   )

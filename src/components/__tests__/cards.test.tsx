@@ -42,8 +42,7 @@ vi.mock('@phosphor-icons/react', () => {
     'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
     'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
     'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
-    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Queue','Quotes',
-    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse',    'QrCode','Question','Quotes','Queue','Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
     'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
     'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
     'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
@@ -236,7 +235,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
 
-    expect(screen.getAllByText('testuser').length).toBeGreaterThan(0)
+    expect(screen.getByText('testuser')).toBeTruthy()
     // Energy badge label
     expect(screen.getByText(/Buzzing/)).toBeTruthy()
     expect(screen.getByText('Great vibes tonight!')).toBeTruthy()
@@ -269,7 +268,7 @@ describe('PulseCard', () => {
     // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
     // mock renders motion.button as a <div>, so query by aria-label instead of
     // role=button.
-    const fireButton = screen.getByLabelText(/React with fire/)
+    const fireButton = screen.getByLabelText(/Fire reaction/)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -290,7 +289,7 @@ describe('VenueCard', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 
-    expect(screen.getByText(/Just popped/i)).toBeTruthy()
+    expect(screen.getByText('Just Popped')).toBeTruthy()
   })
 
   it('calls onClick when clicked', () => {

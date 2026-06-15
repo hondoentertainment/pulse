@@ -46,6 +46,7 @@ export function MainTabRouter() {
     setStoryViewerOpen,
     setStoryViewerStories,
     isFavorite,
+    isFollowed,
     pulsesWithUsers,
   } = state
 
@@ -83,7 +84,7 @@ export function MainTabRouter() {
             <TrendingTab
               venues={visibleVenues}
               pulses={visiblePulses}
-              pulsesWithUsers={visiblePulsesWithUsers}
+              pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
               followedVenues={followedVenues}
               userLocation={userLocation}
@@ -98,6 +99,7 @@ export function MainTabRouter() {
               onReaction={handleReaction}
               onReportPulse={handlePulseReport}
               isFavorite={isFavorite}
+              isFollowed={isFollowed}
               promotions={promotions || []}
               onPromotionImpression={handlePromotionImpression}
               onPromotionClick={handlePromotionClick}
@@ -115,10 +117,13 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               stories={stories || []}
               events={events || []}
+              userLocation={userLocation}
               onVenueClick={setSelectedVenue}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
               onNavigate={(page) => setSubPage(page)}
+              isFollowed={isFollowed}
+              onToggleFollow={handleToggleFollow}
             />
           </motion.div>
         )}

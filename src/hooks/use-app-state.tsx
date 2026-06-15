@@ -44,6 +44,8 @@ import {
   getVenuesForMarket,
   type UsMarket,
 } from '@/lib/us-markets'
+import { fetchProfilesByIds } from '@/lib/auth-profile'
+import { hasSupabaseEnv } from '@/lib/data'
 
 export type SubPage =
   | 'events'
@@ -60,6 +62,16 @@ export type SubPage =
   | 'my-tickets'
   | 'night-planner'
   | null
+
+export function placeholderPulseAuthor(userId: string): User {
+  return {
+    id: userId,
+    username: `guest_${userId.replace(/-/g, '').slice(0, 8)}`,
+    profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userId)}`,
+    friends: [],
+    createdAt: new Date().toISOString(),
+  }
+}
 
 export const ALL_USERS: User[] = [
   { id: 'user-2', username: 'sarah_j', profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop', friends: ['user-1'], createdAt: new Date().toISOString() },
@@ -166,6 +178,8 @@ export interface AppState {
   isFollowed: (venueId: string) => boolean
   getPulsesWithUsers: () => PulseWithUser[]
   pulsesWithUsers: PulseWithUser[]
+  /** Resolve a pulse author's profile (Supabase batch cache + demo + placeholder). */
+  resolvePulseUser: (userId: string) => User
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -577,6 +591,55 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => filterModeratedPulses(pulses || [], currentUser?.id || '', userBlocks || [], userMutes || []),
     [currentUser?.id, pulses, userBlocks, userMutes]
   )
+
+  const [pulseAuthorsById, setPulseAuthorsById] = useState<Record<string, User>>({})
+
+  useEffect(() => {
+    setPulseAuthorsById({})
+  }, [currentUser?.id])
+
+  const moderatedPulseAuthorIdsKey = useMemo(
+    () => [...new Set(moderatedPulses.map(p => p.userId))].sort().join(','),
+    [moderatedPulses],
+  )
+
+  useEffect(() => {
+    if (!hasSupabaseEnv()) return
+    const ids = moderatedPulseAuthorIdsKey.split(',').filter(Boolean)
+    if (ids.length === 0) return
+
+    let cancelled = false
+    fetchProfilesByIds(supabase, ids)
+      .then((profiles) => {
+        if (cancelled || profiles.length === 0) return
+        setPulseAuthorsById((prev) => {
+          const next = { ...prev }
+          for (const u of profiles) next[u.id] = u
+          return next
+        })
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          trackError(error instanceof Error ? error : String(error), 'pulse_author_profiles_fetch')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [moderatedPulseAuthorIdsKey])
+
+  const resolvePulseUser = useCallback(
+    (userId: string): User => {
+      if (currentUser && userId === currentUser.id) return currentUser
+      const cached = pulseAuthorsById[userId]
+      if (cached) return cached
+      const demo = ALL_USERS.find(u => u.id === userId)
+      if (demo) return demo
+      return placeholderPulseAuthor(userId)
+    },
+    [currentUser, pulseAuthorsById],
+  )
   const unreadNotificationCount = useMemo(
     () => (notifications || []).filter(n => !n.read).length,
     [notifications]
@@ -610,15 +673,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const favoriteVenues = useMemo(
     () => (currentUser?.favoriteVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
-    [currentUser?.favoriteVenues, venueById, visibleVenues]
+      .filter((v): v is Venue => v !== undefined),
+    [currentUser?.favoriteVenues, venueById]
   )
 
   const followedVenues = useMemo(
     () => (currentUser?.followedVenues || [])
       .map(id => venueById.get(id))
-      .filter((v): v is Venue => v !== undefined && visibleVenues.some(venue => venue.id === v.id)),
-    [currentUser?.followedVenues, venueById, visibleVenues]
+      .filter((v): v is Venue => v !== undefined),
+    [currentUser?.followedVenues, venueById]
   )
 
   const isFavorite = useCallback((venueId: string) => favoriteVenueIds.has(venueId), [favoriteVenueIds])
@@ -627,9 +690,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const pulsesWithUsers = useMemo<PulseWithUser[]>(() => {
     if (!currentUser || !venues) return []
     return moderatedPulses
-      .map(pulse => ({ ...pulse, user: currentUser, venue: venueById.get(pulse.venueId)! }))
-      .filter(p => p.venue)
-  }, [currentUser, moderatedPulses, venueById, venues])
+      .map((pulse) => {
+        const venue = venueById.get(pulse.venueId)
+        if (!venue) return null
+        return {
+          ...pulse,
+          user: resolvePulseUser(pulse.userId),
+          venue,
+        }
+      })
+      .filter((p): p is PulseWithUser => p !== null)
+  }, [currentUser, moderatedPulses, resolvePulseUser, venueById, venues])
 
   const getPulsesWithUsers = useCallback(() => pulsesWithUsers, [pulsesWithUsers])
 
@@ -669,6 +740,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queuedPulseCount, setQueuedPulseCount,
     moderatedPulses, sortedVenues, visibleVenues, favoriteVenues, followedVenues,
     unreadNotificationCount, isFavorite, isFollowed, getPulsesWithUsers, pulsesWithUsers,
+    resolvePulseUser,
   }), [
     activeTab,
     selectedVenue,
@@ -723,6 +795,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     isFollowed,
     getPulsesWithUsers,
     pulsesWithUsers,
+    resolvePulseUser,
   ])
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>

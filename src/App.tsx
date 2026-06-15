@@ -1,30 +1,52 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 
-import { AppStateProvider, useAppState } from '@/hooks/use-app-state'
+/**
+ * Root app: unauthenticated users see `LoginScreen`; authenticated users get `SignalApp`
+ * (daily check-in + trends). The venue tab shell lives in `AppRoutes.tsx` and is not
+ * mounted from here unless you change this entry.
+ */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { isVisualPreviewEnabled } from '@/lib/supabase'
-import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { trackEvent } from '@/lib/analytics'
+import { Lightning } from '@phosphor-icons/react'
 
-const OnboardingFlow = lazy(() => import('@/components/OnboardingFlow').then(m => ({ default: m.OnboardingFlow })))
-const LoginScreen = lazy(() => import('@/components/LoginScreen').then(m => ({ default: m.LoginScreen })))
-const AppShell = lazy(() => import('@/components/AppShell').then(m => ({ default: m.AppShell })))
+const LoginScreen = lazy(() => import('@/components/LoginScreen').then((m) => ({ default: m.LoginScreen })))
+const SignalApp = lazy(() => import('@/components/signal/SignalApp').then((m) => ({ default: m.SignalApp })))
 
-const pageFallback = (
-  <main className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
-    <p className="text-muted-foreground">Loading...</p>
-  </main>
-)
+function AppLoadingFallback({ label }: { label: string }) {
+  return (
+    <main
+      className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-6 text-foreground [background-image:radial-gradient(circle_at_20%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_28rem),radial-gradient(circle_at_85%_15%,color-mix(in_oklch,var(--accent)_14%,transparent),transparent_24rem)]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary animate-pulse">
+          <Lightning size={28} weight="fill" aria-hidden />
+        </div>
+        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      </div>
+      <div className="flex w-full max-w-[200px] flex-col gap-2" aria-hidden>
+        <div className="h-2.5 w-full rounded-full bg-muted animate-pulse" />
+        <div className="h-2.5 w-[80%] rounded-full bg-muted/70 animate-pulse" />
+      </div>
+    </main>
+  )
+}
+
+const pageFallback = <AppLoadingFallback label="Loading Pulse…" />
 
 function AppContent() {
-  const { hasCompletedOnboarding, setHasCompletedOnboarding } = useAppState()
-  const { session, isLoading: authLoading, updateProfile } = useSupabaseAuth()
+  const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
+
+  useEffect(() => {
+    if (!authLoading && session) {
+      trackEvent({ type: 'signal_auth_session_ready', timestamp: Date.now(), isPlaceholder })
+    }
+  }, [authLoading, session, isPlaceholder])
 
   if (authLoading) {
-    return (
-      <main className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
-        <p className="text-muted-foreground">Loading Session...</p>
-      </main>
-    )
+    return <AppLoadingFallback label="Restoring session…" />
   }
 
   if (!session) {
@@ -35,22 +57,9 @@ function AppContent() {
     )
   }
 
-  if (!isVisualPreviewEnabled && hasCompletedOnboarding === false) {
-    return (
-      <Suspense fallback={pageFallback}>
-        <OnboardingFlow
-          onComplete={(prefs: OnboardingPreferences) => {
-            void updateProfile({ favoriteCategories: prefs.favoriteCategories })
-            setHasCompletedOnboarding(true)
-          }}
-        />
-      </Suspense>
-    )
-  }
-
   return (
     <Suspense fallback={pageFallback}>
-      <AppShell />
+      <SignalApp />
     </Suspense>
   )
 }
@@ -58,9 +67,7 @@ function AppContent() {
 function App() {
   return (
     <SupabaseAuthProvider>
-      <AppStateProvider>
-        <AppContent />
-      </AppStateProvider>
+      <AppContent />
     </SupabaseAuthProvider>
   )
 }

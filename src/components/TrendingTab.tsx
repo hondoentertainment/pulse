@@ -15,6 +15,8 @@ import { getSmartVenueSort } from '@/lib/contextual-intelligence'
 import { PromotedVenue, isPromotionActive, sortWithPromotions } from '@/lib/promoted-discoveries'
 import type { Pulse } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
+import { useLivePulsesInfinite } from '@/hooks/api/use-pulses'
+import { hasSupabaseEnv } from '@/lib/data'
 
 interface TrendingTabProps {
   venues: Venue[]
@@ -37,6 +39,7 @@ interface TrendingTabProps {
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onReportPulse?: (report: ContentReport) => void
   isFavorite: (venueId: string) => boolean
+  isFollowed: (venueId: string) => boolean
   onCompareVenues?: (venueIds: string[]) => void
 }
 
@@ -58,6 +61,7 @@ export function TrendingTab({
   onReaction,
   onReportPulse,
   isFavorite,
+  isFollowed,
   promotions,
   onPromotionImpression,
   onPromotionClick,
@@ -65,6 +69,24 @@ export function TrendingTab({
 }: TrendingTabProps) {
   const activePromotions = (promotions || []).filter(isPromotionActive)
   const seenPromotionImpressions = useRef<Set<string>>(new Set())
+
+  const livePulsesQuery = useLivePulsesInfinite(40)
+
+  const activityPulses = useMemo(() => {
+    if (!hasSupabaseEnv()) return pulses
+    if (!livePulsesQuery.isFetched) return pulses
+    return livePulsesQuery.data?.pages.flatMap((p) => p.items) ?? pulses
+  }, [pulses, livePulsesQuery.isFetched, livePulsesQuery.data])
+
+  const liveFeedLoadMore = hasSupabaseEnv()
+    ? {
+        onLoadMore: () => {
+          void livePulsesQuery.fetchNextPage()
+        },
+        hasMore: Boolean(livePulsesQuery.hasNextPage),
+        loadingMore: livePulsesQuery.isFetchingNextPage,
+      }
+    : null
   const recommended = useMemo(() => {
     const base = getRecommendations(currentUser, venues, pulses, userLocation ?? undefined)
     if (base.length === 0 || activePromotions.length === 0) return base
@@ -208,6 +230,10 @@ export function TrendingTab({
             sections={trendingSections}
             venues={venues}
             pulses={pulses}
+            activityPulses={activityPulses}
+            onLoadMoreActivityPulses={liveFeedLoadMore?.onLoadMore}
+            hasMoreActivityPulses={liveFeedLoadMore?.hasMore}
+            isLoadingMoreActivityPulses={liveFeedLoadMore?.loadingMore}
             currentUser={currentUser}
             allUsers={allUsers}
             userLocation={userLocation}
@@ -216,6 +242,8 @@ export function TrendingTab({
             onPromotionClick={onPromotionClick}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
+            isFollowed={isFollowed}
+            onToggleFollow={onToggleFollow}
           />
         </>
       )}

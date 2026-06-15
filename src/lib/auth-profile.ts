@@ -139,3 +139,41 @@ export async function fetchOrCreateProfile(
 
   return mapProfileRowToPulseUser(inserted as ProfileRow)
 }
+
+export async function fetchProfileById(
+  client: Pick<SupabaseClient, 'from'>,
+  id: string,
+): Promise<PulseUser | null> {
+  const { data, error } = await client
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+  if (!data) {
+    return null
+  }
+  return mapProfileRowToPulseUser(data as ProfileRow)
+}
+
+export async function fetchProfilesByIds(
+  client: Pick<SupabaseClient, 'from'>,
+  ids: string[],
+): Promise<PulseUser[]> {
+  const unique = [...new Set(ids.filter(Boolean))]
+  if (unique.length === 0) return []
+
+  const { data, error } = await client
+    .from('profiles')
+    .select('*')
+    .in('id', unique)
+
+  if (error) {
+    throw error
+  }
+  if (!data?.length) return []
+  return (data as ProfileRow[]).map(mapProfileRowToPulseUser)
+}

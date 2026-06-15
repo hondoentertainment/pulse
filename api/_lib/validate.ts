@@ -81,6 +81,40 @@ export function asUuid(value: unknown): string | null {
   return UUID_RE.test(value) ? value : null
 }
 
+export function isString(value: unknown): value is string {
+  return asString(value) !== null
+}
+
+export function isUuid(value: unknown): value is string {
+  return asUuid(value) !== null
+}
+
+export function isIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const time = Date.parse(value)
+  return Number.isFinite(time)
+}
+
+export function isPositiveInt(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0
+}
+
+export function isNonNegativeInt(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+export function requireFields(
+  body: unknown,
+  validators: Record<string, (value: unknown) => boolean>,
+): string[] {
+  if (!isPlainObject(body)) return ['body must be an object']
+  const errors: string[] = []
+  for (const [field, validate] of Object.entries(validators)) {
+    if (!validate(body[field])) errors.push(`${field} is invalid or missing`)
+  }
+  return errors
+}
+
 export function asInteger(
   value: unknown,
   opts: { min?: number; max?: number } = {},

@@ -6,6 +6,7 @@
 
 export * as VenueData from './venues'
 export * as PulseData from './pulses'
+export type { PulsePage } from './pulses'
 export * as ReactionData from './reactions'
 export * as CheckInData from './check-ins'
 export * as FollowData from './follows'

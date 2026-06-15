@@ -14,16 +14,24 @@ export function AuthGate() {
 
   const handleGoogle = async () => {
     setLocalLoading(true)
-    await signInWithOAuth('google')
-    // OAuth redirects, so loading stays true until redirect completes
+    try {
+      await signInWithOAuth('google')
+    } finally {
+      setLocalLoading(false)
+    }
   }
 
   const handleMagicLink = async () => {
     if (!email.trim()) return
     setLocalLoading(true)
-    await signInWithOtp(email.trim())
-    setLocalLoading(false)
-    setOtpSent(true)
+    try {
+      await signInWithOtp(email.trim())
+      setOtpSent(true)
+    } catch {
+      setOtpSent(false)
+    } finally {
+      setLocalLoading(false)
+    }
   }
 
   return (

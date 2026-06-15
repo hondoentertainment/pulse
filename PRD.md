@@ -317,12 +317,46 @@ Key animation moments:
 | Venue Search | Done | Text search + category filtering |
 
 ### Known Gaps
-- **No backend**: All data is client-side via Spark `useKV`; no database, no auth, no multi-device sync
-- **No test coverage**: Zero test files; no testing framework installed
-- **ESLint broken**: Missing `eslint.config.js` for ESLint v9 flat config format
-- **No CI/CD**: No GitHub Actions workflows for automated testing or builds
-- **Large components**: `App.tsx` (959 lines) and `InteractiveMap.tsx` (40KB) need decomposition
-- **Mock data only**: Twitter/X API is simulated; all venue/user data is seeded
+- **Hybrid data layer**: Core app state still uses Spark `useKV` in many flows; Supabase/API paths exist but are not the single source of truth end-to-end
+- **Test coverage thin**: Some Vitest/component tests exist; core engines and E2E coverage remain incomplete relative to the PRD surface
+- **Large components**: `App.tsx` and `InteractiveMap.tsx` remain decomposition candidates as features move behind clearer routes/slices
+- **Mock / simulated integrations**: Twitter/X ingestion and portions of social/admin flows are simulated or feature-flagged; production keys and live pipelines not universal
+- **PRD extensions in flight**: `docs/prd/*` tracks video feed, AI concierge, reservations/ticketing, creator economy, native apps, and safety-kit—implementation depth varies by flag and wave
+
+---
+
+## Next 20 delivery waves
+
+*Last revised: 2026-05-02.*
+
+Sequential, review-sized slices. Each wave should close with **merged code**, **updated tests or manual QA notes**, and **docs/env flags** where behavior is gated.
+
+Satellite specs under `docs/prd/` ship **inside** the wave that owns the same user journey when the relevant `VITE_*` flag is on (see below); they do not consume extra wave numbers unless they slip.
+
+| Wave | Theme | Primary deliverables | Phase / doc refs |
+|------|--------|----------------------|------------------|
+| **1** | My Spots & follow UX | Follow/unfollow on venue pages and cards; **My Spots** tab; chronological feed for starred venues; followed badge in lists | Phase 1.1 |
+| **2** | Auth & identity | OAuth or magic-link UX wired to production IdP; session persistence; profile bootstrap; logout/revoke paths | Phase 1.2 |
+| **3** | Server-backed venues | List/detail venue reads from API/Supabase; deprecate duplicate mock sources for those reads | Phase 1.2 |
+| **4** | Server-backed pulses | Pulse feed + detail from API; pagination; consistent timestamps and media URLs; optional vertical video feed surfaces per `docs/prd/video-feed.md` when `VITE_VIDEO_FEED_ENABLED` | Phase 1.2 |
+| **5** | Check-in & create on server | Location-verified check-in and pulse creation via API; `useKV` limited to cache/optimistic paths where justified | Phase 1.2 |
+| **6** | Sync & multi-device | User settings, follows, and notification state loaded/stored remotely; conflict strategy documented | Phase 1.2 |
+| **7** | Real-time feed v1 | SSE or WebSocket channel for new pulses and score updates on venue/feed views; fallback polling | Phase 1.3 |
+| **8** | Push notifications | FCM/APNs registration; notification preferences honored server-side; quiet hours | Phase 1.3 |
+| **9** | Quality gate | Vitest for `pulse-engine`, `credibility`, `venue-trending`; CI required on PR; flake policy | Phase 1.4 |
+| **10** | App shell split | Route-level ownership; slim `App.tsx`; clear boundary for `InteractiveMap`; optional MapLibre migration in a dedicated branch per `docs/maplibre-migration.md` | Phase 1.4 |
+| **11** | Time-contextual scoring | Category baselines; normalized scores; contextual labels (“Heating up early”, “Electric for a Tuesday afternoon”) | Phase 2.1 |
+| **12** | Map disclosure & density | Progressive disclosure, clustering, first-session map onboarding | Phase 2.2 |
+| **13** | Recommendations | “You might like,” time-aware suggestions, friend signals on cards; optional concierge entry points per `docs/prd/ai-concierge.md` when enabled | Phase 2.3 |
+| **14** | Trust & safety v1 | Report flow; block/mute; moderation queue MVP; hooks for media screening | Phase 2.4, `docs/prd/safety-kit.md` |
+| **15** | Social graph growth | Contact discovery stub or import; share link / QR add-friend; lightweight “people you may know” | Phase 3.1 |
+| **16** | Owner & venue ops | Claim flow stub; owner dashboard MVP (traffic, peaks); labeled promotion slot if used; creator payouts/tips per `docs/prd/creator-economy.md` when `VITE_CREATOR_ECONOMY_ENABLED` | Phase 3.2 |
+| **17** | Events & RSVPs | Event entity tied to venues; Going/Interested; venue + feed surfaces; reservation handoff per `docs/prd/reservations-ticketing.md` when ready | Phase 3.3 |
+| **18** | Sharing & deep links | Pulse/venue URLs; OG tags; story/share cards | Phase 3.4 |
+| **19** | Offline & performance | PWA install polish (`public/manifest.json`, service worker strategy); pulse queue + background sync; image/CDN checklist; bundle budget in CI | Phase 4.1, `docs/bundle-budget.md`, `docs/bundle-optimization.md` |
+| **20** | Observability & expansion | Product analytics funnel; error/perf (e.g. Sentry); **either** Capacitor/RN spike per `docs/prd/native-apps.md` **or** a11y+i18n foundation (Phase 4.4)—pick one capstone per quarter | Phases 4.2–4.4 |
+
+**Follow-on backlog (post–wave 20):** Phases **5–7** (stories, crew mode, achievements, playlists, predictive surge, monetization, public API) continue as waves 21+ using the same table—one theme per wave, same ship criteria.
 
 ---
 

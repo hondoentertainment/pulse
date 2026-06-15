@@ -133,10 +133,12 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
 }
 
 export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
+  const now = new Date().toISOString()
   const { data, error } = await supabase
     .from('pulses')
     .select('*')
-    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .is('deleted_at', null)
+    .gt('expires_at', now)
     .order('created_at', { ascending: false })
     .limit(1000)
   if (error || !data) {

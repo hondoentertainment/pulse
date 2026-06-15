@@ -22,7 +22,7 @@ function scheduleIdle(callback: () => void) {
     window.requestIdleCallback(callback, { timeout: 3000 })
     return
   }
-  window.setTimeout(callback, 1500)
+  globalThis.setTimeout(callback, 1500)
 }
 
 function initializeSentryWhenIdle() {

@@ -71,6 +71,10 @@ interface VenuePageProps {
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
+  /** Wave 4 — paginated venue pulses from server */
+  onLoadMoreVenuePulses?: () => void
+  hasMoreVenuePulses?: boolean
+  isLoadingMoreVenuePulses?: boolean
 }
 
 export function VenuePage({
@@ -95,6 +99,9 @@ export function VenuePage({
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
+  onLoadMoreVenuePulses,
+  hasMoreVenuePulses,
+  isLoadingMoreVenuePulses,
 }: VenuePageProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
@@ -575,6 +582,16 @@ export function VenuePage({
                 onReport={onReportPulse}
               />
             ))}
+            {onLoadMoreVenuePulses && hasMoreVenuePulses ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={isLoadingMoreVenuePulses}
+                onClick={onLoadMoreVenuePulses}
+              >
+                {isLoadingMoreVenuePulses ? 'Loading…' : 'Load more pulses'}
+              </Button>
+            ) : null}
           </div>
         )}
       </motion.div>

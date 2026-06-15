@@ -109,6 +109,54 @@ export async function listLivePulses(limit = 500): Promise<Pulse[]> {
   return rows.map(rowToPulse)
 }
 
+export interface PulsePage {
+  items: Pulse[]
+  /** Pass as `offset` for the next request; `null` when no further pages. */
+  nextOffset: number | null
+}
+
+function clampPageSize(limit: number): number {
+  return Math.min(200, Math.max(1, Math.floor(limit)))
+}
+
+/**
+ * Live pulses with offset/limit pagination (for feeds and sync).
+ */
+export async function listLivePulsesPaged(
+  limit = 50,
+  offset = 0,
+): Promise<PulsePage> {
+  const now = new Date().toISOString()
+  const safeLimit = clampPageSize(limit)
+  const safeOffset = Math.max(0, Math.floor(offset))
+  const result = await fromAlive('pulses', SELECT_COLUMNS)
+    .gt('expires_at', now)
+    .order('created_at', { ascending: false })
+    .range(safeOffset, safeOffset + safeLimit - 1)
+  const rows = unwrap<PulseRow[]>(result)
+  const nextOffset = rows.length === safeLimit ? safeOffset + safeLimit : null
+  return { items: rows.map(rowToPulse), nextOffset }
+}
+
+/**
+ * Recent pulses at a venue with offset/limit pagination.
+ */
+export async function listRecentPulsesAtVenuePaged(
+  venueId: string,
+  limit = 50,
+  offset = 0,
+): Promise<PulsePage> {
+  const safeLimit = clampPageSize(limit)
+  const safeOffset = Math.max(0, Math.floor(offset))
+  const result = await fromAlive('pulses', SELECT_COLUMNS)
+    .eq('venue_id', venueId)
+    .order('created_at', { ascending: false })
+    .range(safeOffset, safeOffset + safeLimit - 1)
+  const rows = unwrap<PulseRow[]>(result)
+  const nextOffset = rows.length === safeLimit ? safeOffset + safeLimit : null
+  return { items: rows.map(rowToPulse), nextOffset }
+}
+
 // ── Writes ───────────────────────────────────────────────────────────────
 
 export interface CreatePulseInput {
