@@ -1,13 +1,27 @@
-import type { RequestLike, ResponseLike } from './_lib/http'
-import { handleOptions, setCors } from './_lib/http'
+type RequestLike = {
+  method?: string
+}
+
+type ResponseLike = {
+  status: (code: number) => ResponseLike
+  setHeader: (name: string, value: string) => void
+  json: (payload: unknown) => void
+  end: () => void
+}
 
 /**
  * Lightweight liveness probe for uptime monitors and deploy verification.
  * GET /api/health → 200 { status: "ok", ... }
  */
 export default function handler(req: RequestLike, res: ResponseLike): void {
-  setCors(res)
-  if (handleOptions(req, res)) return
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end()
+    return
+  }
 
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' })
