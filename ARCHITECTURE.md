@@ -2,6 +2,8 @@
 
 This document describes the system architecture, data flow, and module boundaries of the Pulse application.
 
+> **Deeper references:** [Component Catalog](docs/component-catalog.md) · [Hooks Catalog](docs/hooks-catalog.md) · [Lib Modules](docs/lib-modules.md) · [Routing](docs/routing.md) · [Scoring Algorithm](docs/scoring-algorithm.md) · [Database Schema](docs/database-schema.md) · [Data Layer](docs/data-layer.md)
+
 ## System Overview
 
 Pulse is a client-heavy PWA built with React 19 and Vite. The current architecture runs almost entirely in the browser, with Supabase as the planned backend. The app is designed to transition from a prototype (mock data, client state) to a production system (server persistence, real auth) without major structural rewrites.

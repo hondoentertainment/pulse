@@ -27,6 +27,7 @@ import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
 import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { getUserIdOrNull } from '@/lib/auth/require-auth'
 
 function milesBetween(
   a: { lat: number; lng: number },
@@ -86,6 +87,14 @@ export function useAppHandlers() {
 
   const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
     if (!venueForPulse || !currentUser || !venues) return
+
+    if (USE_SUPABASE_BACKEND) {
+      const userId = await getUserIdOrNull()
+      if (!userId) {
+        toast.error('Sign in required', { description: 'Sign in to post a pulse to the live feed.' })
+        return
+      }
+    }
 
     const recentActions = (pulses || [])
       .filter(pulse => pulse.userId === currentUser.id)

@@ -1,11 +1,15 @@
 import { lazy, Suspense, useEffect } from 'react'
 
 /**
- * Root app: unauthenticated users see `LoginScreen`; authenticated users get `SignalApp`
- * (daily check-in + trends). The venue tab shell lives in `AppRoutes.tsx` and is not
- * mounted from here unless you change this entry.
+ * Root app entry — mode controlled by `VITE_APP_MODE`:
+ *   signal (default) — Pulse Signal (`LoginScreen` → `SignalApp`)
+ *   venue            — full venue discovery shell (`AppRoutes`)
  */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { AppProviders } from '@/AppProviders'
+import { AppBootstrap } from '@/AppBootstrap'
+import { AppRoutes } from '@/AppRoutes'
+import { isVenueAppMode } from '@/lib/app-mode'
 import { trackEvent } from '@/lib/analytics'
 import { Lightning } from '@phosphor-icons/react'
 
@@ -65,6 +69,16 @@ function AppContent() {
 }
 
 function App() {
+  if (isVenueAppMode()) {
+    return (
+      <AppProviders>
+        <AppBootstrap>
+          <AppRoutes />
+        </AppBootstrap>
+      </AppProviders>
+    )
+  }
+
   return (
     <SupabaseAuthProvider>
       <AppContent />

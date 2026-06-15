@@ -132,6 +132,27 @@ jobs:
             test-results
           if-no-files-found: ignore
 
+  e2e-signal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Signal app smoke tests
+        env:
+          VITE_E2E_AUTH_BYPASS: 'true'
+          VITE_APP_MODE: signal
+        run: npm run test:e2e:signal
+
   dependency-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10

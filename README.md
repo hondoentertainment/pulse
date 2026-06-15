@@ -118,7 +118,7 @@ e2e/                        # Playwright smoke tests
 api/                        # API utilities
 supabase/                   # Supabase configuration
 .github/workflows/          # CI (ci.yml), Deploy (deploy.yml), Lighthouse (lighthouse.yml)
-docs/                       # Operational runbooks
+docs/                       # Documentation hub (see docs/README.md)
 ```
 
 ## Features
@@ -162,6 +162,8 @@ The test suite covers:
 - **UI components** (component test files) — UI primitives, cards, navigation, venue features, presentational components, feeds/lists
 - **E2E smoke** (Playwright) — app load, basic navigation
 
+See [docs/testing.md](docs/testing.md) for the full testing guide.
+
 ```bash
 # Run all tests
 npm run test
@@ -175,7 +177,7 @@ npx vitest run src/lib/__tests__/pulse-engine.test.ts
 
 ## CI/CD
 
-Three GitHub Actions workflows:
+Three GitHub Actions workflows plus Lighthouse on PRs. Full reference: [docs/github-workflows.md](docs/github-workflows.md).
 
 | Workflow | Trigger | Steps |
 |----------|---------|-------|
@@ -196,18 +198,46 @@ See [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) for the full phased plan. Key
 
 ## Documentation
 
+Full documentation index: **[docs/README.md](docs/README.md)**
+
+### Start here
+
 | Document | Description |
 |----------|-------------|
-| [PRD.md](PRD.md) | Product requirements, feature specs, design direction, edge cases |
+| [docs/getting-started.md](docs/getting-started.md) | Install, env setup, Supabase local, scripts |
+| [docs/component-catalog.md](docs/component-catalog.md) | React components by domain and routing |
+| [docs/hooks-catalog.md](docs/hooks-catalog.md) | Custom hooks reference |
+| [docs/lib-modules.md](docs/lib-modules.md) | Domain logic modules |
+| [docs/database-schema.md](docs/database-schema.md) | Supabase tables, relationships, RLS |
+| [docs/deployment.md](docs/deployment.md) | Vercel deploy, env vars, rollback |
+| [docs/testing.md](docs/testing.md) | Unit, E2E, and coverage |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, code style, PR process |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, module boundaries |
+| [docs/data-layer.md](docs/data-layer.md) | Mock fixtures vs Supabase backend |
+| [docs/api-reference.md](docs/api-reference.md) | Server routes under `/api/*` |
+| [docs/feature-flags.md](docs/feature-flags.md) | Feature toggles and env vars |
+| [docs/environment-variables.md](docs/environment-variables.md) | Master env var reference |
+| [docs/glossary.md](docs/glossary.md) | Term definitions |
+
+### Product & release
+
+| Document | Description |
+|----------|-------------|
+| [PRD.md](PRD.md) | Product requirements, feature specs, design direction |
 | [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
 | [RELEASE_CHECKS.md](RELEASE_CHECKS.md) | Pre-deployment automated and manual checks |
-| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
 | [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | Core loop, score transparency, impact notifications |
 | [SOCIAL_PULSE_IMPLEMENTATION.md](SOCIAL_PULSE_IMPLEMENTATION.md) | Social pulse correlation system details |
+
+### Operations
+
+| Document | Description |
+|----------|-------------|
 | [docs/SUPPORT_RUNBOOK.md](docs/SUPPORT_RUNBOOK.md) | Operational procedures, rollback, moderation |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, code style, PR process |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, module boundaries |
+| [docs/secrets-and-integrations.md](docs/secrets-and-integrations.md) | Third-party keys and rotation |
+| [docs/backend-migration.md](docs/backend-migration.md) | Supabase migrations and rollout |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
 
 ## License
 

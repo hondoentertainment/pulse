@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import type { Pulse } from '@/lib/types'
 import { PulseData, hasSupabaseEnv, type PulsePage } from '@/lib/data'
+import { assertWriteAllowed } from '@/lib/auth/require-auth'
 import { fetchPulseListPage } from '@/lib/api-client'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { venueKeys } from './use-venues'
@@ -124,6 +125,7 @@ export function useCreatePulse() {
       if (!hasSupabaseEnv()) {
         return pulse
       }
+      await assertWriteAllowed('create a pulse')
       return PulseData.createPulse(mapPulseToCreateInput(pulse))
     },
     onSuccess: (_data, variables) => {
