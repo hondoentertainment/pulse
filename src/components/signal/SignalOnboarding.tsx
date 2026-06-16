@@ -4,6 +4,7 @@ import { ArrowRight, CaretLeft, CheckCircle, Target } from '@phosphor-icons/reac
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { trapFocus, saveFocus, onEscape } from '@/lib/a11y/focus-trap'
 import { trackEvent } from '@/lib/analytics'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
@@ -27,6 +28,7 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
   const [step, setStep] = useState(0)
   const [slideDir, setSlideDir] = useState(1)
   const onboardingStartedAt = useRef(Date.now())
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     trackEvent({ type: 'signal_onboarding_step', timestamp: Date.now(), step: step as 0 | 1 | 2, action: 'view' })
@@ -50,6 +52,21 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
     setStep((s) => Math.max(0, s - 1))
   }
 
+  useEffect(() => {
+    const container = dialogRef.current
+    if (!container) return
+    const restoreFocus = saveFocus()
+    const releaseTrap = trapFocus(container)
+    const releaseEscape = onEscape(container, () => {
+      if (step > 0) goBack()
+    })
+    return () => {
+      releaseTrap()
+      releaseEscape()
+      restoreFocus()
+    }
+  }, [step])
+
   const finish = () => {
     const wasFirst = useSignalStore.getState().entries.length === 0
     setProfile(userId, { trackingFocus, goal, reminderTime: '09:00' })
@@ -70,6 +87,7 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-dialog-title"

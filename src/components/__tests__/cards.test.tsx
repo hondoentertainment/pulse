@@ -265,8 +265,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Framer-motion mock renders motion.button as a <div>, so query by aria-label.
-    const fireButton = screen.getByLabelText(/React with fire/)
+    const fireButton = screen.getByLabelText(/React with fire/i)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -287,7 +286,7 @@ describe('VenueCard', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 
-    expect(screen.getByText('Just popped')).toBeTruthy()
+    expect(screen.getByText(/Just popped/i)).toBeTruthy()
   })
 
   it('calls onClick when clicked', () => {

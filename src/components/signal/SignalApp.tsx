@@ -4,7 +4,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate 
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, TrendDown, TrendUp } from '@phosphor-icons/react'
-import { toast, Toaster } from 'sonner'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { fetchSignalEntries } from '@/lib/signal-data'
@@ -20,13 +20,13 @@ import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics'
 
 const navItems = [
-  { to: '/home', label: 'Home', icon: House },
-  { to: '/trends', label: 'Trends', icon: ChartLine },
-  { to: '/history', label: 'History', icon: CalendarBlank },
-  { to: '/settings', label: 'Settings', icon: Gear },
+  { to: '/home', label: 'Home', icon: House, description: 'Today\'s check-in' },
+  { to: '/trends', label: 'Trends', icon: ChartLine, description: 'Chart and pattern' },
+  { to: '/history', label: 'History', icon: CalendarBlank, description: 'Daily log' },
+  { to: '/settings', label: 'Settings', icon: Gear, description: 'Preferences' },
 ]
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ children, inertChrome }: { children: ReactNode; inertChrome?: boolean }) {
   const location = useLocation()
 
   useEffect(() => {
@@ -35,10 +35,16 @@ function Shell({ children }: { children: ReactNode }) {
 
   return (
     <main className="min-h-dvh bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))] text-foreground [background-image:radial-gradient(circle_at_20%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_32rem),radial-gradient(circle_at_85%_10%,color-mix(in_oklch,var(--accent)_14%,transparent),transparent_28rem)]">
-      <div className="mx-auto min-h-dvh w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-5">
+      <div
+        className="mx-auto min-h-dvh w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-5"
+        {...(inertChrome ? { inert: true } : {})}
+      >
         {children}
       </div>
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/90 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/90 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl"
+        {...(inertChrome ? { inert: true } : {})}
+      >
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -48,8 +54,9 @@ function Shell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 aria-current={active ? 'page' : undefined}
+                aria-label={`${item.label} — ${item.description}`}
                 className={cn(
-                  'flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors',
+                  'tap-highlight-none touch-manipulation flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors active:scale-[0.98]',
                   active ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                 )}
               >
@@ -178,6 +185,7 @@ function TrendsPage() {
       <div>
         <p className="text-sm font-bold text-primary">Trends</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Your state over time.</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Chart and pattern — see how your signal moves across the week.</p>
       </div>
       <SignalChart data={buildChartSeries(entries)} />
       <div className="grid gap-3 sm:grid-cols-3">
@@ -202,6 +210,7 @@ function HistoryPage() {
       <div>
         <p className="text-sm font-bold text-primary">History</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Past signals.</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Daily log — every check-in you&apos;ve saved, newest first.</p>
       </div>
       <div className="space-y-3">
         {entries.length === 0 && (
@@ -289,14 +298,16 @@ function SettingsPage() {
             </span>
             <div>
               <p className="font-black">Daily reminder</p>
-              <p className="text-sm text-muted-foreground">{profile?.reminderTime ?? '09:00'} local time</p>
+              <p className="text-sm text-muted-foreground">
+                {profile?.reminderTime ?? '09:00'} local time · push notifications coming soon
+              </p>
             </div>
           </div>
           <Switch checked={reminderEnabled} onCheckedChange={(checked) => setReminder(checked, profile?.reminderTime ?? '09:00')} />
         </div>
         {reminderEnabled && (
           <p className="mt-4 rounded-2xl bg-primary/10 p-3 text-sm text-primary">
-            Reminder preference saved. Browser push can be connected later without changing the daily habit flow.
+            Reminder preference saved for {profile?.reminderTime ?? '09:00'}. We&apos;ll notify you here once browser push is enabled.
           </p>
         )}
       </section>
@@ -332,43 +343,45 @@ function SignalRoutes() {
   }
 
   return (
-    <Shell>
-      {hasSupabaseConfig && remoteEntries.isError && (
-        <div
-          className="mb-4 rounded-2xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-foreground"
-          role="status"
-        >
-          <p className="font-bold text-destructive">Couldn&apos;t sync history</p>
-          <p className="mt-1 text-muted-foreground">Your entries on this device are unchanged.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3 rounded-xl"
-            onClick={() => {
-              trackEvent({ type: 'signal_sync_retry', timestamp: Date.now() })
-              void remoteEntries.refetch()
-            }}
-          >
-            Retry sync
-          </Button>
-        </div>
-      )}
-      {hasSupabaseConfig && remoteEntries.isPending && !remoteEntries.isFetched && (
-        <p className="mb-3 text-center text-xs text-muted-foreground" aria-live="polite">
-          Syncing history…
-        </p>
-      )}
+    <>
       {!profile && <SignalOnboarding userId={userId} onFinished={finishOnboarding} />}
-      <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<HomePage userId={userId} />} />
-        <Route path="/trends" element={<TrendsPage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
-      <FirstWinDialog open={firstWinOpen} entries={entries} profile={profile} onClose={closeFirstWin} />
-    </Shell>
+      <Shell inertChrome={!profile}>
+        {hasSupabaseConfig && remoteEntries.isError && (
+          <div
+            className="mb-4 rounded-2xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-foreground"
+            role="status"
+          >
+            <p className="font-bold text-destructive">Couldn&apos;t sync history</p>
+            <p className="mt-1 text-muted-foreground">Your entries on this device are unchanged.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl"
+              onClick={() => {
+                trackEvent({ type: 'signal_sync_retry', timestamp: Date.now() })
+                void remoteEntries.refetch()
+              }}
+            >
+              Retry sync
+            </Button>
+          </div>
+        )}
+        {hasSupabaseConfig && remoteEntries.isPending && !remoteEntries.isFetched && (
+          <p className="mb-3 text-center text-xs text-muted-foreground" aria-live="polite">
+            Syncing history…
+          </p>
+        )}
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<HomePage userId={userId} />} />
+          <Route path="/trends" element={<TrendsPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Routes>
+        <FirstWinDialog open={firstWinOpen} entries={entries} profile={profile} onClose={closeFirstWin} />
+      </Shell>
+    </>
   )
 }
 
@@ -379,7 +392,6 @@ export function SignalApp() {
 
   return (
     <BrowserRouter>
-      <Toaster position="top-center" richColors />
       <SignalRoutes />
     </BrowserRouter>
   )

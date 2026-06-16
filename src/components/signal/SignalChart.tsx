@@ -2,6 +2,24 @@ interface SignalChartProps {
   data: Array<{ label: string; score: number; seeded: boolean }>
 }
 
+function buildChartSummary(data: SignalChartProps['data']): string {
+  if (data.length === 0) return 'No signal data yet.'
+  const logged = data.filter((item) => !item.seeded)
+  const points = data.map((item) => `${item.label} ${item.score}${item.seeded ? ' estimated' : ''}`).join(', ')
+  const avg =
+    logged.length > 0
+      ? Math.round(logged.reduce((sum, item) => sum + item.score, 0) / logged.length)
+      : null
+  const trend =
+    logged.length >= 2
+      ? logged[logged.length - 1].score - logged[0].score
+      : null
+  const trendText =
+    trend === null ? '' : trend > 0 ? ` Trending up by ${trend} points.` : trend < 0 ? ` Trending down by ${Math.abs(trend)} points.` : ' Holding steady.'
+  const avgText = avg !== null ? ` Seven-day average ${avg}.` : ''
+  return `Seven-day signal chart.${avgText}${trendText} Daily scores: ${points}.`
+}
+
 export function SignalChart({ data }: SignalChartProps) {
   const width = 320
   const height = 128
@@ -12,6 +30,7 @@ export function SignalChart({ data }: SignalChartProps) {
     return { ...item, x, y }
   })
   const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+  const summary = buildChartSummary(data)
 
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm">
@@ -21,7 +40,8 @@ export function SignalChart({ data }: SignalChartProps) {
           <p className="text-xs text-muted-foreground">Dotted points are baseline estimates until you log more days.</p>
         </div>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full overflow-visible" role="img" aria-label="Seven day signal trend chart">
+      <p className="sr-only">{summary}</p>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full overflow-visible" role="img" aria-label={summary}>
         <defs>
           <linearGradient id="signalLine" x1="0" x2="1">
             <stop offset="0%" stopColor="oklch(0.62 0.19 255)" />
@@ -50,8 +70,9 @@ export function SignalChart({ data }: SignalChartProps) {
               className={point.seeded ? 'fill-muted stroke-muted-foreground' : 'fill-primary stroke-background'}
               strokeWidth="3"
               opacity={point.seeded ? 0.65 : 1}
+              aria-hidden
             />
-            <text x={point.x} y={height - 2} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+            <text x={point.x} y={height - 2} textAnchor="middle" className="fill-muted-foreground text-[10px]" aria-hidden>
               {point.label}
             </text>
           </g>

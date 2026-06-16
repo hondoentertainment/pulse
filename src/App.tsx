@@ -1,9 +1,12 @@
 import { lazy, Suspense, useEffect } from 'react'
+import { Toaster } from 'sonner'
 
 /**
  * Root app entry — mode controlled by `VITE_APP_MODE`:
  *   signal (default) — Pulse Signal (`LoginScreen` → `SignalApp`)
- *   venue            — full venue discovery shell (`AppRoutes`)
+ *   venue            — full venue discovery shell (`AppRoutes` via AppProviders)
+ *
+ * See ARCHITECTURE.md — App entry and routing.
  */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { AppProviders } from '@/AppProviders'
@@ -72,6 +75,7 @@ function App() {
   if (isVenueAppMode()) {
     return (
       <AppProviders>
+        <Toaster position="top-center" theme="dark" richColors />
         <AppBootstrap>
           <AppRoutes />
         </AppBootstrap>
@@ -81,6 +85,7 @@ function App() {
 
   return (
     <SupabaseAuthProvider>
+      <Toaster position="top-center" theme="dark" richColors />
       <AppContent />
     </SupabaseAuthProvider>
   )

@@ -33,7 +33,7 @@ function MetricSlider({
         </div>
         <span className="text-2xl font-black tabular-nums">{value}</span>
       </div>
-      <Slider value={[value]} min={1} max={10} step={1} onValueChange={([next]) => onChange(next)} />
+      <Slider value={[value]} min={1} max={10} step={1} onValueChange={([next]) => onChange(next)} aria-label={label} />
     </div>
   )
 }
