@@ -118,10 +118,19 @@ jobs:
         run: npm ci
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: Smoke tests
+      - name: Smoke tests (Signal)
         env:
           VITE_E2E_AUTH_BYPASS: 'true'
-        run: npm run test:smoke
+          VITE_APP_MODE: signal
+        run: npx playwright test e2e/smoke.spec.ts
+      - name: Smoke tests (Venue)
+        env:
+          VITE_E2E_AUTH_BYPASS: 'true'
+          VITE_APP_MODE: venue
+          VITE_VISUAL_PREVIEW: 'true'
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+        run: npx playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
