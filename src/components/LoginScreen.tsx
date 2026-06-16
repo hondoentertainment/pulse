@@ -146,7 +146,7 @@ export function LoginScreen() {
               <>
                 <Button
                   size="lg"
-                  className="h-14 w-full rounded-2xl text-base font-black shadow-lg shadow-primary/25"
+                  className="h-14 w-full touch-manipulation rounded-2xl text-base font-black shadow-lg shadow-primary/25 active:scale-[0.98]"
                   onClick={handleStart}
                   disabled={busy}
                 >
@@ -222,7 +222,7 @@ export function LoginScreen() {
                     onChange={(e) => { setEmail(e.target.value); setOtpSent(false) }}
                     placeholder="you@email.com"
                     disabled={busy}
-                    className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none ring-primary/30 placeholder:text-muted-foreground focus:border-primary focus:ring-2 disabled:opacity-50"
+                    className="h-12 w-full touch-manipulation rounded-2xl border border-border bg-card px-4 text-base text-foreground outline-none ring-primary/30 placeholder:text-muted-foreground focus:border-primary focus:ring-2 disabled:opacity-50"
                   />
                   <Button
                     size="lg"

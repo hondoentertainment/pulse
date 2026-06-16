@@ -3,7 +3,27 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
-// IntersectionObserver
+// Global Phosphor icon mock — every named export renders a lightweight span so
+// component tests don't need per-file icon lists that drift as imports change.
+vi.mock('@phosphor-icons/react', async (importOriginal) => {
+  const React = await import('react')
+  const actual = await importOriginal<Record<string, React.ComponentType<Record<string, unknown>>>>()
+  const mocked: Record<string, unknown> = {}
+  for (const [name, Icon] of Object.entries(actual)) {
+    if (name === 'default' || name === 'Icon') {
+      mocked[name] = Icon
+      continue
+    }
+    if (typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null)) {
+      mocked[name] = (props: Record<string, unknown>) =>
+        React.createElement('span', { 'data-testid': `icon-${name}`, ...props })
+    } else {
+      mocked[name] = Icon
+    }
+  }
+  return mocked
+})
+
 if (typeof globalThis.IntersectionObserver === 'undefined') {
   globalThis.IntersectionObserver = class IntersectionObserver {
     readonly root: Element | null = null

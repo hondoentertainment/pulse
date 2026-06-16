@@ -24,6 +24,17 @@ export function SignalChart({ data }: SignalChartProps) {
   const width = 320
   const height = 128
   const padding = 18
+  const hasRealData = data.some((item) => !item.seeded)
+
+  if (data.length === 0) {
+    return (
+      <div className="rounded-3xl border border-dashed border-border/70 bg-card p-8 text-center shadow-sm">
+        <p className="font-black">Your trend starts here</p>
+        <p className="mt-2 text-sm text-muted-foreground">Log a few days and your 7-day chart will appear.</p>
+      </div>
+    )
+  }
+
   const points = data.map((item, index) => {
     const x = padding + (index * (width - padding * 2)) / Math.max(data.length - 1, 1)
     const y = height - padding - (item.score / 100) * (height - padding * 2)
@@ -34,10 +45,14 @@ export function SignalChart({ data }: SignalChartProps) {
 
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">7-day signal</p>
-          <p className="text-xs text-muted-foreground">Dotted points are baseline estimates until you log more days.</p>
+          <p className="text-xs text-muted-foreground">
+            {hasRealData
+              ? 'Solid dots are logged days; dotted estimates fill the rest.'
+              : 'Baseline estimates until you log more days.'}
+          </p>
         </div>
       </div>
       <p className="sr-only">{summary}</p>

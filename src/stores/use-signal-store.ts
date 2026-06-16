@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { saveSignalEntry, saveSignalProfile } from '@/lib/signal-data'
+import { computeDraftScore } from '@/lib/signal-score'
 import type { SignalEntry, SignalGoal, SignalProfile, TrackingFocus } from '@/lib/signal-insights'
 
 interface DraftSignal {
@@ -33,11 +34,7 @@ const createEntryId = () => {
   return `signal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-const scoreDraft = (draft: DraftSignal) => {
-  const positive = draft.energy * 0.36 + draft.mood * 0.34 + draft.sleepQuality * 0.22
-  const stressPenalty = draft.stress * 0.18
-  return Math.max(1, Math.min(100, Math.round((positive - stressPenalty + 2) * 10)))
-}
+const scoreDraft = computeDraftScore
 
 export const useSignalStore = create<SignalStore>()(
   persist(

@@ -256,8 +256,8 @@ export function getContextualSearchSuggestions(
   }
 
   const prioritized = Array.from(new Set([
-    ...peakCategories,
     ...(timePriority[timeOfDay] ?? ['bar', 'restaurant']),
+    ...peakCategories,
   ]))
 
   for (const catKey of prioritized) {

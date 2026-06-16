@@ -68,6 +68,8 @@ export function AppRoutes() {
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
+    selectedMarketKey, setSelectedMarketKey,
+    availableMarkets,
     unreadNotificationCount,
     setCurrentUser,
     storyViewerOpen, storyViewerStories,

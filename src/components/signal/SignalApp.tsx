@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, TrendDown, TrendUp } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,10 +12,13 @@ import { hasSupabaseConfig } from '@/lib/supabase'
 import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { useHaptics } from '@/hooks/use-haptics'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
 import { FirstWinDialog } from '@/components/signal/FirstWinDialog'
+import { SignalPageTransition } from '@/components/signal/SignalPageTransition'
+import { SignalSyncSkeleton } from '@/components/signal/SignalSyncSkeleton'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics'
 
@@ -28,6 +31,8 @@ const navItems = [
 
 function Shell({ children, inertChrome }: { children: ReactNode; inertChrome?: boolean }) {
   const location = useLocation()
+  const { triggerLight } = useHaptics()
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     trackEvent({ type: 'signal_nav', timestamp: Date.now(), to: location.pathname })
@@ -43,6 +48,7 @@ function Shell({ children, inertChrome }: { children: ReactNode; inertChrome?: b
       </div>
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/90 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl"
+        aria-label="Primary"
         {...(inertChrome ? { inert: true } : {})}
       >
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
@@ -55,13 +61,24 @@ function Shell({ children, inertChrome }: { children: ReactNode; inertChrome?: b
                 to={item.to}
                 aria-current={active ? 'page' : undefined}
                 aria-label={`${item.label} — ${item.description}`}
+                onClick={() => triggerLight()}
                 className={cn(
-                  'tap-highlight-none touch-manipulation flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors active:scale-[0.98]',
-                  active ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  'relative flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors touch-manipulation tap-highlight-none active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  active ? 'text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                 )}
               >
-                <Icon size={20} weight={active ? 'fill' : 'bold'} />
-                <span className="mt-1">{item.label}</span>
+                {active && (
+                  <motion.span
+                    layoutId={reduceMotion ? undefined : 'signal-nav-pill'}
+                    className="absolute inset-0 rounded-2xl bg-primary shadow-lg shadow-primary/20"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    aria-hidden
+                  />
+                )}
+                <span className="relative z-10 flex flex-col items-center">
+                  <Icon size={20} weight={active ? 'fill' : 'bold'} />
+                  <span className="mt-1">{item.label}</span>
+                </span>
               </Link>
             )
           })}
@@ -102,6 +119,8 @@ function greetingLabel() {
 
 function HomePage({ userId }: { userId: string }) {
   const navigate = useNavigate()
+  const { triggerSuccess } = useHaptics()
+  const [saving, setSaving] = useState(false)
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const saveEntry = useSignalStore((state) => state.saveEntry)
@@ -115,15 +134,19 @@ function HomePage({ userId }: { userId: string }) {
     focusLabel && goalShort ? `${focusLabel} · ${goalShort}` : 'Your daily signal'
 
   const handleSave = () => {
+    setSaving(true)
     const wasFirst = entries.length === 0
     saveEntry(userId)
     const score = useSignalStore.getState().entries[0]?.score ?? 0
     const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
     trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
+    triggerSuccess()
     toast.success('Saved', { description: 'Your daily signal is now part of your trend.' })
+    setSaving(false)
   }
 
   return (
+    <SignalPageTransition>
     <div className="space-y-4">
       <section className="pt-1">
         <p className="text-sm font-medium text-muted-foreground">{greetingLabel()}</p>
@@ -167,11 +190,12 @@ function HomePage({ userId }: { userId: string }) {
           </Button>
         </motion.section>
       ) : (
-        <SignalCheckIn onSave={handleSave} />
+        <SignalCheckIn onSave={handleSave} saving={saving} />
       )}
 
       {savedAt && <p className="text-center text-xs text-muted-foreground">Last saved {new Date(savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>}
     </div>
+    </SignalPageTransition>
   )
 }
 
@@ -181,6 +205,7 @@ function TrendsPage() {
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
 
   return (
+    <SignalPageTransition>
     <div className="space-y-5">
       <div>
         <p className="text-sm font-bold text-primary">Trends</p>
@@ -198,6 +223,7 @@ function TrendsPage() {
         <p className="mt-2 text-xl font-black leading-7">{metrics.recommendation}</p>
       </section>
     </div>
+    </SignalPageTransition>
   )
 }
 
@@ -206,6 +232,7 @@ function HistoryPage() {
   const entries = useSignalStore((state) => state.entries)
 
   return (
+    <SignalPageTransition>
     <div className="space-y-5">
       <div>
         <p className="text-sm font-bold text-primary">History</p>
@@ -222,8 +249,14 @@ function HistoryPage() {
             </Button>
           </div>
         )}
-        {entries.map((entry) => (
-          <article key={entry.id} className="rounded-[1.5rem] border border-border/70 bg-card p-4 shadow-sm">
+        {entries.map((entry, index) => (
+          <motion.article
+            key={entry.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04, duration: 0.25 }}
+            className="rounded-[1.5rem] border border-border/70 bg-card p-4 shadow-sm"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-black">{new Date(entry.createdAt).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
@@ -234,10 +267,11 @@ function HistoryPage() {
                 <p className="text-xs text-muted-foreground">score</p>
               </div>
             </div>
-          </article>
+          </motion.article>
         ))}
       </div>
     </div>
+    </SignalPageTransition>
   )
 }
 
@@ -249,6 +283,7 @@ function SettingsPage() {
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
 
   return (
+    <SignalPageTransition>
     <div className="space-y-5">
       <div>
         <p className="text-sm font-bold text-primary">Settings</p>
@@ -311,10 +346,11 @@ function SettingsPage() {
           </p>
         )}
       </section>
-      <Button variant="outline" className="h-12 w-full rounded-2xl" onClick={() => void signOut()}>
+      <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
         Sign out
       </Button>
     </div>
+    </SignalPageTransition>
   )
 }
 
@@ -367,9 +403,7 @@ function SignalRoutes() {
           </div>
         )}
         {hasSupabaseConfig && remoteEntries.isPending && !remoteEntries.isFetched && (
-          <p className="mb-3 text-center text-xs text-muted-foreground" aria-live="polite">
-            Syncing history…
-          </p>
+          <SignalSyncSkeleton />
         )}
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />

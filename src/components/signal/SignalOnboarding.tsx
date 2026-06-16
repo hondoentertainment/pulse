@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { trapFocus, saveFocus, onEscape } from '@/lib/a11y/focus-trap'
 import { trackEvent } from '@/lib/analytics'
+import { useHaptics } from '@/hooks/use-haptics'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import type { SignalGoal, TrackingFocus } from '@/lib/signal-insights'
@@ -25,6 +26,7 @@ interface SignalOnboardingProps {
 
 export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) {
   const reduceMotion = useReducedMotion()
+  const { triggerSelection } = useHaptics()
   const [step, setStep] = useState(0)
   const [slideDir, setSlideDir] = useState(1)
   const onboardingStartedAt = useRef(Date.now())
@@ -157,9 +159,12 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => setTrackingFocus(option.id)}
+                    onClick={() => {
+                      triggerSelection()
+                      setTrackingFocus(option.id)
+                    }}
                     className={cn(
-                      'rounded-3xl border p-4 text-left transition-all active:scale-[0.99]',
+                      'rounded-3xl border p-4 text-left transition-all touch-manipulation tap-highlight-none active:scale-[0.99]',
                       trackingFocus === option.id
                         ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                         : 'border-border bg-card hover:bg-secondary',
@@ -214,9 +219,12 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => setGoal(option.id)}
+                    onClick={() => {
+                      triggerSelection()
+                      setGoal(option.id)
+                    }}
                     className={cn(
-                      'rounded-3xl border p-4 text-left transition-all active:scale-[0.99]',
+                      'rounded-3xl border p-4 text-left transition-all touch-manipulation tap-highlight-none active:scale-[0.99]',
                       goal === option.id
                         ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                         : 'border-border bg-card hover:bg-secondary',
