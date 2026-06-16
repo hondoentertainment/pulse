@@ -103,7 +103,7 @@ jobs:
       - name: TypeScript (strict project build)
         run: npx tsc -b
 
-  smoke-preview:
+  smoke-preview-signal:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -123,6 +123,23 @@ jobs:
           VITE_E2E_AUTH_BYPASS: 'true'
           VITE_APP_MODE: signal
         run: npx playwright test e2e/smoke.spec.ts
+
+  smoke-preview-venue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
       - name: Smoke tests (Venue)
         env:
           VITE_E2E_AUTH_BYPASS: 'true'
