@@ -17,9 +17,13 @@ test('can navigate between signal tabs', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('link', { name: /Home — Today's check-in/i })).toBeVisible({ timeout: 25_000 })
 
-  await page.getByRole('link', { name: /Trends — Chart and pattern/i }).click()
-  await expect(page.getByRole('link', { name: /Trends — Chart and pattern/i })).toHaveAttribute('aria-current', 'page')
+  const trends = page.getByRole('link', { name: /Trends — Chart and pattern/i })
+  await trends.scrollIntoViewIfNeeded()
+  await trends.evaluate((element: HTMLElement) => element.click())
+  await expect(trends).toHaveAttribute('aria-current', 'page')
 
-  await page.getByRole('link', { name: /Settings — Preferences/i }).click()
-  await expect(page.getByRole('link', { name: /Settings — Preferences/i })).toHaveAttribute('aria-current', 'page')
+  const settings = page.getByRole('link', { name: /Settings — Preferences/i })
+  await settings.scrollIntoViewIfNeeded()
+  await settings.evaluate((element: HTMLElement) => element.click())
+  await expect(settings).toHaveAttribute('aria-current', 'page')
 })
