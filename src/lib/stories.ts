@@ -274,3 +274,39 @@ export function generateTonightsRecap(
     shareText: `${moodEmoji[dominantMood]} ${headline} — hit ${recapVenues.length} spot${recapVenues.length > 1 ? 's' : ''} tonight on Pulse`,
   }
 }
+
+/**
+ * Seed venue highlight collections from top venue pulses.
+ */
+export function seedVenueHighlights(venues: Venue[], pulses: Pulse[]): VenueHighlight[] {
+  const highlights: VenueHighlight[] = []
+  const topVenues = [...venues]
+    .sort((a, b) => b.pulseScore - a.pulseScore)
+    .slice(0, 5)
+
+  for (const venue of topVenues) {
+    const venuePulses = pulses
+      .filter(p => p.venueId === venue.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6)
+    if (venuePulses.length < 2) continue
+
+    highlights.push(
+      createVenueHighlight(
+        venue.id,
+        venue.name,
+        'Best of the Week',
+        'Curated highlights from the hottest moments',
+        { userId: 'venue-owner', username: venue.name, role: 'owner' },
+        venuePulses.map(p => p.id),
+        venuePulses.find(p => p.photos[0])?.photos[0]
+      )
+    )
+  }
+
+  if (highlights.length > 0) {
+    highlights[0] = { ...highlights[0], featured: true }
+  }
+
+  return highlights
+}

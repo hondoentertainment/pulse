@@ -74,7 +74,7 @@ export const createUserClient = (userJwt: string): SupabaseClient => {
  */
 export const createAdminClient = (): SupabaseClient | null => {
   const env = (globalThis as unknown as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SERVICE_ROLE
   if (!serviceRoleKey) return null
   const { url } = getSupabaseConfig()
   return createClient(url, serviceRoleKey, {

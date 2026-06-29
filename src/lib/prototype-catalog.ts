@@ -48,17 +48,29 @@ function buildPreviewPulses(venues: Venue[]): Pulse[] {
   })
 }
 
+async function loadCatalogVenues(): Promise<Venue[]> {
+  // Visual-preview / E2E builds run in production mode (where the dev-only
+  // `MOCK_VENUES` table is empty). Load a small deterministic seed instead so
+  // previews and Playwright specs have stable venues to work with. The import
+  // is statically gated on a build-time env constant, so it is tree-shaken out
+  // of real production bundles.
+  if (import.meta.env.VITE_VISUAL_PREVIEW === 'true') {
+    const { E2E_SEED_VENUES } = await import('./__fixtures__/e2e-seed')
+    return E2E_SEED_VENUES
+  }
+  const { MOCK_VENUES } = await import('./mock-data')
+  return MOCK_VENUES
+}
+
 export async function loadPrototypeCatalog(launchedCities: string[] = []): Promise<PrototypeCatalog> {
-  const [{ MOCK_VENUES }] = await Promise.all([
-    import('./mock-data'),
-  ])
+  const catalogVenues = await loadCatalogVenues()
 
   const launchedCitySet = normalizeLaunchedCities(launchedCities)
-  const filteredVenues = MOCK_VENUES.filter((venue) => {
+  const filteredVenues = catalogVenues.filter((venue) => {
     if (launchedCitySet.size === 0) return true
     return launchedCitySet.has((venue.city ?? '').toLowerCase())
   })
-  const venues = filteredVenues.length > 0 ? filteredVenues : MOCK_VENUES
+  const venues = filteredVenues.length > 0 ? filteredVenues : catalogVenues
 
   return {
     venues,

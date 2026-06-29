@@ -9,6 +9,7 @@
  * clients should POST to this endpoint for the hardened path.
  */
 
+import { randomUUID } from 'node:crypto'
 import {
   handlePreflight,
   methodNotAllowed,
@@ -22,6 +23,7 @@ import { consume } from '../_lib/rate-limit'
 import { asString, asEnum, isPlainObject } from '../_lib/validate'
 import { checkContent } from '../_lib/moderation'
 import { createUserClient } from '../_lib/supabase-server'
+import { notifyFriendsOfPulse } from '../_lib/friend-pulse-notify'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
@@ -150,7 +152,7 @@ export default async function handler(
   }
 
   const now = new Date()
-  const id = `pulse-${now.getTime()}-${Math.random().toString(36).slice(2, 10)}`
+  const id = randomUUID()
   const createdAt = now.toISOString()
   const expiresAt = new Date(now.getTime() + PULSE_TTL_MS).toISOString()
 
@@ -184,6 +186,12 @@ export default async function handler(
       })
       return
     }
+
+    void notifyFriendsOfPulse({
+      posterUserId: auth.context.userId,
+      pulseId: id,
+      venueId: validated.value.venueId,
+    })
 
     res.setHeader('X-RateLimit-Limit', String(rl.limit))
     res.setHeader('X-RateLimit-Remaining', String(rl.remaining))

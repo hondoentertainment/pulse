@@ -271,3 +271,39 @@ export function suggestMood(
 
   return 'hidden-gems'
 }
+
+/**
+ * Seed curated playlists for mood browsing.
+ */
+export function seedCuratedPlaylists(venues: Venue[], pulses: Pulse[]): PulsePlaylist[] {
+  const venueMap = new Map(venues.map(v => [v.id, v]))
+  const seeds: { mood: string; title: string; description: string }[] = [
+    { mood: 'rooftop-vibes', title: 'Best Rooftop Vibes', description: 'Skyline views and sunset energy' },
+    { mood: 'late-night-eats', title: 'Late Night Eats', description: 'Where the kitchen stays open' },
+    { mood: 'live-music', title: 'Live Music Nights', description: 'Stages, DJs, and dance floors' },
+  ]
+
+  return seeds.map(({ mood, title, description }) => {
+    const matching = pulses
+      .filter(p => {
+        const cat = venueMap.get(p.venueId)?.category?.toLowerCase() ?? ''
+        if (mood === 'live-music') return cat.includes('music') || cat.includes('nightclub')
+        if (mood === 'late-night-eats') return cat.includes('restaurant') || cat.includes('bar')
+        return p.energyRating === 'electric' || p.energyRating === 'buzzing'
+      })
+      .slice(0, 8)
+      .map(p => p.id)
+
+    const playlist = createPlaylist(title, description, 'curated', 'pulse-curator', {
+      mood,
+      tags: [mood],
+      coverPhoto: pulses.find(p => matching.includes(p.id))?.photos[0],
+    })
+    return {
+      ...playlist,
+      pulseIds: matching,
+      published: true,
+      likes: matching.length > 0 ? ['user-2', 'user-3'] : [],
+    }
+  })
+}

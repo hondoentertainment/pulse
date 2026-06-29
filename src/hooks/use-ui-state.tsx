@@ -13,9 +13,11 @@ export type SubPage =
   | 'settings'
   | 'integrations'
   | 'moderation'
+  | 'owner-dashboard'
   | 'challenges'
   | 'my-tickets'
   | 'night-planner'
+  | 'safety-contacts'
   | null
 
 export interface UIState {

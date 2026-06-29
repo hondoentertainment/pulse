@@ -185,7 +185,7 @@ Every PR to `main` runs (`.github/workflows/ci.yml`):
 | lint | `npm run lint` |
 | test | `npm run test` |
 | build | `npm run build` |
-| smoke-preview | `npm run test:smoke` (continue-on-error) |
+| smoke-preview | `npm run test:smoke` (hard fail) |
 | dependency-audit | `npm audit --audit-level=high` |
 
 Deploy workflow runs build + smoke before Vercel deploy.

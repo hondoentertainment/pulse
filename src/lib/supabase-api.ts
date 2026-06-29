@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import type { Venue, Pulse, EnergyRating, ReactionType, VenueLiveSummary } from './types'
 import type { LiveReport } from './live-intelligence'
-
+import { normalizePulse } from './pulse-media'
 type VenueLiveReportRow = {
   id: string
   venue_id: string
@@ -146,7 +146,7 @@ export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
     return null
   }
 
-  return data.map(row => ({
+  return data.map(row => normalizePulse({
     id: row.id,
     userId: row.user_id,
     venueId: row.venue_id,

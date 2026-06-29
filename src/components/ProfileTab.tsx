@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
@@ -9,6 +10,11 @@ import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
+import { AchievementShowcase } from '@/components/AchievementBadge'
+import {
+  calculateAchievementProgress,
+  type AchievementId,
+} from '@/lib/achievements'
 import { toast } from 'sonner'
 
 interface ProfileTabProps {
@@ -32,7 +38,7 @@ export function ProfileTab({
   favoriteVenues,
   onVenueClick,
   onReaction,
-  onOpenSocialPulseDashboard,
+  onOpenSocialPulseDashboard: _onOpenSocialPulseDashboard,
   onOpenSettings,
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,
@@ -40,6 +46,16 @@ export function ProfileTab({
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [storedShowcasedIds] = useKV<AchievementId[]>(`achievement-showcase-${currentUser.id}`, [])
+  const showcasedIds = useMemo(() => storedShowcasedIds ?? [], [storedShowcasedIds])
+
+  const showcasedAchievements = useMemo(() => {
+    const progress = calculateAchievementProgress(currentUser, pulses, pulses, 0)
+    return progress.map(item => ({
+      ...item,
+      showcased: showcasedIds.includes(item.achievementId) && item.unlockedAt !== '',
+    }))
+  }, [currentUser, pulses, showcasedIds])
 
   const totalReactions = pulses
     .filter(p => p.userId === currentUser.id)
@@ -92,6 +108,7 @@ export function ProfileTab({
           <p className="text-xs text-muted-foreground font-mono mt-1">
             Member since {new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </p>
+          <AchievementShowcase achievements={showcasedAchievements} />
         </div>
       </div>
 

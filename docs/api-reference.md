@@ -123,6 +123,7 @@ Requires Twilio + Supabase service role. Gated by `VITE_SAFETY_KIT_ENABLED`.
 |--------|------|------|-------------|
 | `POST` | `/api/push/register` | JWT | Register device push token |
 | `POST` | `/api/push/unregister` | JWT | Remove device token |
+| `POST` | `/api/push/test` | JWT | Send test push to self (admin may target any user) |
 
 ## Moderation & Admin
 
@@ -158,6 +159,19 @@ if (result.ok) {
 }
 ```
 
+## Account (GDPR / CCPA)
+
+Requires Supabase Auth. Deletion additionally requires `SUPABASE_SERVICE_ROLE_KEY` on the server.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/account/export` | JWT | Download JSON bundle of caller's personal data (10/hr rate limit) |
+| `POST` | `/api/account/delete` | JWT | Permanently delete account; body `{ "confirm": "DELETE" }` (3/day limit) |
+| `GET` | `/api/account/notification-settings` | JWT | Read notification preferences |
+| `PATCH` | `/api/account/notification-settings` | JWT | Partial update of notification preferences |
+
+Client helpers: `src/lib/account-privacy.ts`. UI: Settings → Data & Account.
+
 ## Shared libraries (`api/_lib/`)
 
 | Module | Purpose |
@@ -170,6 +184,7 @@ if (result.ok) {
 | `stripe.ts` | Stripe API helpers |
 | `notify.ts` | SMS (Twilio) and push delivery |
 | `concierge-tools.ts` | AI Concierge tool implementations |
+| `account-lifecycle.ts` | GDPR export tables + account deletion helpers |
 
 ## Cron jobs
 

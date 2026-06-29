@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Notification, GroupedNotification, NotificationWithData, Pulse, User, Venue } from '@/lib/types'
 import { NotificationCard } from '@/components/NotificationCard'
 import { groupNotifications } from '@/lib/notification-grouping'
@@ -12,6 +11,8 @@ interface NotificationFeedProps {
   currentUser: User
   pulses: Pulse[]
   venues: Venue[]
+  notifications: Notification[] | undefined
+  onNotificationsChange: (fn: ((n: Notification[] | undefined) => Notification[]) | Notification[]) => void
   onNotificationClick: (notification: GroupedNotification) => void
 }
 
@@ -19,9 +20,10 @@ export function NotificationFeed({
   currentUser,
   pulses,
   venues,
+  notifications,
+  onNotificationsChange,
   onNotificationClick
 }: NotificationFeedProps) {
-  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const { settings } = useNotificationSettings()
 
@@ -97,18 +99,18 @@ export function NotificationFeed({
   )
 
   const markAsRead = useCallback((notificationId: string) => {
-    setNotifications((current) => {
+    onNotificationsChange((current) => {
       if (!current) return []
       return current.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     })
-  }, [setNotifications])
+  }, [onNotificationsChange])
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((current) => {
+    onNotificationsChange((current) => {
       if (!current) return []
       return current.map((n) => ({ ...n, read: true }))
     })
-  }, [setNotifications])
+  }, [onNotificationsChange])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
     markAsRead(notification.id)

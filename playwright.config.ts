@@ -2,13 +2,14 @@ import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4176'
 const previewPort = new URL(baseURL).port || '4176'
+const isSupabaseE2e = process.env.E2E_SUPABASE === '1'
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 2,
   reporter: 'html',
   use: {
     baseURL,
@@ -29,10 +30,10 @@ export default defineConfig({
     env: {
       ...process.env,
       VITE_E2E_AUTH_BYPASS: 'true',
-      VITE_APP_MODE: process.env.VITE_APP_MODE || 'signal',
-      VITE_VISUAL_PREVIEW: 'true',
-      VITE_SUPABASE_URL: '',
-      VITE_SUPABASE_ANON_KEY: '',
+      VITE_APP_MODE: process.env.VITE_APP_MODE || (isSupabaseE2e ? 'venue' : 'signal'),
+      VITE_VISUAL_PREVIEW: isSupabaseE2e ? 'false' : 'true',
+      VITE_SUPABASE_URL: isSupabaseE2e ? (process.env.VITE_SUPABASE_URL ?? '') : '',
+      VITE_SUPABASE_ANON_KEY: isSupabaseE2e ? (process.env.VITE_SUPABASE_ANON_KEY ?? '') : '',
     },
   },
 });

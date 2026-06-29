@@ -8,10 +8,13 @@ import type {
   Hashtag,
   PulseWithUser,
 } from '@/lib/types'
-import { PulseStory } from '@/lib/stories'
+import { PulseStory, seedVenueHighlights, type VenueHighlight } from '@/lib/stories'
 import { VenueEvent } from '@/lib/events'
 import { Crew, CrewCheckIn } from '@/lib/crew-mode'
-import { PulsePlaylist } from '@/lib/playlists'
+import { PulsePlaylist, seedCuratedPlaylists } from '@/lib/playlists'
+import { VenueChallenge, createDemoChallenges } from '@/lib/venue-challenges'
+import type { Ticket } from '@/lib/ticketing'
+import type { TableReservation } from '@/lib/table-booking'
 import { PromotedVenue, createPromotedVenue } from '@/lib/promoted-discoveries'
 import { ContentReport, UserBlock, UserMute, filterModeratedPulses } from '@/lib/content-moderation'
 import {
@@ -29,6 +32,7 @@ import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashta
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
+import { fetchPulseListPage } from '@/lib/api-client'
 import { hasSupabaseConfig, isVisualPreviewEnabled, supabase } from '@/lib/supabase'
 import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
@@ -46,6 +50,7 @@ import {
 } from '@/lib/us-markets'
 import { fetchProfilesByIds } from '@/lib/auth-profile'
 import { hasSupabaseEnv } from '@/lib/data'
+import { normalizePulse } from '@/lib/pulse-media'
 
 export type SubPage =
   | 'events'
@@ -61,6 +66,7 @@ export type SubPage =
   | 'challenges'
   | 'my-tickets'
   | 'night-planner'
+  | 'safety-contacts'
   | null
 
 export function placeholderPulseAuthor(userId: string): User {
@@ -113,6 +119,14 @@ export interface AppState {
   setCrewCheckIns: (fn: ((c: CrewCheckIn[] | undefined) => CrewCheckIn[]) | CrewCheckIn[]) => void
   playlists: PulsePlaylist[] | undefined
   setPlaylists: (fn: ((p: PulsePlaylist[] | undefined) => PulsePlaylist[]) | PulsePlaylist[]) => void
+  venueHighlights: VenueHighlight[] | undefined
+  setVenueHighlights: (fn: ((h: VenueHighlight[] | undefined) => VenueHighlight[]) | VenueHighlight[]) => void
+  venueChallenges: VenueChallenge[] | undefined
+  setVenueChallenges: (fn: ((c: VenueChallenge[] | undefined) => VenueChallenge[]) | VenueChallenge[]) => void
+  tickets: Ticket[] | undefined
+  setTickets: (fn: ((t: Ticket[] | undefined) => Ticket[]) | Ticket[]) => void
+  reservations: TableReservation[] | undefined
+  setReservations: (fn: ((r: TableReservation[] | undefined) => TableReservation[]) | TableReservation[]) => void
   promotions: PromotedVenue[] | undefined
   setPromotions: (fn: ((p: PromotedVenue[] | undefined) => PromotedVenue[]) | PromotedVenue[]) => void
   contentReports: ContentReport[] | undefined
@@ -203,7 +217,8 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [selectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
+  const [storedSelectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
+  const selectedMarketKey = storedSelectedMarketKey ?? 'seattle'
   const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
@@ -229,11 +244,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     distanceFilter: 0.001,
   })
 
-  const { profile: supabaseProfile } = useSupabaseAuth()
+  const { profile: supabaseProfile, session } = useSupabaseAuth()
 
   const [currentUser, setCurrentUser] = useState<User | undefined>(undefined)
   const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
   const hasTrackedVenueFallback = useRef(false)
+  // One-shot guards for demo seeding. Without these, a seeding helper that
+  // legitimately returns an empty array (e.g. curation finds no eligible
+  // playlists/highlights) keeps the `length === 0` guard true and re-runs the
+  // effect every render — an infinite update loop.
+  const hasSeededPlaylists = useRef(false)
+  const hasSeededHighlights = useRef(false)
+  const hasSeededChallenges = useRef(false)
 
   // Bridge Supabase Profile -> Local State
   useEffect(() => {
@@ -250,13 +272,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const [pulses, setPulses] = useState<Pulse[] | undefined>(hasSupabaseConfig ? undefined : [])
   const [venues, setVenues] = useState<Venue[] | undefined>(hasSupabaseConfig ? undefined : undefined)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
   const [hashtags, setHashtags] = useState<Hashtag[]>([])
   const [stories, setStories] = useState<PulseStory[]>([])
   const [events, setEvents] = useState<VenueEvent[]>([])
   const [crews, setCrews] = useState<Crew[]>([])
   const [crewCheckIns, setCrewCheckIns] = useState<CrewCheckIn[]>([])
   const [playlists, setPlaylists] = useState<PulsePlaylist[]>([])
+  const [venueHighlights, setVenueHighlights] = useState<VenueHighlight[]>([])
+  const [venueChallenges, setVenueChallenges] = useState<VenueChallenge[]>([])
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [reservations, setReservations] = useState<TableReservation[]>([])
   const [promotions, setPromotions] = useState<PromotedVenue[]>([])
   const [contentReports, setContentReports] = useState<ContentReport[]>([])
   const [userBlocks] = useState<UserBlock[]>([])
@@ -321,8 +347,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   })
 
   const { data: serverPulses } = useQuery({
-    queryKey: ['pulses'],
-    queryFn: fetchPulsesFromSupabase,
+    queryKey: ['pulses', 'bootstrap', session?.access_token ?? 'direct'],
+    queryFn: async () => {
+      if (!hasSupabaseConfig) return null
+      const token = session?.access_token
+      if (token) {
+        const result = await fetchPulseListPage({ accessToken: token, limit: 200, offset: 0 })
+        if (result.ok) {
+          return (result.data.pulses as Pulse[]).map((pulse) => normalizePulse(pulse))
+        }
+      }
+      return fetchPulsesFromSupabase()
+    },
     enabled: hasSupabaseConfig,
     staleTime: 5_000,
     refetchInterval: 15_000,
@@ -350,7 +386,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ])
       }
     }
-  }, [events, promotions, serverEvents, venues])
+    if (!hasSeededPlaylists.current && (!playlists || playlists.length === 0) && venues && pulses && pulses.length > 0) {
+      hasSeededPlaylists.current = true
+      setPlaylists(seedCuratedPlaylists(venues, pulses))
+    }
+    if (!hasSeededHighlights.current && (!venueHighlights || venueHighlights.length === 0) && venues && pulses && pulses.length > 0) {
+      hasSeededHighlights.current = true
+      setVenueHighlights(seedVenueHighlights(venues, pulses))
+    }
+    if (!hasSeededChallenges.current && (!venueChallenges || venueChallenges.length === 0) && venues && venues.length >= 3) {
+      hasSeededChallenges.current = true
+      setVenueChallenges(createDemoChallenges(venues))
+    }
+  }, [events, promotions, playlists, venueHighlights, venueChallenges, serverEvents, venues, pulses])
 
   // Hydrate local KV state from React Query
   useEffect(() => {
@@ -718,6 +766,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     crews, setCrews,
     crewCheckIns, setCrewCheckIns,
     playlists, setPlaylists,
+    venueHighlights, setVenueHighlights,
+    venueChallenges, setVenueChallenges,
+    tickets, setTickets,
+    reservations, setReservations,
     promotions, setPromotions,
     contentReports, setContentReports,
     userBlocks, userMutes,
@@ -750,12 +802,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     venues,
     pulses,
     notifications,
+    setNotifications,
     hashtags,
     stories,
     events,
     crews,
     crewCheckIns,
     playlists,
+    venueHighlights,
+    venueChallenges,
+    tickets,
+    reservations,
     promotions,
     contentReports,
     userBlocks,

@@ -23,6 +23,8 @@ export type AchievementId =
   | 'crew_starter'
   | 'streak_7'
   | 'streak_30'
+  | 'holiday_spirit'
+  | 'summer_explorer'
 
 export interface Achievement {
   id: AchievementId
@@ -88,7 +90,49 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'crew_starter', name: 'Crew Starter', description: 'Create your first crew', icon: '👯', category: 'social', tier: 'bronze', requirement: 1 },
   { id: 'streak_7', name: 'On a Roll', description: '7-day check-in streak', icon: '🔥', category: 'consistency', tier: 'silver', requirement: 7 },
   { id: 'streak_30', name: 'Unstoppable', description: '30-day check-in streak', icon: '💎', category: 'consistency', tier: 'gold', requirement: 30 },
+  { id: 'holiday_spirit', name: 'Holiday Spirit', description: 'Post 3 pulses during the holiday season', icon: '🎄', category: 'special', tier: 'silver', requirement: 3, seasonal: true },
+  { id: 'summer_explorer', name: 'Summer Explorer', description: 'Visit 5 unique venues in summer', icon: '☀️', category: 'exploration', tier: 'silver', requirement: 5, seasonal: true },
 ]
+
+/** Whether a seasonal achievement is active for the current calendar window. */
+export function isSeasonalAchievementActive(achievement: Achievement, date = new Date()): boolean {
+  if (!achievement.seasonal) return true
+  const month = date.getMonth() + 1
+  if (achievement.id === 'holiday_spirit') return month === 11 || month === 12
+  if (achievement.id === 'summer_explorer') return month >= 6 && month <= 8
+  return true
+}
+
+/** Default weekly challenges shown on the achievements page. */
+export function getDefaultWeeklyChallenges(now = new Date()): WeeklyChallenge[] {
+  const month = now.getMonth() + 1
+  const coffeeTarget = month >= 9 && month <= 11 ? 'Coffee Shop' : undefined
+  return [
+    createWeeklyChallenge(
+      'Coffee Shop Crawl',
+      coffeeTarget ? 'Check into 3 coffee shops this week' : 'Check into 3 new spots this week',
+      'venue_count',
+      3,
+      { xp: 50, badge: 'Explorer' },
+      coffeeTarget ? { category: coffeeTarget } : undefined
+    ),
+    createWeeklyChallenge(
+      'Electric Week',
+      'Post 2 electric-rated pulses',
+      'energy_rating',
+      2,
+      { xp: 30 },
+      { energyRating: 'electric' }
+    ),
+    createWeeklyChallenge(
+      'Keep the Streak',
+      'Check in 5 days in a row',
+      'streak',
+      5,
+      { xp: 75, badge: 'On Fire' }
+    ),
+  ]
+}
 
 /**
  * Calculate achievement progress for a user.
@@ -212,6 +256,36 @@ export function calculateAchievementProgress(
       showcased: false,
     })
   }
+
+  // Seasonal: holiday pulses (Nov–Dec)
+  const holidayPulses = userPulses.filter(p => {
+    const month = new Date(p.createdAt).getMonth() + 1
+    return month === 11 || month === 12
+  }).length
+  results.push({
+    achievementId: 'holiday_spirit',
+    userId: user.id,
+    unlockedAt: holidayPulses >= 3 ? now : '',
+    progress: holidayPulses,
+    showcased: false,
+  })
+
+  // Seasonal: unique summer venues (Jun–Aug)
+  const summerVenues = new Set(
+    userPulses
+      .filter(p => {
+        const month = new Date(p.createdAt).getMonth() + 1
+        return month >= 6 && month <= 8
+      })
+      .map(p => p.venueId)
+  ).size
+  results.push({
+    achievementId: 'summer_explorer',
+    userId: user.id,
+    unlockedAt: summerVenues >= 5 ? now : '',
+    progress: summerVenues,
+    showcased: false,
+  })
 
   return results
 }

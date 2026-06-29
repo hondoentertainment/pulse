@@ -114,7 +114,7 @@ vi.mock('@/components/ui/label', () => ({
 
 vi.mock('@/components/ui/avatar', () => ({
   Avatar: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  AvatarImage: (props: any) => <img {...props} />,
+  AvatarImage: (props: any) => <img alt="" {...props} />,
   AvatarFallback: ({ children, ...props }: any) => <span {...props}>{children}</span>,
 }))
 
@@ -247,6 +247,8 @@ describe('VenueQuickActions', () => {
         onRide={() => {}}
         onReserve={() => {}}
         onSave={() => {}}
+        onShare={() => {}}
+        onWatchSurge={() => {}}
         isSaved={false}
       />
     )
@@ -265,6 +267,8 @@ describe('VenueQuickActions', () => {
         onRide={() => {}}
         onReserve={() => {}}
         onSave={() => {}}
+        onShare={() => {}}
+        onWatchSurge={() => {}}
         isSaved={false}
       />
     )
@@ -345,7 +349,7 @@ describe('VenueLivePanel', () => {
       },
       confidenceDetails: {},
       doorMode: {
-        lineStatus: 'moving',
+        lineStatus: 'moving' as const,
         entryConfidence: 80,
         guestListStatus: null,
         tableMinimum: null,

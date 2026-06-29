@@ -21,55 +21,11 @@ import {
 import { requireAuth } from '../_lib/auth'
 import { createUserClient } from '../_lib/supabase-server'
 import { asString } from '../_lib/validate'
-
-type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
-
-interface PulseRow {
-  id: string
-  user_id: string
-  venue_id: string
-  crew_id: string | null
-  photos: string[] | null
-  video_url: string | null
-  energy_rating: EnergyRating
-  caption: string | null
-  hashtags: string[] | null
-  views: number | null
-  is_pioneer: boolean | null
-  credibility_weight: number | null
-  reactions: Record<string, string[]> | null
-  created_at: string
-  expires_at: string
-  deleted_at: string | null
-}
-
-const PULSE_COLUMNS = `
-  id, user_id, venue_id, crew_id, photos, video_url,
-  energy_rating, caption, hashtags, views, is_pioneer,
-  credibility_weight, reactions, created_at, expires_at, deleted_at
-`.trim()
-
-function toAppPulse(row: PulseRow) {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    venueId: row.venue_id,
-    crewId: row.crew_id ?? undefined,
-    photos: row.photos ?? [],
-    video: row.video_url ?? undefined,
-    energyRating: row.energy_rating,
-    caption: row.caption ?? undefined,
-    hashtags: row.hashtags ?? [],
-    views: row.views ?? 0,
-    isPioneer: row.is_pioneer ?? false,
-    credibilityWeight: row.credibility_weight ?? 1.0,
-    reactions: row.reactions ?? { fire: [], eyes: [], skull: [], lightning: [] },
-    createdAt: row.created_at,
-    expiresAt: row.expires_at,
-    isPending: false,
-    uploadError: false,
-  }
-}
+import {
+  PULSE_SELECT_COLUMNS,
+  rowToAppPulse,
+  type PulseRow,
+} from '../_lib/pulse-mapper'
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return
@@ -96,7 +52,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   let query = client
     .from('pulses')
-    .select(PULSE_COLUMNS)
+    .select(PULSE_SELECT_COLUMNS)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, to)
@@ -114,9 +70,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const rows = (Array.isArray(data) ? data : []) as PulseRow[]
+  const rows = (Array.isArray(data) ? data : []) as unknown as PulseRow[]
   ok(res, {
-    pulses: rows.map(toAppPulse),
+    pulses: rows.map(rowToAppPulse),
     limit,
     offset,
     hasMore: rows.length === limit,

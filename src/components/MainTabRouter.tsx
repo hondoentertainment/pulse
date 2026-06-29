@@ -3,6 +3,10 @@ import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import type { TabId } from '@/components/BottomNav'
+import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import { PageSkeleton } from '@/components/PageSkeleton'
+import { CityWaitlistState } from '@/components/CityWaitlistState'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -10,7 +14,7 @@ const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ d
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <PageSkeleton />
 
 const tabMotion = {
   initial: { opacity: 0, y: 20 },
@@ -19,16 +23,23 @@ const tabMotion = {
   transition: { duration: 0.2 },
 }
 
-export function MainTabRouter() {
+interface MainTabRouterProps {
+  tab?: TabId
+}
+
+export function MainTabRouter({ tab }: MainTabRouterProps) {
   const state = useAppState()
   const handlers = useAppHandlers()
+  const { navigateToSubPage, navigateToVenue } = useRouteNavigation()
   const {
-    activeTab,
+    activeTab: stateActiveTab,
     venues,
     visibleVenues,
     moderatedPulses,
     currentUser,
     stories,
+    notifications,
+    setNotifications,
     events,
     favoriteVenues,
     followedVenues,
@@ -36,8 +47,6 @@ export function MainTabRouter() {
     unitSystem,
     trendingSubTab,
     setTrendingSubTab,
-    setSelectedVenue,
-    setSubPage,
     realtimeLocation,
     isTracking,
     promotions,
@@ -48,7 +57,12 @@ export function MainTabRouter() {
     isFavorite,
     isFollowed,
     pulsesWithUsers,
+    selectedMarket,
+    availableMarkets,
+    setSelectedMarketKey,
   } = state
+
+  const activeTab = tab ?? stateActiveTab
 
   const {
     handleReaction,
@@ -76,6 +90,23 @@ export function MainTabRouter() {
 
   if (!venues || !currentUser) return null
 
+  // Empty venue-driven feeds (trending/discover/map) should explain *why* the
+  // feed is empty instead of rendering a blank screen.
+  const isVenueDrivenTab = activeTab === 'trending' || activeTab === 'discover' || activeTab === 'map'
+  if (isVenueDrivenTab && visibleVenues.length === 0) {
+    const geoGated = (import.meta.env.VITE_LAUNCHED_CITIES ?? '').trim().length > 0
+    const fallbackMarket = availableMarkets.find((m) => m.key !== selectedMarket?.key)
+    return (
+      <CityWaitlistState
+        cityLabel={selectedMarket?.name}
+        geoGated={geoGated}
+        onBrowseOtherCities={
+          fallbackMarket ? () => setSelectedMarketKey(fallbackMarket.key) : undefined
+        }
+      />
+    )
+  }
+
   return (
     <Suspense fallback={pageFallback}>
       <AnimatePresence mode="wait">
@@ -85,6 +116,7 @@ export function MainTabRouter() {
               venues={visibleVenues}
               pulses={visiblePulses}
               pulsesWithUsers={pulsesWithUsers}
+              stories={stories || []}
               favoriteVenues={favoriteVenues}
               followedVenues={followedVenues}
               userLocation={userLocation}
@@ -93,7 +125,8 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
+              onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onToggleFavorite={handleToggleFavorite}
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
@@ -118,10 +151,10 @@ export function MainTabRouter() {
               stories={stories || []}
               events={events || []}
               userLocation={userLocation}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
-              onNavigate={(page) => setSubPage(page)}
+              onNavigate={navigateToSubPage}
               isFollowed={isFollowed}
               onToggleFollow={handleToggleFollow}
             />
@@ -134,7 +167,7 @@ export function MainTabRouter() {
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}
-                onVenueClick={setSelectedVenue}
+                onVenueClick={navigateToVenue}
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
@@ -149,6 +182,8 @@ export function MainTabRouter() {
               currentUser={currentUser}
               pulses={visiblePulses}
               venues={visibleVenues}
+              notifications={notifications}
+              onNotificationsChange={setNotifications}
               onNotificationClick={handleNotificationClick}
             />
           </motion.div>
@@ -161,17 +196,17 @@ export function MainTabRouter() {
               pulses={moderatedPulses}
               pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={navigateToVenue}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => {
                 if (!socialDashboardEnabled) { toast.error('Admin dashboard is currently unavailable'); return }
                 setShowAdminDashboard(true)
               }}
-              onOpenSettings={() => setSubPage('settings')}
+              onOpenSettings={() => navigateToSubPage('settings')}
               onOpenOwnerDashboard={() => {
-                setSubPage('owner-dashboard')
+                navigateToSubPage('owner-dashboard')
               }}
-              onOpenModerationQueue={() => setSubPage('moderation')}
+              onOpenModerationQueue={() => navigateToSubPage('moderation')}
             />
           </motion.div>
         )}

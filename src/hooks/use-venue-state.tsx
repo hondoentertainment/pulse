@@ -12,6 +12,7 @@ import { VenueEvent } from '@/lib/events'
 import { PulsePlaylist } from '@/lib/playlists'
 import { PromotedVenue } from '@/lib/promoted-discoveries'
 import { ContentReport, UserBlock, UserMute } from '@/lib/content-moderation'
+import type { NotificationSettings } from '@/hooks/use-notification-settings'
 
 export interface VenueState {
   // Venue data
@@ -49,7 +50,7 @@ export interface VenueState {
 
   // Preferences
   unitSystem: 'imperial' | 'metric'
-  notificationSettings: any
+  notificationSettings: NotificationSettings
   currentTime: Date
 
   // User (shared — needed for venue derivations)

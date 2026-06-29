@@ -61,7 +61,9 @@ export function AppShell() {
     isFavorite, isFollowed,
     integrationsEnabled,
     setIntegrationVenue,
+    moderatedPulses: _moderatedPulses,
     pulsesWithUsers,
+    venueHighlights,
   } = state
 
   const {
@@ -109,6 +111,8 @@ export function AppShell() {
           <VenuePage
             venue={selectedVenue}
             venuePulses={venuePulses}
+            venueHighlights={venueHighlights || []}
+            highlightPulses={pulses || []}
             distance={distance}
             userLocation={userLocation}
             unitSystem={unitSystem}

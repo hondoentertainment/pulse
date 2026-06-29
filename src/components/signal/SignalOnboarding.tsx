@@ -60,7 +60,10 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
     const restoreFocus = saveFocus()
     const releaseTrap = trapFocus(container)
     const releaseEscape = onEscape(container, () => {
-      if (step > 0) goBack()
+      if (step > 0) {
+        setSlideDir(-1)
+        setStep((s) => Math.max(0, s - 1))
+      }
     })
     return () => {
       releaseTrap()

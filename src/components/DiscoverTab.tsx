@@ -7,11 +7,13 @@ import { FriendSuggestions } from '@/components/FriendSuggestions'
 import { EventCard } from '@/components/EventCard'
 import { PredictiveSurgePanel } from '@/components/PredictiveSurgePanel'
 import { RightNowSection } from '@/components/RightNowSection'
+import { TonightsRecapBanner } from '@/components/TonightsRecapBanner'
 import { Separator } from '@/components/ui/separator'
 import { Compass, CalendarBlank, UsersThree, Trophy, ChartBar, MapTrifold, MusicNotes, GearSix, Lightning, Ticket, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import MoodSelector from '@/components/MoodSelector'
 import type { MoodType } from '@/lib/personalization-engine'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState } from 'react'
 
 interface DiscoverTabProps {
@@ -51,6 +53,8 @@ export function DiscoverTab({
   const activeStories = getActiveStories(stories)
   const upcomingEvents = getEventsSoon(events, 12).slice(0, 3)
   const suggestions = getPeopleYouMayKnow(currentUser, allUsers, pulses).slice(0, 5)
+  const ticketingEnabled = isFeatureEnabled('ticketing')
+  const aiConciergeEnabled = isFeatureEnabled('aiConcierge')
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -68,6 +72,8 @@ export function DiscoverTab({
           </div>
         </div>
       </div>
+
+      <TonightsRecapBanner currentUser={currentUser} pulses={pulses} venues={venues} />
 
       {/* Stories */}
       {activeStories.length > 0 && (
@@ -119,7 +125,9 @@ export function DiscoverTab({
         <Sparkle size={24} weight="fill" className="text-primary" />
         <div className="flex-1 text-left">
           <p className="font-medium text-sm">Plan Your Night</p>
-          <p className="text-xs text-muted-foreground">AI-powered multi-stop itinerary</p>
+          <p className="text-xs text-muted-foreground">
+            {aiConciergeEnabled ? 'AI-powered multi-stop itinerary' : 'Build a multi-stop itinerary'}
+          </p>
         </div>
       </button>
 
@@ -173,14 +181,16 @@ export function DiscoverTab({
           borderColor="border-accent/20"
           onClick={() => onNavigate('challenges')}
         />
-        <QuickAction
-          icon={<Ticket size={24} weight="fill" />}
-          label="My Tickets"
-          sublabel="Tickets & reservations"
-          color="from-primary/14 to-card"
-          borderColor="border-primary/20"
-          onClick={() => onNavigate('my-tickets')}
-        />
+        {ticketingEnabled && (
+          <QuickAction
+            icon={<Ticket size={24} weight="fill" />}
+            label="My Tickets"
+            sublabel="Tickets & reservations"
+            color="from-primary/14 to-card"
+            borderColor="border-primary/20"
+            onClick={() => onNavigate('my-tickets')}
+          />
+        )}
         <QuickAction
           icon={<GearSix size={24} weight="fill" />}
           label="Settings"

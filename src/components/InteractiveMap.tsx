@@ -4,6 +4,7 @@ import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
+import { venuePassesAccessibilityFilter } from '@/components/filters/AccessibilityFilter'
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
@@ -65,7 +66,7 @@ export function InteractiveMap({
   })
   const [nearMeActive, setNearMeActive] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
-  const [showFullHeatmap, setShowFullHeatmap] = useState(false)
+  const [showFullHeatmap, setShowFullHeatmap] = useState(true)
   const [comparedVenueIds, setComparedVenueIds] = useState<string[]>([])
   const [showOnboardingTips, setShowOnboardingTips] = useState(false)
   const [tipIndex, setTipIndex] = useState(0)
@@ -119,6 +120,15 @@ export function InteractiveMap({
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
   }, [center, userLocation, venues])
+
+  useEffect(() => {
+    if (center || userLocation || venues.length === 0) return
+    const viewport = getFittedViewport(venues, dimensions)
+    if (!viewport) return
+    setCenter(viewport.center)
+    setZoom(viewport.zoom)
+    setFollowUser(false)
+  }, [center, userLocation, venues, dimensions])
 
   useEffect(() => {
     if (userLocation && followUser) {
@@ -235,10 +245,17 @@ export function InteractiveMap({
         }
       }
 
-      if (filters.categories.length > 0 && venue.category) {
-        if (!filters.categories.includes(venue.category)) {
-          return false
-        }
+      if (filters.categories.length > 0) {
+        const venueCategory = venue.category?.toLowerCase()
+        const selectedCategories = filters.categories.map((category) => category.toLowerCase())
+        if (!venueCategory || !selectedCategories.includes(venueCategory)) return false
+      }
+
+      if (!venuePassesAccessibilityFilter(
+        venue.accessibilityFeatures,
+        filters.accessibilityFeatures ?? []
+      )) {
+        return false
       }
 
       if (filters.maxDistance !== Infinity && userLocation) {
@@ -268,15 +285,22 @@ export function InteractiveMap({
       return true
     })
 
-    // Progressive disclosure: show top 5 surging venues by default
-    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
+    // Optional focus mode keeps the map calm without hiding venues by default.
+    if (
+      !showFullHeatmap
+      && !nearMeActive
+      && filters.energyLevels.length === 0
+      && filters.categories.length === 0
+      && filters.maxDistance === Infinity
+      && (filters.accessibilityFeatures?.length ?? 0) === 0
+    ) {
       // Only nearby venues (within 50mi of center or user) sorted by pulseScore
       const nearby = userLocation
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
           .sort((a, b) => b.pulseScore - a.pulseScore)
         : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
-      return nearby.slice(0, 5)
+      return nearby.slice(0, 8)
     }
 
     return filtered
@@ -807,7 +831,10 @@ export function InteractiveMap({
     return ids
   }, [clusteredMapData.singles, isDragging, isCameraMoving, zoom, hoveredVenue, accessibilityMode])
 
-  const activeFilterCount = filters.energyLevels.length + filters.categories.length + (filters.maxDistance !== Infinity ? 1 : 0)
+  const activeFilterCount = filters.energyLevels.length
+    + filters.categories.length
+    + (filters.maxDistance !== Infinity ? 1 : 0)
+    + (filters.accessibilityFeatures?.length ?? 0)
 
   const previewVenues = useMemo(() => {
     if (!center) return [] as VenueRenderPoint[]
@@ -833,13 +860,13 @@ export function InteractiveMap({
     : activeFilterCount > 0
       ? 'Filtered'
       : showFullHeatmap
-        ? 'Full Map'
-        : 'Top Surges'
+        ? 'All Venues'
+        : 'Hotspots'
   const mapSummary = activeFilterCount > 0
     ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
     : showFullHeatmap
-      ? `${filteredVenues.length} venues in view`
-      : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
+      ? `${filteredVenues.length} mapped ${filteredVenues.length === 1 ? 'venue' : 'venues'}`
+      : `Focused on ${filteredVenues.length} strong ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
   const showCuratedToggle = !nearMeActive
     && filters.energyLevels.length === 0
     && filters.categories.length === 0
@@ -1425,7 +1452,7 @@ export function InteractiveMap({
                     onClick={handleToggleFullHeatmap}
                     className="h-8 shrink-0 px-3 text-[11px] font-semibold"
                   >
-                    {showFullHeatmap ? "Top only" : "Show all"}
+                    {showFullHeatmap ? "Hotspots" : "All venues"}
                   </Button>
                 )}
               </div>
@@ -1805,7 +1832,8 @@ export function InteractiveMap({
 
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
-          filters.maxDistance !== Infinity) && (
+          filters.maxDistance !== Infinity ||
+          (filters.accessibilityFeatures?.length ?? 0) > 0) && (
             <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 Showing <span className="font-bold text-foreground">{filteredVenues.length}</span> of{' '}

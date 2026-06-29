@@ -6,7 +6,7 @@
  *
  * Supported paths:
  *   pulse://venue/:id          → /venue/:id
- *   pulse://pulse/:id          → /?pulse=:id (trending tab highlighted)
+ *   pulse://pulse/:id          → /pulse/:id
  *   pulse://crew/:id           → /crews?crew=:id
  *   pulse://event/:id          → /events?event=:id
  *   pulse://safety/session/:id → /?safety=:id
@@ -88,7 +88,7 @@ export function resolveDeepLink(rawUrl: string): string | null {
       case 'pulse': {
         const id = rest[0]
         if (!id) return null
-        return `/?pulse=${encodeURIComponent(id)}`
+        return `/pulse/${encodeURIComponent(id)}`
       }
       case 'crew': {
         const id = rest[0]

@@ -1,13 +1,17 @@
 import { expect, test } from '@playwright/test'
+import { completeSignalOnboarding, resetSignalState } from './fixtures/signal-onboarding'
 
-test.describe.configure({ timeout: 60_000 })
+test.describe.configure({ timeout: 60_000, mode: 'serial' })
 
 /**
  * Smoke tests for the default production entry (Pulse Signal).
- * Run with default Playwright env — do NOT set VITE_APP_MODE=venue.
  */
+test.beforeEach(async ({ page }) => {
+  await resetSignalState(page)
+  await completeSignalOnboarding(page)
+})
+
 test('loads signal shell with navigation', async ({ page }) => {
-  await page.goto('/')
   await expect(page).toHaveTitle(/Pulse/i)
   await expect(page.getByRole('link', { name: /Home — Today's check-in/i })).toBeVisible({ timeout: 25_000 })
   await expect(page.getByRole('link', { name: /Trends — Chart and pattern/i })).toBeVisible()

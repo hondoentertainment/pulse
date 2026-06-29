@@ -8,25 +8,75 @@
     body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 42rem; margin: 0 auto; padding: 2rem; color: #111; background-color: #fff; }
     h1 { font-size: 2rem; }
     h2 { font-size: 1.5rem; margin-top: 2rem; }
-    p { margin-bottom: 1rem; }
+    p, li { margin-bottom: 0.75rem; }
+    a { color: #5b21b6; }
   </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p>Last updated: March 2026</p>
+  <p>Last updated: June 2026</p>
 
-  <h2>1. Location Data</h2>
-  <p>Pulse requires location access (GPS) to determine your proximity to venues and verify your Check-Ins. Your precise location is never shared publicly. Venues only aggregate anonymized "Energy Scores" from proximate users.</p>
+  <p>This policy describes how Pulse collects, uses, and deletes personal data. It applies to the Pulse web app and related services.</p>
 
-  <h2>2. Content Moderation</h2>
-  <p>Any content (Pulses) containing hate speech, harassment, fake location spoofing, or illegal material will be deleted. Accounts bridging these terms will be terminated without prior notice.</p>
+  <h2>1. Data We Collect</h2>
+  <ul>
+    <li><strong>Account:</strong> email, username, profile photo, and preferences you set in Settings.</li>
+    <li><strong>Location:</strong> GPS coordinates to verify check-ins and show nearby venues. Precise location is not shown publicly.</li>
+    <li><strong>Content:</strong> pulses (photos, videos, captions, energy ratings), reactions, and follows.</li>
+    <li><strong>Device:</strong> push notification tokens (if enabled), crash/performance diagnostics.</li>
+    <li><strong>Safety Kit (optional):</strong> emergency contacts and safety session metadata when you enable that feature.</li>
+  </ul>
 
-  <h2>3. Data Retention</h2>
-  <p>Historical check-in data is retained only to calculate your "Pioneer" status and credibility score. Routine telemetry is deleted after 30 days.</p>
+  <h2>2. How We Use Data</h2>
+  <ul>
+    <li>Operate venue discovery, scoring, social feeds, and notifications.</li>
+    <li>Prevent abuse via moderation, rate limits, and credibility weighting.</li>
+    <li>Improve reliability (error monitoring, performance metrics).</li>
+  </ul>
+  <p>We do not sell your personal data to third-party marketers.</p>
 
-  <h2>4. Third Parties</h2>
-  <p>We share anonymous usage data with Vercel and Sentry purely for performance and crash diagnostics. We do not sell your data to any third-party marketing firms.</p>
+  <h2>3. Location Data</h2>
+  <p>Pulse requires location access (GPS) to determine your proximity to venues and verify check-ins. Your precise location is never shared publicly. Venues only receive aggregated, anonymized energy signals from proximate users.</p>
 
-  <p><br/><a href="/">Return to App</a></p>
+  <h2>4. Sharing With Service Providers</h2>
+  <p>We use trusted processors to run Pulse:</p>
+  <ul>
+    <li><strong>Supabase</strong> — authentication and database hosting.</li>
+    <li><strong>Vercel</strong> — application hosting and serverless APIs.</li>
+    <li><strong>Sentry</strong> — crash and error diagnostics (when configured).</li>
+  </ul>
+  <p>Each provider is bound by their own privacy terms and our data-processing agreements where applicable.</p>
+
+  <h2>5. Data Retention</h2>
+  <ul>
+    <li>Pulses expire from live feeds after ~90 minutes; database copies may persist for moderation and analytics windows.</li>
+    <li>Check-in history supports credibility badges and is retained while your account is active.</li>
+    <li>Diagnostic telemetry is typically retained up to 30 days.</li>
+    <li>Safety Kit session logs follow the retention schedule in product documentation (generally up to 2 years for audit trails).</li>
+  </ul>
+
+  <h2>6. Your Rights (GDPR / CCPA)</h2>
+  <p>Depending on where you live, you may have the right to:</p>
+  <ul>
+    <li><strong>Access / export</strong> — Settings → Export My Data downloads a JSON bundle of your account data.</li>
+    <li><strong>Delete</strong> — Settings → Delete Account permanently removes your profile and auth record (cascading related data).</li>
+    <li><strong>Correct</strong> — update profile fields in the app.</li>
+    <li><strong>Opt out</strong> — disable notifications, presence, or optional features in Settings.</li>
+  </ul>
+  <p>For requests we cannot fulfill in-app, contact support with your account email.</p>
+
+  <h2>7. Content Moderation</h2>
+  <p>Content containing hate speech, harassment, fake location spoofing, or illegal material may be removed. Accounts that repeatedly violate our <a href="/terms.html">Terms of Service</a> may be terminated.</p>
+
+  <h2>8. Children</h2>
+  <p>Pulse is not directed at children under 13. We do not knowingly collect data from children under 13.</p>
+
+  <h2>9. International Transfers</h2>
+  <p>Data may be processed in the United States or other regions where our infrastructure providers operate. We apply appropriate safeguards for cross-border transfers where required.</p>
+
+  <h2>10. Changes</h2>
+  <p>We will update this policy when practices change. Check the “Last updated” date above.</p>
+
+  <p><br/><a href="/">Return to App</a> · <a href="/terms.html">Terms of Service</a></p>
 </body>
 </html>

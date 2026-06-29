@@ -140,7 +140,7 @@ export function AccessibilityFilter({
             key={feature}
             type="button"
             role="switch"
-            aria-pressed={isOn}
+            aria-checked={isOn}
             aria-label={ACCESSIBILITY_LABELS[feature]}
             onClick={() => toggle(feature)}
             onKeyDown={(e) => handleKeyDown(e, feature)}

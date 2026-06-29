@@ -5,7 +5,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage', '.claude/worktrees/**'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'test-results', 'playwright-report', '.claude/worktrees/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -35,6 +35,13 @@ export default tseslint.config(
       // Intentionally OFF (project uses motion.button + custom gestures):
       //   no-static-element-interactions, click-events-have-key-events,
       //   no-noninteractive-element-interactions, label-has-associated-control
+    },
+  },
+  {
+    files: ['**/*.{test,spec}.{ts,tsx}', '**/__tests__/**', 'e2e/**'],
+    rules: {
+      // Test mocks and partial fixtures routinely use `any`; keep prod strict.
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 )

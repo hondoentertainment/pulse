@@ -6,6 +6,7 @@ export interface SignalProfile {
   trackingFocus: TrackingFocus
   goal: SignalGoal
   reminderTime?: string
+  displayName?: string
 }
 
 export interface SignalEntry {

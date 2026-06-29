@@ -21,10 +21,12 @@ import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supa
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
-import { createStory } from '@/lib/stories'
+import { createStory, reactToStory, type StoryReaction } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
+import { joinChallenge } from '@/lib/venue-challenges'
 import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { useRouteNavigation } from '@/hooks/use-route-navigation'
 
 import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
@@ -46,13 +48,13 @@ function milesBetween(
 export function useAppHandlers() {
   const state = useAppState()
   const { updateProfile } = useSupabaseAuth()
+  const { navigateToPulse, navigateToVenue, navigateToTab } = useRouteNavigation()
   const {
     venues,
     pulses,
     currentUser,
     userLocation,
     setActiveTab,
-    setSelectedVenue,
     setPulses,
     setVenues,
     setNotifications,
@@ -62,6 +64,7 @@ export function useAppHandlers() {
     setCrewCheckIns,
     setPromotions,
     setContentReports,
+    setVenueChallenges,
     venueForPulse,
     setVenueForPulse,
     setCreateDialogOpen,
@@ -287,10 +290,17 @@ export function useAppHandlers() {
   }, [currentUser, setPulses])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
-    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) setSelectedVenue(notification.venue)
-    else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) setSelectedVenue(notification.venue)
-    setActiveTab('trending')
-  }, [setActiveTab, setSelectedVenue])
+    if (notification.pulseId) {
+      navigateToPulse(notification.pulseId)
+      return
+    }
+    if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) {
+      navigateToVenue(notification.venue)
+    } else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) {
+      navigateToVenue(notification.venue)
+    }
+    navigateToTab('trending')
+  }, [navigateToPulse, navigateToTab, navigateToVenue])
 
   const handleAddFriend = useCallback((userId: string) => {
     if (!currentUser) return
@@ -301,7 +311,34 @@ export function useAppHandlers() {
     if (navigator.vibrate) navigator.vibrate([30])
   }, [currentUser, updateProfile])
 
-  const handleStoryReact = useCallback((_storyId: string, emoji: string) => { toast.success(`Reacted ${emoji}`) }, [])
+  const handleStoryReact = useCallback((storyId: string, emoji: string) => {
+    if (!currentUser) return
+    const reaction = emoji as StoryReaction
+    setStories(current => {
+      if (!current) return []
+      return current.map(story =>
+        story.id === storyId ? reactToStory(story, currentUser.id, reaction) : story
+      )
+    })
+    toast.success(`Reacted ${emoji}`)
+  }, [currentUser, setStories])
+
+  const handleJoinChallenge = useCallback((challengeId: string) => {
+    if (!currentUser) return
+    setVenueChallenges(current => {
+      if (!current) return []
+      let joined = false
+      const next = current.map(challenge => {
+        if (challenge.id !== challengeId) return challenge
+        const updated = joinChallenge(challenge, currentUser.id)
+        if (updated) joined = true
+        return updated ?? challenge
+      })
+      if (joined) toast.success('Joined challenge!')
+      else toast.error('Could not join challenge')
+      return next
+    })
+  }, [currentUser, setVenueChallenges])
 
   const handleEventsUpdate = useCallback((updatedEvents: VenueEvent[]) => {
     setEvents(updatedEvents)
@@ -390,6 +427,7 @@ export function useAppHandlers() {
     handleStartCrewCheckIn,
     handleToggleFavorite,
     handleToggleFollow,
+    handleJoinChallenge,
   }), [
     handleAddFriend,
     handleCreatePulse,
@@ -405,5 +443,6 @@ export function useAppHandlers() {
     handleTabChange,
     handleToggleFavorite,
     handleToggleFollow,
+    handleJoinChallenge,
   ])
 }

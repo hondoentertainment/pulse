@@ -112,10 +112,18 @@ Full detail: [Feature Flags](feature-flags.md).
 
 | Variable | Scope | Description |
 |----------|-------|-------------|
-| `FCM_SERVER_KEY` | server | Firebase Cloud Messaging (Android) |
-| `APNS_KEY_ID` | server | Apple Push Notification key |
-| `APNS_TEAM_ID` | server | Apple team ID |
-| `APNS_BUNDLE_ID` | server | iOS bundle identifier |
+| `FCM_PROJECT_ID` | server | Firebase project id (FCM HTTP v1) |
+| `FCM_CLIENT_EMAIL` | server | Service-account `client_email` |
+| `FCM_PRIVATE_KEY` | server | Service-account PEM private key (`\n`-escaped ok) |
+| `APNS_KEY_ID` | server | Apple Push Notification key id (`kid`) |
+| `APNS_TEAM_ID` | server | Apple developer team id (`iss`) |
+| `APNS_PRIVATE_KEY` | server | APNs `.p8` contents (PEM; `\n`-escaped ok) — preferred over legacy cert |
+| `APNS_BUNDLE_ID` | server | iOS bundle id / `apns-topic` (default `com.pulse.nightlife`) |
+| `APNS_HOST` | server | `api.push.apple.com` (prod) or `api.sandbox.push.apple.com` |
+
+> **Deprecated:** `FCM_SERVER_KEY` (legacy server key API) is no longer used — migrate to FCM HTTP v1 vars above.
+
+Native delivery is implemented in `api/_lib/push.ts`. With no provider env set the sender logs and returns `logOnly: true` (safe for dev/CI). Ops can verify wiring via `POST /api/push/test` after registering a device token.
 
 ---
 
@@ -141,6 +149,8 @@ Full detail: [Feature Flags](feature-flags.md).
 | `VITE_VISUAL_PREVIEW` | client | Visual regression mode |
 | `PLAYWRIGHT_BASE_URL` | CI | Override preview URL |
 | `VITEST` | CI | Set by Vitest runner |
+
+**Supabase data-path smoke** (`npm run smoke:supabase`): requires `SUPABASE_URL` plus one of `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE`, or `SUPABASE_SERVICE_ROLE_KEY`. Read-only; exits non-zero on failure.
 
 ---
 

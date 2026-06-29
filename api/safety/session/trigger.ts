@@ -12,7 +12,8 @@
  *   message?: string                               (optional extra note from user)
  */
 
-import { sendPush, sendSms } from '../../_lib/notify'
+import { dispatchUserNotification } from '../../_lib/dispatch-notification'
+import { sendSms } from '../../_lib/notify'
 import {
   authenticate,
   badRequest,
@@ -203,13 +204,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const results = await Promise.all(
     verifiedContacts.map(async contact => {
       if (contact.method === 'push') {
-        const push = await sendPush({
+        const push = await dispatchUserNotification({
           userId: contact.id,
           title: 'Pulse Safety Alert',
           body: smsBody,
-          data: { sessionId, triggeredBy: userId },
+          data: { sessionId: sessionId ?? '', triggeredBy: userId },
         })
-        return { contactId: contact.id, ok: push.ok, provider: push.provider }
+        return {
+          contactId: contact.id,
+          ok: push.realtime.ok || push.native.dispatched > 0,
+          provider: push.native.logOnly ? push.realtime.provider : 'native+realtime',
+        }
       }
       const sms = await sendSms({ to: contact.phone_e164, body: smsBody })
       return { contactId: contact.id, ok: sms.ok, provider: sms.provider }

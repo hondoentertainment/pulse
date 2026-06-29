@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { Link, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAppState } from '@/hooks/use-app-state'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { usePushRegistration } from '@/hooks/use-push-registration'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
 import { BottomNav } from '@/components/BottomNav'
@@ -14,6 +15,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
+import { PulseRoute } from '@/components/PulseRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
@@ -35,11 +37,46 @@ const SocialPulseDashboard = lazy(() =>
 const CreatePulseDialog = lazy(() =>
   import('@/components/CreatePulseDialog').then((m) => ({ default: m.CreatePulseDialog })),
 )
+const GlobalSearch = lazy(() =>
+  import('@/components/GlobalSearch').then((m) => ({ default: m.GlobalSearch })),
+)
 const VenueMetadataRoute = lazy(() =>
   import('@/components/venue-admin/VenueMetadataRoute').then((m) => ({
     default: m.VenueMetadataRoute,
   })),
 )
+
+/** Trending home — redirects legacy `/?pulse=` deep links to `/pulse/:id`. */
+function TrendingHomeRoute({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const [params] = useSearchParams()
+  const pulseId = params.get('pulse')
+  if (pulseId) {
+    return <Navigate to={`/pulse/${encodeURIComponent(pulseId)}`} replace />
+  }
+  return <>{children}</>
+}
+
+function NotFoundRoute() {
+  return (
+    <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">404</p>
+      <h1 className="text-2xl font-bold tracking-tight">This Pulse page does not exist.</h1>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        The link may be outdated, or the page may have moved. Head back to trending venues to keep exploring.
+      </p>
+      <Link
+        to="/"
+        className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+      >
+        Back to Trending
+      </Link>
+    </div>
+  )
+}
 
 /**
  * AppRoutes — the tab / sub-page / modal switcher.
@@ -55,8 +92,14 @@ const VenueMetadataRoute = lazy(() =>
 export function AppRoutes() {
   const state = useAppState()
   const { activeTab, navigateToTab } = useRouteNavigation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
+  // Native-only push registration (no-op on web).
+  usePushRegistration({ userId: session?.user?.id })
   const currentTime = useCurrentTime()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchMode, setSearchMode] = useState<'navigate' | 'create'>('navigate')
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -68,6 +111,7 @@ export function AppRoutes() {
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
+    visibleVenues,
     selectedMarketKey, setSelectedMarketKey,
     availableMarkets,
     unreadNotificationCount,
@@ -83,6 +127,7 @@ export function AppRoutes() {
     navigateToTab(tab)
     if (navigator.vibrate) navigator.vibrate([15])
   }
+  const showGlobalChrome = ['/', '/discover', '/map', '/notifications', '/profile'].includes(location.pathname)
 
   // ── Onboarding gate ──────────────────────────────────────
   if (hasCompletedOnboarding === false) {
@@ -138,6 +183,13 @@ export function AppRoutes() {
     locationPermissionDenied,
     currentTime,
     queuedPulseCount,
+    selectedMarketKey,
+    markets: availableMarkets,
+    onMarketChange: setSelectedMarketKey,
+    onSearchClick: () => {
+      setSearchMode('navigate')
+      setSearchOpen(true)
+    },
   }
 
   const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
@@ -149,12 +201,21 @@ export function AppRoutes() {
 
   // ── Main shell with routes ───────────────────────────────
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <main id="main-content" className="min-h-screen bg-background pb-20" tabIndex={-1}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
       <Toaster position="top-center" theme="dark" />
 
       <Routes>
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
+
+        {/* Pulse detail (Wave 4) */}
+        <Route path="/pulse/:pulseId" element={<PulseRoute />} />
 
         {/* Admin-only: structured venue metadata editor. Non-admins get a 403
             rendered by VenueMetadataRoute itself. */}
@@ -177,19 +238,28 @@ export function AppRoutes() {
         <Route path="/settings" element={<SubPageRouter page="settings" />} />
         <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
         <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
+        <Route path="/owner-dashboard" element={<SubPageRouter page="owner-dashboard" />} />
         <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
         <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
         <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        <Route path="/safety/contacts" element={<SubPageRouter page="safety-contacts" />} />
 
         {/* Main tabs */}
         <Route path="/discover" element={wrapTab('discover')} />
         <Route path="/map" element={wrapTab('map')} />
         <Route path="/notifications" element={wrapTab('notifications')} />
         <Route path="/profile" element={wrapTab('profile')} />
-        <Route path="/" element={wrapTab('trending')} />
+        <Route
+          path="/"
+          element={(
+            <TrendingHomeRoute>
+              {wrapTab('trending')}
+            </TrendingHomeRoute>
+          )}
+        />
 
-        {/* Catch-all: redirect to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch-all: keep the miss visible instead of silently losing the bad URL. */}
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
 
       <AnimatePresence>
@@ -205,13 +275,33 @@ export function AppRoutes() {
         )}
       </AnimatePresence>
 
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        unreadNotifications={unreadNotificationCount}
-      />
+      {showGlobalChrome && (
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          unreadNotifications={unreadNotificationCount}
+        />
+      )}
 
       <Suspense fallback={null}>
+        <GlobalSearch
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          venues={visibleVenues}
+          onSelectVenue={(venueId) => {
+            if (searchMode === 'create') {
+              handleCreatePulse(venueId)
+              return
+            }
+            navigate(`/venue/${encodeURIComponent(venueId)}`)
+          }}
+          onSelectCity={(cityName) => {
+            const match = availableMarkets.find(
+              (market) => market.name.toLowerCase() === cityName.toLowerCase(),
+            )
+            if (match) setSelectedMarketKey(match.key)
+          }}
+        />
         <CreatePulseDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -220,17 +310,26 @@ export function AppRoutes() {
         />
       </Suspense>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id)
-        }}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
-        style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
-      >
-        <Plus size={28} weight="bold" />
-      </motion.button>
+      {showGlobalChrome && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            if (sortedVenues.length === 1) {
+              handleCreatePulse(sortedVenues[0].id)
+              return
+            }
+            setSearchMode('create')
+            setSearchOpen(true)
+          }}
+          aria-label="Create a pulse"
+          data-testid="create-pulse-fab"
+          className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-[60]"
+          style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
+        >
+          <Plus size={28} weight="bold" />
+        </motion.button>
+      )}
     </main>
   )
 }

@@ -2,14 +2,16 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import type { Pulse } from '@/lib/types'
 import { PulseData, hasSupabaseEnv, type PulsePage } from '@/lib/data'
 import { assertWriteAllowed } from '@/lib/auth/require-auth'
-import { fetchPulseListPage } from '@/lib/api-client'
+import { fetchPulseListPage, fetchPulseDetail } from '@/lib/api-client'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { venueKeys } from './use-venues'
+import { normalizePulse } from '@/lib/pulse-media'
 
 /** Query key factory for pulse-related queries. */
 export const pulseKeys = {
   all: ['pulses'] as const,
   byVenue: (venueId: string) => ['pulses', { venueId }] as const,
+  detail: (pulseId: string) => ['pulses', 'detail', pulseId] as const,
 }
 
 function mapPulseToCreateInput(pulse: Pulse) {
@@ -66,7 +68,7 @@ export function useLivePulsesInfinite(pageSize = 50) {
         if (result.ok) {
           const { pulses, hasMore, limit } = result.data
           return {
-            items: pulses as Pulse[],
+            items: (pulses as Pulse[]).map((pulse) => normalizePulse(pulse)),
             nextOffset: hasMore ? offset + limit : null,
           }
         }
@@ -103,7 +105,7 @@ export function useVenuePulsesInfinite(venueId: string | undefined, pageSize = 5
         if (result.ok) {
           const { pulses, hasMore, limit } = result.data
           return {
-            items: pulses as Pulse[],
+            items: (pulses as Pulse[]).map((pulse) => normalizePulse(pulse)),
             nextOffset: hasMore ? offset + limit : null,
           }
         }
@@ -111,6 +113,32 @@ export function useVenuePulsesInfinite(venueId: string | undefined, pageSize = 5
       return PulseData.listRecentPulsesAtVenuePaged(venueId, pageSize, offset)
     },
     getNextPageParam: (last) => last.nextOffset,
+  })
+}
+
+/**
+ * Fetch a single pulse by id from the API when authenticated; otherwise reads via `PulseData`.
+ */
+export function usePulse(pulseId: string | undefined) {
+  const { session } = useSupabaseAuth()
+  const accessToken = session?.access_token ?? null
+
+  return useQuery<Pulse | null, Error>({
+    queryKey: pulseId
+      ? [...pulseKeys.detail(pulseId), accessToken ? 'api' : 'direct']
+      : ['pulses', 'detail', 'disabled'],
+    enabled: Boolean(pulseId),
+    queryFn: async () => {
+      if (!pulseId || !hasSupabaseEnv()) return null
+      if (accessToken) {
+        const result = await fetchPulseDetail(pulseId, { accessToken })
+        if (result.ok) {
+          return normalizePulse(result.data.pulse as Pulse)
+        }
+        if (result.status === 404) return null
+      }
+      return PulseData.getPulse(pulseId)
+    },
   })
 }
 

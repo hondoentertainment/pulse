@@ -1,49 +1,12 @@
 import { expect, test } from '@playwright/test'
+import {
+  clickButton,
+  clickLink,
+  completeSignalOnboarding,
+  resetSignalState,
+} from './fixtures/signal-onboarding'
 
-test.describe.configure({ timeout: 60_000 })
-
-const SIGNAL_STORE_KEY = 'pulse-signal-store-v1'
-
-async function clickButton(page: import('@playwright/test').Page, name: RegExp) {
-  const button = page.getByRole('button', { name })
-  await button.scrollIntoViewIfNeeded()
-  await button.evaluate((element: HTMLElement) => element.click())
-}
-
-async function clickLink(page: import('@playwright/test').Page, name: RegExp) {
-  const link = page.getByRole('link', { name })
-  await link.scrollIntoViewIfNeeded()
-  await link.evaluate((element: HTMLElement) => element.click())
-}
-
-async function resetSignalState(page: import('@playwright/test').Page) {
-  await page.goto('/')
-  await page.evaluate((key) => localStorage.removeItem(key), SIGNAL_STORE_KEY)
-  await page.reload()
-}
-
-async function completeSignalOnboarding(page: import('@playwright/test').Page) {
-  const onboarding = page.getByRole('dialog', { name: /Step 1 of 3/i })
-  const hasOnboarding = await onboarding.isVisible({ timeout: 15_000 }).catch(() => false)
-
-  if (!hasOnboarding) {
-    await expect(page.getByRole('heading', { name: /^Today$/i })).toBeVisible({ timeout: 10_000 })
-    return
-  }
-
-  await clickButton(page, /^Continue$/i)
-  await expect(page.getByRole('heading', { name: /Choose the outcome/i })).toBeVisible({ timeout: 10_000 })
-  await clickButton(page, /Last step/i)
-  await clickButton(page, /Save today's signal/i)
-
-  const firstWin = page.getByRole('button', { name: /See my dashboard/i })
-  if (await firstWin.isVisible({ timeout: 8_000 }).catch(() => false)) {
-    await firstWin.evaluate((element: HTMLElement) => element.click())
-  }
-
-  await expect(onboarding).toBeHidden({ timeout: 15_000 })
-  await expect(page.getByRole('heading', { name: /^Today$/i })).toBeVisible({ timeout: 15_000 })
-}
+test.describe.configure({ timeout: 60_000, mode: 'serial' })
 
 test('has Pulse Signal title and global toast host', async ({ page }) => {
   await resetSignalState(page)

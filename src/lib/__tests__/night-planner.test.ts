@@ -12,7 +12,6 @@ import {
   VENUE_TYPES,
   type NightPlan,
   type PlanStop,
-  type PlanPreferences,
 } from '../night-planner'
 import type { Venue, Pulse, User } from '../types'
 
@@ -54,6 +53,11 @@ function makeStop(overrides: Partial<PlanStop> = {}): PlanStop {
     transitDuration: 5,
     energyPrediction: 'buzzing',
     ...overrides,
+    groupVote: overrides.groupVote ?? { yes: 0, maybe: 0, no: 0 },
+    etaMinutes: overrides.etaMinutes ?? 5,
+    rideSplitEstimate: overrides.rideSplitEstimate ?? 0,
+    entryConfidence: overrides.entryConfidence ?? 0.8,
+    pivotRisk: overrides.pivotRisk ?? 'low',
   }
 }
 

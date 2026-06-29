@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { completeOnboarding, goToTab } from './fixtures/onboarding'
+import { completeOnboarding } from './fixtures/onboarding'
 
 test.describe('Search and filter', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,22 +9,21 @@ test.describe('Search and filter', () => {
   })
 
   test('search input becomes focusable and accepts text', async ({ page }) => {
-    // The app may surface search on Home or Map tab — probe both
-    const searchInputs = page.locator('input[placeholder*="search" i], input[type="search"]')
-    let count = await searchInputs.count()
+    // Global search lives behind the header button and opens an overlay input.
+    const searchButton = page.getByRole('button', { name: /Search venues and cities/i })
+    const hasButton = await searchButton
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false)
 
-    if (count === 0) {
-      await goToTab(page, /^map$/i)
-      count = await searchInputs.count()
-    }
-
-    if (count === 0) {
-      test.skip(true, 'Search input not surfaced in current build')
+    if (!hasButton) {
+      test.skip(true, 'Global search not surfaced in current build')
       return
     }
 
-    const input = searchInputs.first()
-    await input.click()
+    await searchButton.click()
+    const input = page.getByPlaceholder(/Search venues, cities, categories/i)
+    await expect(input).toBeFocused()
     await input.fill('bar')
     await expect(input).toHaveValue('bar')
   })
