@@ -13,11 +13,12 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
-const DIST_DIR = join(__dirname, '..', 'dist', 'assets')
+const DIST_DIR = join(__dirname, '..', 'dist')
+const DIST_ASSETS = join(DIST_DIR, 'assets')
 
 /** Budgets in bytes (gzipped). Keep aligned with docs/bundle-budget.md. */
 const BUDGETS = {
@@ -33,7 +34,7 @@ const BUDGETS = {
   sentry: { pattern: /^sentry-.*\.js$/, maxGzipBytes: 120 * 1024, label: 'sentry' },
   observability: { pattern: /^observability-.*\.js$/, maxGzipBytes: 150 * 1024, label: 'observability' },
   supabase: { pattern: /^supabase-.*\.js$/, maxGzipBytes: 80 * 1024, label: 'supabase' },
-  framerMotion: { pattern: /^framer-motion-.*\.js$/, maxGzipBytes: 60 * 1024, label: 'framer-motion' },
+  framerMotion: { pattern: /^motion-vendor-.*\.js$/, maxGzipBytes: 60 * 1024, label: 'motion-vendor' },
 }
 
 /** Every other JS chunk must be under this (a cheap regression trip-wire). */
@@ -41,6 +42,17 @@ const PER_CHUNK_DEFAULT_MAX_GZIP = 120 * 1024 // 120 KB gzip
 
 /** Total gzip-summed budget across all JS. Soft upper bound. */
 const TOTAL_GZIP_MAX = 1600 * 1024 // 1.6 MB gzip
+
+/** PWA precache raw total (mirrors vite-plugin-pwa globPatterns minus globIgnores). */
+const PRECACHE_MAX_RAW = 3700 * 1024 // 3.7 MB
+
+const PRECACHE_EXTENSIONS = new Set(['.js', '.css', '.html', '.ico', '.png', '.svg', '.woff2'])
+const PRECACHE_IGNORE = [
+  /[/\\]proxy\.js$/,
+  /[/\\]mapbox-gl-.*\.js$/,
+  /[/\\]maplibre-gl-.*\.js$/,
+  /\.map$/,
+]
 
 function fmt(bytes) {
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB'
@@ -50,14 +62,42 @@ function fmt(bytes) {
 
 function listJsChunks() {
   try {
-    return readdirSync(DIST_DIR)
+    return readdirSync(DIST_ASSETS)
       .filter((f) => f.endsWith('.js'))
-      .map((f) => ({ name: f, full: join(DIST_DIR, f) }))
+      .map((f) => ({ name: f, full: join(DIST_ASSETS, f) }))
   } catch (err) {
-    console.error(`[bundle-size] Cannot read ${DIST_DIR}. Did you run \`bun run build\` first?`)
+    console.error(`[bundle-size] Cannot read ${DIST_ASSETS}. Did you run \`npm run build\` first?`)
     console.error(err.message)
     process.exit(2)
   }
+}
+
+function walkDistFiles(dir, files = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkDistFiles(full, files)
+    } else {
+      files.push(full)
+    }
+  }
+  return files
+}
+
+function isPrecacheCandidate(filePath) {
+  const rel = relative(DIST_DIR, filePath).replace(/\\/g, '/')
+  const ext = rel.slice(rel.lastIndexOf('.'))
+  if (!PRECACHE_EXTENSIONS.has(ext)) return false
+  return !PRECACHE_IGNORE.some((pattern) => pattern.test(rel))
+}
+
+function measurePrecacheRaw() {
+  let total = 0
+  const files = walkDistFiles(DIST_DIR).filter(isPrecacheCandidate)
+  for (const file of files) {
+    total += statSync(file).size
+  }
+  return { total, count: files.length }
 }
 
 function main() {
@@ -107,6 +147,22 @@ function main() {
       label: 'total-gzipped',
       gz: totalGzip,
       max: TOTAL_GZIP_MAX,
+    })
+  }
+
+  const precache = measurePrecacheRaw()
+  const precacheStatus = precache.total <= PRECACHE_MAX_RAW ? 'OK ' : 'OVER'
+  console.log('--------------------------')
+  console.log(
+    `  ${precacheStatus}  PWA precache (${precache.count} files)  raw ${fmt(precache.total).padStart(9)}  budget ${fmt(PRECACHE_MAX_RAW)}`,
+  )
+
+  if (precache.total > PRECACHE_MAX_RAW) {
+    violations.push({
+      file: '<precache>',
+      label: 'pwa-precache',
+      gz: precache.total,
+      max: PRECACHE_MAX_RAW,
     })
   }
 

@@ -21,6 +21,8 @@ import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/li
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { AccountPrivacyPanel } from '@/components/AccountPrivacyPanel'
 
 interface SettingsPageProps {
   currentUser: User
@@ -33,6 +35,7 @@ interface SettingsPageProps {
 export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, onOpenSafetyContacts }: SettingsPageProps) {
   const { setUnitSystem, isImperial } = useUnitPreference()
   const { settings, updateSetting } = useNotificationSettings()
+  const { session, signOut } = useSupabaseAuth()
   const [offlineCount, setOfflineCount] = useState(getPendingCount())
   const [queueSyncStatus, setQueueSyncStatus] = useState(getLastQueueSyncStatus())
   const [queueRetryInfo, setQueueRetryInfo] = useState(getQueueRetryInfo())
@@ -81,21 +84,6 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
     })
   }
 
-  const handleExportData = () => {
-    const data = {
-      user: currentUser,
-      exportedAt: new Date().toISOString(),
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `pulse-data-${currentUser.username}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Data exported!')
-  }
-
   const handleClearOfflineQueue = () => {
     clearQueue()
     setOfflineCount(0)
@@ -123,6 +111,9 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
               <Bell size={18} weight="fill" className="text-accent" />
               <Label className="font-bold">Notifications</Label>
             </div>
+            <p className="text-xs text-muted-foreground">
+              These controls manage in-app alerts. Device push delivery is enabled only after push registration is configured for the current platform.
+            </p>
 
             <SettingRow
               icon={<UsersFour size={16} weight="fill" className="text-primary" />}
@@ -460,6 +451,37 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
           </motion.div>
         )}
 
+        {/* Legal */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Shield size={18} weight="fill" className="text-primary" />
+              <Label className="font-bold">Legal & Privacy</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Review how Pulse handles account data, venue activity, and privacy rights.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a
+                href="/privacy.html"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-border bg-secondary/50 px-3 py-2 text-sm font-medium hover:bg-secondary"
+              >
+                Privacy Policy
+              </a>
+              <a
+                href="/terms.html"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-border bg-secondary/50 px-3 py-2 text-sm font-medium hover:bg-secondary"
+              >
+                Terms of Service
+              </a>
+            </div>
+          </Card>
+        </motion.div>
+
         {/* Offline Queue */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <Card className="p-4 space-y-3 border-yellow-500/30">
@@ -500,10 +522,12 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
               <Label className="font-bold">Data & Account</Label>
             </div>
 
-            <Button variant="outline" className="w-full justify-start" onClick={handleExportData}>
-              <Export size={16} className="mr-2" />
-              Export My Data
-            </Button>
+            <AccountPrivacyPanel
+              username={currentUser.username}
+              accessToken={session?.access_token}
+              localUser={currentUser as unknown as Record<string, unknown>}
+              onDeleted={() => signOut()}
+            />
 
             <Separator />
 

@@ -135,4 +135,20 @@ describe('getFittedViewport', () => {
     expect(viewport?.zoom).toBeGreaterThanOrEqual(0.6)
     expect(viewport?.zoom).toBeLessThanOrEqual(4.5)
   })
+
+  it('fits venues beyond the first 100 entries', () => {
+    const venues = Array.from({ length: 101 }, (_, index) => makeVenue({
+      id: `venue-${index}`,
+      location: { lat: 37.77, lng: -122.43, address: '' },
+    }))
+    venues.push(makeVenue({
+      id: 'far-east',
+      location: { lat: 37.77, lng: -122.33, address: '' },
+    }))
+
+    const viewport = getFittedViewport(venues, { width: 600, height: 400 })
+
+    expect(viewport).not.toBeNull()
+    expect(viewport?.center.lng).toBeCloseTo(-122.38, 2)
+  })
 })

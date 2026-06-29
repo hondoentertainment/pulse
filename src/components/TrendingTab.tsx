@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Venue, PulseWithUser, User } from '@/lib/types'
+import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
+import type { PulseStory } from '@/lib/stories'
 import { Favorites } from '@/components/Favorites'
 import { MySpotsFeed } from '@/components/MySpotsFeed'
 import { VenueReel } from '@/components/VenueReel'
 import { HomeSocialFeed } from '@/components/HomeSocialFeed'
+import { StoryRing } from '@/components/StoryRing'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Star, Scales } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getTrendingSections } from '@/lib/venue-trending'
+import { getActiveStories } from '@/lib/stories'
 import { getRecommendations } from '@/lib/venue-recommendations'
 import { getDayType, getPeakCategories, getTimeOfDay } from '@/lib/time-contextual-scoring'
 import { getSmartVenueSort } from '@/lib/contextual-intelligence'
 import { PromotedVenue, isPromotionActive, sortWithPromotions } from '@/lib/promoted-discoveries'
-import type { Pulse } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 import { useLivePulsesInfinite } from '@/hooks/api/use-pulses'
 import { hasSupabaseEnv } from '@/lib/data'
@@ -22,6 +24,7 @@ interface TrendingTabProps {
   venues: Venue[]
   pulses: Pulse[]
   pulsesWithUsers: PulseWithUser[]
+  stories?: PulseStory[]
   favoriteVenues: Venue[]
   followedVenues: Venue[]
   userLocation: { lat: number; lng: number } | null
@@ -34,6 +37,7 @@ interface TrendingTabProps {
   onPromotionClick?: (promotionId: string) => void
   onSubTabChange: (tab: 'trending' | 'my-spots') => void
   onVenueClick: (venue: Venue) => void
+  onStoryClick?: (stories: PulseStory[], index: number) => void
   onToggleFavorite: (venueId: string) => void
   onToggleFollow: (venueId: string) => void
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
@@ -47,6 +51,7 @@ export function TrendingTab({
   venues,
   pulses,
   pulsesWithUsers,
+  stories = [],
   favoriteVenues,
   followedVenues,
   userLocation,
@@ -56,6 +61,7 @@ export function TrendingTab({
   trendingSubTab,
   onSubTabChange,
   onVenueClick,
+  onStoryClick,
   onToggleFavorite,
   onToggleFollow,
   onReaction,
@@ -67,6 +73,7 @@ export function TrendingTab({
   onPromotionClick,
   onCompareVenues,
 }: TrendingTabProps) {
+  const activeStories = useMemo(() => getActiveStories(stories), [stories])
   const activePromotions = (promotions || []).filter(isPromotionActive)
   const seenPromotionImpressions = useRef<Set<string>>(new Set())
 
@@ -152,6 +159,22 @@ export function TrendingTab({
           </button>
         </div>
       </div>
+
+      {trendingSubTab === 'trending' && activeStories.length > 0 && onStoryClick && (
+        <>
+          <div className="max-w-2xl mx-auto px-4 pt-4">
+            <StoryRing
+              stories={activeStories}
+              currentUserId={currentUser.id}
+              onStoryClick={(userId) => {
+                const userStories = activeStories.filter(s => s.userId === userId)
+                onStoryClick(userStories, 0)
+              }}
+            />
+          </div>
+          <Separator className="max-w-2xl mx-auto" />
+        </>
+      )}
 
       {trendingSubTab === 'trending' && (
         <VenueReel venues={venues} pulses={pulses} onVenueClick={onVenueClick} />

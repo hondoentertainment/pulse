@@ -8,10 +8,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { fetchSignalEntries } from '@/lib/signal-data'
+import { AccountPrivacyPanel } from '@/components/AccountPrivacyPanel'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { usePushRegistration } from '@/hooks/use-push-registration'
 import { useHaptics } from '@/hooks/use-haptics'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import { SignalChart } from '@/components/signal/SignalChart'
@@ -39,7 +41,13 @@ function Shell({ children, inertChrome }: { children: ReactNode; inertChrome?: b
   }, [location.pathname])
 
   return (
-    <main className="min-h-dvh bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))] text-foreground [background-image:radial-gradient(circle_at_20%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_32rem),radial-gradient(circle_at_85%_10%,color-mix(in_oklch,var(--accent)_14%,transparent),transparent_28rem)]">
+    <main id="main-content" className="min-h-dvh bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))] text-foreground [background-image:radial-gradient(circle_at_20%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_32rem),radial-gradient(circle_at_85%_10%,color-mix(in_oklch,var(--accent)_14%,transparent),transparent_28rem)]" tabIndex={-1}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
       <div
         className="mx-auto min-h-dvh w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-5"
         {...(inertChrome ? { inert: true } : {})}
@@ -276,7 +284,7 @@ function HistoryPage() {
 }
 
 function SettingsPage() {
-  const { signOut } = useSupabaseAuth()
+  const { signOut, session, user } = useSupabaseAuth()
   const profile = useSignalStore((state) => state.profile)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
@@ -346,6 +354,16 @@ function SettingsPage() {
           </p>
         )}
       </section>
+      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+        <p className="font-black">Privacy & account</p>
+        <AccountPrivacyPanel
+          username={profile?.displayName ?? user?.email ?? 'user'}
+          accessToken={session?.access_token}
+          localUser={profile ? { profile } : undefined}
+          onDeleted={() => signOut()}
+          compact
+        />
+      </section>
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
         Sign out
       </Button>
@@ -357,6 +375,9 @@ function SettingsPage() {
 function SignalRoutes() {
   const { user } = useSupabaseAuth()
   const userId = user?.id ?? 'local-user'
+  // Native-only: requests push permission + registers the device token once
+  // signed in. No-op on web.
+  usePushRegistration({ userId: user?.id })
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const mergeRemoteEntries = useSignalStore((state) => state.mergeRemoteEntries)

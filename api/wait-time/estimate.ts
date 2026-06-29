@@ -32,9 +32,7 @@ type ResponseLike = {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __waitTimeCache: Map<string, VenueWaitTime> | undefined
-  // eslint-disable-next-line no-var
   var __waitTimeRateLimiter: Map<string, number[]> | undefined
 }
 

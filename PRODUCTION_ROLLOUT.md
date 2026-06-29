@@ -6,20 +6,22 @@ This document turns the current prototype gaps into a practical rollout plan for
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| **Phase 0** | Stabilize the prototype | In progress |
-| **Phase 1** | Build production foundations | Not started |
-| **Phase 2** | Harden for beta | Not started |
-| **Phase 3** | Launch readiness | Not started |
+| **Phase 0** | Stabilize the prototype | Complete |
+| **Phase 1** | Build production foundations | In progress |
+| **Phase 2** | Harden for beta | In progress |
+| **Phase 3** | Launch readiness | In progress |
 
 ## Current Starting Point
 
-The app has a strong feature surface and a healthy test baseline, but several core production needs are still missing:
+The app has a strong feature surface and a healthy test baseline (~1200 unit tests, Playwright smoke/E2E). Recent production-hardening work includes server-side pulse creation, push delivery (FCM HTTP v1 + APNs), friend-pulse notifications, Supabase notification prefs, account export/delete, and Supabase data-path smoke tests.
 
-- Venue data is seeded from mock datasets and client state bootstrapping
-- User and app state are managed in client-side Spark KV hooks
-- Reverse geocoding is called directly from the browser
-- Public API and webhook support exist as library logic rather than deployed services
-- End-to-end coverage, CI policy, auth, and observability are still incomplete
+Remaining gaps before a geo-gated public launch:
+
+- Product decision: Pulse Signal (default) vs Venue PWA shell
+- Live Supabase validation + launch-city venue seed (`npm run smoke:supabase`)
+- Push credentials configured and verified on real devices (`POST /api/push/test`)
+- Account privacy flows signed off on staging
+- Prod feature-flag matrix documented in Vercel
 
 ## Phase 0: Stabilize The Prototype
 
@@ -29,10 +31,10 @@ The app has a strong feature surface and a healthy test baseline, but several co
 
 - [ ] Remove remaining low-value lint warnings and dead code
 - [ ] Add Playwright smoke coverage for onboarding, map, pulse creation, venue page, and notifications
-- [ ] Set up CI to block merges on `npm run lint`, `npm run test`, and `npm run build`
-- [ ] Document local setup, release checks, and repository conventions
-- [ ] Add bundle-size tracking and performance budgets
-- [ ] Fix remaining test failures (analytics, interactive map)
+- [x] Set up CI to block merges on `npm run lint`, `npm run test`, and `npm run build`
+- [x] Document local setup, release checks, and repository conventions
+- [x] Add bundle-size tracking and performance budgets (CI `bundle-size` + `lighthouse` jobs)
+- [x] Fix remaining test failures (analytics, interactive map)
 
 ### Current Progress
 
@@ -99,14 +101,14 @@ The app has a strong feature surface and a healthy test baseline, but several co
 
 ### Work Items
 
-- [ ] Finalize privacy policy, terms of service, and data-retention behavior
-- [ ] Create launch runbooks, rollback steps, and on-call expectations
+- [x] Finalize privacy policy, terms of service, and data retention — wire into Settings (`/privacy.html`, `/terms.html`)
+- [x] Implement GDPR/CCPA export + account deletion via `/api/account/export` and `/api/account/delete`
+- [ ] Create launch runbooks, rollback steps, and on-call expectations — see [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md)
 - [ ] Triage dependency vulnerabilities and finalize release candidate checks
 - [ ] Validate scaling assumptions for read-heavy venue discovery and write-heavy pulse flows
-- [ ] Review security posture of auth, webhook, media, and public API surfaces
+- [ ] Review security posture of auth, Stripe webhooks, ticket QR HMAC, admin routes — [SECURITY.md](SECURITY.md)
 - [ ] Define support ownership for product, engineering, and moderation events
-- [ ] Implement GDPR/CCPA data export and deletion flows
-- [ ] Final accessibility audit (target Lighthouse score 0.95+)
+- [ ] Final accessibility audit (target Lighthouse score 0.95+; CI threshold updated)
 - [ ] Performance budget enforcement (target LCP < 2.5s on 4G)
 
 ### Exit Criteria

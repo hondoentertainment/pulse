@@ -11,6 +11,7 @@ import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
 import type { EnergyRating, Pulse } from '@/lib/types'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
+import { normalizePulse } from '@/lib/pulse-media'
 
 // ── Row <-> Domain mapping ───────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ interface PulseRow {
 }
 
 function rowToPulse(row: PulseRow): Pulse {
-  return {
+  return normalizePulse({
     id: row.id,
     userId: row.user_id,
     venueId: row.venue_id,
@@ -52,7 +53,7 @@ function rowToPulse(row: PulseRow): Pulse {
     expiresAt: row.expires_at,
     isPending: false,
     uploadError: false,
-  }
+  })
 }
 
 const SELECT_COLUMNS = `

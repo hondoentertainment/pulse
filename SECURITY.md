@@ -75,7 +75,16 @@ Some app state is stored in client-managed layers (Spark KV, localStorage) and n
 - Client-side cache only for offline support and UI preferences
 - Clear cache invalidation on auth state changes (logout, session expiry)
 
-### 6. Dependency Hygiene
+### 7. Launch Readiness (Phase 3)
+
+Before public launch, verify:
+
+- Privacy Policy and Terms linked from Settings (`/privacy.html`, `/terms.html`)
+- GDPR export (`GET /api/account/export`) and deletion (`POST /api/account/delete`) on staging
+- Stripe webhook HMAC and ticket QR secrets rotated — see [LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md)
+- No service role or webhook secrets in the client bundle
+
+## Dependency Hygiene
 
 Dependencies should be audited regularly, and known vulnerabilities should be triaged before each release candidate.
 

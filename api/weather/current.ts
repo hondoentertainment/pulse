@@ -34,9 +34,7 @@ interface CachedEntry {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __weatherCache: Map<string, CachedEntry> | undefined
-  // eslint-disable-next-line no-var
   var __weatherRateLimiter: Map<string, number[]> | undefined
 }
 

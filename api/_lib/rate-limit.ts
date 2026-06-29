@@ -141,6 +141,12 @@ export const RATE_LIMITS = {
   moderation_check: { maxTokens: 60, refillRate: 1, windowMs: 60_000 },
   // 10 pulse creations per hour per user.
   pulse_create: { maxTokens: 10, refillRate: 10 / 3600, windowMs: 3_600_000 },
+  // 10 GDPR exports per hour per user.
+  account_export: { maxTokens: 10, refillRate: 10 / 3600, windowMs: 3_600_000 },
+  // 3 account deletions per day per user (prevents accidental hammering).
+  account_delete: { maxTokens: 3, refillRate: 3 / 86_400, windowMs: 86_400_000 },
+  // 5 test pushes per hour per user (ops/device verification).
+  push_test: { maxTokens: 5, refillRate: 5 / 3600, windowMs: 3_600_000 },
   // Generic write default — used when an endpoint forgets to pick a bucket.
   default_write: { maxTokens: 30, refillRate: 0.5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>

@@ -15,7 +15,8 @@
  * (or the classic `Authorization: Bearer <CRON_SECRET>`). We check it.
  */
 
-import { sendPush, sendSms } from '../../_lib/notify'
+import { dispatchUserNotification } from '../../_lib/dispatch-notification'
+import { sendSms } from '../../_lib/notify'
 import {
   getServiceClient,
   methodNotAllowed,
@@ -105,13 +106,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const results = await Promise.all(
       contacts.map(async contact => {
         if (contact.method === 'push' && contact.id) {
-          const r = await sendPush({
+          const r = await dispatchUserNotification({
             userId: contact.id,
             title: 'Pulse Safety Alert',
             body: smsBody,
             data: { sessionId: session.id },
           })
-          return { contactId: contact.id, ok: r.ok, provider: r.provider }
+          return {
+            contactId: contact.id,
+            ok: r.realtime.ok || r.native.dispatched > 0,
+            provider: r.native.logOnly ? r.realtime.provider : 'native+realtime',
+          }
         }
         if (contact.phone_e164) {
           const r = await sendSms({ to: contact.phone_e164, body: smsBody })

@@ -7,7 +7,7 @@ describe('resolveDeepLink', () => {
   })
 
   it('resolves pulse://pulse/:id', () => {
-    expect(resolveDeepLink('pulse://pulse/p42')).toBe('/?pulse=p42')
+    expect(resolveDeepLink('pulse://pulse/p42')).toBe('/pulse/p42')
   })
 
   it('resolves pulse://crew/:id', () => {

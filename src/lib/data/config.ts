@@ -68,7 +68,6 @@ export function warnIfUsingMockBackend(): void {
   if (warnedDevOnce) return
   warnedDevOnce = true
   if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     console.info(
       '[pulse] USE_SUPABASE_BACKEND is OFF — reads/writes use local mock fixtures. ' +
         'Set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY to enable the Supabase backend.',

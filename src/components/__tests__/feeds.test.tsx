@@ -190,6 +190,7 @@ vi.mock('@/lib/performance-engine', () => ({
 }))
 
 vi.mock('@/lib/stories', () => ({
+  getActiveStories: (stories: unknown[]) => stories ?? [],
   getStoryRings: (stories: any[], currentUserId: string) =>
     stories.map((s: any) => ({
       userId: s.userId,
@@ -361,6 +362,8 @@ describe('NotificationFeed', () => {
         currentUser={makeUser()}
         pulses={[makePulse()]}
         venues={[makeVenue()]}
+        notifications={[{ id: 'n1', type: 'friend_pulse', userId: 'u1', read: false, createdAt: new Date().toISOString(), pulseId: 'p1', venueId: 'v1' }]}
+        onNotificationsChange={vi.fn()}
         onNotificationClick={vi.fn()}
       />
     )

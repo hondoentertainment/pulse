@@ -216,6 +216,10 @@ export function GlobalSearch({
 
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  // Only auto-scroll the active result into view for keyboard navigation.
+  // Doing it on mouse hover causes a continuous smooth-scroll while the pointer
+  // moves, which feels janky and prevents clicks from landing.
+  const keyboardNav = useRef(false)
 
   // ---- Debounce ----
   useEffect(() => {
@@ -375,11 +379,13 @@ export function GlobalSearch({
     setActiveIndex(-1)
   }, [debouncedQuery])
 
-  // ---- Scroll active item into view ----
+  // ---- Scroll active item into view (keyboard only) ----
   useEffect(() => {
     if (activeIndex < 0 || !listRef.current) return
+    if (!keyboardNav.current) return
     const el = listRef.current.querySelector(`[data-result-index="${activeIndex}"]`)
     el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    keyboardNav.current = false
   }, [activeIndex])
 
   // ---- Handlers ----
@@ -445,6 +451,7 @@ export function GlobalSearch({
         case 'ArrowDown': {
           e.preventDefault()
           if (hasResults) {
+            keyboardNav.current = true
             setActiveIndex((prev) =>
               prev < flatResults.length - 1 ? prev + 1 : 0,
             )
@@ -454,6 +461,7 @@ export function GlobalSearch({
         case 'ArrowUp': {
           e.preventDefault()
           if (hasResults) {
+            keyboardNav.current = true
             setActiveIndex((prev) =>
               prev > 0 ? prev - 1 : flatResults.length - 1,
             )
@@ -493,11 +501,15 @@ export function GlobalSearch({
           initial="hidden"
           animate="visible"
           exit="exit"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search venues, cities and categories"
         >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-background/95 backdrop-blur-xl"
             onClick={onClose}
+            aria-hidden="true"
           />
 
           {/* Content */}
@@ -524,6 +536,7 @@ export function GlobalSearch({
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Search venues, cities, categories..."
+                    aria-label="Search venues, cities, categories"
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck={false}

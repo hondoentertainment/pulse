@@ -2,6 +2,7 @@
 export { useVenues, useVenue, venueKeys } from './use-venues'
 export {
   usePulses,
+  usePulse,
   useLivePulsesInfinite,
   useVenuePulsesInfinite,
   useCreatePulse,

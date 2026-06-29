@@ -5,18 +5,6 @@
  * and ensure data integrity.
  */
 
-/** HTML tags that are considered safe for basic formatting */
-const SAFE_TAGS = new Set([
-  'b', 'i', 'u', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li',
-  'span', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote',
-  'code', 'pre', 'small', 'sub', 'sup', 'mark',
-])
-
-/** HTML attributes that are considered safe */
-const SAFE_ATTRIBUTES = new Set([
-  'href', 'title', 'class', 'id', 'target', 'rel',
-])
-
 /** Dangerous tag pattern — matches script, iframe, object, embed, form, etc. */
 const DANGEROUS_TAG_RE = /<\/?(?:script|iframe|object|embed|form|input|textarea|select|button|applet|meta|link|base|style)\b[^>]*>/gi
 

@@ -8,7 +8,7 @@ CI/CD pipelines in `.github/workflows/`. All workflows use Node.js 20 unless not
 
 | Workflow | File | Trigger | Purpose |
 |----------|------|---------|---------|
-| **CI** | `ci.yml` | Push/PR to `main` | Lint, test, build, smoke, audit |
+| **CI** | `ci.yml` | Push/PR to `main` | Lint, test, build, bundle-size, smoke, lighthouse (PR), audit |
 | **Deploy** | `deploy.yml` | Manual dispatch | Vercel preview + optional production |
 | **Lighthouse CI** | `lighthouse.yml` | PR to `main` | Performance, a11y, bundle budget |
 | **Native Sync** | `native-sync.yml` | Tag `native-*` / manual | Capacitor sync artifact |
@@ -26,9 +26,12 @@ Runs on every push and pull request to `main`/`master`.
 | `lint` | 10 min | `npm ci` → `npm run lint` | ESLint, max 500 warnings |
 | `test` | 10 min | `npm ci` → `npm run test` | Vitest unit suite |
 | `build` | 15 min | `npm ci` → `npm run build` | TypeScript + Vite production build |
-| `typecheck-strict` | 15 min | `npx tsc -b` | Strict TS (continue-on-error) |
-| `smoke-preview` | 20 min | build + Playwright | `VITE_E2E_AUTH_BYPASS=true` |
-| `dependency-audit` | 10 min | `npm audit --audit-level=high` | Uploads JSON report artifact |
+| `bundle-size` | 15 min | build + `npm run bundle-size` | JS gzip + PWA precache budgets |
+| `smoke-preview` | 20 min | Playwright Signal smoke | `VITE_E2E_AUTH_BYPASS=true` |
+| `e2e-signal` | 20 min | Signal tab navigation E2E | Hard fail |
+| `typecheck-strict` | 15 min | `npx tsc -b` | Advisory (`continue-on-error`) |
+| `lighthouse` | 20 min | build + Lighthouse CI + bundle-size | PRs only; hard fail |
+| `dependency-audit` | 10 min | `npm audit --audit-level=high` | Advisory (`continue-on-error`) |
 
 ### Concurrency
 

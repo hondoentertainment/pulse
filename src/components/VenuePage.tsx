@@ -48,6 +48,9 @@ import { useCurrentTime } from '@/hooks/use-current-time'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
 import { queryClient } from '@/lib/query-client'
+import { VenueHighlightsPanel } from '@/components/VenueHighlightsPanel'
+import type { VenueHighlight } from '@/lib/stories'
+import type { Pulse } from '@/lib/types'
 
 interface VenuePageProps {
   venue: Venue
@@ -75,6 +78,8 @@ interface VenuePageProps {
   onLoadMoreVenuePulses?: () => void
   hasMoreVenuePulses?: boolean
   isLoadingMoreVenuePulses?: boolean
+  venueHighlights?: VenueHighlight[]
+  highlightPulses?: Pulse[]
 }
 
 export function VenuePage({
@@ -102,6 +107,8 @@ export function VenuePage({
   onLoadMoreVenuePulses,
   hasMoreVenuePulses,
   isLoadingMoreVenuePulses,
+  venueHighlights = [],
+  highlightPulses = [],
 }: VenuePageProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
@@ -555,6 +562,12 @@ export function VenuePage({
         />
 
         <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
+
+        <VenueHighlightsPanel
+          venueId={venue.id}
+          highlights={venueHighlights}
+          pulses={highlightPulses.length > 0 ? highlightPulses : venuePulses}
+        />
 
         {/* Phase 2: Activity Stream */}
         <VenueActivityStream

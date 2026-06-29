@@ -32,6 +32,16 @@ export type AccessibilityFeature =
   | 'signer_on_request'
   | 'braille_menu'
 
+export type VenueDressCode =
+  | 'casual'
+  | 'smart_casual'
+  | 'upscale'
+  | 'formal'
+  | 'costume_required'
+  | 'no_code'
+
+export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
+
 export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
   'wheelchair_accessible',
   'step_free_entry',
@@ -97,6 +107,12 @@ export interface Venue {
   firstRealCheckInAt?: string
   scoreVelocity?: number
   lastActivity?: string
+  dressCode?: VenueDressCode | null
+  coverChargeCents?: number | null
+  coverChargeNote?: string | null
+  indoorOutdoor?: VenueIndoorOutdoor | null
+  capacityHint?: number | null
+  contextualScore?: number
   integrations?: {
     music?: {
       spotifyUrl?: string

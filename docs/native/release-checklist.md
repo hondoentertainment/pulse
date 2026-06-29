@@ -26,7 +26,7 @@ Walk this list before tagging `native-*` and kicking off a store submission.
 - [ ] FCM project has the correct package name allow-listed
 - [ ] `push_tokens` table migrated in prod Supabase
 - [ ] Smoke test: log in on a test device, confirm a row is written to `push_tokens`
-- [ ] Smoke test: send a test push via `sendPushToUser()` from a serverless shell
+- [ ] Smoke test: send a test push via `POST /api/push/test` (authenticated; targets self by default)
 
 ## Deep links
 - [ ] `https://app.pulse.nightlife/.well-known/apple-app-site-association` returns 200, `application/json`

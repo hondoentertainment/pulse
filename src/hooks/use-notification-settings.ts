@@ -1,45 +1,55 @@
+import { useEffect, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
+import { fetchNotificationSettings, patchNotificationSettings } from '@/lib/api-client'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  type NotificationSettings,
+} from '@/lib/notification-settings'
 
-export interface NotificationSettings {
-  friendPulses: boolean
-  friendNearbyVenues: boolean
-  trendingVenues: boolean
-  pulseReactions: boolean
-  weeklyDigest: boolean
-  groupReactions: boolean
-  groupFriendPulses: boolean
-  groupTrendingVenues: boolean
-}
-
-const DEFAULT_SETTINGS: NotificationSettings = {
-  friendPulses: true,
-  friendNearbyVenues: true,
-  trendingVenues: true,
-  pulseReactions: true,
-  weeklyDigest: false,
-  groupReactions: true,
-  groupFriendPulses: false,
-  groupTrendingVenues: false
-}
+export type { NotificationSettings } from '@/lib/notification-settings'
 
 export function useNotificationSettings() {
+  const { session, isPlaceholder } = useSupabaseAuth()
   const [settings, setSettings] = useKV<NotificationSettings>(
     'notification-settings',
-    DEFAULT_SETTINGS
+    DEFAULT_NOTIFICATION_SETTINGS,
   )
 
-  const updateSetting = (key: keyof NotificationSettings, value: boolean) => {
-    setSettings((current) => {
-      if (!current) return DEFAULT_SETTINGS
-      return {
-        ...current,
-        [key]: value
-      }
+  useEffect(() => {
+    const token = session?.access_token
+    if (!token || isPlaceholder) return
+
+    let cancelled = false
+    void fetchNotificationSettings({ accessToken: token }).then((result) => {
+      if (cancelled || !result.ok) return
+      setSettings(result.data)
     })
-  }
+
+    return () => {
+      cancelled = true
+    }
+  }, [session?.access_token, isPlaceholder, setSettings])
+
+  const updateSetting = useCallback(
+    (key: keyof NotificationSettings, value: boolean) => {
+      setSettings((current) => {
+        const base = current ?? DEFAULT_NOTIFICATION_SETTINGS
+        return { ...base, [key]: value }
+      })
+
+      const token = session?.access_token
+      if (token && !isPlaceholder) {
+        void patchNotificationSettings({ [key]: value }, { accessToken: token }).catch(() => {
+          // Keep optimistic local state; server sync is best-effort.
+        })
+      }
+    },
+    [session?.access_token, isPlaceholder, setSettings],
+  )
 
   return {
     settings,
-    updateSetting
+    updateSetting,
   }
 }

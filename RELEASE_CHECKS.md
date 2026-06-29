@@ -29,6 +29,17 @@ Before a production deployment, verify these flows in the app:
 4. Open pulse creation and verify the dialog opens and basic submission flow still works.
 5. Open notifications and profile pages and confirm they load without runtime errors.
 6. Confirm onboarding does not regress for a fresh session.
+7. Open Settings → verify Privacy Policy and Terms links load.
+8. Settings → Export My Data downloads a JSON file.
+9. (Staging only) Settings → Delete Account with a test user — confirm sign-out and data removal.
+
+## Launch Readiness
+
+Before a **public** launch (not a controlled prototype), complete [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) and ensure:
+
+- Legal pages are linked from Settings
+- GDPR export and account deletion work against staging Supabase
+- On-call rotation and rollback are documented in [docs/SUPPORT_RUNBOOK.md](docs/SUPPORT_RUNBOOK.md)
 
 ## Deploy Readiness Notes
 

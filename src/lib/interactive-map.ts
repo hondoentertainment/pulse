@@ -185,9 +185,17 @@ type VenuePointProperties = { point: VenueRenderPoint }
 let clusterIndex: Supercluster<VenuePointProperties, Supercluster.ClusterProperties> | null = null
 let lastPointsSignature = ''
 
+function isClusterProperties(
+  properties: VenuePointProperties | Supercluster.ClusterProperties,
+): properties is Supercluster.ClusterProperties {
+  return 'cluster' in properties && properties.cluster === true
+}
+
 function getPointsSignature(points: VenueRenderPoint[]) {
   return points
-    .map((point) => `${point.venue.id}:${point.venue.location.lat}:${point.venue.location.lng}`)
+    .map((point) => (
+      `${point.venue.id}:${point.venue.location.lat}:${point.venue.location.lng}:${Math.round(point.x)}:${Math.round(point.y)}`
+    ))
     .sort()
     .join('|')
 }
@@ -233,9 +241,10 @@ export function clusterVenueRenderPoints(
   const singles: VenueRenderPoint[] = []
 
   clustersData.forEach(c => {
-    if (c.properties?.cluster) {
+    const properties = c.properties
+    if (isClusterProperties(properties)) {
       // It's a cluster
-      const leaves = clusterIndex!.getLeaves(c.properties.cluster_id, Infinity)
+      const leaves = clusterIndex!.getLeaves(properties.cluster_id, Infinity)
       const venues = leaves.map(l => l.properties.point as VenueRenderPoint)
       
       const x = venues.reduce((sum, v) => sum + v.x, 0) / venues.length
@@ -243,14 +252,14 @@ export function clusterVenueRenderPoints(
       const maxPulseScore = venues.reduce((max, v) => Math.max(max, v.venue.pulseScore), 0)
 
       clusters.push({
-        id: `cluster-${c.properties.cluster_id}`,
+        id: `cluster-${properties.cluster_id}`,
         x,
         y,
         venues,
         maxPulseScore,
       })
     } else {
-      singles.push(c.properties.point)
+      singles.push(properties.point)
     }
   })
 
@@ -323,7 +332,7 @@ export function getPreviewVenuePoints(params: {
 }
 
 export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
-  const focusVenues = venues.slice(0, 100)
+  const focusVenues = venues
   if (focusVenues.length === 0) return null
 
   if (focusVenues.length === 1) {

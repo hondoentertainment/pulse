@@ -159,3 +159,26 @@ DELETE FROM pulses WHERE id = 'pulse_id_here';
 | Map not rendering | Missing API key or CORS issue | Verify environment variables |
 | Offline queue not syncing | Service worker error | Clear SW cache, check offline-queue.ts logs |
 | Slow venue discovery | Large payload or missing index | Enable pagination, run EXPLAIN ANALYZE |
+| User GDPR export fails | Missing auth or RLS on a table | Check `/api/account/export` warnings array; verify JWT |
+| Account deletion fails | Missing `SUPABASE_SERVICE_ROLE_KEY` | Set service role in Vercel prod env; retry |
+
+## 8. On-Call Rotation
+
+Define a primary and secondary on-call before public launch. Minimum response targets:
+
+| Severity | Example | Target response |
+|----------|---------|-----------------|
+| Sev 1 | App down, auth broken, data leak | 15 minutes |
+| Sev 2 | Pulse create failing for many users | 30 minutes |
+| Sev 3 | Degraded map, non-critical feature | Next business day |
+
+**Primary duties:**
+
+1. Monitor Sentry and uptime ping on `/api/health` during launch window.
+2. Triage using §6 — rollback via Vercel if deploy-related.
+3. Escalate privacy deletion/export issues to engineering with user id and timestamp.
+4. Log incidents in the team channel with: start time, impact, mitigation, root cause.
+
+**Handoff:** At rotation change, confirm open incidents, pending deploys, and Supabase maintenance windows.
+
+Launch sign-off: [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md).

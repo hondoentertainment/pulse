@@ -210,8 +210,9 @@ export function useRealtimeSubscription(enabled = true) {
         { event: '*', schema: 'public', table: 'venue_live_aggregates' },
         (payload) => {
           if (!payload.new) return
-          const summary = mapVenueLiveAggregate(payload.new as Parameters<typeof mapVenueLiveAggregate>[0])
-          const venueId = payload.new.venue_id as string
+          const row = payload.new as Parameters<typeof mapVenueLiveAggregate>[0]
+          const summary = mapVenueLiveAggregate(row)
+          const venueId = row.venue_id
           queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
           queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
             old.map(venue => {

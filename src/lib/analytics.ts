@@ -5,8 +5,6 @@
  * seeded content analytics, and error monitoring.
  */
 
-import { track as vercelTrack } from '@vercel/analytics'
-
 type AnalyticsPropertyValue = string | number | boolean | null | undefined
 
 export type AnalyticsEvent =
@@ -41,6 +39,7 @@ export type AnalyticsEvent =
   | { type: 'signal_nav'; timestamp: number; to: string }
   | { type: 'signal_sync_retry'; timestamp: number }
   | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
+  | { type: 'waitlist_join'; timestamp: number; city: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
 
 export interface FunnelStep {
@@ -99,12 +98,21 @@ export interface IntegrationActionSummary {
 const eventLog: AnalyticsEvent[] = []
 const MAX_EVENTS = 10000
 let sentryModulePromise: Promise<typeof import('@sentry/react')> | null = null
+let vercelTrackPromise: Promise<(event: string, properties?: Record<string, AnalyticsPropertyValue>) => void> | null =
+  null
 
 function loadSentry() {
   if (!sentryModulePromise) {
     sentryModulePromise = import('@sentry/react')
   }
   return sentryModulePromise
+}
+
+function loadVercelTrack() {
+  if (!vercelTrackPromise) {
+    vercelTrackPromise = import('@vercel/analytics').then((m) => m.track)
+  }
+  return vercelTrackPromise
 }
 
 /**
@@ -116,14 +124,14 @@ export function trackEvent(event: AnalyticsEvent): void {
     eventLog.splice(0, eventLog.length - MAX_EVENTS)
   }
   
-  // Broadcast to Vercel Analytics
+  // Broadcast to Vercel Analytics (lazy — keeps @vercel/analytics out of the critical path).
   if (typeof window !== 'undefined') {
     const { type, timestamp: _timestamp, ...properties } = event
-    try {
-      vercelTrack(type, properties as Record<string, AnalyticsPropertyValue>)
-    } catch {
-      // Ignore analytics transport issues so local/test environments stay deterministic.
-    }
+    void loadVercelTrack()
+      .then((track) => track(type, properties as Record<string, AnalyticsPropertyValue>))
+      .catch(() => {
+        // Ignore analytics transport issues so local/test environments stay deterministic.
+      })
   }
 }
 /**

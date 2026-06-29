@@ -12,6 +12,8 @@
  *     so call sites don't need try/catch boilerplate.
  */
 
+import type { NotificationSettings } from '@/lib/notification-settings'
+
 export type ApiSuccess<T> = { ok: true; data: T }
 export type ApiFailure = { ok: false; status: number; error: string }
 export type ApiResult<T> = ApiSuccess<T> | ApiFailure
@@ -124,6 +126,27 @@ export async function fetchPulseListPage(
     signal: opts.signal,
   })
   return parse<PulseListApiPayload>(res)
+}
+
+export interface PulseDetailApiPayload {
+  pulse: unknown
+}
+
+/**
+ * GET /api/pulses/get — authenticated pulse detail by id.
+ */
+export async function fetchPulseDetail(
+  pulseId: string,
+  opts: ApiClientOptions = {},
+): Promise<ApiResult<PulseDetailApiPayload>> {
+  const url = new URL(endpoint('/api/pulses/get', opts), typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+  url.searchParams.set('id', pulseId)
+  const res = await fetch(`${url.pathname}${url.search}`, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts.signal,
+  })
+  return parse<PulseDetailApiPayload>(res)
 }
 
 // ── Spotify ───────────────────────────────────────────────────────
@@ -306,4 +329,30 @@ export async function generateApiKey(
     signal: opts.signal,
   })
   return parse<GeneratedApiKey>(res)
+}
+
+// ── Notification settings ─────────────────────────────────────────
+
+export async function fetchNotificationSettings(
+  opts: ApiClientOptions = {},
+): Promise<ApiResult<NotificationSettings>> {
+  const res = await fetch(endpoint('/api/account/notification-settings', opts), {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts.signal,
+  })
+  return parse<NotificationSettings>(res)
+}
+
+export async function patchNotificationSettings(
+  patch: Partial<NotificationSettings>,
+  opts: ApiClientOptions = {},
+): Promise<ApiResult<NotificationSettings>> {
+  const res = await fetch(endpoint('/api/account/notification-settings', opts), {
+    method: 'PATCH',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(patch),
+    signal: opts.signal,
+  })
+  return parse<NotificationSettings>(res)
 }
