@@ -13,7 +13,7 @@ function makePulse(overrides: Partial<Pulse>): Pulse {
     userId: 'u',
     venueId: 'v1',
     photos: [],
-    energyRating: 3 as Pulse['energyRating'],
+    energyRating: 'buzzing',
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
     reactions: { fire: [], eyes: [], skull: [], lightning: [] },
