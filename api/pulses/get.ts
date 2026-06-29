@@ -63,5 +63,5 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  ok(res, { pulse: rowToAppPulse(data as PulseRow) })
+  ok(res, { pulse: rowToAppPulse(data as unknown as PulseRow) })
 }

@@ -13,7 +13,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http'
-import { verifySupabaseJwt } from '../_lib/auth'
+import { verifySupabaseJwt, extractBearer } from '../_lib/auth'
 import { consume } from '../_lib/rate-limit'
 import { createUserClient } from '../_lib/supabase-server'
 import { exportUserData } from '../_lib/account-lifecycle'
@@ -37,7 +37,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const token = req.headers?.authorization?.replace(/^Bearer\s+/i, '').trim()
+  const token = extractBearer(req)
   if (!token) {
     fail(res, 401, 'unauthenticated', 'Missing bearer token')
     return

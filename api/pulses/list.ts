@@ -70,7 +70,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const rows = (Array.isArray(data) ? data : []) as PulseRow[]
+  const rows = (Array.isArray(data) ? data : []) as unknown as PulseRow[]
   ok(res, {
     pulses: rows.map(rowToAppPulse),
     limit,
