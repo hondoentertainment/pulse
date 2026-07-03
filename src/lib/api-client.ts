@@ -48,10 +48,7 @@ async function parse<T>(response: Response): Promise<ApiResult<T>> {
     // body may be empty; fall through
   }
   if (!response.ok) {
-    const error =
-      (payload && typeof payload === 'object' && 'error' in payload
-        ? String((payload as { error: unknown }).error)
-        : null) ?? `Request failed (${response.status})`
+    const error = extractApiError(payload, response.status)
     return { ok: false, status: response.status, error }
   }
   const data =
@@ -59,6 +56,20 @@ async function parse<T>(response: Response): Promise<ApiResult<T>> {
       ? ((payload as { data: T }).data)
       : (payload as T)
   return { ok: true, data }
+}
+
+function extractApiError(payload: unknown, status: number): string {
+  if (payload && typeof payload === 'object' && 'error' in payload) {
+    const err = (payload as { error: unknown }).error
+    if (typeof err === 'string') return err
+    if (err && typeof err === 'object' && 'message' in err) {
+      return String((err as { message: unknown }).message)
+    }
+  }
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    return String((payload as { message: unknown }).message)
+  }
+  return `Request failed (${status})`
 }
 
 function endpoint(path: string, opts?: ApiClientOptions): string {
@@ -147,6 +158,40 @@ export async function fetchPulseDetail(
     signal: opts.signal,
   })
   return parse<PulseDetailApiPayload>(res)
+}
+
+// ── Pulse writes (Edge, JWT + RLS) ───────────────────────────────────────
+
+export interface CreatePulseApiBody {
+  venueId: string
+  energyRating: string
+  caption?: string
+  photos?: string[]
+  video?: string | null
+  hashtags?: string[]
+  crewId?: string | null
+}
+
+export interface CreatePulseApiPayload {
+  pulse: unknown
+  moderation?: { severity: string; reasons: string[] }
+}
+
+/**
+ * POST /api/pulses/create — authenticated pulse creation with server moderation,
+ * rate limits, and friend-push fan-out.
+ */
+export async function createPulseViaApi(
+  body: CreatePulseApiBody,
+  opts: ApiClientOptions,
+): Promise<ApiResult<CreatePulseApiPayload>> {
+  const res = await fetch(endpoint('/api/pulses/create', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  })
+  return parse<CreatePulseApiPayload>(res)
 }
 
 // ── Spotify ───────────────────────────────────────────────────────

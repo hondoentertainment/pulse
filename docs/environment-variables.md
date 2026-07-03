@@ -48,6 +48,8 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Video pulse feed |
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disable writes during outage |
 | `VITE_LAUNCHED_CITIES` | empty | Geo launch allowlist |
+| `VITE_APP_MODE` | `signal` | Root shell: `signal` or `venue` |
+| `VITE_ALLOW_VENUE_SHELL` | `false` | Set `true` to enable venue shell in production builds |
 
 Full detail: [Feature Flags](feature-flags.md).
 

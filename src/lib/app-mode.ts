@@ -6,6 +6,7 @@
  *
  * Set `VITE_APP_MODE=venue` for E2E / staging of the full venue product.
  * Production defaults to `signal` per the current launch surface.
+ * In production builds, `venue` also requires `VITE_ALLOW_VENUE_SHELL=true`.
  */
 
 export type AppMode = 'signal' | 'venue'
@@ -19,7 +20,14 @@ function parseAppMode(value: unknown): AppMode | null {
 }
 
 export function resolveAppMode(): AppMode {
-  return parseAppMode(import.meta.env.VITE_APP_MODE) ?? 'signal'
+  const parsed = parseAppMode(import.meta.env.VITE_APP_MODE) ?? 'signal'
+  if (import.meta.env.PROD && parsed === 'venue') {
+    const allow =
+      typeof import.meta.env.VITE_ALLOW_VENUE_SHELL === 'string' &&
+      import.meta.env.VITE_ALLOW_VENUE_SHELL.trim().toLowerCase() === 'true'
+    if (!allow) return 'signal'
+  }
+  return parsed
 }
 
 export const APP_MODE: AppMode = resolveAppMode()

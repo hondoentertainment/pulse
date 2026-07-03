@@ -23,6 +23,7 @@ import { consume } from '../_lib/rate-limit'
 import { asString, asEnum, isPlainObject } from '../_lib/validate'
 import { checkContent } from '../_lib/moderation'
 import { createUserClient } from '../_lib/supabase-server'
+import { rowToAppPulse, type PulseRow } from '../_lib/pulse-mapper'
 import { notifyFriendsOfPulse } from '../_lib/friend-pulse-notify'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
@@ -198,7 +199,7 @@ export default async function handler(
     ok(
       res,
       {
-        pulse: data ?? pulseRow,
+        pulse: rowToAppPulse((data ?? pulseRow) as unknown as PulseRow),
         moderation: {
           severity: moderation.severity,
           reasons: moderation.reasons,

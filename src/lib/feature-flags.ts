@@ -20,6 +20,8 @@ function parseFlag(value: unknown, fallback: boolean): boolean {
   return fallback
 }
 
+const isProdBuild = import.meta.env.PROD
+
 const defaults: FeatureFlagMap = {
   integrations: true,
   socialDashboard: true,
@@ -28,9 +30,8 @@ const defaults: FeatureFlagMap = {
   weatherBoost: true,
   waitTime: true,
   accessibilityFilter: true,
-  // Safety kit — default on in dev via env.example; in prod it's gated on
-  // having Twilio env vars.
-  safetyKit: true,
+  // Safety kit — off in production until Twilio creds are configured.
+  safetyKit: !isProdBuild,
   // Ticketing & AI concierge — default OFF (require env configuration).
   ticketing: false,
   aiConcierge: false,

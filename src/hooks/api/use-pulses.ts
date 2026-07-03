@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import type { Pulse } from '@/lib/types'
 import { PulseData, hasSupabaseEnv, type PulsePage } from '@/lib/data'
 import { assertWriteAllowed } from '@/lib/auth/require-auth'
-import { fetchPulseListPage, fetchPulseDetail } from '@/lib/api-client'
+import { fetchPulseListPage, fetchPulseDetail, createPulseViaApi } from '@/lib/api-client'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { venueKeys } from './use-venues'
 import { normalizePulse } from '@/lib/pulse-media'
@@ -147,6 +147,7 @@ export function usePulse(pulseId: string | undefined) {
  */
 export function useCreatePulse() {
   const queryClient = useQueryClient()
+  const { session } = useSupabaseAuth()
 
   return useMutation<Pulse, Error, Pulse>({
     mutationFn: async (pulse) => {
@@ -154,6 +155,24 @@ export function useCreatePulse() {
         return pulse
       }
       await assertWriteAllowed('create a pulse')
+      const accessToken = session?.access_token
+      if (accessToken) {
+        const input = mapPulseToCreateInput(pulse)
+        const result = await createPulseViaApi(
+          {
+            venueId: input.venueId,
+            energyRating: input.energyRating,
+            caption: input.caption,
+            photos: input.photos,
+            video: input.video ?? null,
+            hashtags: input.hashtags,
+            crewId: input.crewId ?? null,
+          },
+          { accessToken },
+        )
+        if (!result.ok) throw new Error(result.error)
+        return normalizePulse(result.data.pulse as Pulse)
+      }
       return PulseData.createPulse(mapPulseToCreateInput(pulse))
     },
     onSuccess: (_data, variables) => {

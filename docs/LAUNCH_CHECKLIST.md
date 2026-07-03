@@ -17,7 +17,7 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 |------|-------|--------|
 | [ ] Decide the primary launch surface (Signal vs Venue) and document it here | Product | Pending sign-off |
 | [ ] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | |
-| [ ] Confirm the non-launch shell is unreachable / clearly gated | Eng | |
+| [ ] Confirm the non-launch shell is unreachable / clearly gated | Eng | Venue shell requires `VITE_ALLOW_VENUE_SHELL=true` in production |
 
 > **Default today:** production deploys boot **Pulse Signal**. Switch to the venue shell only after an explicit product decision.
 
@@ -30,8 +30,8 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 | [x] Privacy Policy linked from Settings (`/privacy.html`) — *publishing copy is Product-owned* | Product / Eng | Linked in code |
 | [x] Terms of Service linked from Settings (`/terms.html`) — *publishing copy is Product-owned* | Product / Eng | Linked in code |
 | [ ] Data retention documented in Privacy Policy (pulses, telemetry, Safety Kit) | Legal / Eng | |
-| [ ] GDPR/CCPA **Export My Data** tested on staging (Settings → Data & Account) | Eng | |
-| [ ] Account **Delete** tested on staging — verify auth user + profile removed | Eng | |
+| [ ] GDPR/CCPA **Export My Data** tested on staging (Settings → Data & Account) | Eng | E2E: `e2e/account-privacy.spec.ts` (demo export); staging sign-off still required |
+| [ ] Account **Delete** tested on staging — verify auth user + profile removed | Eng | E2E covers sign-in gate; staging delete QA still required |
 | [ ] Cookie / analytics disclosure if third-party analytics enabled | Product | |
 
 ---
@@ -40,7 +40,7 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 
 | Item | Owner | Status |
 |------|-------|--------|
-| [ ] Auth enforced on all write APIs (`POST /api/pulses/create`, account delete, etc.) | Eng | Unit auth-guard tests in `api/_lib/__tests__/write-api-auth.test.ts` |
+| [x] Auth enforced on all write APIs (`POST /api/pulses/create`, account delete, etc.) | Eng | `api/_lib/__tests__/write-api-auth.test.ts` + `admin-auth.test.ts` |
 | [ ] `SUPABASE_SERVICE_ROLE_KEY` set in production only (never in client bundle) | Eng | |
 | [ ] Stripe webhook signature verification enabled (`STRIPE_WEBHOOK_SECRET`) | Eng | |
 | [ ] Ticket QR HMAC secret rotated and not committed (`TICKET_QR_SECRET`) | Eng | |
@@ -60,7 +60,7 @@ See [SECURITY.md](../SECURITY.md) for full priorities.
 | [ ] Critical flows keyboard-navigable (onboarding, map, create pulse, settings) | Eng | |
 | [x] Skip link + main landmark present (`#main-content`) — both shells | Eng | Done |
 | [x] Global search overlay exposes `role="dialog"` + `aria-modal` + labelled input | Eng | Done |
-| [ ] High contrast mode available in Settings | Eng | |
+| [x] High contrast mode available in Settings | Eng | Done |
 | [ ] Screen reader smoke on iOS VoiceOver or Android TalkBack | QA | |
 
 See [accessibility-audit.md](accessibility-audit.md) for component-level findings.

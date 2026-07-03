@@ -18,6 +18,8 @@ import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 
 import { postEventToApi } from '@/lib/server-api'
 import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supabase-api'
+import { createPulseViaApi } from '@/lib/api-client'
+import { normalizePulse } from '@/lib/pulse-media'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
@@ -47,7 +49,7 @@ function milesBetween(
 
 export function useAppHandlers() {
   const state = useAppState()
-  const { updateProfile } = useSupabaseAuth()
+  const { updateProfile, session } = useSupabaseAuth()
   const { navigateToPulse, navigateToVenue, navigateToTab } = useRouteNavigation()
   const {
     venues,
@@ -121,24 +123,52 @@ export function useAppHandlers() {
     const today = now.toISOString().split('T')[0]
     const venuePulsesToday = (pulses || []).filter(p => p.venueId === venueForPulse.id && new Date(p.createdAt).toISOString().split('T')[0] === today)
     const isPioneer = venuePulsesToday.length === 0
+    const accessToken = session?.access_token ?? null
+    const useApiCreate = USE_SUPABASE_BACKEND && Boolean(accessToken)
 
-    const newPulse = {
-      id: `pulse-${Date.now()}`,
-      userId: currentUser.id,
-      venueId: venueForPulse.id,
-      crewId: currentCrewCheckIn?.crewId,
-      photos: data.photos,
-      video: data.video,
-      energyRating: data.energyRating,
-      caption: data.caption,
-      hashtags: data.hashtags || [],
-      createdAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      reactions: { fire: [] as string[], eyes: [] as string[], skull: [] as string[], lightning: [] as string[] },
-      views: 0,
-      isPending: true,
-      credibilityWeight: userCredibility,
-      isPioneer,
+    let newPulse: Pulse
+
+    if (useApiCreate) {
+      const apiResult = await createPulseViaApi(
+        {
+          venueId: venueForPulse.id,
+          energyRating: data.energyRating,
+          caption: data.caption,
+          photos: data.photos,
+          video: data.video ?? null,
+          hashtags: data.hashtags,
+          crewId: currentCrewCheckIn?.crewId ?? null,
+        },
+        { accessToken },
+      )
+      if (!apiResult.ok) {
+        const description =
+          apiResult.status === 429
+            ? 'You are posting too fast — try again in a minute.'
+            : apiResult.error
+        toast.error('Could not post pulse', { description })
+        return
+      }
+      newPulse = normalizePulse(apiResult.data.pulse as Pulse)
+    } else {
+      newPulse = {
+        id: `pulse-${Date.now()}`,
+        userId: currentUser.id,
+        venueId: venueForPulse.id,
+        crewId: currentCrewCheckIn?.crewId,
+        photos: data.photos,
+        video: data.video,
+        energyRating: data.energyRating,
+        caption: data.caption,
+        hashtags: data.hashtags || [],
+        createdAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        reactions: { fire: [] as string[], eyes: [] as string[], skull: [] as string[], lightning: [] as string[] },
+        views: 0,
+        isPending: true,
+        credibilityWeight: userCredibility,
+        isPioneer,
+      }
     }
 
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
@@ -181,7 +211,9 @@ export function useAppHandlers() {
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 
-    const syncOnline = await uploadPulseToSupabase(newPulse)
+    const syncOnline = useApiCreate
+      ? true
+      : await uploadPulseToSupabase(newPulse)
     if (!syncOnline) {
       toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
     }
@@ -209,7 +241,7 @@ export function useAppHandlers() {
     const updatedVenuePulses = [...(pulses || []), newPulse].filter(p => p.venueId === venueForPulse.id)
     const newScore = calculatePulseScore(updatedVenuePulses)
 
-    if (notificationSettings?.friendPulses && currentUser.friends.length > 0) {
+    if (notificationSettings?.friendPulses && currentUser.friends.length > 0 && !useApiCreate) {
       setNotifications(current => {
         const n = { id: `notif-${Date.now()}`, type: 'friend_pulse' as const, userId: currentUser.id, pulseId: newPulse.id, venueId: venueForPulse.id, createdAt: now.toISOString(), read: false }
         return current ? [n, ...current] : [n]
@@ -248,6 +280,7 @@ export function useAppHandlers() {
     setPulses,
     setStories,
     setVenues,
+    session?.access_token,
     updateProfile,
     userLocation,
     venueForPulse,
