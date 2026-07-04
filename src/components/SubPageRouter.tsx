@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
+import { useAppState, ALL_USERS, type SubPage } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'
@@ -20,7 +20,15 @@ const LegalPage = lazy(() => import('@/components/LegalPage').then(m => ({ defau
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
-export function SubPageRouter() {
+interface SubPageRouterProps {
+  /**
+   * URL-driven page override. When rendered from a router route (AppRoutes),
+   * the pathname decides the page; without it, the shell's subPage state does.
+   */
+  page?: NonNullable<SubPage>
+}
+
+export function SubPageRouter({ page }: SubPageRouterProps = {}) {
   const state = useAppState()
   const { handleEventsUpdate, handleTabChange } = useAppHandlers()
   const { updateProfile } = useSupabaseAuth()
@@ -34,7 +42,8 @@ export function SubPageRouter() {
     setContentReports,
   } = state
 
-  if (!subPage || !currentUser || !venues) return null
+  const activePage = page ?? subPage
+  if (!activePage || !currentUser || !venues) return null
 
   const nav = (
     <BottomNav
@@ -163,6 +172,6 @@ export function SubPageRouter() {
     },
   }
 
-  const render = config[subPage]
+  const render = config[activePage]
   return render ? render() : null
 }

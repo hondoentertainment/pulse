@@ -180,8 +180,8 @@ export function AppRoutes() {
         <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
         <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
         <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
-        <Route path="/privacy" element={<SubPageRouter />} />
-        <Route path="/terms" element={<SubPageRouter />} />
+        <Route path="/privacy" element={<SubPageRouter page="privacy" />} />
+        <Route path="/terms" element={<SubPageRouter page="terms" />} />
 
         {/* Main tabs */}
         <Route path="/discover" element={wrapTab('discover')} />
