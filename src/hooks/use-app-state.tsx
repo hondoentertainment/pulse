@@ -217,7 +217,6 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const { session } = useSupabaseAuth()
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [storedSelectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const selectedMarketKey = storedSelectedMarketKey ?? 'seattle'
