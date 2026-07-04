@@ -316,7 +316,9 @@ export function useAppHandlers() {
           setPulses(current => {
             if (!current) return []
             const next = current.map(pulse =>
-              pulse.id === pulseId ? { ...pulse, reactions: result.data.reactions } : pulse,
+              pulse.id === pulseId
+                ? { ...pulse, reactions: result.data.reactions as Pulse['reactions'] }
+                : pulse,
             )
             queryClient.setQueryData(['pulses'], next)
             return next

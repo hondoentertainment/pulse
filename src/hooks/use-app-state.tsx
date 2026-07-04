@@ -39,7 +39,6 @@ import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'
-import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 import { loadPrototypeCatalog, loadSimulatedLocation } from '@/lib/prototype-catalog'
 import {
