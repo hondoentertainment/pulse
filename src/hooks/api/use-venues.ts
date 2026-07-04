@@ -1,10 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Venue } from '@/lib/types'
-import {
-  isSupabaseConfigured,
-  fetchVenues as fetchVenuesFromApi,
-  fetchVenueById,
-} from '@/lib/api-client'
+import { VenueData, hasSupabaseEnv } from '@/lib/data'
 import { MOCK_VENUES } from '@/lib/mock-data'
 
 /** Query key factory for venue-related queries. */
@@ -14,32 +10,31 @@ export const venueKeys = {
 }
 
 /**
- * Fetch all venues.
- * Falls back to mock data when Supabase is not configured.
+ * Fetch all venues from Supabase when env is configured; otherwise mock fixtures.
  */
 export function useVenues() {
   return useQuery<Venue[], Error>({
     queryKey: venueKeys.all,
     queryFn: async () => {
-      if (!isSupabaseConfigured()) return MOCK_VENUES
-      return fetchVenuesFromApi()
+      if (!hasSupabaseEnv()) return MOCK_VENUES
+      return VenueData.listVenues()
     },
   })
 }
 
 /**
- * Fetch a single venue by ID.
- * Falls back to mock data lookup when Supabase is not configured.
+ * Fetch a single venue by ID from Supabase when env is configured; otherwise mock lookup.
  */
 export function useVenue(id: string | undefined) {
   return useQuery<Venue | undefined, Error>({
     queryKey: venueKeys.detail(id ?? ''),
     queryFn: async () => {
       if (!id) return undefined
-      if (!isSupabaseConfigured()) {
+      if (!hasSupabaseEnv()) {
         return MOCK_VENUES.find((v) => v.id === id)
       }
-      return fetchVenueById(id)
+      const venue = await VenueData.getVenue(id)
+      return venue ?? undefined
     },
     enabled: Boolean(id),
   })

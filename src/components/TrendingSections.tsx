@@ -19,6 +19,8 @@ interface TrendingSectionsProps {
   onVenueClick: (venue: Venue) => void
   isFavorite: (venueId: string) => boolean
   onToggleFavorite: (venueId: string) => void
+  isFollowed?: (venueId: string) => boolean
+  onToggleFollow?: (venueId: string) => void
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -71,7 +73,9 @@ export function TrendingSections({
   userLocation,
   onVenueClick,
   isFavorite,
-  onToggleFavorite
+  onToggleFavorite,
+  isFollowed,
+  onToggleFollow,
 }: TrendingSectionsProps) {
   if (sections.length === 0) {
     return (
@@ -150,6 +154,8 @@ export function TrendingSections({
                     isJustPopped={section.title === 'Just Popped Off'}
                     isFavorite={isFavorite(venue.id)}
                     onToggleFavorite={onToggleFavorite}
+                    isFollowed={isFollowed?.(venue.id)}
+                    onToggleFollow={onToggleFollow}
                     showPreTrendingLabel={isPreTrending}
                   />
                 )

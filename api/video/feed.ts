@@ -67,5 +67,6 @@ export default function handler(req: RequestLike, res: ResponseLike) {
     components: scored.components,
   }))
 
-  ok(res, { items, nextCursor, hasMore: nextCursor !== null }, CACHE_SECONDS)
+  res.setHeader('Cache-Control', `s-maxage=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`)
+  ok(res, { items, nextCursor, hasMore: nextCursor !== null })
 }

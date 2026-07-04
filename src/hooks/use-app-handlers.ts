@@ -26,6 +26,23 @@ import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/
 import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
+import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { getUserIdOrNull } from '@/lib/auth/require-auth'
+
+function milesBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 3958.8
+  const toR = (x: number) => (x * Math.PI) / 180
+  const dLat = toR(b.lat - a.lat)
+  const dLng = toR(b.lng - a.lng)
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)))
+}
+
 export function useAppHandlers() {
   const state = useAppState()
   const { updateProfile } = useSupabaseAuth()
@@ -33,6 +50,7 @@ export function useAppHandlers() {
     venues,
     pulses,
     currentUser,
+    userLocation,
     setActiveTab,
     setSelectedVenue,
     setPulses,
@@ -69,6 +87,14 @@ export function useAppHandlers() {
 
   const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
     if (!venueForPulse || !currentUser || !venues) return
+
+    if (USE_SUPABASE_BACKEND) {
+      const userId = await getUserIdOrNull()
+      if (!userId) {
+        toast.error('Sign in required', { description: 'Sign in to post a pulse to the live feed.' })
+        return
+      }
+    }
 
     const recentActions = (pulses || [])
       .filter(pulse => pulse.userId === currentUser.id)
@@ -157,6 +183,24 @@ export function useAppHandlers() {
       toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
     }
 
+    if (USE_SUPABASE_BACKEND && syncOnline) {
+      try {
+        const distMi = userLocation
+          ? milesBetween(userLocation, venueForPulse.location)
+          : undefined
+        await CheckInData.createCheckIn({
+          venueId: venueForPulse.id,
+          lat: userLocation?.lat,
+          lng: userLocation?.lng,
+          distanceFromVenueMi: distMi,
+          crewId: currentCrewCheckIn?.crewId,
+          source: userLocation ? 'geo' : 'manual',
+        })
+      } catch (err) {
+        console.warn('[pulse] check-in persist failed', err)
+      }
+    }
+
     setPulses(current => { if (!current) return []; return current.map(p => p.id === newPulse.id ? { ...p, isPending: false, uploadError: false } : p) })
 
     const updatedVenuePulses = [...(pulses || []), newPulse].filter(p => p.venueId === venueForPulse.id)
@@ -202,6 +246,7 @@ export function useAppHandlers() {
     setStories,
     setVenues,
     updateProfile,
+    userLocation,
     venueForPulse,
     venues,
   ])

@@ -37,7 +37,7 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
       whileTap={{ scale: 0.98 }}
     >
       <Card
-        className="group cursor-pointer overflow-hidden border-border/70 bg-card/90 p-0 transition-all duration-300 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/15"
+        className="group relative cursor-pointer overflow-hidden border-border/70 bg-card/90 p-0 transition-all duration-300 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/15"
         onClick={onClick}
       >
         <div className="relative h-36 overflow-hidden bg-secondary">
@@ -65,6 +65,11 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                 {isJustPopped && (
                   <Badge className="bg-accent text-accent-foreground text-xs shadow-lg shadow-accent/20">
                     Just popped
+                  </Badge>
+                )}
+                {isFollowed && (
+                  <Badge variant="outline" className="border-primary/40 bg-primary/15 text-xs text-primary">
+                    Following
                   </Badge>
                 )}
                 {scoreIsLive ? (

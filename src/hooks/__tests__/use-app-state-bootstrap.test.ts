@@ -3,6 +3,7 @@ import type { User, Venue } from '@/lib/types'
 
 vi.mock('@/lib/supabase', () => ({
   hasSupabaseConfig: false,
+  hasPlaceholderCredentials: () => true,
   supabase: {
     functions: {
       invoke: vi.fn(),

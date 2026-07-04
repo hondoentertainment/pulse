@@ -1,15 +1,18 @@
 import { useMemo, type ReactNode } from 'react'
-import { Compass, Lightning, MapPin, SealCheck, TrendUp } from '@phosphor-icons/react'
+import { Compass, Lightning, MapPin, SealCheck, TrendUp, HeartStraight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { getEnergyLabel, getEnergyColor } from '@/lib/pulse-engine'
 import { getRightNowDecisionSections, type RightNowDecision } from '@/lib/right-now-decisions'
 import type { User, Venue } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface RightNowSectionProps {
   venues: Venue[]
   currentUser: User
   userLocation?: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
+  isFollowed?: (venueId: string) => boolean
+  onToggleFollow?: (venueId: string) => void
 }
 
 interface SectionConfig {
@@ -45,6 +48,8 @@ export function RightNowSection({
   currentUser,
   userLocation,
   onVenueClick,
+  isFollowed,
+  onToggleFollow,
 }: RightNowSectionProps) {
   const sections = useMemo(
     () => getRightNowDecisionSections(venues, currentUser, userLocation),
@@ -96,6 +101,8 @@ export function RightNowSection({
                 <RightNowCard
                   key={item.venue.id}
                   item={item}
+                  isFollowed={isFollowed?.(item.venue.id)}
+                  onToggleFollow={onToggleFollow}
                   onClick={() => onVenueClick(item.venue)}
                 />
               ))}
@@ -107,7 +114,17 @@ export function RightNowSection({
   )
 }
 
-function RightNowCard({ item, onClick }: { item: RightNowDecision; onClick: () => void }) {
+function RightNowCard({
+  item,
+  onClick,
+  isFollowed,
+  onToggleFollow,
+}: {
+  item: RightNowDecision
+  onClick: () => void
+  isFollowed?: boolean
+  onToggleFollow?: (venueId: string) => void
+}) {
   const energyColor = getEnergyColor(item.venue.pulseScore)
   const energyLabel = getEnergyLabel(item.venue.pulseScore)
   const waitLabel = item.liveData.waitTime === null
@@ -117,46 +134,71 @@ function RightNowCard({ item, onClick }: { item: RightNowDecision; onClick: () =
       : `~${item.liveData.waitTime} min line`
 
   return (
-    <motion.button
+    <motion.div
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
-      onClick={onClick}
-      className="w-full rounded-2xl border border-border bg-card/90 p-4 text-left transition-colors hover:border-primary/30"
+      className="relative w-full rounded-2xl border border-border bg-card/90 transition-colors hover:border-primary/30"
     >
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold">{item.venue.name}</p>
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-              style={{ color: energyColor, backgroundColor: `${energyColor}20` }}
-            >
-              {energyLabel}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {item.venue.category ?? 'Venue'}{item.distanceMiles !== null ? ` • ${formatDistance(item.distanceMiles)}` : ''}
-          </p>
-        </div>
-        <div className="rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1 text-right">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pulse</p>
-          <p className="text-sm font-bold text-primary">{item.venue.pulseScore}</p>
-        </div>
-      </div>
-
-      <p className="mt-3 text-sm font-medium">{item.headline}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <InfoPill label={item.sourceLabel} tone="verified" />
-        <InfoPill label={waitLabel} tone="muted" />
-        {item.liveData.doorMode.guestListStatus && (
-          <InfoPill label={`Guest list ${item.liveData.doorMode.guestListStatus}`} tone="muted" />
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'w-full rounded-2xl p-4 text-left',
+          onToggleFollow && 'pr-14',
         )}
-      </div>
+      >
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold">{item.venue.name}</p>
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ color: energyColor, backgroundColor: `${energyColor}20` }}
+              >
+                {energyLabel}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {item.venue.category ?? 'Venue'}{item.distanceMiles !== null ? ` • ${formatDistance(item.distanceMiles)}` : ''}
+            </p>
+          </div>
+          <div className="rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1 text-right">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pulse</p>
+            <p className="text-sm font-bold text-primary">{item.venue.pulseScore}</p>
+          </div>
+        </div>
 
-      <p className="mt-2 text-[11px] text-muted-foreground">{item.trustLabel}</p>
-    </motion.button>
+        <p className="mt-3 text-sm font-medium">{item.headline}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <InfoPill label={item.sourceLabel} tone="verified" />
+          <InfoPill label={waitLabel} tone="muted" />
+          {item.liveData.doorMode.guestListStatus && (
+            <InfoPill label={`Guest list ${item.liveData.doorMode.guestListStatus}`} tone="muted" />
+          )}
+        </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground">{item.trustLabel}</p>
+      </button>
+      {onToggleFollow && (
+        <button
+          type="button"
+          aria-label={isFollowed ? 'Unfollow venue' : 'Follow venue'}
+          className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleFollow(item.venue.id)
+          }}
+        >
+          <HeartStraight
+            size={20}
+            weight={isFollowed ? 'fill' : 'regular'}
+            className={isFollowed ? 'text-primary' : undefined}
+          />
+        </button>
+      )}
+    </motion.div>
   )
 }
 

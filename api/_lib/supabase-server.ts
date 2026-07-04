@@ -85,3 +85,5 @@ export const createAdminClient = (): SupabaseClient | null => {
     },
   })
 }
+
+export const getServiceSupabase = createAdminClient

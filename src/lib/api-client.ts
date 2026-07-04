@@ -64,6 +64,68 @@ function endpoint(path: string, opts?: ApiClientOptions): string {
   return `${base}${path}`
 }
 
+// ── Venue catalog (Edge, JWT + RLS) ──────────────────────────────────────
+
+export interface VenueListApiPayload {
+  venues: unknown[]
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+/**
+ * GET /api/venues/list — authenticated venue page (same-origin).
+ * Returns `ApiResult<VenueListApiPayload>`; rows match Postgrest `venues` shape.
+ */
+export async function fetchVenueListPage(
+  opts: ApiClientOptions & { limit?: number; offset?: number } = {},
+): Promise<ApiResult<VenueListApiPayload>> {
+  const limit = opts.limit ?? 50
+  const offset = opts.offset ?? 0
+  const url = new URL(endpoint('/api/venues/list', opts), typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+  url.searchParams.set('limit', String(limit))
+  url.searchParams.set('offset', String(offset))
+  const res = await fetch(`${url.pathname}${url.search}`, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts.signal,
+  })
+  return parse<VenueListApiPayload>(res)
+}
+
+export interface PulseListApiPayload {
+  pulses: unknown[]
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+/**
+ * GET /api/pulses/list — authenticated live or venue-scoped pulse page.
+ * When `venueId` is set, returns recent pulses for that venue (not limited by expiry).
+ * Otherwise returns non-expired pulses only.
+ */
+export async function fetchPulseListPage(
+  opts: ApiClientOptions & {
+    limit?: number
+    offset?: number
+    venueId?: string
+  } = {},
+): Promise<ApiResult<PulseListApiPayload>> {
+  const limit = opts.limit ?? 50
+  const offset = opts.offset ?? 0
+  const url = new URL(endpoint('/api/pulses/list', opts), typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+  url.searchParams.set('limit', String(limit))
+  url.searchParams.set('offset', String(offset))
+  if (opts.venueId) url.searchParams.set('venueId', opts.venueId)
+  const res = await fetch(`${url.pathname}${url.search}`, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts.signal,
+  })
+  return parse<PulseListApiPayload>(res)
+}
+
 // ── Spotify ───────────────────────────────────────────────────────
 
 export interface SpotifyTrack {

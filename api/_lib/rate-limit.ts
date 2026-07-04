@@ -24,42 +24,73 @@ const slidingBuckets = new Map<string, SlidingBucket>()
 
 export interface SlidingRateLimitResult {
   allowed: boolean
+  ok: boolean
   remaining: number
   limit: number
   resetMs: number
+  resetAt: number
   retryAfterSeconds?: number
 }
 
 export function rateLimit(
   key: string,
-  limit: number,
-  windowMs: number
+  limitOrUser: number | string,
+  limitOrWindowMs: number,
+  maybeWindowMs?: number,
 ): SlidingRateLimitResult {
+  const compositeKey = typeof limitOrUser === 'string' ? `${key}:${limitOrUser}` : key
+  const limit = typeof limitOrUser === 'number' ? limitOrUser : limitOrWindowMs
+  const windowMs = typeof limitOrUser === 'number' ? limitOrWindowMs : (maybeWindowMs ?? limitOrWindowMs)
   const now = Date.now()
   const cutoff = now - windowMs
-  const bucket = slidingBuckets.get(key) ?? { timestamps: [] }
+  const bucket = slidingBuckets.get(compositeKey) ?? { timestamps: [] }
   bucket.timestamps = bucket.timestamps.filter(ts => ts > cutoff)
 
   if (bucket.timestamps.length >= limit) {
-    slidingBuckets.set(key, bucket)
+    slidingBuckets.set(compositeKey, bucket)
     const oldest = bucket.timestamps[0] ?? now
     const retryAfterMs = Math.max(0, oldest + windowMs - now)
     return {
       allowed: false,
+      ok: false,
       remaining: 0,
       limit,
       resetMs: retryAfterMs,
+      resetAt: now + retryAfterMs,
       retryAfterSeconds: Math.ceil(retryAfterMs / 1000),
     }
   }
 
   bucket.timestamps.push(now)
-  slidingBuckets.set(key, bucket)
+  slidingBuckets.set(compositeKey, bucket)
   return {
     allowed: true,
+    ok: true,
     remaining: limit - bucket.timestamps.length,
     limit,
     resetMs: windowMs,
+    resetAt: now + windowMs,
+  }
+}
+
+export type LegacyRateLimitConfig = {
+  maxTokens: number
+  refillRatePerSec: number
+}
+
+export function checkRateLimit(
+  key: string,
+  config: LegacyRateLimitConfig,
+): { allowed: boolean; remaining: number; retryAfterSeconds?: number } {
+  const windowMs = Math.max(
+    1_000,
+    Math.ceil((config.maxTokens / Math.max(config.refillRatePerSec, 0.000001)) * 1000),
+  )
+  const result = rateLimit(key, config.maxTokens, windowMs)
+  return {
+    allowed: result.allowed,
+    remaining: result.remaining,
+    retryAfterSeconds: result.retryAfterSeconds,
   }
 }
 

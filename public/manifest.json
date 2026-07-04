@@ -1,13 +1,13 @@
 {
-  "name": "Pulse — Live Venue Energy",
+  "name": "Pulse Signal",
   "short_name": "Pulse",
-  "description": "See what's live. Share the vibe.",
+  "description": "A quick daily check-in for energy, mood, and focus—trends, streaks, and one clear next step.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
-  "theme_color": "#a855f7",
-  "categories": ["social", "entertainment", "lifestyle"],
+  "theme_color": "#6d28d9",
+  "categories": ["health", "lifestyle", "wellness"],
   "icons": [
     {
       "src": "/icons/icon-72.png",
@@ -58,7 +58,7 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Trending venues near you"
+      "label": "Pulse — your daily signal"
     }
   ],
   "share_target": {

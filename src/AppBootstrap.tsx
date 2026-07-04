@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 
 import { trackError } from '@/lib/analytics'
+import { initWebVitals } from '@/lib/observability/web-vitals'
 
 /**
  * Lazily initialise Sentry **after** first paint.
@@ -83,6 +84,7 @@ export function AppBootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
     const cleanup = registerGlobalErrorHandlers()
     scheduleSentryInit()
+    initWebVitals()
     return cleanup
   }, [])
 

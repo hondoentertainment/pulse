@@ -8,6 +8,7 @@ import { useAppState } from '@/hooks/use-app-state'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { useCurrentTime } from '@/hooks/use-current-time'
 import { BottomNav } from '@/components/BottomNav'
 import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
@@ -47,11 +48,15 @@ const VenueMetadataRoute = lazy(() =>
  * (Onboarding, AuthGate, Dashboards, StoryViewer, CreatePulseDialog) is wrapped
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
+ *
+ * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
+ * This file remains the venue / discovery experience for reuse or future entry switches.
  */
 export function AppRoutes() {
   const state = useAppState()
   const { activeTab, navigateToTab } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
+  const currentTime = useCurrentTime()
 
   const {
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -61,8 +66,10 @@ export function AppRoutes() {
     createDialogOpen, setCreateDialogOpen,
     venueForPulse,
     locationName, isTracking, realtimeLocation,
-    locationPermissionDenied, currentTime, queuedPulseCount,
+    locationPermissionDenied, queuedPulseCount,
     sortedVenues,
+    selectedMarketKey, setSelectedMarketKey,
+    availableMarkets,
     unreadNotificationCount,
     setCurrentUser,
     storyViewerOpen, storyViewerStories,

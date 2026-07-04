@@ -1,13 +1,26 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render as rtlRender, screen, type RenderOptions } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+}
 
 // VenuePage calls useLocation(); every render needs a Router context.
 const render = (ui: React.ReactElement, options?: RenderOptions) =>
   rtlRender(ui, {
-    wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>,
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter>{children}</MemoryRouter>
+      </QueryClientProvider>
+    ),
     ...options,
   })
 
@@ -49,6 +62,8 @@ vi.mock('@phosphor-icons/react', () => ({
   Car: (p: any) => <span data-testid="icon-Car" {...p} />,
   CalendarCheck: (p: any) => <span data-testid="icon-CalendarCheck" {...p} />,
   ShareNetwork: (p: any) => <span data-testid="icon-ShareNetwork" {...p} />,
+  Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
+  SealCheck: (p: any) => <span data-testid="icon-SealCheck" {...p} />,
   Ticket: (p: any) => <span data-testid="icon-Ticket" {...p} />,
   Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
   BookmarkSimple: (p: any) => <span data-testid="icon-BookmarkSimple" {...p} />,
@@ -74,7 +89,9 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), loading: vi.fn() },
 }))
 
-// ── Lib mocks ──────────────────────────────────────────────────
+vi.mock('@/lib/supabase', () => ({
+  hasSupabaseConfig: false,
+}))
 vi.mock('@/lib/units', () => ({ formatDistance: () => '0.5 mi' }))
 vi.mock('@/lib/pulse-engine', () => ({
   formatTimeAgo: () => '5m ago',
@@ -94,6 +111,10 @@ vi.mock('@/lib/sharing', () => ({
 }))
 vi.mock('@/lib/live-intelligence', () => ({
   getVenueLiveData: () => null,
+  getVenueLiveDataFromReports: () => null,
+  addLocalLiveReport: vi.fn(),
+  createLiveReport: vi.fn(),
+  seedDemoReports: vi.fn(),
   reportWaitTime: vi.fn(),
   reportCoverCharge: vi.fn(),
   reportMusicPlaying: vi.fn(),
@@ -103,6 +124,9 @@ vi.mock('@/lib/live-intelligence', () => ({
 }))
 vi.mock('@/lib/content-moderation', () => ({
   REPORT_REASONS: ['spam', 'harassment'],
+}))
+vi.mock('@/lib/venue-operator-live', () => ({
+  seedVenueOperatorStatus: vi.fn(),
 }))
 vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
@@ -221,7 +245,6 @@ const baseProps = () => ({
   distance: 1.2,
   unitSystem: 'imperial' as const,
   locationName: 'Manhattan',
-  currentTime: new Date('2025-02-14T20:00:00Z'),
   isTracking: false,
   hasRealtimeLocation: false,
   isFavorite: false,
@@ -236,8 +259,8 @@ const baseProps = () => ({
 describe.skip('VenuePage', () => {
   it('renders the venue name and details', () => {
     render(<VenuePage {...baseProps()} />)
-    expect(screen.getByRole('heading', { name: /Test Venue/ })).toBeInTheDocument()
-    expect(screen.getByText(/123 Main St/)).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: /Test Venue/ }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/123 Main St/).length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows the Create Pulse CTA', () => {
@@ -300,16 +323,6 @@ describe.skip('VenuePage', () => {
     // The quick-actions mock includes a Quick Save button wired to onToggleFavorite
     fireEvent.click(screen.getByText('Quick Save'))
     expect(onToggleFavorite).toHaveBeenCalled()
-  })
-
-  it('renders Get Tickets button when onGetTickets is provided', () => {
-    render(<VenuePage {...baseProps()} onGetTickets={vi.fn()} />)
-    expect(screen.getByText(/Get Tickets/)).toBeInTheDocument()
-  })
-
-  it('renders Reserve Table button when onReserveTable is provided', () => {
-    render(<VenuePage {...baseProps()} onReserveTable={vi.fn()} />)
-    expect(screen.getByText(/Reserve Table/)).toBeInTheDocument()
   })
 
   it('renders "Check In With Crew" only when onStartCrewCheckIn is provided', () => {

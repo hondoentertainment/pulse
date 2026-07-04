@@ -2,6 +2,8 @@
 
 This document describes the system architecture, data flow, and module boundaries of the Pulse application.
 
+> **Deeper references:** [Component Catalog](docs/component-catalog.md) · [Hooks Catalog](docs/hooks-catalog.md) · [Lib Modules](docs/lib-modules.md) · [Routing](docs/routing.md) · [Scoring Algorithm](docs/scoring-algorithm.md) · [Database Schema](docs/database-schema.md) · [Data Layer](docs/data-layer.md)
+
 ## System Overview
 
 Pulse is a client-heavy PWA built with React 19 and Vite. The current architecture runs almost entirely in the browser, with Supabase as the planned backend. The app is designed to transition from a prototype (mock data, client state) to a production system (server persistence, real auth) without major structural rewrites.
@@ -35,6 +37,19 @@ Pulse is a client-heavy PWA built with React 19 and Vite. The current architectu
               │  Realtime/Storage │
               └───────────────────┘
 ```
+
+## App entry and routing
+
+**Production web entry:** [`src/main.tsx`](src/main.tsx) → [`src/App.tsx`](src/App.tsx).
+
+| Mode | Env | Component tree |
+|------|-----|----------------|
+| **Pulse Signal** (default) | `VITE_APP_MODE=signal` or unset | `LoginScreen` → `SignalApp` |
+| **Venue / social** | `VITE_APP_MODE=venue` | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+
+Signal routes: `/home`, `/trends`, `/history`, `/settings` (see [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)). Venue shell adds `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx).
+
+Do not merge the two shells without an explicit product decision (single app vs. separate deployables) — they share design tokens but serve different primary jobs.
 
 ## Layer Responsibilities
 

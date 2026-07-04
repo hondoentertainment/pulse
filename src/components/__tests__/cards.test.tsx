@@ -42,8 +42,7 @@ vi.mock('@phosphor-icons/react', () => {
     'Lock','LockSimple','MagnifyingGlass','MapPin','MapPinArea','MapTrifold','Martini','Medal',
     'Megaphone','Microphone','MicrophoneSlash','Minus','Moon','MusicNote','MusicNotes','NavigationArrow',
     'NotePencil','PaintBrush','Palette','PaperPlaneRight','PaperPlaneTilt','Path','Pause','PencilSimple',
-    'PersonSimpleWalk','Phone','Play','Plus','Pulse','QrCode','Question','Queue','Quotes',
-    'Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
+    'PersonSimpleWalk','Phone','Play','Plus','Pulse',    'QrCode','Question','Quotes','Queue','Ruler','Scales','Share','ShareNetwork','Shield','ShieldCheck','ShieldWarning','Skull',
     'SlidersHorizontal','Snowflake','Sparkle','SpeakerSimpleHigh','SpeakerSimpleLow','SpeakerSimpleNone','Star','Storefront',
     'Sun','TShirt','Tag','ThermometerHot','Ticket','Timer','Translate','Trash',
     'TrendDown','TrendUp','Trophy','User','UserCircle','UserPlus','Users','UsersFour',
@@ -237,7 +236,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} />)
 
-    expect(screen.getAllByText('testuser').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('testuser').length).toBeGreaterThanOrEqual(1)
     // Energy badge label
     expect(screen.getByText(/Buzzing/)).toBeTruthy()
     expect(screen.getByText('Great vibes tonight!')).toBeTruthy()
@@ -267,10 +266,7 @@ describe('PulseCard', () => {
     const pulse = makePulse()
     render(<PulseCard pulse={pulse} onReaction={onReaction} />)
 
-    // Fire reaction target is labelled "Fire reaction, <count>". Framer-motion
-    // mock renders motion.button as a <div>, so query by aria-label instead of
-    // role=button.
-    const fireButton = screen.getByLabelText(/React with fire/)
+    const fireButton = screen.getByLabelText(/React with fire/i)
     fireEvent.click(fireButton)
     expect(onReaction).toHaveBeenCalledWith('fire')
   })
@@ -287,7 +283,7 @@ describe('VenueCard', () => {
     expect(screen.getByText('Bar')).toBeTruthy()
   })
 
-  it('shows "Just Popped" badge when isJustPopped', () => {
+  it('shows "Just popped" badge when isJustPopped', () => {
     const venue = makeVenue()
     render(<VenueCard venue={venue} isJustPopped />)
 

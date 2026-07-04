@@ -68,8 +68,8 @@ export function generateDailyDrop(
   const template = TEASER_TEMPLATES[dateHash % TEASER_TEMPLATES.length]
   const teaser = template.replace('{category}', category)
 
-  // Reveal at 7 PM on the current date
-  const revealAt = new Date(currentDate + 'T19:00:00Z').toISOString()
+  // Reveal at 19:00 UTC on the current date (deterministic across CI / dev machines)
+  const revealAt = new Date(`${currentDate}T19:00:00Z`).toISOString()
 
   return {
     id: `drop-${currentDate}`,
@@ -104,8 +104,8 @@ export function generateNightRecap(
   friends: User[],
   date: string
 ): NightRecap | null {
-  const nightStart = new Date(date + 'T18:00:00Z')
-  const nightEnd = new Date(nightStart.getTime() + 12 * 60 * 60 * 1000) // +12h → 6 AM next day
+  const nightStart = new Date(`${date}T18:00:00Z`)
+  const nightEnd = new Date(nightStart.getTime() + 12 * 60 * 60 * 1000) // +12h → 6 AM next day UTC
 
   const nightPulses = pulses.filter(p => {
     if (p.userId !== userId) return false

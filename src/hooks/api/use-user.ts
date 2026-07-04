@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import type { User } from '@/lib/types'
-import {
-  isSupabaseConfigured,
-  fetchCurrentUser as fetchCurrentUserFromApi,
-  fetchUserProfile as fetchUserProfileFromApi,
-} from '@/lib/api-client'
+import { supabase } from '@/lib/supabase'
+import { fetchOrCreateProfile, fetchProfileById } from '@/lib/auth-profile'
+import { hasSupabaseEnv } from '@/lib/data'
 
 /** Default mock user matching the one seeded in use-app-state. */
 const MOCK_CURRENT_USER: User = {
@@ -42,32 +40,37 @@ export const userKeys = {
 }
 
 /**
- * Fetch the currently authenticated user.
- * Falls back to the default mock user when Supabase is not configured.
+ * Current session profile from Supabase (`profiles` + `fetchOrCreateProfile`).
+ * Falls back to the default mock user when Supabase env is not configured.
+ * When configured but there is no session, returns `null` (query still succeeds).
  */
 export function useCurrentUser() {
-  return useQuery<User, Error>({
+  return useQuery<User | null, Error>({
     queryKey: userKeys.current,
     queryFn: async () => {
-      if (!isSupabaseConfigured()) return MOCK_CURRENT_USER
-      return fetchCurrentUserFromApi()
+      if (!hasSupabaseEnv()) return MOCK_CURRENT_USER
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return null
+
+      return fetchOrCreateProfile(supabase, session.user)
     },
   })
 }
 
 /**
- * Fetch a user profile by ID.
- * Falls back to mock user lookup when Supabase is not configured.
+ * Fetch a user profile by ID from `profiles`.
  */
 export function useUserProfile(id: string | undefined) {
   return useQuery<User | undefined, Error>({
     queryKey: userKeys.profile(id ?? ''),
     queryFn: async () => {
       if (!id) return undefined
-      if (!isSupabaseConfigured()) {
+      if (!hasSupabaseEnv()) {
         return MOCK_USERS.find((u) => u.id === id)
       }
-      return fetchUserProfileFromApi(id)
+      const profile = await fetchProfileById(supabase, id)
+      return profile ?? undefined
     },
     enabled: Boolean(id),
   })
