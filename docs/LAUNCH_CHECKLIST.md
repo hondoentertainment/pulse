@@ -15,8 +15,8 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 
 | Item | Owner | Status |
 |------|-------|--------|
-| [ ] Decide the primary launch surface (Signal vs Venue) and document it here | Product | Pending sign-off |
-| [ ] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | |
+| [ ] Decide the primary launch surface (Signal vs Venue) and document it here | Product | **Engineering default: Pulse Signal** — pending Product sign-off |
+| [ ] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | See [prod-vercel-env.md](prod-vercel-env.md) |
 | [ ] Confirm the non-launch shell is unreachable / clearly gated | Eng | Venue shell requires `VITE_ALLOW_VENUE_SHELL=true` in production |
 
 > **Default today:** production deploys boot **Pulse Signal**. Switch to the venue shell only after an explicit product decision.
@@ -29,7 +29,7 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 |------|-------|--------|
 | [x] Privacy Policy linked from Settings (`/privacy.html`) — *publishing copy is Product-owned* | Product / Eng | Linked in code |
 | [x] Terms of Service linked from Settings (`/terms.html`) — *publishing copy is Product-owned* | Product / Eng | Linked in code |
-| [ ] Data retention documented in Privacy Policy (pulses, telemetry, Safety Kit) | Legal / Eng | |
+| [ ] Data retention documented in Privacy Policy (pulses, telemetry, Safety Kit) | Legal / Eng | Covered in [public/privacy.html](../public/privacy.html) §5 — Legal review still required |
 | [ ] GDPR/CCPA **Export My Data** tested on staging (Settings → Data & Account) | Eng | E2E: `e2e/account-privacy.spec.ts` (demo export); staging sign-off still required |
 | [ ] Account **Delete** tested on staging — verify auth user + profile removed | Eng | E2E covers sign-in gate; staging delete QA still required |
 | [ ] Cookie / analytics disclosure if third-party analytics enabled | Product | |
@@ -44,8 +44,8 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 | [ ] `SUPABASE_SERVICE_ROLE_KEY` set in production only (never in client bundle) | Eng | |
 | [ ] Stripe webhook signature verification enabled (`STRIPE_WEBHOOK_SECRET`) | Eng | |
 | [ ] Ticket QR HMAC secret rotated and not committed (`TICKET_QR_SECRET`) | Eng | |
-| [ ] Admin routes gated by `SUPABASE_ADMIN_EMAILS` or RLS admin role | Eng | |
-| [ ] CSP / HSTS headers verified on production (`vercel.json`) | Eng | |
+| [ ] Admin routes gated by `SUPABASE_ADMIN_EMAILS` or RLS admin role | Eng | `admin-auth.test.ts` covers `/api/keys/generate` + `/api/push/test` |
+| [x] CSP / HSTS headers verified on production (`vercel.json`) | Eng | Done — HSTS preload + CSP in `vercel.json` |
 | [ ] Dependency audit: no unmitigated critical/high vulnerabilities | Eng | |
 
 See [SECURITY.md](../SECURITY.md) for full priorities.
@@ -74,12 +74,14 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [ ] Support runbook reviewed — [SUPPORT_RUNBOOK.md](SUPPORT_RUNBOOK.md) | Ops | |
 | [ ] On-call rotation defined (see runbook §8) | Ops | |
 | [ ] Rollback tested on Vercel (promote previous deployment) | Eng | |
-| [ ] `/api/health` monitored by uptime checker | Ops | |
+| [ ] `/api/health` monitored by uptime checker | Ops | Endpoint live — configure external ping (see [prod-vercel-env.md](prod-vercel-env.md)) |
 | [ ] Sentry DSN configured for production (`VITE_SENTRY_DSN`) | Eng | |
 | [x] Native push registration wired client-side (`usePushRegistration` on sign-in) | Eng | Done (web no-op) |
 | [x] Push **delivery** implemented server-side (FCM HTTP v1 + APNs ES256/HTTP2) | Eng | Done — see env contract below |
 | [x] Push fan-out wired (Safety Kit + `POST /api/push/test`) | Eng | Done |
 | [x] Friend-pulse server push on `POST /api/pulses/create` | Eng | Done |
+| [x] Pulse-reaction server push on `POST /api/pulses/react` | Eng | Done |
+| [x] Trending-venue server push on `POST /api/notifications/trending-venue` | Eng | Done |
 | [x] Notification prefs persisted in Supabase (`profiles.notification_settings`) | Eng | Done |
 | [x] Dead push token pruning on FCM/APNs stale responses | Eng | Done |
 | [ ] Push delivery credentials set in prod + tested on a real device | Eng | Needs creds + device test |
@@ -104,8 +106,8 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [ ] Load test passed: discovery reads + pulse writes — `npm run load-test` | Eng | |
 | [ ] Staging smoke + unit tests green on release branch | Eng | |
 | [x] Pulse/venue fetch failures show a retry affordance (no silent blank states) | Eng | Done |
-| [x] Empty markets show a waitlist / "not live here yet" state (no blank feed) | Eng | Done |
-| [ ] Feature flags OFF for unfinished surfaces (ticketing, safety, concierge) unless ready | Product | |
+| [x] Production builds refuse silent mock fallback without Supabase creds | Eng | `ProductionConfigGuard` — override with `VITE_ALLOW_MOCK_BACKEND=true` |
+| [ ] Feature flags OFF for unfinished surfaces (ticketing, safety, concierge) unless ready | Product | Defaults documented in [prod-vercel-env.md](prod-vercel-env.md); `safetyKit` off in prod builds |
 
 ---
 

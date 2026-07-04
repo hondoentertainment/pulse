@@ -46,6 +46,14 @@ export function isFriendPulsesEnabled(raw: unknown): boolean {
   return mergeNotificationSettings(raw).friendPulses
 }
 
+export function isPulseReactionsEnabled(raw: unknown): boolean {
+  return mergeNotificationSettings(raw).pulseReactions
+}
+
+export function isTrendingVenuesEnabled(raw: unknown): boolean {
+  return mergeNotificationSettings(raw).trendingVenues
+}
+
 /** Validate a partial PATCH body — only known boolean keys allowed. */
 export function parseNotificationSettingsPatch(
   body: unknown,

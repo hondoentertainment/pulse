@@ -15,8 +15,16 @@ Pulse exposes serverless routes under `/api/*`, deployed as Vercel Functions. Th
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/pulses/create` | JWT | Create pulse with server moderation + rate limit (10/hr) |
+| `POST` | `/api/pulses/react` | JWT | Toggle reaction via RPC; notifies author on new reactions (120/hr) |
 | `GET` | `/api/pulses/list` | JWT | Paginated pulse feed |
+| `GET` | `/api/pulses/get` | JWT | Pulse detail by id |
 | `POST` | `/api/pulses` | — | Legacy in-memory store (offline replay prototype) |
+
+## Notifications
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/notifications/trending-venue` | JWT | Persist + push a nearby venue surge alert (respects `trendingVenues` pref, 20/hr) |
 
 ## Venues
 
@@ -195,7 +203,15 @@ Defined in `vercel.json`:
 | `/api/wait-time/recompute` | `*/10 * * * *` | Refresh wait-time estimates |
 | `/api/safety/cron/check-expired` | `*/1 * * * *` | Expire stale safety sessions |
 
+## Health
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/health` | — | Liveness probe for uptime monitors (`{ status: "ok" }`) |
+
 ## Related docs
+
+- [Production Vercel env matrix](prod-vercel-env.md) — recommended prod flags and secrets
 
 - [Secrets & Integrations](secrets-and-integrations.md) — env vars per route
 - [Backend Migration](backend-migration.md) — Supabase schema behind these routes

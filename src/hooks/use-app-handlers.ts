@@ -18,7 +18,7 @@ import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 
 import { postEventToApi } from '@/lib/server-api'
 import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supabase-api'
-import { createPulseViaApi } from '@/lib/api-client'
+import { createPulseViaApi, reactToPulseViaApi } from '@/lib/api-client'
 import { normalizePulse } from '@/lib/pulse-media'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
@@ -305,6 +305,29 @@ export function useAppHandlers() {
       return next
     })
 
+    const accessToken = session?.access_token
+    if (USE_SUPABASE_BACKEND && accessToken) {
+      void reactToPulseViaApi({ pulseId, reactionType: type }, { accessToken })
+        .then((result) => {
+          if (!result.ok) {
+            toast.error('Could not sync reaction', { description: result.error })
+            return
+          }
+          setPulses(current => {
+            if (!current) return []
+            const next = current.map(pulse =>
+              pulse.id === pulseId ? { ...pulse, reactions: result.data.reactions } : pulse,
+            )
+            queryClient.setQueryData(['pulses'], next)
+            return next
+          })
+        })
+        .catch(() => {
+          toast.error('Could not sync reaction', { description: 'Your reaction is saved locally for now.' })
+        })
+      return
+    }
+
     if (hasSupabaseConfig) {
       void togglePulseReactionInSupabase(pulseId, type)
         .then(reactions => {
@@ -320,7 +343,7 @@ export function useAppHandlers() {
           toast.error('Could not sync reaction', { description: 'Your reaction is saved locally for now.' })
         })
     }
-  }, [currentUser, setPulses])
+  }, [currentUser, session?.access_token, setPulses])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
     if (notification.pulseId) {

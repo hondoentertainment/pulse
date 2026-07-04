@@ -26,6 +26,7 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { createEvent } from '@/lib/events'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
@@ -216,6 +217,7 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
+  const { session } = useSupabaseAuth()
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [storedSelectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const selectedMarketKey = storedSelectedMarketKey ?? 'seattle'
@@ -463,7 +465,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [userLocation]
   )
 
-  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true)
+  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true, {
+    accessToken: session?.access_token,
+  })
 
   useEffect(() => {
     if (hasSupabaseConfig || realtimeLocation || simulatedLocation || locationPermissionDenied) return

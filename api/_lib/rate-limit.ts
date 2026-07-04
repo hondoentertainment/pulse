@@ -147,6 +147,10 @@ export const RATE_LIMITS = {
   account_delete: { maxTokens: 3, refillRate: 3 / 86_400, windowMs: 86_400_000 },
   // 5 test pushes per hour per user (ops/device verification).
   push_test: { maxTokens: 5, refillRate: 5 / 3600, windowMs: 3_600_000 },
+  // 120 pulse reactions per hour per user.
+  pulse_reaction: { maxTokens: 120, refillRate: 120 / 3600, windowMs: 3_600_000 },
+  // 20 trending-venue alerts per hour per user.
+  trending_venue: { maxTokens: 20, refillRate: 20 / 3600, windowMs: 3_600_000 },
   // Generic write default — used when an endpoint forgets to pick a bucket.
   default_write: { maxTokens: 30, refillRate: 0.5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>

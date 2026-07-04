@@ -13,6 +13,7 @@ import { AppProviders } from '@/AppProviders'
 import { AppBootstrap } from '@/AppBootstrap'
 import { AppRoutes } from '@/AppRoutes'
 import { isVenueAppMode } from '@/lib/app-mode'
+import { ProductionConfigGuard } from '@/components/ProductionConfigGuard'
 import { trackEvent } from '@/lib/analytics'
 import { Lightning } from '@phosphor-icons/react'
 
@@ -72,22 +73,22 @@ function AppContent() {
 }
 
 function App() {
-  if (isVenueAppMode()) {
-    return (
-      <AppProviders>
-        <Toaster position="top-center" theme="dark" richColors />
-        <AppBootstrap>
-          <AppRoutes />
-        </AppBootstrap>
-      </AppProviders>
-    )
-  }
-
   return (
-    <SupabaseAuthProvider>
-      <Toaster position="top-center" theme="dark" richColors />
-      <AppContent />
-    </SupabaseAuthProvider>
+    <ProductionConfigGuard>
+      {isVenueAppMode() ? (
+        <AppProviders>
+          <Toaster position="top-center" theme="dark" richColors />
+          <AppBootstrap>
+            <AppRoutes />
+          </AppBootstrap>
+        </AppProviders>
+      ) : (
+        <SupabaseAuthProvider>
+          <Toaster position="top-center" theme="dark" richColors />
+          <AppContent />
+        </SupabaseAuthProvider>
+      )}
+    </ProductionConfigGuard>
   )
 }
 

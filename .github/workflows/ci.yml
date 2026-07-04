@@ -197,12 +197,11 @@ jobs:
         run: npm audit --audit-level=high
 
   supabase-smoke:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -212,10 +211,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Supabase data-path smoke
+        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run smoke:supabase
+      - name: Skip (Supabase secrets not configured)
+        if: ${{ secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '' }}
+        run: echo "Skipping supabase-smoke — add SUPABASE_URL and SUPABASE_ANON_KEY to repository secrets."
 
   lighthouse:
     if: github.event_name == 'pull_request'

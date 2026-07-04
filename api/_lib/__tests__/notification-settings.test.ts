@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   mergeNotificationSettings,
   isFriendPulsesEnabled,
+  isPulseReactionsEnabled,
+  isTrendingVenuesEnabled,
   parseNotificationSettingsPatch,
   DEFAULT_NOTIFICATION_SETTINGS,
 } from '../notification-settings'
@@ -17,6 +19,11 @@ describe('notification-settings', () => {
   it('isFriendPulsesEnabled defaults to true', () => {
     expect(isFriendPulsesEnabled(null)).toBe(true)
     expect(isFriendPulsesEnabled({ friendPulses: false })).toBe(false)
+  })
+
+  it('isPulseReactionsEnabled and isTrendingVenuesEnabled honor prefs', () => {
+    expect(isPulseReactionsEnabled({ pulseReactions: false })).toBe(false)
+    expect(isTrendingVenuesEnabled({ trendingVenues: false })).toBe(false)
   })
 
   it('parseNotificationSettingsPatch rejects non-boolean values', () => {

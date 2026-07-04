@@ -194,6 +194,60 @@ export async function createPulseViaApi(
   return parse<CreatePulseApiPayload>(res)
 }
 
+export interface PulseReactApiBody {
+  pulseId: string
+  reactionType: 'fire' | 'eyes' | 'skull' | 'lightning'
+}
+
+export interface PulseReactApiPayload {
+  reactions: Record<string, string[]>
+  added: boolean
+}
+
+/**
+ * POST /api/pulses/react — authenticated reaction toggle with author notify.
+ */
+export async function reactToPulseViaApi(
+  body: PulseReactApiBody,
+  opts: ApiClientOptions,
+): Promise<ApiResult<PulseReactApiPayload>> {
+  const res = await fetch(endpoint('/api/pulses/react', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  })
+  return parse<PulseReactApiPayload>(res)
+}
+
+export interface TrendingVenueNotifyBody {
+  venueId: string
+  pulseScore?: number
+}
+
+export interface TrendingVenueNotifyPayload {
+  notified?: boolean
+  skipped?: boolean
+  reason?: string
+  venueId?: string
+}
+
+/**
+ * POST /api/notifications/trending-venue — persist + push a surge alert.
+ */
+export async function notifyTrendingVenueViaApi(
+  body: TrendingVenueNotifyBody,
+  opts: ApiClientOptions,
+): Promise<ApiResult<TrendingVenueNotifyPayload>> {
+  const res = await fetch(endpoint('/api/notifications/trending-venue', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  })
+  return parse<TrendingVenueNotifyPayload>(res)
+}
+
 // ── Spotify ───────────────────────────────────────────────────────
 
 export interface SpotifyTrack {

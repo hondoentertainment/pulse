@@ -134,4 +134,23 @@ describe('write API auth guards', () => {
     expect(state.status).toBe(401)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('POST /api/pulses/react rejects missing Authorization', async () => {
+    const { default: handler } = await import('../../pulses/react')
+    const { res, state } = makeResponse()
+    await handler(
+      { method: 'POST', body: { pulseId: 'p1', reactionType: 'fire' }, headers: {} },
+      res,
+    )
+    expect(state.status).toBe(401)
+    expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
+  })
+
+  it('POST /api/notifications/trending-venue rejects missing Authorization', async () => {
+    const { default: handler } = await import('../../notifications/trending-venue')
+    const { res, state } = makeResponse()
+    await handler({ method: 'POST', body: { venueId: 'v1' }, headers: {} }, res)
+    expect(state.status).toBe(401)
+    expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
+  })
 })

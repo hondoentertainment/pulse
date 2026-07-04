@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Venue, Notification } from '@/lib/types'
 import { toast } from 'sonner'
+import { notifyTrendingVenueViaApi } from '@/lib/api-client'
+import { USE_SUPABASE_BACKEND } from '@/lib/data'
 
 interface VenueSurgeState {
   [venueId: string]: {
@@ -19,7 +21,8 @@ const MAX_ALERTS_PER_VENUE = 3
 export function useVenueSurgeTracker(
   venues: Venue[],
   userLocation: { lat: number; lng: number } | null,
-  enabled: boolean
+  enabled: boolean,
+  opts?: { accessToken?: string | null },
 ) {
   const [, setNotifications] = useKV<Notification[]>('notifications', [])
   const surgeStateRef = useRef<VenueSurgeState>({})
@@ -79,6 +82,13 @@ export function useVenueSurgeTracker(
               duration: 5000
             })
 
+            if (USE_SUPABASE_BACKEND && opts?.accessToken) {
+              void notifyTrendingVenueViaApi(
+                { venueId: venue.id, pulseScore: currentScore },
+                { accessToken: opts.accessToken },
+              )
+            }
+
             surgeStateRef.current[venue.id] = {
               lastScore: currentScore,
               lastAlertTime: now,
@@ -99,7 +109,7 @@ export function useVenueSurgeTracker(
     const interval = setInterval(checkForSurges, 30000)
 
     return () => clearInterval(interval)
-  }, [venues, userLocation, enabled, setNotifications])
+  }, [venues, userLocation, enabled, opts?.accessToken, setNotifications])
 }
 
 function calculateDistance(

@@ -50,6 +50,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_LAUNCHED_CITIES` | empty | Geo launch allowlist |
 | `VITE_APP_MODE` | `signal` | Root shell: `signal` or `venue` |
 | `VITE_ALLOW_VENUE_SHELL` | `false` | Set `true` to enable venue shell in production builds |
+| `VITE_ALLOW_MOCK_BACKEND` | `false` | Emergency only — allows mock data in prod (not for launch) |
 
 Full detail: [Feature Flags](feature-flags.md).
 
