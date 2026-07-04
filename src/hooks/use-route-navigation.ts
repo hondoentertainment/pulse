@@ -26,6 +26,8 @@ const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
   challenges: '/challenges',
   'my-tickets': '/my-tickets',
   'night-planner': '/night-planner',
+  privacy: '/privacy',
+  terms: '/terms',
 }
 
 const PATH_TO_TAB: Record<string, TabId> = {
