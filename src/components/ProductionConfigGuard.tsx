@@ -10,7 +10,7 @@ export function ProductionConfigGuard({ children }: { children: ReactNode }) {
   const isProd = import.meta.env.PROD
   const allowMock =
     isE2EAuthBypassEnabled ||
-    isVisualPreviewEnabled() ||
+    isVisualPreviewEnabled ||
     import.meta.env.VITE_ALLOW_MOCK_BACKEND === 'true'
 
   if (!isProd || USE_SUPABASE_BACKEND || allowMock) {
