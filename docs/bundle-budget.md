@@ -7,6 +7,14 @@ current actual.
 
 _Last updated: 2026-04-17 (post spark-gate + phosphor-extract)._
 
+> **2026-07 update:** chunk names have shifted since the table below was
+> captured (`observability` = Sentry + Vercel, with Sentry session replay
+> split into its own `sentry-replay` chunk; vendor chunks are `react-vendor`,
+> `data-vendor`, `motion-vendor`, `radix-vendor`). The enforced budgets live
+> in `scripts/check-bundle-size.mjs` (`npm run bundle-size`), which is now
+> also the bundle gate in the Lighthouse CI workflow. Current totals:
+> ~636 KB gzip across all JS (budget 1.6 MB).
+
 ## Actuals vs. budgets
 
 | Chunk / asset | Actual (min) | Actual (gzip) | Budget (min) | Budget (gzip) | Notes |

@@ -32,16 +32,10 @@ jobs:
           temporaryPublicStorage: true
 
       - name: Check bundle size budget
-        run: |
-          MAX_JS_KB=1500
-          TOTAL_JS=$(find dist/assets -name '*.js' -exec du -cb {} + | tail -1 | cut -f1)
-          TOTAL_JS_KB=$((TOTAL_JS / 1024))
-          echo "Total JS bundle: ${TOTAL_JS_KB} KB (budget: ${MAX_JS_KB} KB)"
-          if [ "$TOTAL_JS_KB" -gt "$MAX_JS_KB" ]; then
-            echo "::error::JS bundle size ($TOTAL_JS_KB KB) exceeds budget ($MAX_JS_KB KB)"
-            exit 1
-          fi
-          echo "✅ Bundle size within budget"
+        # Canonical per-chunk + total gzip budgets (docs/bundle-budget.md,
+        # scripts/check-bundle-size.mjs). Replaces the old raw-bytes total
+        # check, which double-counted lazy chunks that never affect first paint.
+        run: npm run bundle-size
 
       - name: Report bundle breakdown
         if: always()

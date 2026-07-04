@@ -13,6 +13,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // Sandboxed dev environments can point at a system-provided Chromium
+    // instead of downloading a matching browser build. No effect in CI.
+    ...(process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } }
+      : {}),
   },
 
   projects: [

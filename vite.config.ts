@@ -34,7 +34,12 @@ export default defineConfig({
           if (normalizedId.includes('/@tanstack/') || normalizedId.includes('/@supabase/')) {
             return 'data-vendor'
           }
-          if (normalizedId.includes('/@sentry/') || normalizedId.includes('/@vercel/')) {
+          if (normalizedId.includes('/@sentry-internal/replay')) {
+            // Session replay is the heaviest Sentry integration — keep it in
+            // its own async chunk so `observability` stays within budget.
+            return 'sentry-replay'
+          }
+          if (normalizedId.includes('/@sentry/') || normalizedId.includes('/@sentry-internal/') || normalizedId.includes('/@vercel/')) {
             return 'observability'
           }
         },
