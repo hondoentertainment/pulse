@@ -247,6 +247,8 @@ describe('VenueQuickActions', () => {
         onRide={() => {}}
         onReserve={() => {}}
         onSave={() => {}}
+        onShare={() => {}}
+        onWatchSurge={() => {}}
         isSaved={false}
       />
     )
@@ -265,6 +267,8 @@ describe('VenueQuickActions', () => {
         onRide={() => {}}
         onReserve={() => {}}
         onSave={() => {}}
+        onShare={() => {}}
+        onWatchSurge={() => {}}
         isSaved={false}
       />
     )
@@ -327,7 +331,6 @@ describe('VenueLivePanel', () => {
       crowdLevel: 65,
       waitTime: 10,
       coverCharge: 20,
-      coverChargeNote: undefined,
       dressCode: 'smart-casual' as const,
       musicGenre: 'House',
       nowPlaying: { track: 'Test Track', artist: 'Test Artist' },
@@ -345,7 +348,7 @@ describe('VenueLivePanel', () => {
       },
       confidenceDetails: {},
       doorMode: {
-        lineStatus: 'moving',
+        lineStatus: 'moving' as const,
         entryConfidence: 80,
         guestListStatus: null,
         tableMinimum: null,

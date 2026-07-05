@@ -1,7 +1,7 @@
 import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
-export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile' | 'video'
 
 interface BottomNavProps {
   activeTab: TabId

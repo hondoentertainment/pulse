@@ -116,7 +116,23 @@ export interface Venue {
   }
   liveSummary?: VenueLiveSummary
   accessibilityFeatures?: AccessibilityFeature[]
+  dressCode?: VenueDressCode | null
+  coverChargeCents?: number | null
+  coverChargeNote?: string | null
+  indoorOutdoor?: VenueIndoorOutdoor | null
+  capacityHint?: number | null
+  contextualScore?: number
 }
+
+export type VenueDressCode =
+  | 'casual'
+  | 'smart_casual'
+  | 'upscale'
+  | 'formal'
+  | 'costume_required'
+  | 'no_code'
+
+export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
 
 export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'
 

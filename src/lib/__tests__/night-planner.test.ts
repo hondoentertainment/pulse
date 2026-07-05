@@ -53,7 +53,12 @@ function makeStop(overrides: Partial<PlanStop> = {}): PlanStop {
     transitMode: 'walk',
     transitDuration: 5,
     energyPrediction: 'buzzing',
+    etaMinutes: 5,
+    rideSplitEstimate: 0,
+    entryConfidence: 80,
+    pivotRisk: 'low',
     ...overrides,
+    groupVote: overrides.groupVote ?? { yes: 4, maybe: 0, no: 0 },
   }
 }
 

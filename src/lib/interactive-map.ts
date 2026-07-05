@@ -233,11 +233,11 @@ export function clusterVenueRenderPoints(
   const singles: VenueRenderPoint[] = []
 
   clustersData.forEach(c => {
-    if (c.properties?.cluster) {
+    if ('cluster' in c.properties && c.properties.cluster) {
       // It's a cluster
       const leaves = clusterIndex!.getLeaves(c.properties.cluster_id, Infinity)
-      const venues = leaves.map(l => l.properties.point as VenueRenderPoint)
-      
+      const venues = leaves.map(l => (l.properties as VenuePointProperties).point)
+
       const x = venues.reduce((sum, v) => sum + v.x, 0) / venues.length
       const y = venues.reduce((sum, v) => sum + v.y, 0) / venues.length
       const maxPulseScore = venues.reduce((max, v) => Math.max(max, v.venue.pulseScore), 0)
@@ -250,7 +250,7 @@ export function clusterVenueRenderPoints(
         maxPulseScore,
       })
     } else {
-      singles.push(c.properties.point)
+      singles.push((c.properties as VenuePointProperties).point)
     }
   })
 
