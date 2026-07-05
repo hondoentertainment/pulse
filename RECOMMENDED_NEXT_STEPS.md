@@ -64,9 +64,16 @@ Tracked in SECURITY.md:
 
 ### 3. State management split (scalability)
 
-`src/hooks/use-app-state.tsx` is still a monolithic provider. Split into
-VenueContext / SocialContext / UIContext to reduce re-renders. Also remove the
-duplicated mock-friends lists in `use-app-state.tsx` and `hooks/api/use-user.ts`.
+`src/hooks/use-app-state.tsx` is still a monolithic provider (~729 lines, 57
+state hooks, 5 component consumers of `ALL_USERS`). Split into VenueContext /
+SocialContext / UIContext to reduce re-renders. This is an optimization, not a
+launch blocker — sequence it behind a compatibility shim (keep `useAppState`'s
+public shape) so the existing suite stays green.
+
+- [x] Removed the duplicated mock-friends lists — the entire dead
+  `src/hooks/api/` subtree (a parallel TanStack Query layer with zero
+  consumers, superseded by `use-app-state` + `src/lib/data/`) was deleted,
+  which is where `MOCK_USERS` duplicated `ALL_USERS`.
 
 ### 4. Integration tests for critical flows
 
