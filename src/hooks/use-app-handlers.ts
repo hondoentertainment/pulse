@@ -18,6 +18,7 @@ import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 
 import { postEventToApi } from '@/lib/server-api'
 import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supabase-api'
+import { enqueuePulse } from '@/lib/offline-queue'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
@@ -180,7 +181,23 @@ export function useAppHandlers() {
 
     const syncOnline = await uploadPulseToSupabase(newPulse)
     if (!syncOnline) {
-      toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
+      if (USE_SUPABASE_BACKEND) {
+        // Persist the failed upload to the offline queue so usePulseSync can
+        // replay it to Supabase when connectivity returns. Without this the
+        // pulse would only live in local state and never reach the backend.
+        enqueuePulse({
+          id: newPulse.id,
+          venueId: newPulse.venueId,
+          energyRating: newPulse.energyRating,
+          caption: newPulse.caption,
+          photos: newPulse.photos,
+          hashtags: newPulse.hashtags,
+          pulse: newPulse,
+        })
+        toast.message('Saved offline', { description: "We'll post it automatically when you're back online." })
+      } else {
+        toast.message('Saved locally', { description: 'Connect a backend to sync pulses across devices.' })
+      }
     }
 
     if (USE_SUPABASE_BACKEND && syncOnline) {

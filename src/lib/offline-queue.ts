@@ -1,4 +1,4 @@
-import type { EnergyRating } from './types'
+import type { EnergyRating, Pulse } from './types'
 
 /**
  * Offline-First Pulse Queue with Background Sync
@@ -20,6 +20,12 @@ export interface QueuedPulse {
   queuedAt: string
   retryCount: number
   status: 'pending' | 'syncing' | 'failed'
+  /**
+   * Full pulse snapshot captured at enqueue time, so a reconnect flush can
+   * persist it to the backend at full fidelity (crew, media, credibility)
+   * rather than reconstructing from the flat display fields above.
+   */
+  pulse?: Pulse
 }
 
 export interface QueueProcessOptions {

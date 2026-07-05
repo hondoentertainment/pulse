@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 
 import { trackError } from '@/lib/analytics'
 import { initWebVitals } from '@/lib/observability/web-vitals'
+import { usePulseSync } from '@/hooks/use-pulse-sync'
 
 /**
  * Lazily initialise Sentry **after** first paint.
@@ -81,6 +82,9 @@ function registerGlobalErrorHandlers() {
  * thanks to DSN de-dup inside `scheduleSentryInit`).
  */
 export function AppBootstrap({ children }: { children: ReactNode }) {
+  // Drain any offline pulse queue to Supabase on mount / reconnect.
+  usePulseSync()
+
   useEffect(() => {
     const cleanup = registerGlobalErrorHandlers()
     scheduleSentryInit()
