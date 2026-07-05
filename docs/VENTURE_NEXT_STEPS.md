@@ -1,6 +1,13 @@
 # Venture roadmap — next steps (execution checklist)
 
-This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`LoginScreen` → `SignalApp`). The venue / discovery shell is `src/AppRoutes.tsx` (not mounted from that entry). See comments in those files.
+> **Superseded (2026-07):** the product direction is the **venue nightlife app**,
+> not Pulse Signal. `src/App.tsx` now defaults to the venue shell
+> (`AppProviders` → `AppRoutes`); the Signal surface below is retained only as a
+> legacy `VITE_APP_MODE=signal` option. For the current plan see
+> [COMMERCIAL_ROADMAP.md](../COMMERCIAL_ROADMAP.md). The Signal-specific notes in
+> this file are kept for historical reference.
+
+This file’s original premise: the shipped web entry was `src/App.tsx` → **Pulse Signal** (`LoginScreen` → `SignalApp`). That is no longer the default.
 
 ## Implemented in codebase
 

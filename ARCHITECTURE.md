@@ -44,12 +44,10 @@ Pulse is a client-heavy PWA built with React 19 and Vite. The current architectu
 
 | Mode | Env | Component tree |
 |------|-----|----------------|
-| **Pulse Signal** (default) | `VITE_APP_MODE=signal` or unset | `LoginScreen` → `SignalApp` |
-| **Venue / social** | `VITE_APP_MODE=venue` | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+| **Venue / social** (default) | `VITE_APP_MODE=venue` or unset | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+| **Pulse Signal** (legacy) | `VITE_APP_MODE=signal` | `LoginScreen` → `SignalApp` |
 
-Signal routes: `/home`, `/trends`, `/history`, `/settings` (see [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)). Venue shell adds `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx).
-
-Do not merge the two shells without an explicit product decision (single app vs. separate deployables) — they share design tokens but serve different primary jobs.
+The **venue nightlife app is the product** (see [README](README.md) and [COMMERCIAL_ROADMAP](COMMERCIAL_ROADMAP.md)). Venue shell routes: `/`, `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx). The legacy Signal surface (`/home`, `/trends`, `/history`, `/settings` in [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)) is retained behind the `signal` mode flag but is no longer the shipped default.
 
 ## Layer Responsibilities
 

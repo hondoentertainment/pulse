@@ -37,6 +37,13 @@ vi.mock('@/lib/analytics', () => ({
   trackError: vi.fn(),
 }))
 
+// The product default is the venue app; pin this test to the legacy Signal
+// mode so it keeps exercising the Signal login branch it was written for.
+vi.mock('@/lib/app-mode', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/app-mode')>('@/lib/app-mode')
+  return { ...actual, isVenueAppMode: () => false, isSignalAppMode: () => true, APP_MODE: 'signal' }
+})
+
 import App from '@/App'
 
 describe('App', () => {

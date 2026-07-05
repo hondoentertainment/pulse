@@ -45,9 +45,11 @@ async function completeSignalOnboarding(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { name: /^Today$/i })).toBeVisible({ timeout: 15_000 })
 }
 
-test('has Pulse Signal title and global toast host', async ({ page }) => {
+test('has a Pulse title and global toast host', async ({ page }) => {
   await resetSignalState(page)
-  await expect(page).toHaveTitle(/Pulse Signal/i)
+  // Title is global (single index.html); the product is the venue app, so it
+  // reads "Pulse …" rather than "Pulse Signal". Just assert the Pulse brand.
+  await expect(page).toHaveTitle(/Pulse/i)
   await expect(page.locator('section[aria-label*="Notifications"], [data-sonner-toaster]').first()).toBeAttached()
 })
 

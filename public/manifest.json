@@ -1,13 +1,13 @@
 {
-  "name": "Pulse Signal",
+  "name": "Pulse — Venue Energy",
   "short_name": "Pulse",
-  "description": "A quick daily check-in for energy, mood, and focus—trends, streaks, and one clear next step.",
+  "description": "Real-time venue energy discovery for nightlife. See where the energy is right now, check in, and discover what's buzzing nearby.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
   "theme_color": "#6d28d9",
-  "categories": ["health", "lifestyle", "wellness"],
+  "categories": ["social", "lifestyle", "entertainment"],
   "icons": [
     {
       "src": "/icons/icon-72.png",
