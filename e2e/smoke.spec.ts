@@ -136,17 +136,21 @@ test.describe('After onboarding', () => {
   })
 
   test('pulse creation opens and submits successfully', async ({ page }) => {
-    // Give the app time to load sortedVenues, otherwise button click does nothing
-    await page.waitForTimeout(1000)
+    // The FAB's click handler no-ops until sortedVenues is populated — wait
+    // for the venue catalog instead of a fixed delay.
+    await expect(page.getByRole('button', { name: /^Open /i }).first()).toBeVisible({ timeout: 20_000 })
 
     // Find the fixed Create Pulse FAB button and click it
     const createButton = page.getByTestId('create-pulse-fab')
     await createButton.waitFor({ state: 'visible', timeout: 10_000 })
-    await createButton.click()
 
-    // Dialog should appear
+    // Dialog should appear; retry the click in case a venue-data re-render
+    // swallowed the first tap.
     const dialogTitle = page.getByRole('heading', { name: /Create Pulse at/i })
-    await expect(dialogTitle).toBeVisible({ timeout: 10_000 })
+    await expect(async () => {
+      await createButton.evaluate((element: HTMLElement) => element.click())
+      await expect(dialogTitle).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 15_000 })
 
     // Fill in a caption
     const textarea = page.getByPlaceholder(/What's the vibe\?/i)

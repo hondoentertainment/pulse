@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { completeOnboarding } from './fixtures/onboarding'
+import { completeOnboarding, openFirstVenue } from './fixtures/onboarding'
 
 test.describe('Pulse creation flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,21 +9,11 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('opens the create-pulse dialog from a venue', async ({ page }) => {
-    // Try clicking a trending venue card if visible
-    const venueCard = page
-      .locator('[class*="venue"], [class*="card"]')
-      .first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    const openedVenue = await openFirstVenue(page)
+    if (!openedVenue) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
-
-    await venueCard.click()
 
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
@@ -36,19 +26,14 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('can fill caption and select energy', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    const openedVenue = await openFirstVenue(page)
+    if (!openedVenue) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
 
-    await venueCard.click()
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
     const caption = page.getByPlaceholder(/What's the vibe/i)
@@ -60,19 +45,14 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    const openedVenue = await openFirstVenue(page)
+    if (!openedVenue) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
 
-    await venueCard.click()
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
     const cancel = page.getByRole('button', { name: /^Cancel$/i })

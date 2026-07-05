@@ -56,6 +56,25 @@ export async function goToTab(page: Page, tabName: RegExp): Promise<boolean> {
     .then(() => true)
     .catch(() => false)
   if (!visible) return false
-  await tab.click()
+  // The bottom nav is fixed-positioned with safe-area offsets that headless
+  // Chromium reports as outside the viewport — use a DOM click like
+  // smoke.spec's clickTab instead of a trusted pointer click.
+  await tab.evaluate((element) => (element as HTMLElement).click())
+  return true
+}
+
+/**
+ * Opens the first venue on the trending feed via its accessible
+ * "Open <name>" button. Returns false when no venue affordance exists
+ * (e.g. running against an unseeded backend).
+ */
+export async function openFirstVenue(page: Page): Promise<boolean> {
+  const openButton = page.getByRole('button', { name: /^Open /i }).first()
+  const visible = await openButton
+    .waitFor({ state: 'visible', timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!visible) return false
+  await openButton.click()
   return true
 }
