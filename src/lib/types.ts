@@ -44,6 +44,16 @@ export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
   'braille_menu',
 ] as const
 
+export type VenueDressCode =
+  | 'casual'
+  | 'smart_casual'
+  | 'upscale'
+  | 'formal'
+  | 'costume_required'
+  | 'no_code'
+
+export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
+
 export interface User {
   id: string
   username: string
@@ -116,6 +126,13 @@ export interface Venue {
   }
   liveSummary?: VenueLiveSummary
   accessibilityFeatures?: AccessibilityFeature[]
+  dressCode?: VenueDressCode | null
+  coverChargeCents?: number | null
+  coverChargeNote?: string | null
+  indoorOutdoor?: VenueIndoorOutdoor | null
+  capacityHint?: number | null
+  /** Time/weather-adjusted ranking score; see `weather-boost.ts`. */
+  contextualScore?: number
 }
 
 export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'

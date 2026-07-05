@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
@@ -54,7 +54,7 @@ const VenueMetadataRoute = lazy(() =>
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const { activeTab, navigateToTab, navigateToVenue } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -74,10 +74,22 @@ export function AppRoutes() {
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
+    selectedVenue, setSelectedVenue,
   } = state
 
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
+
+  // Shared components (VenueCard consumers, sub-pages, sheets) signal venue
+  // selection through setSelectedVenue state. In the router shell the URL owns
+  // the venue page, so bridge that state change into navigation. Without this,
+  // tapping a venue card in venue mode updates state that nothing renders.
+  useEffect(() => {
+    if (selectedVenue) {
+      navigateToVenue(selectedVenue)
+      setSelectedVenue(null)
+    }
+  }, [selectedVenue, navigateToVenue, setSelectedVenue])
 
   const handleTabChange = (tab: Parameters<typeof navigateToTab>[0]) => {
     navigateToTab(tab)
@@ -177,6 +189,7 @@ export function AppRoutes() {
         <Route path="/settings" element={<SubPageRouter page="settings" />} />
         <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
         <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
+        <Route path="/owner-dashboard" element={<SubPageRouter page="owner-dashboard" />} />
         <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
         <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
         <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />

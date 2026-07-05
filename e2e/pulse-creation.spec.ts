@@ -9,10 +9,9 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('opens the create-pulse dialog from a venue', async ({ page }) => {
-    // Try clicking a trending venue card if visible
-    const venueCard = page
-      .locator('[class*="venue"], [class*="card"]')
-      .first()
+    // Click a real venue affordance (live-reel "Open <venue>" buttons),
+    // not the first element that happens to have a card-ish class.
+    const venueCard = page.getByRole('button', { name: /^Open /i }).first()
     const cardVisible = await venueCard
       .waitFor({ state: 'visible', timeout: 5_000 })
       .then(() => true)
@@ -36,7 +35,7 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('can fill caption and select energy', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
+    const venueCard = page.getByRole('button', { name: /^Open /i }).first()
     const cardVisible = await venueCard
       .waitFor({ state: 'visible', timeout: 5_000 })
       .then(() => true)
@@ -60,7 +59,7 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
+    const venueCard = page.getByRole('button', { name: /^Open /i }).first()
     const cardVisible = await venueCard
       .waitFor({ state: 'visible', timeout: 5_000 })
       .then(() => true)

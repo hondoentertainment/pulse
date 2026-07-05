@@ -13,6 +13,7 @@ export type SubPage =
   | 'settings'
   | 'integrations'
   | 'moderation'
+  | 'owner-dashboard'
   | 'challenges'
   | 'my-tickets'
   | 'night-planner'

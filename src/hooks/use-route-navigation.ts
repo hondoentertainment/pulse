@@ -10,7 +10,6 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
-  video: '/video',
 }
 
 const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
@@ -23,6 +22,7 @@ const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
   settings: '/settings',
   integrations: '/integrations',
   moderation: '/moderation',
+  'owner-dashboard': '/owner-dashboard',
   challenges: '/challenges',
   'my-tickets': '/my-tickets',
   'night-planner': '/night-planner',
@@ -36,7 +36,6 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/map': 'map',
   '/notifications': 'notifications',
   '/profile': 'profile',
-  '/video': 'video',
 }
 
 /** Derive the active tab ID from the current URL pathname */

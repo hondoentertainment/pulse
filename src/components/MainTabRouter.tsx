@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo } from 'react'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
+import type { TabId } from '@/components/BottomNav'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -19,7 +20,15 @@ const tabMotion = {
   transition: { duration: 0.2 },
 }
 
-export function MainTabRouter() {
+interface MainTabRouterProps {
+  /**
+   * URL-driven tab override. When rendered from a router route (AppRoutes),
+   * the pathname decides the tab; without it, the shell's activeTab state does.
+   */
+  tab?: TabId
+}
+
+export function MainTabRouter({ tab }: MainTabRouterProps = {}) {
   const state = useAppState()
   const handlers = useAppHandlers()
   const {
@@ -61,6 +70,8 @@ export function MainTabRouter() {
     handlePromotionClick,
   } = handlers
 
+  const currentTab = tab ?? activeTab
+
   const visibleVenueIds = useMemo(
     () => new Set(visibleVenues.map(venue => venue.id)),
     [visibleVenues]
@@ -79,7 +90,7 @@ export function MainTabRouter() {
   return (
     <Suspense fallback={pageFallback}>
       <AnimatePresence mode="wait">
-        {activeTab === 'trending' && (
+        {currentTab === 'trending' && (
           <motion.div key="trending" {...tabMotion}>
             <TrendingTab
               venues={visibleVenues}
@@ -107,7 +118,7 @@ export function MainTabRouter() {
           </motion.div>
         )}
 
-        {activeTab === 'discover' && (
+        {currentTab === 'discover' && (
           <motion.div key="discover" {...tabMotion}>
             <DiscoverTab
               venues={visibleVenues}
@@ -128,7 +139,7 @@ export function MainTabRouter() {
           </motion.div>
         )}
 
-        {activeTab === 'map' && (
+        {currentTab === 'map' && (
           <motion.div key="map" {...tabMotion} className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]">
             <div className="h-full">
               <InteractiveMap
@@ -143,7 +154,7 @@ export function MainTabRouter() {
           </motion.div>
         )}
 
-        {activeTab === 'notifications' && (
+        {currentTab === 'notifications' && (
           <motion.div key="notifications" {...tabMotion}>
             <NotificationFeed
               currentUser={currentUser}
@@ -154,7 +165,7 @@ export function MainTabRouter() {
           </motion.div>
         )}
 
-        {activeTab === 'profile' && (
+        {currentTab === 'profile' && (
           <motion.div key="profile" {...tabMotion}>
             <ProfileTab
               currentUser={currentUser}

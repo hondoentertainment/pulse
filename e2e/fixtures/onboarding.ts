@@ -57,6 +57,9 @@ export async function goToTab(page: Page, tabName: RegExp): Promise<boolean> {
     .then(() => true)
     .catch(() => false)
   if (!visible) return false
-  await tab.click()
+  // Same stable-click pattern as smoke.spec.ts: the fixed bottom nav can sit
+  // outside Playwright's viewport model, so use a DOM click instead of a
+  // pointer click.
+  await tab.evaluate((element: HTMLElement) => element.click())
   return true
 }

@@ -110,7 +110,6 @@ vi.mock('@phosphor-icons/react', () => {
 // ── Fixtures ─────────────────────────────────────────────────────────
 function makeUser(over: Partial<User> & { id: string }): User {
   return {
-    id: over.id,
     username: over.username ?? over.id,
     friends: over.friends ?? [],
     createdAt: new Date().toISOString(),
@@ -148,10 +147,31 @@ function nearbyLoc() {
 }
 
 // ── Import under test (after mocks) ──────────────────────────────────
-import { InteractiveMap, FRIEND_LAYER_STORAGE_KEY } from '@/components/InteractiveMap'
+import { InteractiveMap } from '@/components/InteractiveMap'
 
-function renderMap(overrides: Partial<React.ComponentProps<typeof InteractiveMap>> = {}) {
-  const props: React.ComponentProps<typeof InteractiveMap> = {
+// The in-map friends layer (its `FRIEND_LAYER_STORAGE_KEY` export and
+// `friendPresence` prop) was removed from `InteractiveMap`; this suite is
+// kept skipped below as the spec for the feature. Mirror the removed API
+// locally so the fixtures keep compiling until the layer is reinstated.
+const FRIEND_LAYER_STORAGE_KEY = 'pulse.map.friendLayer'
+
+interface FriendPresenceInput {
+  /** The signed-in user. If null/undefined the layer fully hides. */
+  currentUser?: User | null
+  /** All known users (friends + familiar faces). Empty = nothing to show. */
+  allUsers?: User[]
+  /** Pulses used by the engine to infer co-presence / familiar faces. */
+  allPulses?: Pulse[]
+  /** Latest known locations keyed by userId. */
+  userLocations?: Record<string, { lat: number; lng: number; lastUpdate: string }>
+}
+
+type MapProps = React.ComponentProps<typeof InteractiveMap> & {
+  friendPresence?: FriendPresenceInput
+}
+
+function renderMap(overrides: Partial<MapProps> = {}) {
+  const props: MapProps = {
     venues: [VENUE],
     userLocation: { lat: VENUE.location.lat, lng: VENUE.location.lng },
     onVenueClick: vi.fn(),
