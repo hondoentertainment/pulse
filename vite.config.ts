@@ -14,6 +14,14 @@ const isVitest = process.env.VITEST === 'true'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    // Statically foldable fixture gate: true only for visual-preview / e2e
+    // builds, so production bundles (and the PWA precache) drop the mock
+    // venue fixture chunks entirely. See src/lib/mock-data.ts.
+    __PULSE_FIXTURES__: JSON.stringify(
+      process.env.VITE_VISUAL_PREVIEW === 'true' || process.env.VITE_E2E_AUTH_BYPASS === 'true',
+    ),
+  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {
