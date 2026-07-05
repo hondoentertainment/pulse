@@ -2,8 +2,12 @@
  * Thin browser client for the server-side Edge Functions in `api/`.
  *
  * This file is ADDITIVE — it runs alongside the existing integration
- * helpers in src/lib/integrations.ts and src/lib/public-api.ts. Callers
- * can migrate incrementally by swapping a single call site at a time.
+ * helpers in src/lib/integrations.ts. Callers can migrate incrementally
+ * by swapping a single call site at a time.
+ *
+ * API-key minting and webhook HMAC signing used to live in a client
+ * prototype (src/lib/public-api.ts, now removed) and are served entirely
+ * server-side by /api/keys/generate and /api/webhooks/sign.
  *
  * All requests:
  *   - hit same-origin /api/* (no CORS headaches in prod)

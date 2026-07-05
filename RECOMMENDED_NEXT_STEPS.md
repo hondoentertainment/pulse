@@ -49,11 +49,17 @@ The code path exists; production config does not. To go live:
 
 Tracked in SECURITY.md:
 
-- [ ] Enforce auth on all write paths server-side (RLS policy audit across tables)
-- [ ] Server-verified roles for admin/moderation/owner surfaces
-- [ ] Retire `src/lib/public-api.ts` client prototype once `api/keys/generate.ts` fully replaces it (tracked in NOTES.md)
+- [x] Enforce auth on all write paths server-side — comprehensive RLS in
+  `supabase/migrations/20260417000002_rls_policies_enforcement.sql`
+  (owner-only writes via `auth.uid()`, admin bypass via `is_admin()`, anon
+  write GRANTs revoked). Verify against the live DB after provisioning.
+- [x] Server-verified roles — `verifySupabaseJwt` + `SUPABASE_ADMIN_EMAILS`
+  gate admin routes; `is_admin()` gates admin RLS.
+- [x] Retire `src/lib/public-api.ts` client prototype — removed 2026-07-05;
+  `api/keys/generate.ts` + `api/webhooks/sign.ts` own it server-side.
 - [ ] Server-side content moderation before persistence (client-side exists)
-- [ ] Rate limiting on public API routes (client-side limiter exists; server enforcement needed)
+- [ ] Rate limiting on public API routes — server limiter exists in
+  `api/_lib/rate-limit.ts`; confirm it's applied on every public route.
 - [ ] Tighten lint `no-explicit-any` budget toward zero (currently ~158, all in tests/mocks)
 
 ### 3. State management split (scalability)
@@ -64,15 +70,18 @@ duplicated mock-friends lists in `use-app-state.tsx` and `hooks/api/use-user.ts`
 
 ### 4. Integration tests for critical flows
 
-- [ ] Supabase auth flow (OAuth + magic link) against a local Supabase
-- [ ] Offline queue → Supabase sync on reconnect
-- [ ] Real-time subscription lifecycle
-- [ ] Stripe checkout happy path (test mode) in E2E
+- [x] Supabase auth flow — `src/__tests__/integration/auth-flow.test.ts`,
+  `src/hooks/__tests__/use-supabase-auth.test.tsx`
+- [x] Offline queue → Supabase sync — `src/__tests__/integration/offline-queue.test.ts`,
+  `src/lib/__tests__/offline-queue-replay.test.ts`
+- [x] Real-time subscription lifecycle — `src/hooks/__tests__/use-realtime-subscription.test.tsx`
+  (added 2026-07-05; covers enable/disable/cleanup + batched pulse-insert mapping)
+- [ ] Stripe checkout happy path (test mode) in E2E — needs test-mode keys
 
 ### 5. Ops & compliance
 
 - [ ] Uptime monitoring + alerting (docs/observability.md)
-- [ ] Enable Dependabot/Renovate
+- [x] Enable Dependabot — `.github/dependabot.yml` (npm daily, devcontainers weekly)
 - [ ] App Store / Play Store submission per docs/native/release-checklist.md
 - [ ] Privacy policy + ToS review for payment and location data
 

@@ -39,13 +39,18 @@ There is not yet a production-grade auth and session boundary for user, admin, v
 
 ### 2. Server-Side Secret Handling
 
-API key creation and webhook signing logic exist as library code today (`src/lib/public-api.ts`) and must move behind trusted server routes before launch.
+API key creation and webhook HMAC signing now run entirely server-side in
+`api/keys/generate.ts` (admin-gated, `crypto.randomBytes`) and
+`api/webhooks/sign.ts` (secret held in `WEBHOOK_HMAC_SECRET`, never shipped to
+the client). The client prototype `src/lib/public-api.ts` — which minted keys
+with `Math.random()` and referenced `node:crypto` — has been removed.
 
-**What needs to happen:**
-- Move all API key generation to server-side Supabase Edge Functions
-- Implement webhook HMAC signing on the server
-- Ensure no secrets are bundled into the client build
-- Audit `src/lib/` for any hardcoded keys or tokens
+**Status:**
+- [x] API key generation moved to server route (`api/keys/generate.ts`)
+- [x] Webhook HMAC signing moved to server route (`api/webhooks/sign.ts`)
+- [x] Client prototype `src/lib/public-api.ts` removed
+- [ ] Rotate any keys minted by the old client path before launch
+- [ ] Ongoing: audit `src/lib/` for hardcoded keys or tokens each release
 
 ### 3. Client-Side Third-Party Calls
 
@@ -107,7 +112,8 @@ Before a production launch, this repository should have:
 | File | Description |
 |------|-------------|
 | `src/hooks/use-supabase-auth.tsx` | Authentication flow |
-| `src/lib/public-api.ts` | API key and webhook prototype (needs server migration) |
+| `api/keys/generate.ts` | Server-side API key generation (admin-gated) |
+| `api/webhooks/sign.ts` | Server-side webhook HMAC signing |
 | `src/lib/content-moderation.ts` | Content moderation logic |
 | `src/lib/rate-limiter.ts` | Client-side rate limiting |
 | `src/lib/payment-processing.ts` | Payment processing prototype (needs PCI review) |
