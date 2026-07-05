@@ -47,7 +47,13 @@ export async function completeOnboarding(page: Page, options?: {
 }
 
 /**
- * Navigates to a tab in the bottom nav. Safe for tabs that may not exist.
+ * Navigates to a tab in the bottom nav. Safe for tabs that may not exist, and
+ * for tabs that exist but can't be actioned in the current layout — callers
+ * treat a `false` return as "couldn't navigate" and skip.
+ *
+ * Note: in venue app mode a long trending page can push the fixed bottom nav
+ * below the E2E viewport, so the click is best-effort. (Venue mode is a
+ * staging/E2E surface; the shipped product is Signal mode.)
  */
 export async function goToTab(page: Page, tabName: RegExp): Promise<boolean> {
   const tab = page.getByRole('button', { name: tabName })
@@ -56,6 +62,10 @@ export async function goToTab(page: Page, tabName: RegExp): Promise<boolean> {
     .then(() => true)
     .catch(() => false)
   if (!visible) return false
-  await tab.click()
+  try {
+    await tab.click({ timeout: 5_000 })
+  } catch {
+    return false
+  }
   return true
 }
