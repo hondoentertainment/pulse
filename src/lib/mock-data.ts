@@ -20,11 +20,20 @@ export let MOCK_VENUES: Venue[] = []
 export let SEATTLE_ONLY_VENUES: Venue[] = []
 
 /**
- * Dev-only: dynamically import the venue fixtures. The fixture module isn't
- * referenced anywhere else, so Rollup drops it from the production bundle.
+ * Dynamically import the venue fixtures. The fixture module isn't referenced
+ * statically anywhere else, so Rollup emits it as a separate chunk that is
+ * only fetched when this runs — keeping it out of the initial prod bundle.
+ *
+ * Loaded in dev, and in the visual-preview / E2E build (`VITE_VISUAL_PREVIEW`),
+ * which runs a production build but needs seeded venues to demo the full
+ * venue product without a live Supabase backend. Real prod (flag unset)
+ * still ships empty arrays and pulls venues from Supabase.
  */
 export async function loadMockVenueFixtures(): Promise<{ MOCK_VENUES: Venue[]; SEATTLE_ONLY_VENUES: Venue[] }> {
-  if (!import.meta.env.DEV) return { MOCK_VENUES: [], SEATTLE_ONLY_VENUES: [] }
+  const visualPreview = import.meta.env.VITE_VISUAL_PREVIEW === 'true'
+  if (!import.meta.env.DEV && !visualPreview) {
+    return { MOCK_VENUES: [], SEATTLE_ONLY_VENUES: [] }
+  }
   const mod = await import('./__fixtures__/mock-data')
   MOCK_VENUES = mod.MOCK_VENUES
   SEATTLE_ONLY_VENUES = mod.SEATTLE_ONLY_VENUES

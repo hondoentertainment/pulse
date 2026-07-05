@@ -1,8 +1,10 @@
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import type { Venue } from '@/lib/types'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -61,6 +63,18 @@ export function MainTabRouter() {
     handlePromotionClick,
   } = handlers
 
+  // Card taps set selectedVenue (for state consumers) and route to the venue
+  // detail page. AppRoutes renders VenuePage only via the /venue/:id route, so
+  // navigation — not just state — is what opens the page.
+  const navigate = useNavigate()
+  const handleVenueClick = useCallback(
+    (venue: Venue) => {
+      setSelectedVenue(venue)
+      navigate(`/venue/${venue.id}`)
+    },
+    [navigate, setSelectedVenue],
+  )
+
   const visibleVenueIds = useMemo(
     () => new Set(visibleVenues.map(venue => venue.id)),
     [visibleVenues]
@@ -93,7 +107,7 @@ export function MainTabRouter() {
               allUsers={ALL_USERS}
               trendingSubTab={trendingSubTab}
               onSubTabChange={setTrendingSubTab}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={handleVenueClick}
               onToggleFavorite={handleToggleFavorite}
               onToggleFollow={handleToggleFollow}
               onReaction={handleReaction}
@@ -118,7 +132,7 @@ export function MainTabRouter() {
               stories={stories || []}
               events={events || []}
               userLocation={userLocation}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={handleVenueClick}
               onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
               onAddFriend={handleAddFriend}
               onNavigate={(page) => setSubPage(page)}
@@ -134,7 +148,7 @@ export function MainTabRouter() {
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}
-                onVenueClick={setSelectedVenue}
+                onVenueClick={handleVenueClick}
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
@@ -161,7 +175,7 @@ export function MainTabRouter() {
               pulses={moderatedPulses}
               pulsesWithUsers={pulsesWithUsers}
               favoriteVenues={favoriteVenues}
-              onVenueClick={setSelectedVenue}
+              onVenueClick={handleVenueClick}
               onReaction={handleReaction}
               onOpenSocialPulseDashboard={() => {
                 if (!socialDashboardEnabled) { toast.error('Admin dashboard is currently unavailable'); return }
