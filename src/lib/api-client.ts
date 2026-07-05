@@ -248,6 +248,62 @@ export async function notifyTrendingVenueViaApi(
   return parse<TrendingVenueNotifyPayload>(res)
 }
 
+export interface NotificationListPayload {
+  notifications: Array<{
+    id: string
+    userId: string
+    type: string
+    pulseId?: string
+    venueId?: string
+    reactionType?: string
+    energyThreshold?: string
+    recommendedVenueId?: string
+    read: boolean
+    createdAt: string
+  }>
+  limit: number
+}
+
+export async function fetchNotificationList(
+  opts: ApiClientOptions & { limit?: number } = {},
+): Promise<ApiResult<NotificationListPayload>> {
+  const limit = opts.limit ?? 100
+  const url = new URL(endpoint('/api/notifications/list', opts), typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+  url.searchParams.set('limit', String(limit))
+  const res = await fetch(`${url.pathname}${url.search}`, {
+    method: 'GET',
+    headers: buildHeaders(opts),
+    signal: opts.signal,
+  })
+  return parse<NotificationListPayload>(res)
+}
+
+export async function markNotificationsRead(
+  body: { id?: string; all?: boolean },
+  opts: ApiClientOptions,
+): Promise<ApiResult<{ updated: boolean }>> {
+  const res = await fetch(endpoint('/api/notifications/read', opts), {
+    method: 'PATCH',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  })
+  return parse<{ updated: boolean }>(res)
+}
+
+export async function notifyFriendNearbyViaApi(
+  body: { venueId: string },
+  opts: ApiClientOptions,
+): Promise<ApiResult<{ notified: number; skipped: number }>> {
+  const res = await fetch(endpoint('/api/notifications/friend-nearby', opts), {
+    method: 'POST',
+    headers: buildHeaders(opts),
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  })
+  return parse<{ notified: number; skipped: number }>(res)
+}
+
 // ── Spotify ───────────────────────────────────────────────────────
 
 export interface SpotifyTrack {

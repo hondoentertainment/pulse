@@ -4,6 +4,7 @@ import {
   isFriendPulsesEnabled,
   isPulseReactionsEnabled,
   isTrendingVenuesEnabled,
+  isFriendNearbyVenuesEnabled,
   parseNotificationSettingsPatch,
   DEFAULT_NOTIFICATION_SETTINGS,
 } from '../notification-settings'
@@ -24,6 +25,7 @@ describe('notification-settings', () => {
   it('isPulseReactionsEnabled and isTrendingVenuesEnabled honor prefs', () => {
     expect(isPulseReactionsEnabled({ pulseReactions: false })).toBe(false)
     expect(isTrendingVenuesEnabled({ trendingVenues: false })).toBe(false)
+    expect(isFriendNearbyVenuesEnabled({ friendNearbyVenues: false })).toBe(false)
   })
 
   it('parseNotificationSettingsPatch rejects non-boolean values', () => {

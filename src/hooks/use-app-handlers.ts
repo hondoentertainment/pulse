@@ -18,7 +18,7 @@ import { updateVenueWithCheckIn } from '@/lib/venue-trending'
 
 import { postEventToApi } from '@/lib/server-api'
 import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supabase-api'
-import { createPulseViaApi, reactToPulseViaApi } from '@/lib/api-client'
+import { createPulseViaApi, reactToPulseViaApi, notifyFriendNearbyViaApi } from '@/lib/api-client'
 import { normalizePulse } from '@/lib/pulse-media'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
@@ -29,6 +29,7 @@ import { joinChallenge } from '@/lib/venue-challenges'
 import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import { useNotificationsSync } from '@/hooks/use-notifications-sync'
 
 import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
@@ -74,6 +75,9 @@ export function useAppHandlers() {
     crewCheckIns,
     crews,
   } = state
+
+  const { markRead: markNotificationRead, markAllRead: markAllNotificationsRead } =
+    useNotificationsSync(session?.access_token, setNotifications)
 
   const handleCreatePulse = useCallback((venueId: string) => {
     if (!venues || !currentUser || !pulses) return
@@ -231,6 +235,12 @@ export function useAppHandlers() {
           crewId: currentCrewCheckIn?.crewId,
           source: userLocation ? 'geo' : 'manual',
         })
+        if (session?.access_token) {
+          void notifyFriendNearbyViaApi(
+            { venueId: venueForPulse.id },
+            { accessToken: session.access_token },
+          )
+        }
       } catch (err) {
         console.warn('[pulse] check-in persist failed', err)
       }
@@ -486,6 +496,8 @@ export function useAppHandlers() {
     handleToggleFavorite,
     handleToggleFollow,
     handleJoinChallenge,
+    markNotificationRead,
+    markAllNotificationsRead,
   }), [
     handleAddFriend,
     handleCreatePulse,
@@ -502,5 +514,7 @@ export function useAppHandlers() {
     handleToggleFavorite,
     handleToggleFollow,
     handleJoinChallenge,
+    markAllNotificationsRead,
+    markNotificationRead,
   ])
 }

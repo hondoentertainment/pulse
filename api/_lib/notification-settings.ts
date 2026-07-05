@@ -54,6 +54,10 @@ export function isTrendingVenuesEnabled(raw: unknown): boolean {
   return mergeNotificationSettings(raw).trendingVenues
 }
 
+export function isFriendNearbyVenuesEnabled(raw: unknown): boolean {
+  return mergeNotificationSettings(raw).friendNearbyVenues
+}
+
 /** Validate a partial PATCH body — only known boolean keys allowed. */
 export function parseNotificationSettingsPatch(
   body: unknown,

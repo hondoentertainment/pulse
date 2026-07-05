@@ -32,7 +32,7 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 | [ ] Data retention documented in Privacy Policy (pulses, telemetry, Safety Kit) | Legal / Eng | Covered in [public/privacy.html](../public/privacy.html) §5 — Legal review still required |
 | [ ] GDPR/CCPA **Export My Data** tested on staging (Settings → Data & Account) | Eng | E2E: `e2e/account-privacy.spec.ts` (demo export); staging sign-off still required |
 | [ ] Account **Delete** tested on staging — verify auth user + profile removed | Eng | E2E covers sign-in gate; staging delete QA still required |
-| [ ] Cookie / analytics disclosure if third-party analytics enabled | Product | |
+| [ ] Cookie / analytics disclosure if third-party analytics enabled | Product | Covered in [public/privacy.html](../public/privacy.html) §4a — Legal review still required |
 
 ---
 
@@ -44,7 +44,7 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 | [ ] `SUPABASE_SERVICE_ROLE_KEY` set in production only (never in client bundle) | Eng | |
 | [ ] Stripe webhook signature verification enabled (`STRIPE_WEBHOOK_SECRET`) | Eng | |
 | [ ] Ticket QR HMAC secret rotated and not committed (`TICKET_QR_SECRET`) | Eng | |
-| [ ] Admin routes gated by `SUPABASE_ADMIN_EMAILS` or RLS admin role | Eng | `admin-auth.test.ts` covers `/api/keys/generate` + `/api/push/test` |
+| [ ] Admin routes gated by `SUPABASE_ADMIN_EMAILS` or RLS admin role | Eng | Done — `admin-auth.test.ts` |
 | [x] CSP / HSTS headers verified on production (`vercel.json`) | Eng | Done — HSTS preload + CSP in `vercel.json` |
 | [ ] Dependency audit: no unmitigated critical/high vulnerabilities | Eng | |
 
@@ -82,6 +82,8 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [x] Friend-pulse server push on `POST /api/pulses/create` | Eng | Done |
 | [x] Pulse-reaction server push on `POST /api/pulses/react` | Eng | Done |
 | [x] Trending-venue server push on `POST /api/notifications/trending-venue` | Eng | Done |
+| [x] Friend-nearby server push on `POST /api/notifications/friend-nearby` | Eng | Done |
+| [x] Durable notification feed from Supabase for signed-in users | Eng | `useNotificationsSync` + `/api/notifications/list` |
 | [x] Notification prefs persisted in Supabase (`profiles.notification_settings`) | Eng | Done |
 | [x] Dead push token pruning on FCM/APNs stale responses | Eng | Done |
 | [ ] Push delivery credentials set in prod + tested on a real device | Eng | Needs creds + device test |

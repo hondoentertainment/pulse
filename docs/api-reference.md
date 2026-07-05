@@ -25,6 +25,9 @@ Pulse exposes serverless routes under `/api/*`, deployed as Vercel Functions. Th
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/notifications/trending-venue` | JWT | Persist + push a nearby venue surge alert (respects `trendingVenues` pref, 20/hr) |
+| `POST` | `/api/notifications/friend-nearby` | JWT | Notify friends of a venue check-in (respects `friendNearbyVenues` pref) |
+| `GET` | `/api/notifications/list` | JWT | Notification feed for signed-in user |
+| `PATCH` | `/api/notifications/read` | JWT | Mark one or all notifications read (`{ id }` or `{ all: true }`) |
 
 ## Venues
 

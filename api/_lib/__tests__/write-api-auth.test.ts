@@ -153,4 +153,28 @@ describe('write API auth guards', () => {
     expect(state.status).toBe(401)
     expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
   })
+
+  it('GET /api/notifications/list rejects missing Authorization', async () => {
+    const { default: handler } = await import('../../notifications/list')
+    const { res, state } = makeResponse()
+    await handler({ method: 'GET', headers: {} }, res)
+    expect(state.status).toBe(401)
+    expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
+  })
+
+  it('PATCH /api/notifications/read rejects missing Authorization', async () => {
+    const { default: handler } = await import('../../notifications/read')
+    const { res, state } = makeResponse()
+    await handler({ method: 'PATCH', body: { id: 'n1' }, headers: {} }, res)
+    expect(state.status).toBe(401)
+    expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
+  })
+
+  it('POST /api/notifications/friend-nearby rejects missing Authorization', async () => {
+    const { default: handler } = await import('../../notifications/friend-nearby')
+    const { res, state } = makeResponse()
+    await handler({ method: 'POST', body: { venueId: 'v1' }, headers: {} }, res)
+    expect(state.status).toBe(401)
+    expect(state.body).toMatchObject({ error: { code: 'unauthenticated' } })
+  })
 })

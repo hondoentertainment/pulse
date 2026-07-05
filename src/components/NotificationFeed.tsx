@@ -14,6 +14,8 @@ interface NotificationFeedProps {
   notifications: Notification[] | undefined
   onNotificationsChange: (fn: ((n: Notification[] | undefined) => Notification[]) | Notification[]) => void
   onNotificationClick: (notification: GroupedNotification) => void
+  onMarkRead?: (notificationId: string) => void
+  onMarkAllRead?: () => void
 }
 
 export function NotificationFeed({
@@ -22,7 +24,9 @@ export function NotificationFeed({
   venues,
   notifications,
   onNotificationsChange,
-  onNotificationClick
+  onNotificationClick,
+  onMarkRead,
+  onMarkAllRead,
 }: NotificationFeedProps) {
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const { settings } = useNotificationSettings()
@@ -99,18 +103,26 @@ export function NotificationFeed({
   )
 
   const markAsRead = useCallback((notificationId: string) => {
+    if (onMarkRead) {
+      onMarkRead(notificationId)
+      return
+    }
     onNotificationsChange((current) => {
       if (!current) return []
       return current.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     })
-  }, [onNotificationsChange])
+  }, [onMarkRead, onNotificationsChange])
 
   const markAllAsRead = useCallback(() => {
+    if (onMarkAllRead) {
+      onMarkAllRead()
+      return
+    }
     onNotificationsChange((current) => {
       if (!current) return []
       return current.map((n) => ({ ...n, read: true }))
     })
-  }, [onNotificationsChange])
+  }, [onMarkAllRead, onNotificationsChange])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
     markAsRead(notification.id)

@@ -69,6 +69,8 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     handleToggleFavorite,
     handleToggleFollow,
     handleNotificationClick,
+    markNotificationRead,
+    markAllNotificationsRead,
     handleAddFriend,
     handlePulseReport,
     handlePromotionImpression,
@@ -184,6 +186,8 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               venues={visibleVenues}
               notifications={notifications}
               onNotificationsChange={setNotifications}
+              onMarkRead={markNotificationRead}
+              onMarkAllRead={markAllNotificationsRead}
               onNotificationClick={handleNotificationClick}
             />
           </motion.div>
