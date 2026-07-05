@@ -140,10 +140,14 @@ export function AppRoutes() {
     queuedPulseCount,
   }
 
-  const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
+  // MainTabRouter/SubPageRouter read their target tab/page from useAppState,
+  // so we don't thread the URL segment through here. AppRoutes is currently
+  // reference-only (App.tsx mounts SignalApp) — a real activation would need
+  // to sync the URL back into state before rendering.
+  const wrapTab = (_tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
     <>
       <AppHeader {...headerProps} />
-      <MainTabRouter tab={tab} />
+      <MainTabRouter />
     </>
   )
 
@@ -167,19 +171,20 @@ export function AppRoutes() {
           }
         />
 
-        {/* Sub-pages */}
-        <Route path="/events" element={<SubPageRouter page="events" />} />
-        <Route path="/crews" element={<SubPageRouter page="crews" />} />
-        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
-        <Route path="/insights" element={<SubPageRouter page="insights" />} />
-        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
-        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
-        <Route path="/settings" element={<SubPageRouter page="settings" />} />
-        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
-        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
-        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        {/* Sub-pages — SubPageRouter reads subPage from useAppState, so we don't
+            forward the path segment as a prop here. */}
+        <Route path="/events" element={<SubPageRouter />} />
+        <Route path="/crews" element={<SubPageRouter />} />
+        <Route path="/achievements" element={<SubPageRouter />} />
+        <Route path="/insights" element={<SubPageRouter />} />
+        <Route path="/neighborhoods" element={<SubPageRouter />} />
+        <Route path="/playlists" element={<SubPageRouter />} />
+        <Route path="/settings" element={<SubPageRouter />} />
+        <Route path="/integrations" element={<SubPageRouter />} />
+        <Route path="/moderation" element={<SubPageRouter />} />
+        <Route path="/challenges" element={<SubPageRouter />} />
+        <Route path="/my-tickets" element={<SubPageRouter />} />
+        <Route path="/night-planner" element={<SubPageRouter />} />
 
         {/* Main tabs */}
         <Route path="/discover" element={wrapTab('discover')} />

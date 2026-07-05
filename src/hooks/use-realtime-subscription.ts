@@ -211,7 +211,7 @@ export function useRealtimeSubscription(enabled = true) {
         (payload) => {
           if (!payload.new) return
           const summary = mapVenueLiveAggregate(payload.new as Parameters<typeof mapVenueLiveAggregate>[0])
-          const venueId = payload.new.venue_id as string
+          const venueId = (payload.new as { venue_id: string }).venue_id
           queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
           queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
             old.map(venue => {

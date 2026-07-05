@@ -203,7 +203,8 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [selectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
+  const [selectedMarketKeyRaw, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
+  const selectedMarketKey = selectedMarketKeyRaw ?? 'seattle'
   const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
@@ -392,7 +393,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Location
   const availableMarkets = useMemo(() => getUsMarkets(venues || []), [venues])
   const selectedMarket = useMemo(
-    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey),
+    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey ?? 'seattle'),
     [availableMarkets, selectedMarketKey]
   )
 
