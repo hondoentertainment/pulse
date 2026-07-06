@@ -273,6 +273,34 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [pulses, setPulses] = useState<Pulse[] | undefined>(hasSupabaseConfig ? undefined : [])
   const [venues, setVenues] = useState<Venue[] | undefined>(hasSupabaseConfig ? undefined : undefined)
   const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
+
+  const shouldSeedE2eNotifications = import.meta.env.VITE_E2E_SEED_NOTIFICATIONS === 'true'
+  useEffect(() => {
+    if (!shouldSeedE2eNotifications) return
+    setNotifications((current) => {
+      if (current && current.length > 0) return current
+      const now = new Date().toISOString()
+      return [
+        {
+          id: 'e2e-notif-trending',
+          type: 'trending_venue' as const,
+          userId: 'user-2',
+          venueId: 'e2e-venue-neon-room',
+          read: false,
+          createdAt: now,
+        },
+        {
+          id: 'e2e-notif-friend',
+          type: 'friend_pulse' as const,
+          userId: 'user-2',
+          pulseId: 'preview-pulse-e2e-venue-neon-room',
+          venueId: 'e2e-venue-neon-room',
+          read: false,
+          createdAt: now,
+        },
+      ]
+    })
+  }, [shouldSeedE2eNotifications, setNotifications])
   const [hashtags, setHashtags] = useState<Hashtag[]>([])
   const [stories, setStories] = useState<PulseStory[]>([])
   const [events, setEvents] = useState<VenueEvent[]>([])

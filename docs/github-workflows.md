@@ -32,6 +32,18 @@ Runs on every push and pull request to `main`/`master`.
 | `typecheck-strict` | 15 min | `npx tsc -b` | Advisory (`continue-on-error`) |
 | `lighthouse` | 20 min | build + Lighthouse CI + bundle-size | PRs only; hard fail |
 | `dependency-audit` | 10 min | `npm audit --audit-level=high` | Advisory (`continue-on-error`) |
+| `supabase-smoke` | 10 min | `npm run smoke:supabase` | **Fails on `main` push** if secrets missing; skips PRs with `::warning` |
+
+### Supabase smoke secrets
+
+| Secret | Required on | Behavior if missing |
+|--------|-------------|----------------------|
+| `SUPABASE_URL` | `main`/`master` push | Job fails with `::error` annotation |
+| `SUPABASE_ANON_KEY` | `main`/`master` push | Job fails with `::error` annotation |
+| Both | Pull requests | Job skips with `::warning` (does not block merge) |
+| Both | `workflow_dispatch` | Skips if unset |
+
+Add secrets under **Settings → Secrets and variables → Actions**. See [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) § Launch Geography for the smoke script contract.
 
 ### Concurrency
 

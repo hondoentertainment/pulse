@@ -147,7 +147,7 @@ jobs:
           VITE_VISUAL_PREVIEW: 'true'
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
-        run: npx playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts
+        run: npx playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts e2e/notifications.spec.ts
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -210,6 +210,11 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Require Supabase secrets on main
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && (secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '') }}
+        run: |
+          echo "::error::Supabase smoke secrets missing on main. Add SUPABASE_URL and SUPABASE_ANON_KEY repository secrets (Settings → Secrets → Actions). See docs/github-workflows.md."
+          exit 1
       - name: Supabase data-path smoke
         if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
         env:
@@ -217,8 +222,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run smoke:supabase
       - name: Skip (Supabase secrets not configured)
-        if: ${{ secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '' }}
-        run: echo "Skipping supabase-smoke — add SUPABASE_URL and SUPABASE_ANON_KEY to repository secrets."
+        if: ${{ github.event_name == 'pull_request' && (secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '') }}
+        run: |
+          echo "::warning::Skipping supabase-smoke on PR — add SUPABASE_URL and SUPABASE_ANON_KEY to repository secrets to gate the live data path."
 
   lighthouse:
     if: github.event_name == 'pull_request'

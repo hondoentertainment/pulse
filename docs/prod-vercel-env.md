@@ -51,3 +51,11 @@ Safe to leave on (no extra secrets): `VITE_WEATHER_BOOST_ENABLED`, `VITE_WAIT_TI
 ## Monitoring
 
 Point uptime checks at `GET /api/health` on the production domain. Expected: `200 { "status": "ok", ... }`.
+
+Local probe (for cron / Better Stack / UptimeRobot):
+
+```bash
+npm run check:health -- https://pulse-chi-nine.vercel.app
+# or
+HEALTH_URL=https://pulse-chi-nine.vercel.app npm run check:health
+```

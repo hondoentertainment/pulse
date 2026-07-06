@@ -15,9 +15,9 @@ The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE
 
 | Item | Owner | Status |
 |------|-------|--------|
-| [ ] Decide the primary launch surface (Signal vs Venue) and document it here | Product | **Engineering default: Pulse Signal** — pending Product sign-off |
-| [ ] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | See [prod-vercel-env.md](prod-vercel-env.md) |
-| [ ] Confirm the non-launch shell is unreachable / clearly gated | Eng | Venue shell requires `VITE_ALLOW_VENUE_SHELL=true` in production |
+| [x] Decide the primary launch surface (Signal vs Venue) and document it here | Product | **Launch surface: Pulse Signal** (2026-07-06) — Venue PWA gated behind `VITE_ALLOW_VENUE_SHELL`; pending formal Product sign-off |
+| [x] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | Set `signal` or leave unset — see [prod-vercel-env.md](prod-vercel-env.md) |
+| [x] Confirm the non-launch shell is unreachable / clearly gated | Eng | Venue shell requires `VITE_ALLOW_VENUE_SHELL=true` in production |
 
 > **Default today:** production deploys boot **Pulse Signal**. Switch to the venue shell only after an explicit product decision.
 
@@ -73,8 +73,8 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 |------|-------|--------|
 | [ ] Support runbook reviewed — [SUPPORT_RUNBOOK.md](SUPPORT_RUNBOOK.md) | Ops | |
 | [ ] On-call rotation defined (see runbook §8) | Ops | |
-| [ ] Rollback tested on Vercel (promote previous deployment) | Eng | |
-| [ ] `/api/health` monitored by uptime checker | Ops | Endpoint live — configure external ping (see [prod-vercel-env.md](prod-vercel-env.md)) |
+| [ ] Rollback tested on Vercel (promote previous deployment) | Eng | See [PRODUCTION_ROLLOUT.md](../PRODUCTION_ROLLOUT.md) § Rollback drill |
+| [ ] `/api/health` monitored by uptime checker | Ops | Run `npm run check:health -- https://<prod-domain>` — wire to external ping (see [prod-vercel-env.md](prod-vercel-env.md)) |
 | [ ] Sentry DSN configured for production (`VITE_SENTRY_DSN`) | Eng | |
 | [x] Native push registration wired client-side (`usePushRegistration` on sign-in) | Eng | Done (web no-op) |
 | [x] Push **delivery** implemented server-side (FCM HTTP v1 + APNs ES256/HTTP2) | Eng | Done — see env contract below |
@@ -106,7 +106,7 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [ ] LCP < 2.5s on 4G (Lighthouse CI / manual WebPageTest) | Eng | |
 | [ ] PWA precache < 3 MB total | Eng | |
 | [ ] Load test passed: discovery reads + pulse writes — `npm run load-test` | Eng | |
-| [ ] Staging smoke + unit tests green on release branch | Eng | |
+| [ ] Staging smoke + unit tests green on release branch | Eng | `npm run release-check` + `npm run test:e2e:venue` |
 | [x] Pulse/venue fetch failures show a retry affordance (no silent blank states) | Eng | Done |
 | [x] Production builds refuse silent mock fallback without Supabase creds | Eng | `ProductionConfigGuard` — override with `VITE_ALLOW_MOCK_BACKEND=true` |
 | [ ] Feature flags OFF for unfinished surfaces (ticketing, safety, concierge) unless ready | Product | Defaults documented in [prod-vercel-env.md](prod-vercel-env.md); `safetyKit` off in prod builds |

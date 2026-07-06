@@ -170,6 +170,22 @@ Remaining gaps before a geo-gated public launch:
 6. Monitoring, moderation, and staging environment
 7. Launch policy and operational readiness
 
+## Rollback drill (Vercel)
+
+Before geo-gating a city, verify you can recover from a bad production deploy:
+
+1. Open the Vercel project → **Deployments**.
+2. Identify the last known-good production deployment (green, pre-release).
+3. Click **⋯ → Promote to Production** (or use `vercel promote <deployment-url> --scope=<team>`).
+4. Confirm `GET /api/health` returns `{ "status": "ok" }`:
+   ```bash
+   npm run check:health -- https://<production-domain>
+   ```
+5. Smoke the launch shell (Pulse Signal) on a real device.
+6. Record the promoted deployment ID in the incident/runbook notes.
+
+If Git-integrated deploys are ahead of Vercel production, rollback does **not** revert Git — it only moves the production alias. Follow up with a revert commit on `main` if needed.
+
 ## References
 
 - [README.md](README.md) — project overview and current status

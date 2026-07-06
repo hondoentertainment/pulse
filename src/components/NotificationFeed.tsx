@@ -171,6 +171,7 @@ export function NotificationFeed({
             variant="ghost"
             size="sm"
             onClick={markAllAsRead}
+            data-testid="notification-mark-all-read"
             className="text-accent hover:text-accent hover:bg-accent/10"
           >
             <CheckCircle size={18} weight="bold" className="mr-2" />

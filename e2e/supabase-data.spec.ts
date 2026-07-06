@@ -17,4 +17,12 @@ test.describe('Supabase data path (live backend)', () => {
     // Should not show the infinite-update React error overlay.
     await expect(page.getByText('Maximum update depth exceeded')).toHaveCount(0)
   })
+
+  test('notifications tab renders against live backend', async ({ page }) => {
+    await page.goto('/notifications')
+    await completeOnboarding(page)
+    await expect(page.getByRole('heading', { name: /^Notifications$/i })).toBeVisible({
+      timeout: 15_000,
+    })
+  })
 })

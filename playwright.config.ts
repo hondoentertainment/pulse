@@ -35,6 +35,9 @@ export default defineConfig({
         process.env.VITE_ALLOW_VENUE_SHELL ||
         (process.env.VITE_APP_MODE === 'venue' || isSupabaseE2e ? 'true' : 'false'),
       VITE_VISUAL_PREVIEW: isSupabaseE2e ? 'false' : 'true',
+      VITE_E2E_SEED_NOTIFICATIONS:
+        process.env.VITE_E2E_SEED_NOTIFICATIONS ||
+        (process.env.VITE_APP_MODE === 'venue' || isSupabaseE2e ? 'true' : 'false'),
       VITE_SUPABASE_URL: isSupabaseE2e ? (process.env.VITE_SUPABASE_URL ?? '') : '',
       VITE_SUPABASE_ANON_KEY: isSupabaseE2e ? (process.env.VITE_SUPABASE_ANON_KEY ?? '') : '',
     },
