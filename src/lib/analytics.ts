@@ -41,6 +41,8 @@ export type AnalyticsEvent =
   | { type: 'signal_nav'; timestamp: number; to: string }
   | { type: 'signal_sync_retry'; timestamp: number }
   | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
+  | { type: 'signal_patterns_view'; timestamp: number; liftCount: number; drainCount: number }
+  | { type: 'signal_export_click'; timestamp: number; entryCount: number }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
 
 export interface FunnelStep {

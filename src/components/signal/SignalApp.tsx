@@ -15,6 +15,8 @@ import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useHaptics } from '@/hooks/use-haptics'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import { SignalChart } from '@/components/signal/SignalChart'
+import { SignalPatterns } from '@/components/signal/SignalPatterns'
+import { downloadSignalCsv } from '@/lib/signal-export'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
 import { FirstWinDialog } from '@/components/signal/FirstWinDialog'
 import { SignalPageTransition } from '@/components/signal/SignalPageTransition'
@@ -222,6 +224,7 @@ function TrendsPage() {
         <p className="text-sm font-bold text-primary">Recommendation</p>
         <p className="mt-2 text-xl font-black leading-7">{metrics.recommendation}</p>
       </section>
+      <SignalPatterns entries={entries} />
     </div>
     </SignalPageTransition>
   )
@@ -278,9 +281,20 @@ function HistoryPage() {
 function SettingsPage() {
   const { signOut } = useSupabaseAuth()
   const profile = useSignalStore((state) => state.profile)
+  const entries = useSignalStore((state) => state.entries)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
+
+  const handleExport = () => {
+    trackEvent({ type: 'signal_export_click', timestamp: Date.now(), entryCount: entries.length })
+    const started = downloadSignalCsv(entries)
+    if (started) {
+      toast.success('Export started', { description: `${entries.length} check-in${entries.length === 1 ? '' : 's'} saved as CSV.` })
+    } else {
+      toast.error('Export unavailable', { description: 'Downloads are not supported in this environment.' })
+    }
+  }
 
   return (
     <SignalPageTransition>
@@ -345,6 +359,22 @@ function SettingsPage() {
             Reminder preference saved for {profile?.reminderTime ?? '09:00'}. We&apos;ll notify you here once browser push is enabled.
           </p>
         )}
+      </section>
+      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+        <p className="font-black">Your data</p>
+        <p className="text-sm text-muted-foreground">
+          {entries.length > 0
+            ? 'Download every check-in as a CSV — yours to keep, analyse, or move anywhere.'
+            : 'Once you log a check-in, you can export your full history as CSV here.'}
+        </p>
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-2xl"
+          disabled={entries.length === 0}
+          onClick={handleExport}
+        >
+          Export as CSV
+        </Button>
       </section>
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
         Sign out
