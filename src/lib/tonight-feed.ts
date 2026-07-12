@@ -7,7 +7,7 @@ import {
   type EnergyTrend,
   type SignalConfidence,
 } from './decision-explanations'
-import { PULSE_DECAY_MINUTES } from './types'
+import { computeVenueSignal } from './venue-signal'
 
 export type VibeFilter = EnergyRating | 'any'
 
@@ -20,63 +20,6 @@ export interface TonightPick {
   reportCount: number
   distanceMiles: number | null
   energyMatch: boolean
-}
-
-function recentPulsesForVenue(venueId: string, pulses: Pulse[]): Pulse[] {
-  const cutoff = Date.now() - PULSE_DECAY_MINUTES * 60 * 1000
-  return pulses.filter(
-    (p) => p.venueId === venueId && new Date(p.createdAt).getTime() >= cutoff,
-  )
-}
-
-function deriveConfidence(reportCount: number, freshnessMinutes: number | null): SignalConfidence {
-  if (reportCount === 0 || freshnessMinutes === null) return 'none'
-  if (reportCount >= 3 && freshnessMinutes <= 45) return 'high'
-  if (reportCount >= 2 && freshnessMinutes <= 60) return 'medium'
-  if (reportCount >= 1 && freshnessMinutes <= 90) return 'low'
-  return 'none'
-}
-
-function deriveTrend(venue: Venue, pulses: Pulse[]): EnergyTrend {
-  const recent = recentPulsesForVenue(venue.id, pulses)
-  if (recent.length < 2) return 'unknown'
-  const sorted = [...recent].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  )
-  const firstHalf = sorted.slice(0, Math.ceil(sorted.length / 2))
-  const secondHalf = sorted.slice(Math.ceil(sorted.length / 2))
-  const avgEnergy = (items: Pulse[]) => {
-    if (items.length === 0) return 0
-    const map: Record<EnergyRating, number> = {
-      dead: 1,
-      chill: 2,
-      buzzing: 3,
-      electric: 4,
-    }
-    return items.reduce((sum, p) => sum + map[p.energyRating], 0) / items.length
-  }
-  const delta = avgEnergy(secondHalf) - avgEnergy(firstHalf)
-  if (delta >= 0.4) return 'rising'
-  if (delta <= -0.4) return 'fading'
-  return 'steady'
-}
-
-function getFreshnessMinutes(venue: Venue, pulses: Pulse[]): { minutes: number | null; count: number } {
-  const recent = recentPulsesForVenue(venue.id, pulses)
-  if (recent.length === 0) {
-    const stamps = [venue.lastPulseAt, venue.lastActivity].filter(Boolean) as string[]
-    if (stamps.length === 0) return { minutes: null, count: 0 }
-    const latest = Math.max(...stamps.map((s) => new Date(s).getTime()))
-    return {
-      minutes: Math.max(0, Math.round((Date.now() - latest) / 60000)),
-      count: 0,
-    }
-  }
-  const latest = Math.max(...recent.map((p) => new Date(p.createdAt).getTime()))
-  return {
-    minutes: Math.max(0, Math.round((Date.now() - latest) / 60000)),
-    count: recent.length,
-  }
 }
 
 function energyMatchesFilter(score: number, vibe: VibeFilter): boolean {
@@ -109,9 +52,8 @@ export function getTonightPicks(
   const base = getRecommendations(user, venues, pulses, options.userLocation, options.now, limit * 2)
 
   const picks: TonightPick[] = base.map((rec) => {
-    const { minutes, count } = getFreshnessMinutes(rec.venue, pulses)
-    const confidence = deriveConfidence(count, minutes)
-    const trend = deriveTrend(rec.venue, pulses)
+    const signal = computeVenueSignal(rec.venue, pulses, { now: options.now })
+    const { freshnessMinutes: minutes, reportCount: count, confidence, trend } = signal
     const distanceMiles =
       options.userLocation && rec.venue.location
         ? calculateDistance(

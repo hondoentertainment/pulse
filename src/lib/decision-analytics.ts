@@ -3,6 +3,7 @@
  */
 
 import { trackEvent } from '@/lib/analytics'
+import { recordPendingArrival } from '@/lib/arrival-prompt'
 import type { EnergyRating } from '@/lib/types'
 import type { VibeFilter } from '@/lib/tonight-feed'
 
@@ -61,22 +62,34 @@ export function trackExplanationExpanded(venueId: string): void {
   })
 }
 
-export function trackGoSelected(venueId: string): void {
+export function trackGoSelected(
+  venueId: string,
+  meta?: { venueName: string; pulseScore: number },
+): void {
   trackEvent({
     type: 'go_selected',
     timestamp: Date.now(),
     sessionId: activeSessionId ?? undefined,
     venueId,
   })
+  if (meta) {
+    recordPendingArrival({ venueId, venueName: meta.venueName, pulseScore: meta.pulseScore })
+  }
 }
 
-export function trackDirectionsStarted(venueId: string): void {
+export function trackDirectionsStarted(
+  venueId: string,
+  meta?: { venueName: string; pulseScore: number },
+): void {
   trackEvent({
     type: 'directions_started',
     timestamp: Date.now(),
     sessionId: activeSessionId ?? undefined,
     venueId,
   })
+  if (meta) {
+    recordPendingArrival({ venueId, venueName: meta.venueName, pulseScore: meta.pulseScore })
+  }
 }
 
 export function trackVenueSaved(venueId: string): void {

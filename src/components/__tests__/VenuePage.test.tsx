@@ -96,6 +96,7 @@ vi.mock('@/lib/pulse-engine', () => ({
   getEnergyLabel: () => 'Buzzing',
   getEnergyColor: () => '#ff00ff',
   calculateDistance: () => 1,
+  scoreToEnergyRating: (score: number) => (score >= 75 ? 'electric' : score >= 50 ? 'buzzing' : score >= 25 ? 'chill' : 'dead'),
 }))
 vi.mock('@/lib/time-contextual-scoring', () => ({
   getContextualLabel: () => 'Peak hour',
@@ -321,6 +322,12 @@ describe.skip('VenuePage', () => {
     // The quick-actions mock includes a Quick Save button wired to onToggleFavorite
     fireEvent.click(screen.getByText('Quick Save'))
     expect(onToggleFavorite).toHaveBeenCalled()
+  })
+
+  it('renders Worth going? decision summary', () => {
+    render(<VenuePage {...baseProps()} />)
+    expect(screen.getByTestId('worth-going-panel')).toBeInTheDocument()
+    expect(screen.getByText(/Worth going\?/i)).toBeInTheDocument()
   })
 
   it('renders "Check In With Crew" only when onStartCrewCheckIn is provided', () => {

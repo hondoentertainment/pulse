@@ -13,6 +13,8 @@ import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
+import { ArrivalPromptSheet } from '@/components/ArrivalPromptSheet'
+import { useArrivalPrompt } from '@/hooks/use-arrival-prompt'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 const StoryViewer = lazy(() => import('@/components/StoryViewer').then(m => ({ default: m.StoryViewer })))
@@ -71,6 +73,8 @@ export function AppShell() {
     handleStartCrewCheckIn, handleToggleFavorite, handleToggleFollow,
     handleTabChange, handleStoryReact, handlePulseReport,
   } = handlers
+
+  const { pending, confirmArrival, reportMismatch, dismiss } = useArrivalPrompt(venues ?? [])
 
   if (!venues || !currentUser || !pulses) {
     return pageFallback
@@ -194,6 +198,14 @@ export function AppShell() {
       <Suspense fallback={null}>
         <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
       </Suspense>
+
+      <ArrivalPromptSheet
+        open={Boolean(pending)}
+        pending={pending}
+        onConfirm={confirmArrival}
+        onMismatch={reportMismatch}
+        onDismiss={dismiss}
+      />
 
       <motion.button
         data-testid="create-pulse-fab"

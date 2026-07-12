@@ -48,7 +48,13 @@ function buildPreviewPulses(venues: Venue[]): Pulse[] {
   })
 }
 
-async function loadCatalogVenues(): Promise<Venue[]> {
+function isSeattleLaunched(launchedCities: string[]): boolean {
+  const launchedCitySet = normalizeLaunchedCities(launchedCities)
+  if (launchedCitySet.has('seattle')) return true
+  return launchedCities.some((city) => city.toLowerCase().includes('seattle'))
+}
+
+async function loadCatalogVenues(launchedCities: string[] = []): Promise<Venue[]> {
   // Visual-preview / E2E builds run in production mode (where the dev-only
   // `MOCK_VENUES` table is empty). Load a small deterministic seed instead so
   // previews and Playwright specs have stable venues to work with. The import
@@ -58,12 +64,23 @@ async function loadCatalogVenues(): Promise<Venue[]> {
     const { E2E_SEED_VENUES } = await import('./__fixtures__/e2e-seed')
     return E2E_SEED_VENUES
   }
-  const { MOCK_VENUES } = await import('./mock-data')
-  return MOCK_VENUES
+
+  if (isSeattleLaunched(launchedCities)) {
+    const { SEATTLE_LAUNCH_VENUES } = await import('./__fixtures__/seattle-launch-seed')
+    return SEATTLE_LAUNCH_VENUES
+  }
+
+  if (import.meta.env.DEV) {
+    const { loadMockVenueFixtures } = await import('./mock-data')
+    const { MOCK_VENUES } = await loadMockVenueFixtures()
+    return MOCK_VENUES
+  }
+
+  return []
 }
 
 export async function loadPrototypeCatalog(launchedCities: string[] = []): Promise<PrototypeCatalog> {
-  const catalogVenues = await loadCatalogVenues()
+  const catalogVenues = await loadCatalogVenues(launchedCities)
 
   const launchedCitySet = normalizeLaunchedCities(launchedCities)
   const filteredVenues = catalogVenues.filter((venue) => {
@@ -74,7 +91,10 @@ export async function loadPrototypeCatalog(launchedCities: string[] = []): Promi
 
   return {
     venues,
-    pulses: import.meta.env.VITE_VISUAL_PREVIEW === 'true' ? buildPreviewPulses(venues) : [],
+    pulses:
+      import.meta.env.VITE_VISUAL_PREVIEW === 'true' || isSeattleLaunched(launchedCities)
+        ? buildPreviewPulses(venues)
+        : [],
   }
 }
 

@@ -79,13 +79,13 @@ export function TonightTab({
 
   const openDirections = (venue: Venue) => {
     if (!venue.location) return
-    trackDirectionsStarted(venue.id)
+    trackDirectionsStarted(venue.id, { venueName: venue.name, pulseScore: venue.pulseScore })
     const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.lat},${venue.location.lng}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleGo = (venue: Venue) => {
-    trackGoSelected(venue.id)
+    trackGoSelected(venue.id, { venueName: venue.name, pulseScore: venue.pulseScore })
     trackEvent({
       type: 'venue_view',
       timestamp: Date.now(),

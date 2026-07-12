@@ -49,8 +49,10 @@ import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
 import { queryClient } from '@/lib/query-client'
 import { VenueHighlightsPanel } from '@/components/VenueHighlightsPanel'
+import { WorthGoingPanel } from '@/components/WorthGoingPanel'
 import type { VenueHighlight } from '@/lib/stories'
 import type { Pulse } from '@/lib/types'
+import { trackDirectionsStarted } from '@/lib/decision-analytics'
 
 interface VenuePageProps {
   venue: Venue
@@ -209,6 +211,10 @@ export function VenuePage({
       opener: (...args) => window.open(...args),
       locationAssign: nextUrl => window.location.assign(nextUrl),
     })
+
+    if (action.id === 'directions') {
+      trackDirectionsStarted(venue.id, { venueName: venue.name, pulseScore: venue.pulseScore })
+    }
 
     trackEvent({
       type: 'integration_action',
@@ -455,6 +461,12 @@ export function VenuePage({
             <Separator />
           </>
         )}
+
+        <WorthGoingPanel
+          venue={venue}
+          pulses={venuePulses}
+          distanceMiles={distance}
+        />
 
         {/* Phase 2: Live Crowd Indicator */}
         <LiveCrowdIndicator
