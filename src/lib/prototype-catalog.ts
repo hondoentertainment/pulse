@@ -5,9 +5,20 @@ export interface PrototypeCatalog {
   pulses: Pulse[]
 }
 
+/**
+ * Normalize a launched-cities list into a lowercase token set.
+ *
+ * `VITE_LAUNCHED_CITIES` is documented as `Seattle,WA` and callers are
+ * expected to pre-split on comma (see `use-app-state.tsx`), but we also
+ * defensively split each entry on comma here — so a caller that forgets to
+ * split (or passes the raw env string as a single array element) still gets
+ * a usable `seattle` / `wa` token set instead of one literal
+ * `"seattle,wa"` string that never matches `venue.city`.
+ */
 function normalizeLaunchedCities(launchedCities: string[]): Set<string> {
   return new Set(
     launchedCities
+      .flatMap((city) => city.split(','))
       .map((city) => city.trim().toLowerCase())
       .filter(Boolean)
   )
@@ -48,6 +59,19 @@ function buildPreviewPulses(venues: Venue[]): Pulse[] {
   })
 }
 
+/**
+ * Prefer the fully-structured `SEATTLE_NIGHTLIFE_CURATED` inventory (PRD
+ * P0-4 — hours, dress code, cover charge, price range for every venue) over
+ * the legacy `SEATTLE_LAUNCH_VENUES` mock. Any mock venues whose name isn't
+ * already covered by the curated set are kept so we don't shrink the
+ * catalog while the curated list grows toward full neighborhood coverage.
+ */
+function mergeCuratedSeattleVenues(curated: Venue[], legacyMock: Venue[]): Venue[] {
+  const curatedNames = new Set(curated.map((v) => v.name.toLowerCase().trim()))
+  const extraMockVenues = legacyMock.filter((v) => !curatedNames.has(v.name.toLowerCase().trim()))
+  return [...curated, ...extraMockVenues]
+}
+
 function isSeattleLaunched(launchedCities: string[]): boolean {
   const launchedCitySet = normalizeLaunchedCities(launchedCities)
   if (launchedCitySet.has('seattle')) return true
@@ -66,8 +90,11 @@ async function loadCatalogVenues(launchedCities: string[] = []): Promise<Venue[]
   }
 
   if (isSeattleLaunched(launchedCities)) {
-    const { SEATTLE_LAUNCH_VENUES } = await import('./__fixtures__/seattle-launch-seed')
-    return SEATTLE_LAUNCH_VENUES
+    const [{ SEATTLE_LAUNCH_VENUES }, { SEATTLE_NIGHTLIFE_CURATED }] = await Promise.all([
+      import('./__fixtures__/seattle-launch-seed'),
+      import('./seattle-nightlife-catalog'),
+    ])
+    return mergeCuratedSeattleVenues(SEATTLE_NIGHTLIFE_CURATED, SEATTLE_LAUNCH_VENUES)
   }
 
   if (import.meta.env.DEV) {

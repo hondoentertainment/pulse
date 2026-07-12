@@ -11,12 +11,19 @@ import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { EnergyReportSheet } from '@/components/EnergyReportSheet'
+import { VenueDataGapSheet } from '@/components/VenueDataGapSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
+import {
+  Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork,
+  TShirt, Ticket, CurrencyDollar, Compass, LinkSimple, Warning,
+} from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
+import { formatDressCodeLabel } from '@/lib/dress-code'
+import { PRICE_RANGE_OPTIONS } from '@/lib/venue-data-reports'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
@@ -120,9 +127,11 @@ export function VenuePage({
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [energyReportOpen, setEnergyReportOpen] = useState(false)
+  const [dataGapSheetOpen, setDataGapSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const currentTime = useCurrentTime()
+  const { session } = useSupabaseAuth()
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
   const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
 
@@ -386,10 +395,22 @@ export function VenuePage({
         transition={{ duration: 0.3 }}
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
-        {(venue.location.address || venue.phone || venue.website || venue.hours) && (
+        {(venue.location.address || venue.phone || venue.website || venue.hours || venue.dressCode
+          || venue.coverChargeCents != null || venue.coverChargeNote || venue.priceRange
+          || venue.neighborhood || venue.menuUrl) && (
           <>
             <Card className="p-4 space-y-4 bg-card border-border">
-              <h3 className="text-lg font-bold">Venue Details</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">Venue Details</h3>
+                <button
+                  onClick={() => setDataGapSheetOpen(true)}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-orange-400 transition-colors"
+                  data-testid="venue-data-gap-trigger"
+                >
+                  <Warning size={14} weight="fill" />
+                  Something's wrong?
+                </button>
+              </div>
 
               {venue.location.address && (
                 <div className="flex items-start gap-3">
@@ -458,6 +479,77 @@ export function VenuePage({
                         )
                       })}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {venue.neighborhood && (
+                <div className="flex items-start gap-3">
+                  <Compass size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Neighborhood</p>
+                    <p className="text-sm">{venue.neighborhood}</p>
+                  </div>
+                </div>
+              )}
+
+              {venue.dressCode && (
+                <div className="flex items-start gap-3">
+                  <TShirt size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Dress code</p>
+                    <p className="text-sm">{formatDressCodeLabel(venue.dressCode)}</p>
+                  </div>
+                </div>
+              )}
+
+              {(venue.coverChargeCents != null || venue.coverChargeNote) && (
+                <div className="flex items-start gap-3">
+                  <Ticket size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Cover charge</p>
+                    <p className="text-sm">
+                      {venue.coverChargeCents != null
+                        ? venue.coverChargeCents === 0
+                          ? 'Free'
+                          : `$${(venue.coverChargeCents / 100).toFixed(2)}`
+                        : 'Varies'}
+                      {venue.coverChargeNote && (
+                        <span className="text-muted-foreground"> · {venue.coverChargeNote}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {venue.priceRange && (
+                <div className="flex items-start gap-3">
+                  <CurrencyDollar size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Typical spend</p>
+                    <p className="text-sm">
+                      {PRICE_RANGE_OPTIONS.find((o) => o.value === venue.priceRange)?.label ?? '$'.repeat(venue.priceRange)}
+                      <span className="text-muted-foreground">
+                        {' '}· {PRICE_RANGE_OPTIONS.find((o) => o.value === venue.priceRange)?.hint}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {venue.menuUrl && (
+                <div className="flex items-start gap-3">
+                  <LinkSimple size={20} weight="fill" className="text-accent mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Menu</p>
+                    <a
+                      href={venue.menuUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      View menu
+                    </a>
                   </div>
                 </div>
               )}
@@ -665,6 +757,17 @@ export function VenuePage({
         onSubmitNowPlaying={(track, artist) => {
           void submitLiveReport('now_playing', { track, artist })
         }}
+        onSubmitPriceRange={(priceRange) => {
+          void submitLiveReport('price_range', priceRange)
+        }}
+      />
+
+      <VenueDataGapSheet
+        open={dataGapSheetOpen}
+        onClose={() => setDataGapSheetOpen(false)}
+        venueName={venue.name}
+        venueId={venue.id}
+        accessToken={session?.access_token}
       />
 
       {onQuickEnergyReport && (

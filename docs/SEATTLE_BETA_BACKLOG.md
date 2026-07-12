@@ -14,7 +14,7 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 | P0-1 | **Tonight golden path** — vibe picker → ranked feed → PRD explanations → Go/directions/save | §4.2, REC-01–05 | **Done** — `TonightTab`, `tonight-feed.ts` | Eng |
 | P0-2 | **Decision analytics** — session + conversion events + dashboard query | §8.1, §2.1 | **Done** — `decision-analytics.ts` | Eng |
 | P0-3 | **Venue shell as production default** | §3, §15 | **Done** — `app-mode.ts`, `prod-vercel-env.md` | Eng |
-| P0-4 | **Seattle inventory** — 25–40 curated venues, 3–5 neighborhoods | §3.1, §15.1 | **Done** — `seattle-launch-seed.ts`, `prototype-catalog.ts` | Product + Eng |
+| P0-4 | **Seattle inventory** — 25–40 curated venues, 3–5 neighborhoods | §3.1, §15.1 | **Done** — curated catalog shipped: `seattle-nightlife-catalog.ts` (`SEATTLE_NIGHTLIFE_CURATED`, 30 venues across Capitol Hill/Belltown/Ballard/Fremont/Downtown/SODO/Pioneer Square with hours, dress code, cover charge, price range) merged in via `prototype-catalog.ts` | Product + Eng |
 | P0-5 | **Unified signal engine** — reports → decay → confidence → trend (versioned) | §5, §6.5 | **Done** — `venue-signal.ts` v1.0.0 | Eng |
 | P0-6 | **Map + list parity** — energy, confidence, trend, freshness on map pins | MAP-01–05 | **Done** — `SignalIntelBadges`, map + Explore list | Eng |
 | P0-7 | **Venue detail “Worth going?”** block | §6.4 | **Done** — `WorthGoingPanel.tsx` | Eng |

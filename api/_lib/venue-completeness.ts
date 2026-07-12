@@ -123,7 +123,7 @@ export function scoreVenueRowCompleteness(row: VenueRow): CompletenessResult {
   return { score, filled, missing, weightFilled, weightTotal }
 }
 
-export function rankVenueRowsByCompleteness(rows: VenueRow[], ascending = true): VenueRow[] {
+export function rankVenueRowsByCompleteness<T extends VenueRow>(rows: T[], ascending = true): T[] {
   return [...rows].sort((a, b) => {
     const sa = scoreVenueRowCompleteness(a).score
     const sb = scoreVenueRowCompleteness(b).score
