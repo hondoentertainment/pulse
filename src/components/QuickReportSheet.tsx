@@ -9,11 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import {
-  Clock, Ticket, MusicNotes, Users, TShirt, CheckCircle, PaperPlaneTilt
+  Clock, Ticket, MusicNotes, Users, TShirt, CheckCircle, PaperPlaneTilt, CurrencyDollar
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { DressCode } from '@/lib/live-intelligence'
+import { DRESS_CODE_OPTIONS } from '@/lib/dress-code'
+import { PRICE_RANGE_OPTIONS, type VenuePriceRange } from '@/lib/venue-data-reports'
 
 interface QuickReportSheetProps {
   open: boolean
@@ -25,9 +27,10 @@ interface QuickReportSheetProps {
   onSubmitCrowdLevel: (level: number) => void
   onSubmitDressCode: (code: DressCode) => void
   onSubmitNowPlaying: (track: string, artist: string) => void
+  onSubmitPriceRange?: (priceRange: VenuePriceRange) => void
 }
 
-type ReportSection = 'wait' | 'cover' | 'music' | 'crowd' | 'dress' | null
+type ReportSection = 'wait' | 'cover' | 'music' | 'crowd' | 'dress' | 'price' | null
 
 const WAIT_PRESETS = [
   { label: 'No wait', value: 0 },
@@ -40,13 +43,6 @@ const WAIT_PRESETS = [
 const GENRE_OPTIONS = [
   'House', 'Hip-Hop', 'Top 40', 'R&B', 'Latin', 'Techno',
   'Jazz', 'Rock', 'EDM', 'Country', 'Reggaeton', 'Pop'
-]
-
-const DRESS_OPTIONS: { label: string; value: DressCode }[] = [
-  { label: 'Casual', value: 'casual' },
-  { label: 'Smart Casual', value: 'smart-casual' },
-  { label: 'Dressy', value: 'dressy' },
-  { label: 'Formal', value: 'formal' },
 ]
 
 const CROWD_EMOJIS = [
@@ -71,6 +67,7 @@ export function QuickReportSheet({
   onSubmitCrowdLevel,
   onSubmitDressCode,
   onSubmitNowPlaying,
+  onSubmitPriceRange,
 }: QuickReportSheetProps) {
   const [activeSection, setActiveSection] = useState<ReportSection>(null)
   const [submitted, setSubmitted] = useState<Set<string>>(new Set())
@@ -224,7 +221,7 @@ export function QuickReportSheet({
               <button
                 onClick={() => setActiveSection('dress')}
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-xl border transition-all col-span-2 text-left',
+                  'flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
                   submitted.has('dress')
                     ? 'bg-green-500/5 border-green-500/20'
                     : 'bg-secondary/50 border-border hover:border-accent/30'
@@ -238,6 +235,27 @@ export function QuickReportSheet({
                   )}
                 </div>
               </button>
+
+              {/* Price Range */}
+              {onSubmitPriceRange && (
+                <button
+                  onClick={() => setActiveSection('price')}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border transition-all col-span-2 text-left',
+                    submitted.has('price')
+                      ? 'bg-green-500/5 border-green-500/20'
+                      : 'bg-secondary/50 border-border hover:border-accent/30'
+                  )}
+                >
+                  <CurrencyDollar size={20} weight="fill" className="text-green-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Price Range</p>
+                    {submitted.has('price') && (
+                      <p className="text-[10px] text-green-400">Reported</p>
+                    )}
+                  </div>
+                </button>
+              )}
             </div>
           )}
 
@@ -501,7 +519,7 @@ export function QuickReportSheet({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {DRESS_OPTIONS.map(option => (
+                  {DRESS_CODE_OPTIONS.map(option => (
                     <Button
                       key={option.value}
                       variant="outline"
@@ -513,6 +531,49 @@ export function QuickReportSheet({
                       }}
                     >
                       {option.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground"
+                  onClick={() => setActiveSection(null)}
+                >
+                  Back
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Price Range Section */}
+            {activeSection === 'price' && onSubmitPriceRange && (
+              <motion.div
+                key="price"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-3"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <CurrencyDollar size={20} weight="fill" className="text-green-400" />
+                  <h4 className="font-bold">What's the typical spend?</h4>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {PRICE_RANGE_OPTIONS.map(option => (
+                    <Button
+                      key={option.value}
+                      variant="outline"
+                      size="sm"
+                      className="h-12 flex-col gap-0.5"
+                      onClick={() => {
+                        onSubmitPriceRange(option.value)
+                        handleSubmit('price')
+                      }}
+                    >
+                      <span className="font-bold">{option.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{option.hint}</span>
                     </Button>
                   ))}
                 </div>

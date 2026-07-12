@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { isGuestBrowseEnabled } from '@/lib/guest-browse'
+import { trackEvent } from '@/lib/analytics'
 import { Lightning, Envelope, CircleNotch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 export function AuthGate() {
   const { signInWithOAuth, signInWithOtp, authError, isLoading } = useSupabaseAuth()
+  const [, setGuestBrowse] = useKV<boolean>('pulse-guest-browse', false)
 
   const [email, setEmail] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -32,6 +36,11 @@ export function AuthGate() {
     } finally {
       setLocalLoading(false)
     }
+  }
+
+  const handleGuestBrowse = () => {
+    setGuestBrowse(true)
+    trackEvent({ type: 'guest_browse_start', timestamp: Date.now() })
   }
 
   return (
@@ -131,6 +140,18 @@ export function AuthGate() {
             Send Magic Link
           </button>
         </div>
+
+        {isGuestBrowseEnabled() && (
+          <button
+            type="button"
+            data-testid="guest-browse"
+            onClick={handleGuestBrowse}
+            disabled={busy}
+            className="w-full rounded-2xl border border-border bg-card px-6 py-3.5 text-sm font-semibold text-foreground transition-all hover:border-primary/40 disabled:opacity-50"
+          >
+            Browse tonight without signing in
+          </button>
+        )}
 
         <p className="text-center text-xs text-muted-foreground leading-relaxed">
           By continuing you agree to Pulse's Terms of Service and Privacy Policy.

@@ -1,7 +1,19 @@
 import { supabase } from './supabase'
-import type { Venue, Pulse, EnergyRating, ReactionType, VenueLiveSummary } from './types'
+import type {
+  AccessibilityFeature,
+  Venue,
+  Pulse,
+  EnergyRating,
+  ReactionType,
+  VenueLiveSummary,
+  VenueDressCode,
+  VenueIndoorOutdoor,
+  VenuePriceRange,
+} from './types'
 import type { LiveReport } from './live-intelligence'
 import { normalizePulse } from './pulse-media'
+import { normalizeVenueCategoryKey } from './venue-categories'
+import { normalizeDressCode } from './dress-code'
 type VenueLiveReportRow = {
   id: string
   venue_id: string
@@ -34,7 +46,9 @@ type LiveVenueIntelligenceRow = {
   location_address: string
   city: string | null
   state: string | null
+  neighborhood: string | null
   category: string | null
+  category_key: string | null
   pulse_score: number | null
   score_velocity: number | null
   last_pulse_at: string | null
@@ -46,7 +60,17 @@ type LiveVenueIntelligenceRow = {
   hours: Venue['hours'] | null
   phone: string | null
   website: string | null
+  menu_url: string | null
   integrations: Venue['integrations'] | null
+  dress_code: string | null
+  cover_charge_cents: number | null
+  cover_charge_note: string | null
+  accessibility_features: string[] | null
+  indoor_outdoor: string | null
+  capacity_hint: number | null
+  price_range: number | null
+  place_id: string | null
+  enriched_at: string | null
   live_summary: VenueLiveAggregateRow | null
   latest_activity_at: string | null
 }
@@ -64,7 +88,9 @@ function mapVenueRow(row: {
   location_address: string
   city?: string | null
   state?: string | null
+  neighborhood?: string | null
   category?: string | null
+  category_key?: string | null
   pulse_score?: number | null
   score_velocity?: number | null
   last_pulse_at?: string | null
@@ -76,9 +102,22 @@ function mapVenueRow(row: {
   hours?: Venue['hours'] | null
   phone?: string | null
   website?: string | null
+  menu_url?: string | null
   integrations?: Venue['integrations'] | null
+  dress_code?: string | null
+  cover_charge_cents?: number | null
+  cover_charge_note?: string | null
+  accessibility_features?: string[] | null
+  indoor_outdoor?: string | null
+  capacity_hint?: number | null
+  price_range?: number | null
+  place_id?: string | null
+  enriched_at?: string | null
   latest_activity_at?: string | null
 }, liveAggregate: VenueLiveAggregateRow | null): Venue {
+  const categoryKey = row.category_key
+    ? normalizeVenueCategoryKey(row.category_key)
+    : normalizeVenueCategoryKey(row.category)
   return {
     id: row.id,
     name: row.name,
@@ -89,7 +128,9 @@ function mapVenueRow(row: {
     },
     city: row.city ?? undefined,
     state: row.state ?? undefined,
+    neighborhood: row.neighborhood ?? undefined,
     category: row.category ?? undefined,
+    categoryKey,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,
     lastPulseAt: row.last_pulse_at ?? undefined,
@@ -102,7 +143,17 @@ function mapVenueRow(row: {
     hours: row.hours ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
+    menuUrl: row.menu_url ?? null,
     integrations: row.integrations ?? undefined,
+    dressCode: normalizeDressCode(row.dress_code) as VenueDressCode | null,
+    coverChargeCents: row.cover_charge_cents ?? null,
+    coverChargeNote: row.cover_charge_note ?? null,
+    accessibilityFeatures: (row.accessibility_features ?? undefined) as AccessibilityFeature[] | undefined,
+    indoorOutdoor: (row.indoor_outdoor as VenueIndoorOutdoor | null) ?? null,
+    capacityHint: row.capacity_hint ?? null,
+    priceRange: (row.price_range as VenuePriceRange | null) ?? null,
+    placeId: row.place_id ?? null,
+    enrichedAt: row.enriched_at ?? null,
     liveSummary: liveAggregate ? mapVenueLiveAggregate(liveAggregate) : undefined
   }
 }

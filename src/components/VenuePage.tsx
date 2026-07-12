@@ -10,6 +10,7 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
+import { EnergyReportSheet } from '@/components/EnergyReportSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
 import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
@@ -52,6 +53,7 @@ import { VenueHighlightsPanel } from '@/components/VenueHighlightsPanel'
 import { WorthGoingPanel } from '@/components/WorthGoingPanel'
 import type { VenueHighlight } from '@/lib/stories'
 import type { Pulse } from '@/lib/types'
+import type { EnergyRating } from '@/lib/types'
 import { trackDirectionsStarted } from '@/lib/decision-analytics'
 
 interface VenuePageProps {
@@ -76,6 +78,7 @@ interface VenuePageProps {
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
+  onQuickEnergyReport?: (energy: EnergyRating) => void
   /** Wave 4 — paginated venue pulses from server */
   onLoadMoreVenuePulses?: () => void
   hasMoreVenuePulses?: boolean
@@ -106,6 +109,7 @@ export function VenuePage({
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
+  onQuickEnergyReport,
   onLoadMoreVenuePulses,
   hasMoreVenuePulses,
   isLoadingMoreVenuePulses,
@@ -115,6 +119,7 @@ export function VenuePage({
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [energyReportOpen, setEnergyReportOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const currentTime = useCurrentTime()
@@ -498,7 +503,7 @@ export function VenuePage({
           currentScore={venue.pulseScore}
         />
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">Live Energy</h2>
             {venue.lastPulseAt && (
@@ -507,13 +512,24 @@ export function VenuePage({
               </p>
             )}
           </div>
-          <Button
-            onClick={onCreatePulse}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus size={20} weight="bold" className="mr-2" />
-            Create Pulse
-          </Button>
+          <div className="flex gap-2">
+            {onQuickEnergyReport && (
+              <Button
+                variant="outline"
+                data-testid="quick-energy-report"
+                onClick={() => setEnergyReportOpen(true)}
+              >
+                Report energy
+              </Button>
+            )}
+            <Button
+              onClick={onCreatePulse}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus size={20} weight="bold" className="mr-2" />
+              Create Pulse
+            </Button>
+          </div>
         </div>
 
         {onStartCrewCheckIn && (
@@ -650,6 +666,15 @@ export function VenuePage({
           void submitLiveReport('now_playing', { track, artist })
         }}
       />
+
+      {onQuickEnergyReport && (
+        <EnergyReportSheet
+          open={energyReportOpen}
+          venueName={venue.name}
+          onClose={() => setEnergyReportOpen(false)}
+          onSubmit={(energy) => onQuickEnergyReport(energy)}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Link, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
@@ -17,6 +18,7 @@ import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
 import { PulseRoute } from '@/components/PulseRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
+import { isGuestBrowseEnabled } from '@/lib/guest-browse'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
 // ── Lazy page imports ────────────────────────────────────────
@@ -43,6 +45,11 @@ const GlobalSearch = lazy(() =>
 const VenueMetadataRoute = lazy(() =>
   import('@/components/venue-admin/VenueMetadataRoute').then((m) => ({
     default: m.VenueMetadataRoute,
+  })),
+)
+const VenueCompletenessPage = lazy(() =>
+  import('@/components/venue-admin/VenueCompletenessPage').then((m) => ({
+    default: m.VenueCompletenessPage,
   })),
 )
 
@@ -98,6 +105,8 @@ export function AppRoutes() {
   // Native-only push registration (no-op on web).
   usePushRegistration({ userId: session?.user?.id })
   const currentTime = useCurrentTime()
+  const [guestBrowse] = useKV<boolean>('pulse-guest-browse', false)
+  const allowGuestBrowse = isGuestBrowseEnabled() && guestBrowse === true
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchMode, setSearchMode] = useState<'navigate' | 'create'>('navigate')
 
@@ -148,7 +157,7 @@ export function AppRoutes() {
   }
 
   // ── Auth gate (only when real Supabase credentials are configured) ──
-  if (!isPlaceholder && !session && !authLoading && hasCompletedOnboarding) {
+  if (!isPlaceholder && !session && !authLoading && hasCompletedOnboarding && !allowGuestBrowse) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <AuthGate />
@@ -224,6 +233,17 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <VenueMetadataRoute />
+            </Suspense>
+          }
+        />
+
+        {/* Admin-only: venue data-quality completeness dashboard. Non-admins
+            get a 403 rendered by VenueCompletenessPage itself. */}
+        <Route
+          path="/admin/venues/completeness"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <VenueCompletenessPage />
             </Suspense>
           }
         />

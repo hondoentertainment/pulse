@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { queryClient } from '@/lib/query-client'
 import { useAppState } from '@/hooks/use-app-state'
-import type { Pulse, EnergyRating, GroupedNotification } from '@/lib/types'
+import type { Pulse, EnergyRating, GroupedNotification, Venue } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 import type { VenueEvent } from '@/lib/events'
 import { calculateUserCredibility } from '@/lib/credibility'
@@ -21,6 +21,7 @@ import { togglePulseReactionInSupabase, uploadPulseToSupabase } from '@/lib/supa
 import { createPulseViaApi, reactToPulseViaApi, notifyFriendNearbyViaApi } from '@/lib/api-client'
 import { normalizePulse } from '@/lib/pulse-media'
 import { hasSupabaseConfig } from '@/lib/supabase'
+import { isGuestUser } from '@/lib/guest-browse'
 import { trackEvent } from '@/lib/analytics'
 import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted-discoveries'
 import { createStory, reactToStory, type StoryReaction } from '@/lib/stories'
@@ -94,8 +95,17 @@ export function useAppHandlers() {
     setCreateDialogOpen(true)
   }, [currentUser, pulses, setCreateDialogOpen, setVenueForPulse, venues])
 
-  const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
-    if (!venueForPulse || !currentUser || !venues) return
+  const handleSubmitPulse = useCallback(async (
+    data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] },
+    venueOverride?: Venue,
+  ) => {
+    const targetVenue = venueOverride ?? venueForPulse
+    if (!targetVenue || !currentUser || !venues) return
+
+    if (isGuestUser(currentUser)) {
+      toast.error('Sign in to report energy', { description: 'Guest browse is read-only. Create an account to post.' })
+      return
+    }
 
     if (USE_SUPABASE_BACKEND) {
       const userId = await getUserIdOrNull()
@@ -120,12 +130,12 @@ export function useAppHandlers() {
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000)
-    const previousScore = venueForPulse.pulseScore
+    const previousScore = targetVenue.pulseScore
     const userCredibility = calculateUserCredibility(currentUser, pulses || [])
-    const activeCrewCheckIns = getActiveCrewCheckIns(crewCheckIns || [], venueForPulse.id)
+    const activeCrewCheckIns = getActiveCrewCheckIns(crewCheckIns || [], targetVenue.id)
     const currentCrewCheckIn = activeCrewCheckIns.find(ci => ci.initiatorId === currentUser.id || ci.confirmations[currentUser.id])
     const today = now.toISOString().split('T')[0]
-    const venuePulsesToday = (pulses || []).filter(p => p.venueId === venueForPulse.id && new Date(p.createdAt).toISOString().split('T')[0] === today)
+    const venuePulsesToday = (pulses || []).filter(p => p.venueId === targetVenue.id && new Date(p.createdAt).toISOString().split('T')[0] === today)
     const isPioneer = venuePulsesToday.length === 0
     const accessToken = session?.access_token ?? null
     const useApiCreate = USE_SUPABASE_BACKEND && Boolean(accessToken)
@@ -135,7 +145,7 @@ export function useAppHandlers() {
     if (useApiCreate) {
       const apiResult = await createPulseViaApi(
         {
-          venueId: venueForPulse.id,
+          venueId: targetVenue.id,
           energyRating: data.energyRating,
           caption: data.caption,
           photos: data.photos,
@@ -158,7 +168,7 @@ export function useAppHandlers() {
       newPulse = {
         id: `pulse-${Date.now()}`,
         userId: currentUser.id,
-        venueId: venueForPulse.id,
+        venueId: targetVenue.id,
         crewId: currentCrewCheckIn?.crewId,
         photos: data.photos,
         video: data.video,
@@ -178,7 +188,7 @@ export function useAppHandlers() {
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
     queryClient.setQueryData(['pulses'], (current: Pulse[] | undefined) => { if (!current) return [newPulse]; return [newPulse, ...current] })
 
-    const story = createStory(newPulse, currentUser, venueForPulse.name)
+    const story = createStory(newPulse, currentUser, targetVenue.name)
     setStories(current => { if (!current) return [story]; return [story, ...current] })
 
     if (data.hashtags && data.hashtags.length > 0) {
@@ -190,7 +200,7 @@ export function useAppHandlers() {
 
     setVenues(currentVenues => {
       if (!currentVenues) return []
-      return currentVenues.map(v => v.id === venueForPulse.id ? updateVenueWithCheckIn(v, newPulse) : v)
+      return currentVenues.map(v => v.id === targetVenue.id ? updateVenueWithCheckIn(v, newPulse) : v)
     })
 
     const history = currentUser.venueCheckInHistory || {}
@@ -204,16 +214,16 @@ export function useAppHandlers() {
       }
     }
     void updateProfile({
-      venueCheckInHistory: { ...history, [venueForPulse.id]: (history[venueForPulse.id] || 0) + 1 },
+      venueCheckInHistory: { ...history, [targetVenue.id]: (history[targetVenue.id] || 0) + 1 },
       postStreak: newStreak,
       lastPostDate: today,
     })
 
     if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
-    toast.success('Pulse posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
-    announce(`Pulse posted at ${venueForPulse.name}`)
+    toast.success('Pulse posted!', { description: `Your vibe at ${targetVenue.name} is live` })
+    announce(`Pulse posted at ${targetVenue.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
-    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
+    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: targetVenue.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 
     const syncOnline = useApiCreate
       ? true
@@ -225,10 +235,10 @@ export function useAppHandlers() {
     if (USE_SUPABASE_BACKEND && syncOnline) {
       try {
         const distMi = userLocation
-          ? milesBetween(userLocation, venueForPulse.location)
+          ? milesBetween(userLocation, targetVenue.location)
           : undefined
         await CheckInData.createCheckIn({
-          venueId: venueForPulse.id,
+          venueId: targetVenue.id,
           lat: userLocation?.lat,
           lng: userLocation?.lng,
           distanceFromVenueMi: distMi,
@@ -237,7 +247,7 @@ export function useAppHandlers() {
         })
         if (session?.access_token) {
           void notifyFriendNearbyViaApi(
-            { venueId: venueForPulse.id },
+            { venueId: targetVenue.id },
             { accessToken: session.access_token },
           )
         }
@@ -248,12 +258,12 @@ export function useAppHandlers() {
 
     setPulses(current => { if (!current) return []; return current.map(p => p.id === newPulse.id ? { ...p, isPending: false, uploadError: false } : p) })
 
-    const updatedVenuePulses = [...(pulses || []), newPulse].filter(p => p.venueId === venueForPulse.id)
+    const updatedVenuePulses = [...(pulses || []), newPulse].filter(p => p.venueId === targetVenue.id)
     const newScore = calculatePulseScore(updatedVenuePulses)
 
     if (notificationSettings?.friendPulses && currentUser.friends.length > 0 && !useApiCreate) {
       setNotifications(current => {
-        const n = { id: `notif-${Date.now()}`, type: 'friend_pulse' as const, userId: currentUser.id, pulseId: newPulse.id, venueId: venueForPulse.id, createdAt: now.toISOString(), read: false }
+        const n = { id: `notif-${Date.now()}`, type: 'friend_pulse' as const, userId: currentUser.id, pulseId: newPulse.id, venueId: targetVenue.id, createdAt: now.toISOString(), read: false }
         return current ? [n, ...current] : [n]
       })
     }
@@ -261,18 +271,18 @@ export function useAppHandlers() {
     if ((previousScore < 50 && newScore >= 50) || (previousScore < 75 && newScore >= 75)) {
       const thresholdLabel = newScore >= 75 ? 'Electric ⚡' : 'Buzzing 🔥'
       setNotifications(current => {
-        const n = { id: `notif-impact-${Date.now()}`, type: 'impact' as const, userId: currentUser.id, pulseId: newPulse.id, venueId: venueForPulse.id, energyThreshold: (newScore >= 75 ? 'electric' : 'buzzing') as 'electric' | 'buzzing', createdAt: now.toISOString(), read: false }
+        const n = { id: `notif-impact-${Date.now()}`, type: 'impact' as const, userId: currentUser.id, pulseId: newPulse.id, venueId: targetVenue.id, energyThreshold: (newScore >= 75 ? 'electric' : 'buzzing') as 'electric' | 'buzzing', createdAt: now.toISOString(), read: false }
         return current ? [n, ...current] : [n]
       })
-      toast.success('You moved the needle!', { description: `Your pulse pushed ${venueForPulse.name} into ${thresholdLabel}`, duration: 5000 })
+      toast.success('You moved the needle!', { description: `Your pulse pushed ${targetVenue.name} into ${thresholdLabel}`, duration: 5000 })
     }
 
     // Wave notification
     if (previousScore - newScore >= 15 && previousScore >= 50 && venues) {
-      const altVenue = venues.filter(v => v.id !== venueForPulse.id && v.pulseScore >= 50).sort((a, b) => b.pulseScore - a.pulseScore)[0]
+      const altVenue = venues.filter(v => v.id !== targetVenue.id && v.pulseScore >= 50).sort((a, b) => b.pulseScore - a.pulseScore)[0]
       if (altVenue) {
         setNotifications(current => {
-          const n = { id: `notif-wave-${Date.now()}`, type: 'wave' as const, userId: currentUser.id, venueId: venueForPulse.id, recommendedVenueId: altVenue.id, createdAt: now.toISOString(), read: false }
+          const n = { id: `notif-wave-${Date.now()}`, type: 'wave' as const, userId: currentUser.id, venueId: targetVenue.id, recommendedVenueId: altVenue.id, createdAt: now.toISOString(), read: false }
           return current ? [n, ...current] : [n]
         })
       }
@@ -296,6 +306,10 @@ export function useAppHandlers() {
     venueForPulse,
     venues,
   ])
+
+  const handleQuickEnergyReport = useCallback(async (venue: Venue, energyRating: EnergyRating) => {
+    await handleSubmitPulse({ energyRating, caption: '', photos: [], hashtags: [] }, venue)
+  }, [handleSubmitPulse])
 
   const handleReaction = useCallback((pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => {
     if (!currentUser) return
@@ -483,6 +497,7 @@ export function useAppHandlers() {
   return useMemo(() => ({
     handleCreatePulse,
     handleSubmitPulse,
+    handleQuickEnergyReport,
     handleReaction,
     handleNotificationClick,
     handleAddFriend,
@@ -510,6 +525,7 @@ export function useAppHandlers() {
     handleStartCrewCheckIn,
     handleStoryReact,
     handleSubmitPulse,
+    handleQuickEnergyReport,
     handleTabChange,
     handleToggleFavorite,
     handleToggleFollow,

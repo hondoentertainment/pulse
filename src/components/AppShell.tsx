@@ -72,6 +72,7 @@ export function AppShell() {
     handleCreatePulse, handleSubmitPulse, handleReaction,
     handleStartCrewCheckIn, handleToggleFavorite, handleToggleFollow,
     handleTabChange, handleStoryReact, handlePulseReport,
+    handleQuickEnergyReport,
   } = handlers
 
   const { pending, confirmArrival, reportMismatch, dismiss } = useArrivalPrompt(venues ?? [])
@@ -144,6 +145,7 @@ export function AppShell() {
               setSelectedVenue(null)
               state.setSubPage('integrations')
             }}
+            onQuickEnergyReport={(energy) => void handleQuickEnergyReport(selectedVenue, energy)}
           />
         </Suspense>
         <Suspense fallback={null}>

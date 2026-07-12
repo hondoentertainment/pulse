@@ -184,6 +184,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
             <div className="h-full">
               <InteractiveMap
                 venues={visibleVenues}
+                pulses={visiblePulses}
                 userLocation={userLocation}
                 onVenueClick={navigateToVenue}
                 isTracking={isTracking}

@@ -52,6 +52,7 @@ export type AnalyticsEvent =
   | { type: 'arrival_confirmed'; timestamp: number; sessionId?: string; venueId: string }
   | { type: 'mismatch_reported'; timestamp: number; sessionId?: string; venueId: string; displayedEnergy: string }
   | { type: 'filter_applied'; timestamp: number; sessionId?: string; filter: string }
+  | { type: 'guest_browse_start'; timestamp: number }
 
 export interface FunnelStep {
   name: string

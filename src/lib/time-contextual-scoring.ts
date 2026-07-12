@@ -1,4 +1,5 @@
 import type { Venue } from './types'
+import { toScoringCategoryKey } from './venue-categories'
 
 /**
  * Time-Contextual Scoring Engine
@@ -96,24 +97,14 @@ export function normalizeCategoryKeyPublic(category?: string): string {
   return normalizeCategoryKey(category)
 }
 
+/**
+ * Delegates to the canonical taxonomy in `venue-categories.ts` so this
+ * engine's category buckets (bar, nightclub, music_venue, brewery,
+ * restaurant, cafe, gallery) stay in sync with the rest of the app instead
+ * of drifting via a second hand-rolled classifier.
+ */
 function normalizeCategoryKey(category?: string): string {
-  if (!category) return 'bar'
-  const lower = category.toLowerCase()
-  if (lower.includes('café') || lower.includes('cafe') || lower.includes('coffee') || lower === 'cafes' || lower.includes('bakery') || lower.includes('brunch'))
-    return 'cafe'
-  if (lower.includes('nightclub') || lower.includes('dance club') || lower === 'nightlife')
-    return 'nightclub'
-  if (lower.includes('music') || lower.includes('theatre') || lower.includes('theater'))
-    return 'music_venue'
-  if (lower.includes('restaurant') || lower === 'food')
-    return 'restaurant'
-  if (lower.includes('brewery'))
-    return 'brewery'
-  if (lower.includes('gallery'))
-    return 'gallery'
-  if (lower.includes('lounge') || lower.includes('wine'))
-    return 'bar'
-  return 'bar'
+  return toScoringCategoryKey(category)
 }
 
 export function getTimeOfDay(date: Date = new Date()): TimeOfDay {

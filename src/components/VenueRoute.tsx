@@ -58,6 +58,7 @@ export function VenueRoute() {
     handleToggleFavorite,
     handleToggleFollow,
     handleStartCrewCheckIn,
+    handleQuickEnergyReport,
   } = handlers
 
   // Live venue row + paginated pulses when Supabase backend is on.
@@ -213,6 +214,7 @@ export function VenueRoute() {
             setIntegrationVenue(venue)
             navigate('/integrations')
           } : undefined}
+          onQuickEnergyReport={(energy) => void handleQuickEnergyReport(venue, energy)}
           onLoadMoreVenuePulses={
             USE_SUPABASE_BACKEND ? () => { void venuePulseQuery.fetchNextPage() } : undefined
           }

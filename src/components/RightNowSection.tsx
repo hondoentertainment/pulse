@@ -3,11 +3,13 @@ import { Compass, Lightning, MapPin, SealCheck, TrendUp, HeartStraight } from '@
 import { motion } from 'framer-motion'
 import { getEnergyLabel, getEnergyColor } from '@/lib/pulse-engine'
 import { getRightNowDecisionSections, type RightNowDecision } from '@/lib/right-now-decisions'
-import type { User, Venue } from '@/lib/types'
+import type { Pulse, User, Venue } from '@/lib/types'
+import { SignalIntelBadges } from '@/components/SignalIntelBadges'
 import { cn } from '@/lib/utils'
 
 interface RightNowSectionProps {
   venues: Venue[]
+  pulses: Pulse[]
   currentUser: User
   userLocation?: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
@@ -45,6 +47,7 @@ const SECTION_CONFIG: SectionConfig[] = [
 
 export function RightNowSection({
   venues,
+  pulses,
   currentUser,
   userLocation,
   onVenueClick,
@@ -101,6 +104,7 @@ export function RightNowSection({
                 <RightNowCard
                   key={item.venue.id}
                   item={item}
+                  pulses={pulses}
                   isFollowed={isFollowed?.(item.venue.id)}
                   onToggleFollow={onToggleFollow}
                   onClick={() => onVenueClick(item.venue)}
@@ -116,11 +120,13 @@ export function RightNowSection({
 
 function RightNowCard({
   item,
+  pulses,
   onClick,
   isFollowed,
   onToggleFollow,
 }: {
   item: RightNowDecision
+  pulses: Pulse[]
   onClick: () => void
   isFollowed?: boolean
   onToggleFollow?: (venueId: string) => void
@@ -170,6 +176,7 @@ function RightNowCard({
 
         <p className="mt-3 text-sm font-medium">{item.headline}</p>
         <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+        <SignalIntelBadges venue={item.venue} pulses={pulses} compact className="mt-2" />
 
         <div className="mt-3 flex flex-wrap gap-2">
           <InfoPill label={item.sourceLabel} tone="verified" />

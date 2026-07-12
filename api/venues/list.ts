@@ -21,10 +21,12 @@ import { createUserClient } from '../_lib/supabase-server'
 
 const VENUE_COLUMNS = `
   id, name, location_lat, location_lng, location_address,
-  city, state, category, pulse_score, score_velocity,
+  city, state, neighborhood, category, category_key, pulse_score, score_velocity,
   last_pulse_at, last_activity, pre_trending, pre_trending_label,
   seeded, verified_check_in_count, first_real_check_in_at,
-  hours, phone, website, integrations, deleted_at
+  hours, phone, website, menu_url, integrations,
+  dress_code, cover_charge_cents, cover_charge_note, accessibility_features,
+  indoor_outdoor, capacity_hint, price_range, place_id, enriched_at, deleted_at
 `.trim()
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {

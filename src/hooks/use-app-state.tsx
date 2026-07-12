@@ -50,6 +50,7 @@ import {
 } from '@/lib/us-markets'
 import { fetchProfilesByIds } from '@/lib/auth-profile'
 import { hasSupabaseEnv } from '@/lib/data'
+import { GUEST_BROWSE_KV_KEY, GUEST_BROWSE_USER, isGuestBrowseEnabled } from '@/lib/guest-browse'
 import { normalizePulse } from '@/lib/pulse-media'
 
 export type SubPage =
@@ -217,6 +218,7 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
+  const [guestBrowse] = useKV<boolean>(GUEST_BROWSE_KV_KEY, false)
   const [storedSelectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const selectedMarketKey = storedSelectedMarketKey ?? 'seattle'
   const [activeTab, setActiveTab] = useState<TabId>('tonight')
@@ -259,8 +261,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   // Bridge Supabase Profile -> Local State
   useEffect(() => {
-    setCurrentUser(getCurrentUserFromProfile(supabaseProfile))
-  }, [supabaseProfile])
+    if (supabaseProfile) {
+      setCurrentUser(supabaseProfile)
+      return
+    }
+    if (guestBrowse && isGuestBrowseEnabled()) {
+      setCurrentUser(GUEST_BROWSE_USER)
+      return
+    }
+    setCurrentUser(undefined)
+  }, [supabaseProfile, guestBrowse])
 
   const launchedCities = useMemo(
     () => (import.meta.env.VITE_LAUNCHED_CITIES ?? '')

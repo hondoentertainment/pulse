@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { Venue } from '@/lib/types'
+import { Venue, Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
@@ -8,7 +8,7 @@ import { venuePassesAccessibilityFilter } from '@/components/filters/Accessibili
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire, Lightning
+  Users, Fire
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
+import { SignalIntelBadges } from '@/components/SignalIntelBadges'
 import {
   buildVenueRenderPoints,
   clampCenter,
@@ -31,6 +32,7 @@ import {
 
 interface InteractiveMapProps {
   venues: Venue[]
+  pulses?: Pulse[]
   userLocation: { lat: number; lng: number } | null
   onVenueClick: (venue: Venue) => void
   isTracking?: boolean
@@ -43,6 +45,7 @@ const MAP_SCALE = 500000
 
 export function InteractiveMap({
   venues,
+  pulses = [],
   userLocation,
   onVenueClick,
   isTracking = false,
@@ -1395,19 +1398,17 @@ export function InteractiveMap({
                     </div>
                   )}
 
-                  {/* Social Signals / Stats simulated */}
+                  {/* Signal parity — confidence, trend, freshness */}
+                  <SignalIntelBadges venue={hoveredVenue} pulses={pulses} compact className="pt-1" />
+
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Users size={12} />
                         <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
-                        <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
-                      </div>
                     </div>
-                    <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
+                    <span className="text-[10px] text-primary font-bold">View</span>
                   </div>
                 </div>
                 {/* Pointer arrow */}

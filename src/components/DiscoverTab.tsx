@@ -92,6 +92,7 @@ export function DiscoverTab({
 
       <RightNowSection
         venues={venues}
+        pulses={pulses}
         currentUser={currentUser}
         userLocation={userLocation ?? null}
         onVenueClick={onVenueClick}

@@ -42,6 +42,9 @@ export type VenueDressCode =
 
 export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
 
+/** Typical spend signal: 1=$ … 4=$$$$ */
+export type VenuePriceRange = 1 | 2 | 3 | 4
+
 export const ACCESSIBILITY_FEATURES: readonly AccessibilityFeature[] = [
   'wheelchair_accessible',
   'step_free_entry',
@@ -86,9 +89,12 @@ export interface Venue {
   }
   city?: string
   state?: string
+  neighborhood?: string
   pulseScore: number
   lastPulseAt?: string
   category?: string
+  /** Canonical category key (bar, nightclub, …). */
+  categoryKey?: string
   hours?: {
     monday?: string
     tuesday?: string
@@ -100,6 +106,7 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  menuUrl?: string | null
   preTrending?: boolean
   preTrendingLabel?: string
   seeded?: boolean
@@ -112,6 +119,9 @@ export interface Venue {
   coverChargeNote?: string | null
   indoorOutdoor?: VenueIndoorOutdoor | null
   capacityHint?: number | null
+  priceRange?: VenuePriceRange | null
+  placeId?: string | null
+  enrichedAt?: string | null
   contextualScore?: number
   integrations?: {
     music?: {

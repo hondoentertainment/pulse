@@ -28,6 +28,7 @@ function makeLiveData(overrides: Partial<VenueLiveData> = {}): VenueLiveData {
     dressCode: overrides.dressCode ?? null,
     musicGenre: overrides.musicGenre ?? 'House',
     nowPlaying: overrides.nowPlaying ?? null,
+    priceRange: overrides.priceRange ?? null,
     ageRange: overrides.ageRange ?? null,
     capacity: overrides.capacity ?? null,
     lastUpdated: overrides.lastUpdated || new Date().toISOString(),
@@ -39,6 +40,7 @@ function makeLiveData(overrides: Partial<VenueLiveData> = {}): VenueLiveData {
       dressCode: 'low',
       nowPlaying: 'low',
       ageRange: 'low',
+      priceRange: 'low',
     },
     confidenceDetails: overrides.confidenceDetails || {
       waitTime: { level: 'medium', reportCount: 2, freshnessMinutes: 5, operatorVerified: false, summary: '2 recent reports • 5m ago' },
@@ -48,6 +50,7 @@ function makeLiveData(overrides: Partial<VenueLiveData> = {}): VenueLiveData {
       dressCode: { level: 'low', reportCount: 0, freshnessMinutes: null, operatorVerified: false, summary: 'No recent reports' },
       nowPlaying: { level: 'low', reportCount: 0, freshnessMinutes: null, operatorVerified: false, summary: 'No recent reports' },
       ageRange: { level: 'low', reportCount: 0, freshnessMinutes: null, operatorVerified: false, summary: 'No recent reports' },
+      priceRange: { level: 'low', reportCount: 0, freshnessMinutes: null, operatorVerified: false, summary: 'No recent reports' },
     },
     doorMode: overrides.doorMode || {
       lineStatus: 'moving',

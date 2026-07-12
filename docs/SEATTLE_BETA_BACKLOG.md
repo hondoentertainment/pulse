@@ -16,11 +16,11 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 | P0-3 | **Venue shell as production default** | §3, §15 | **Done** — `app-mode.ts`, `prod-vercel-env.md` | Eng |
 | P0-4 | **Seattle inventory** — 25–40 curated venues, 3–5 neighborhoods | §3.1, §15.1 | **Done** — `seattle-launch-seed.ts`, `prototype-catalog.ts` | Product + Eng |
 | P0-5 | **Unified signal engine** — reports → decay → confidence → trend (versioned) | §5, §6.5 | **Done** — `venue-signal.ts` v1.0.0 | Eng |
-| P0-6 | **Map + list parity** — energy, confidence, trend, freshness on map pins | MAP-01–05 | **Partial** | Eng |
+| P0-6 | **Map + list parity** — energy, confidence, trend, freshness on map pins | MAP-01–05 | **Done** — `SignalIntelBadges`, map + Explore list | Eng |
 | P0-7 | **Venue detail “Worth going?”** block | §6.4 | **Done** — `WorthGoingPanel.tsx` | Eng |
-| P0-8 | **3-tap energy report** on venue detail (not only full pulse create) | RPT-01 | **Partial** — full pulse dialog exists | Eng |
+| P0-8 | **3-tap energy report** on venue detail (not only full pulse create) | RPT-01 | **Done** — `EnergyReportSheet.tsx` | Eng |
 | P0-9 | **Arrival prompt + mismatch feedback** | RPT-05–06, §7.2 | **Done** — `ArrivalPromptSheet`, `arrival-prompt.ts` | Eng |
-| P0-10 | **Guest browse** without account | ONB-01 | **Partial** — visual preview / demo; prod auth TBD | Eng |
+| P0-10 | **Guest browse** without account | ONB-01 | **Done** — `guest-browse.ts`, AuthGate skip | Eng |
 | P0-11 | **Admin: signal suppress + Scout approval** | §13, §6.7 | **Not started** | Eng |
 | P0-12 | **Sponsorship integrity audit** — labeled, separated from organic rank | §10, §18 | **Mostly done** — UI labels; needs contract tests | Eng |
 
@@ -61,6 +61,10 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 | Seattle launch seed | `seattle-launch-seed.test.ts` |
 | Arrival / mismatch loop | `arrival-prompt.test.ts` |
 | Worth going panel | `VenuePage.test.tsx` |
+| Map / list signal badges | `SignalIntelBadges` + `venue-signal.test.ts` |
+| 3-tap energy report | `EnergyReportSheet` + venue detail test |
+| Guest browse | `guest-browse.ts` + AuthGate |
+| Venue data quality | `venue-completeness.test.ts`, `venue-data-report.test.ts` |
 | Auth on write APIs | `write-api-auth.test.ts` |
 | Supabase data path | `npm run smoke:supabase` + `e2e/supabase-data.spec.ts` |
 

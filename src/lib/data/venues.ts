@@ -8,7 +8,9 @@
 
 import { supabase } from '@/lib/supabase'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
-import type { Venue } from '@/lib/types'
+import type { AccessibilityFeature, Venue, VenueDressCode, VenueIndoorOutdoor, VenuePriceRange } from '@/lib/types'
+import { normalizeVenueCategoryKey } from '@/lib/venue-categories'
+import { normalizeDressCode } from '@/lib/dress-code'
 
 // ── Row <-> Domain mapping ───────────────────────────────────────────────
 // Keeping a single mapper here so the column renames live in one place.
@@ -21,7 +23,9 @@ interface VenueRow {
   location_address: string
   city: string | null
   state: string | null
+  neighborhood: string | null
   category: string | null
+  category_key: string | null
   pulse_score: number | null
   score_velocity: number | null
   last_pulse_at: string | null
@@ -34,11 +38,24 @@ interface VenueRow {
   hours: Venue['hours'] | null
   phone: string | null
   website: string | null
+  menu_url: string | null
   integrations: Venue['integrations'] | null
+  dress_code: string | null
+  cover_charge_cents: number | null
+  cover_charge_note: string | null
+  accessibility_features: string[] | null
+  indoor_outdoor: string | null
+  capacity_hint: number | null
+  price_range: number | null
+  place_id: string | null
+  enriched_at: string | null
   deleted_at: string | null
 }
 
 function rowToVenue(row: VenueRow): Venue {
+  const categoryKey = row.category_key
+    ? normalizeVenueCategoryKey(row.category_key)
+    : normalizeVenueCategoryKey(row.category)
   return {
     id: row.id,
     name: row.name,
@@ -49,7 +66,9 @@ function rowToVenue(row: VenueRow): Venue {
     },
     city: row.city ?? undefined,
     state: row.state ?? undefined,
+    neighborhood: row.neighborhood ?? undefined,
     category: row.category ?? undefined,
+    categoryKey,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,
     lastPulseAt: row.last_pulse_at ?? undefined,
@@ -62,16 +81,28 @@ function rowToVenue(row: VenueRow): Venue {
     hours: row.hours ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
+    menuUrl: row.menu_url ?? null,
     integrations: row.integrations ?? undefined,
+    dressCode: normalizeDressCode(row.dress_code) as VenueDressCode | null,
+    coverChargeCents: row.cover_charge_cents,
+    coverChargeNote: row.cover_charge_note,
+    accessibilityFeatures: (row.accessibility_features ?? undefined) as AccessibilityFeature[] | undefined,
+    indoorOutdoor: (row.indoor_outdoor as VenueIndoorOutdoor | null) ?? null,
+    capacityHint: row.capacity_hint,
+    priceRange: (row.price_range as VenuePriceRange | null) ?? null,
+    placeId: row.place_id,
+    enrichedAt: row.enriched_at,
   }
 }
 
 const SELECT_COLUMNS = `
   id, name, location_lat, location_lng, location_address,
-  city, state, category, pulse_score, score_velocity,
+  city, state, neighborhood, category, category_key, pulse_score, score_velocity,
   last_pulse_at, last_activity, pre_trending, pre_trending_label,
   seeded, verified_check_in_count, first_real_check_in_at,
-  hours, phone, website, integrations, deleted_at
+  hours, phone, website, menu_url, integrations,
+  dress_code, cover_charge_cents, cover_charge_note, accessibility_features,
+  indoor_outdoor, capacity_hint, price_range, place_id, enriched_at, deleted_at
 `.trim()
 
 // ── Queries ──────────────────────────────────────────────────────────────

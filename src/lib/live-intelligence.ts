@@ -1,4 +1,4 @@
-import type { Venue } from './types'
+import type { Venue, VenueDressCode, VenuePriceRange } from './types'
 import { calculateDistance } from './pulse-engine'
 import {
   type GuestListStatus,
@@ -6,11 +6,14 @@ import {
   getVenueOperatorStatus,
   seedVenueOperatorStatus,
 } from './venue-operator-live'
+import { normalizeDressCode } from './dress-code'
 
 // --- Types ---
 
-export type DressCode = 'casual' | 'smart-casual' | 'dressy' | 'formal'
+/** @deprecated Prefer VenueDressCode — kept as alias for live intel. */
+export type DressCode = VenueDressCode
 export type ConfidenceLevel = 'low' | 'medium' | 'high'
+
 
 export interface SignalConfidenceDetail {
   level: ConfidenceLevel
@@ -43,6 +46,7 @@ export interface VenueLiveData {
   dressCode: DressCode | null
   musicGenre: string | null
   nowPlaying: NowPlaying | null
+  priceRange: VenuePriceRange | null
   ageRange: { min: number; max: number; average: number } | null
   capacity: { current: number | null; max: number | null; percentFull: number } | null
   lastUpdated: string
@@ -58,7 +62,7 @@ export interface LiveReport {
   id: string
   venueId: string
   userId: string
-  type: 'wait_time' | 'cover_charge' | 'music' | 'crowd_level' | 'dress_code' | 'now_playing' | 'age_range'
+  type: 'wait_time' | 'cover_charge' | 'music' | 'crowd_level' | 'dress_code' | 'now_playing' | 'age_range' | 'price_range'
   value: unknown
   createdAt: string
 }
@@ -134,9 +138,18 @@ export function reportCrowdLevel(
 export function reportDressCode(
   venueId: string,
   userId: string,
-  code: DressCode
+  code: DressCode | string
 ): LiveReport {
-  return addLocalLiveReport(createLiveReport(venueId, userId, 'dress_code', code))
+  const normalized = normalizeDressCode(code) ?? 'casual'
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'dress_code', normalized))
+}
+
+export function reportPriceRange(
+  venueId: string,
+  userId: string,
+  range: VenuePriceRange
+): LiveReport {
+  return addLocalLiveReport(createLiveReport(venueId, userId, 'price_range', range))
 }
 
 export function reportNowPlaying(
@@ -264,6 +277,7 @@ function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore
   const dressReports = getRecentReports(venueId, 'dress_code', reports)
   const nowPlayingReports = getRecentReports(venueId, 'now_playing', reports)
   const ageReports = getRecentReports(venueId, 'age_range', reports)
+  const priceReports = getRecentReports(venueId, 'price_range', reports)
 
   // Wait time: weighted average
   const waitTime = waitReports.length > 0 ? Math.round(weightedAverage(waitReports)) : null
@@ -289,9 +303,15 @@ function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore
     ? Math.round(weightedAverage(crowdReports))
     : 0
 
-  // Dress code: most reported
-  const dressCode = dressReports.length > 0
-    ? mostReportedValue<DressCode>(dressReports)
+  // Dress code: most reported (normalized)
+  const rawDress = dressReports.length > 0
+    ? mostReportedValue<string>(dressReports)
+    : null
+  const dressCode = normalizeDressCode(rawDress)
+
+  // Price range: most reported
+  const priceRange = priceReports.length > 0
+    ? mostReportedValue<VenuePriceRange>(priceReports)
     : null
 
   // Now playing: most reported wins consensus
@@ -331,6 +351,7 @@ function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore
     dressCode: computeConfidence(dressReports),
     nowPlaying: computeConfidence(nowPlayingReports),
     ageRange: computeConfidence(ageReports),
+    priceRange: computeConfidence(priceReports),
   }
 
   const confidenceDetails: Record<string, SignalConfidenceDetail> = {
@@ -358,6 +379,9 @@ function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore
     }),
     ageRange: buildConfidenceDetail(ageReports, confidence.ageRange, {
       fallback: 'No recent crowd demographic reports yet',
+    }),
+    priceRange: buildConfidenceDetail(priceReports, confidence.priceRange, {
+      fallback: 'No recent price-range reports yet',
     }),
   }
 
@@ -418,6 +442,7 @@ function buildVenueLiveData(venueId: string, reports: LiveReport[] = reportStore
     dressCode,
     musicGenre,
     nowPlaying,
+    priceRange,
     ageRange,
     capacity,
     lastUpdated,
