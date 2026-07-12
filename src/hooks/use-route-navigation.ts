@@ -5,7 +5,7 @@ import type { SubPage } from '@/hooks/use-ui-state'
 import type { Venue } from '@/lib/types'
 
 const TAB_TO_PATH: Record<TabId, string> = {
-  trending: '/',
+  tonight: '/',
   discover: '/discover',
   map: '/map',
   notifications: '/notifications',
@@ -30,7 +30,7 @@ const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
 }
 
 const PATH_TO_TAB: Record<string, TabId> = {
-  '/': 'trending',
+  '/': 'tonight',
   '/discover': 'discover',
   '/map': 'map',
   '/notifications': 'notifications',
@@ -40,8 +40,7 @@ const PATH_TO_TAB: Record<string, TabId> = {
 /** Derive the active tab ID from the current URL pathname */
 export function deriveActiveTab(pathname: string): TabId {
   if (PATH_TO_TAB[pathname]) return PATH_TO_TAB[pathname]
-  // Default to trending for sub-pages and unknown paths
-  return 'trending'
+  return 'tonight'
 }
 
 export function useRouteNavigation() {

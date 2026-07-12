@@ -1,4 +1,4 @@
-import { Pulse, Venue, ENERGY_CONFIG, PULSE_DECAY_MINUTES } from './types'
+import { Pulse, Venue, ENERGY_CONFIG, PULSE_DECAY_MINUTES, type EnergyRating } from './types'
 
 export function calculateDistance(
   lat1: number,
@@ -73,6 +73,13 @@ export function getEnergyLabel(score: number): string {
   if (score >= 50) return 'Buzzing'
   if (score >= 25) return 'Chill'
   return 'Dead'
+}
+
+export function scoreToEnergyRating(score: number): EnergyRating {
+  if (score >= 75) return 'electric'
+  if (score >= 50) return 'buzzing'
+  if (score >= 25) return 'chill'
+  return 'dead'
 }
 
 export function getEnergyColor(score: number): string {

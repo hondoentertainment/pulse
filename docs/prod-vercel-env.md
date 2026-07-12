@@ -6,8 +6,8 @@ Recommended Production values for the Pulse Vercel project. Staging should mirro
 
 | Variable | Production | Notes |
 |----------|------------|-------|
-| `VITE_APP_MODE` | `signal` (or unset) | **Pulse Signal** is the default launch shell |
-| `VITE_ALLOW_VENUE_SHELL` | `false` (unset) | Set `true` only for a dedicated Venue PWA deploy |
+| `VITE_APP_MODE` | `venue` | **Venue decision PWA** — Seattle MVP per [PRD v1.0](PRD-v1.0-SEATTLE-MVP.md) |
+| `VITE_ALLOW_VENUE_SHELL` | `true` | Required for venue shell in production builds |
 | `VITE_SUPABASE_URL` | Live project URL | Required — prod blocks mock fallback without this |
 | `VITE_SUPABASE_ANON_KEY` | Live anon key | Required |
 

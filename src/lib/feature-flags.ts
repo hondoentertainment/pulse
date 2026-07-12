@@ -24,7 +24,7 @@ const isProdBuild = import.meta.env.PROD
 
 const defaults: FeatureFlagMap = {
   integrations: true,
-  socialDashboard: true,
+  socialDashboard: !isProdBuild,
   smartMap: true,
   // Differentiator pack — all default on (safe, no API keys required).
   weatherBoost: true,

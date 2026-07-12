@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
-import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
+import { MoonStars, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
 import { motion, useAnimation, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 
-export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+export type TabId = 'tonight' | 'discover' | 'map' | 'notifications' | 'profile'
 
 interface EnhancedBottomNavProps {
   activeTab: TabId
@@ -184,8 +184,8 @@ export function EnhancedBottomNav({
   unreadNotifications = 0,
 }: EnhancedBottomNavProps) {
   const tabs: TabConfig[] = [
-    { id: 'trending', icon: TrendUp, label: 'Trending' },
-    { id: 'discover', icon: Compass, label: 'Discover' },
+    { id: 'tonight', icon: MoonStars, label: 'Tonight' },
+    { id: 'discover', icon: Compass, label: 'Explore' },
     { id: 'map', icon: MapTrifold, label: 'Map' },
     {
       id: 'notifications',

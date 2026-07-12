@@ -44,12 +44,12 @@ Pulse is a client-heavy PWA built with React 19 and Vite. The current architectu
 
 | Mode | Env | Component tree |
 |------|-----|----------------|
-| **Pulse Signal** (default) | `VITE_APP_MODE=signal` or unset | `LoginScreen` → `SignalApp` |
-| **Venue / social** | `VITE_APP_MODE=venue` | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+| **Pulse Signal** (research) | `VITE_APP_MODE=signal` | `LoginScreen` → `SignalApp` |
+| **Venue decision PWA** (MVP default) | `VITE_APP_MODE=venue` + `VITE_ALLOW_VENUE_SHELL=true` | `AppProviders` → `AppRoutes` |
 
-Signal routes: `/home`, `/trends`, `/history`, `/settings` (see [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)). Venue shell adds `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx).
+Signal routes: `/home`, `/trends`, `/history`, `/settings`. Venue shell: `/` (Tonight), `/discover`, `/map`, `/venue/:id`, sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx).
 
-Do not merge the two shells without an explicit product decision (single app vs. separate deployables) — they share design tokens but serve different primary jobs.
+Do not merge the two shells without an explicit product decision — they share design tokens but serve different primary jobs. **Seattle beta ships the venue shell.**
 
 ## Layer Responsibilities
 

@@ -10,16 +10,16 @@ Related: [RELEASE_CHECKS.md](../RELEASE_CHECKS.md), [PRODUCTION_ROLLOUT.md](../P
 
 The codebase ships **two** product shells (see [ARCHITECTURE.md](../ARCHITECTURE.md)):
 
-- **Pulse Signal** — the default production entry (`VITE_APP_MODE` unset or `signal`).
-- **Venue discovery PWA** — opt-in via `VITE_APP_MODE=venue`.
+- **Venue decision PWA** — **MVP launch surface** (`VITE_APP_MODE=venue` + `VITE_ALLOW_VENUE_SHELL=true`).
+- **Pulse Signal** — research / wellness shell (`VITE_APP_MODE=signal`).
 
 | Item | Owner | Status |
 |------|-------|--------|
-| [x] Decide the primary launch surface (Signal vs Venue) and document it here | Product | **Launch surface: Pulse Signal** (2026-07-06) — Venue PWA gated behind `VITE_ALLOW_VENUE_SHELL`; pending formal Product sign-off |
-| [x] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | Set `signal` or leave unset — see [prod-vercel-env.md](prod-vercel-env.md) |
-| [x] Confirm the non-launch shell is unreachable / clearly gated | Eng | Venue shell requires `VITE_ALLOW_VENUE_SHELL=true` in production |
+| [x] Decide the primary launch surface (Signal vs Venue) and document it here | Product | **Launch surface: Venue decision PWA** per [PRD v1.0](PRD-v1.0-SEATTLE-MVP.md) (2026-07-12) |
+| [x] Confirm `VITE_APP_MODE` is set accordingly in the production Vercel project | Eng | `venue` + `VITE_ALLOW_VENUE_SHELL=true` — see [prod-vercel-env.md](prod-vercel-env.md) |
+| [x] Confirm the non-launch shell is unreachable / clearly gated | Eng | Signal requires explicit `VITE_APP_MODE=signal` |
 
-> **Default today:** production deploys boot **Pulse Signal**. Switch to the venue shell only after an explicit product decision.
+> **Default today:** production deploys boot the **venue shell** (Tonight feed) when `VITE_ALLOW_VENUE_SHELL=true`.
 
 ---
 
@@ -84,6 +84,8 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [x] Trending-venue server push on `POST /api/notifications/trending-venue` | Eng | Done |
 | [x] Friend-nearby server push on `POST /api/notifications/friend-nearby` | Eng | Done |
 | [x] Durable notification feed from Supabase for signed-in users | Eng | `useNotificationsSync` + `/api/notifications/list` |
+| [x] Tonight golden path (vibe picker + PRD explanations + Go/directions/save) | Eng | `TonightTab` + `tonight-feed.ts` — see [PRD v1.0](PRD-v1.0-SEATTLE-MVP.md) |
+| [x] Decision conversion analytics events | Eng | `decision-analytics.ts` |
 | [x] Notification prefs persisted in Supabase (`profiles.notification_settings`) | Eng | Done |
 | [x] Dead push token pruning on FCM/APNs stale responses | Eng | Done |
 | [ ] Push delivery credentials set in prod + tested on a real device | Eng | Needs creds + device test |

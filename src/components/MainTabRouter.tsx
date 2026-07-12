@@ -10,6 +10,7 @@ import { CityWaitlistState } from '@/components/CityWaitlistState'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
+const TonightTab = lazy(() => import('@/components/TonightTab').then(m => ({ default: m.TonightTab })))
 const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ default: m.TrendingTab })))
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
@@ -24,7 +25,7 @@ const tabMotion = {
 }
 
 interface MainTabRouterProps {
-  tab?: TabId
+  tab?: TabId | 'trending'
 }
 
 export function MainTabRouter({ tab }: MainTabRouterProps) {
@@ -94,7 +95,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
 
   // Empty venue-driven feeds (trending/discover/map) should explain *why* the
   // feed is empty instead of rendering a blank screen.
-  const isVenueDrivenTab = activeTab === 'trending' || activeTab === 'discover' || activeTab === 'map'
+  const isVenueDrivenTab = activeTab === 'tonight' || activeTab === 'discover' || activeTab === 'map'
   if (isVenueDrivenTab && visibleVenues.length === 0) {
     const geoGated = (import.meta.env.VITE_LAUNCHED_CITIES ?? '').trim().length > 0
     const fallbackMarket = availableMarkets.find((m) => m.key !== selectedMarket?.key)
@@ -112,6 +113,21 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
   return (
     <Suspense fallback={pageFallback}>
       <AnimatePresence mode="wait">
+        {activeTab === 'tonight' && (
+          <motion.div key="tonight" {...tabMotion}>
+            <TonightTab
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              currentUser={currentUser}
+              userLocation={userLocation}
+              isFavorite={isFavorite}
+              onVenueClick={navigateToVenue}
+              onToggleFavorite={handleToggleFavorite}
+              onExplore={() => handlers.handleTabChange('discover')}
+            />
+          </motion.div>
+        )}
+
         {activeTab === 'trending' && (
           <motion.div key="trending" {...tabMotion}>
             <TrendingTab

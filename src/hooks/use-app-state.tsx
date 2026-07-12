@@ -219,7 +219,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [storedSelectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const selectedMarketKey = storedSelectedMarketKey ?? 'seattle'
-  const [activeTab, setActiveTab] = useState<TabId>('trending')
+  const [activeTab, setActiveTab] = useState<TabId>('tonight')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
   const [subPage, setSubPage] = useState<SubPage>(null)
@@ -573,7 +573,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Analytics tracking for venue views
   useEffect(() => {
     if (selectedVenue) {
-      const source = activeTab === 'map' ? 'map' : activeTab === 'discover' ? 'search' : activeTab === 'notifications' ? 'notification' : 'trending'
+      const source = activeTab === 'map' ? 'map' : activeTab === 'discover' ? 'search' : activeTab === 'notifications' ? 'notification' : activeTab === 'tonight' ? 'tonight' : 'trending'
       trackEvent({ type: 'venue_view', timestamp: Date.now(), venueId: selectedVenue.id, source })
     }
   }, [selectedVenue, activeTab])

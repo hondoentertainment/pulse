@@ -10,7 +10,7 @@ import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { usePushRegistration } from '@/hooks/use-push-registration'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
-import { BottomNav } from '@/components/BottomNav'
+import { BottomNav, type TabId } from '@/components/BottomNav'
 import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
@@ -192,7 +192,7 @@ export function AppRoutes() {
     },
   }
 
-  const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
+  const wrapTab = (tab: TabId | 'trending') => (
     <>
       <AppHeader {...headerProps} />
       <MainTabRouter tab={tab} />
@@ -253,10 +253,11 @@ export function AppRoutes() {
           path="/"
           element={(
             <TrendingHomeRoute>
-              {wrapTab('trending')}
+              {wrapTab('tonight')}
             </TrendingHomeRoute>
           )}
         />
+        <Route path="/trending" element={wrapTab('trending')} />
 
         {/* Catch-all: keep the miss visible instead of silently losing the bad URL. */}
         <Route path="*" element={<NotFoundRoute />} />

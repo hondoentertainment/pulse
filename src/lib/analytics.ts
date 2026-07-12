@@ -11,7 +11,7 @@ export type AnalyticsEvent =
   | { type: 'app_open'; timestamp: number }
   | { type: 'onboarding_start'; timestamp: number }
   | { type: 'onboarding_complete'; timestamp: number; durationMs: number }
-  | { type: 'venue_view'; timestamp: number; venueId: string; source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' }
+  | { type: 'venue_view'; timestamp: number; venueId: string; source: 'map' | 'trending' | 'tonight' | 'search' | 'notification' | 'deeplink' }
   | { type: 'pulse_start'; timestamp: number; venueId: string }
   | { type: 'pulse_submit'; timestamp: number; venueId: string; energyRating: string; hasPhoto: boolean; hasCaption: boolean; hashtagCount: number }
   | { type: 'pulse_reaction'; timestamp: number; pulseId: string; reactionType: string }
@@ -41,6 +41,17 @@ export type AnalyticsEvent =
   | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
   | { type: 'waitlist_join'; timestamp: number; city: string }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
+  | { type: 'decision_session_start'; timestamp: number; sessionId: string }
+  | { type: 'vibe_selected'; timestamp: number; sessionId?: string; vibe: string }
+  | { type: 'recommendation_viewed'; timestamp: number; sessionId?: string; venueId: string; rank: number; confidence: string; source: 'tonight' }
+  | { type: 'explanation_expanded'; timestamp: number; sessionId?: string; venueId: string }
+  | { type: 'go_selected'; timestamp: number; sessionId?: string; venueId: string }
+  | { type: 'directions_started'; timestamp: number; sessionId?: string; venueId: string }
+  | { type: 'venue_saved'; timestamp: number; sessionId?: string; venueId: string }
+  | { type: 'venue_shared'; timestamp: number; sessionId?: string; venueId: string; method: 'native' | 'clipboard' }
+  | { type: 'arrival_confirmed'; timestamp: number; sessionId?: string; venueId: string }
+  | { type: 'mismatch_reported'; timestamp: number; sessionId?: string; venueId: string; displayedEnergy: string }
+  | { type: 'filter_applied'; timestamp: number; sessionId?: string; filter: string }
 
 export interface FunnelStep {
   name: string

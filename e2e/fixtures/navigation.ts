@@ -1,9 +1,9 @@
 import { expect, type Page } from '@playwright/test'
 
-export type AppTab = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
+export type AppTab = 'tonight' | 'discover' | 'map' | 'notifications' | 'profile'
 
 const TAB_PATHS: Record<AppTab, string> = {
-  trending: '/',
+  tonight: '/',
   discover: '/discover',
   map: '/map',
   notifications: '/notifications',

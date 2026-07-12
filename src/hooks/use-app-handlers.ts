@@ -367,7 +367,7 @@ export function useAppHandlers() {
     } else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) {
       navigateToVenue(notification.venue)
     }
-    navigateToTab('trending')
+    navigateToTab('tonight')
   }, [navigateToPulse, navigateToTab, navigateToVenue])
 
   const handleAddFriend = useCallback((userId: string) => {
@@ -419,7 +419,7 @@ export function useAppHandlers() {
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab)
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
+    const labels: Record<TabId, string> = { tonight: 'Tonight', discover: 'Explore', map: 'Map', notifications: 'Alerts', profile: 'Profile' }
     announce(`Switched to ${labels[tab]} tab`)
   }, [setActiveTab])
 
