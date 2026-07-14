@@ -52,6 +52,11 @@ const VenueCompletenessPage = lazy(() =>
     default: m.VenueCompletenessPage,
   })),
 )
+const SignalAdminPage = lazy(() =>
+  import('@/components/venue-admin/SignalAdminPage').then((m) => ({
+    default: m.SignalAdminPage,
+  })),
+)
 
 /** Trending home — redirects legacy `/?pulse=` deep links to `/pulse/:id`. */
 function TrendingHomeRoute({
@@ -244,6 +249,15 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <VenueCompletenessPage />
+            </Suspense>
+          }
+        />
+
+        <Route
+          path="/admin/signal"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <SignalAdminPage />
             </Suspense>
           }
         />

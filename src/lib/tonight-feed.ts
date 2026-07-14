@@ -8,6 +8,7 @@ import {
   type SignalConfidence,
 } from './decision-explanations'
 import { computeVenueSignal } from './venue-signal'
+import { filterNonSuppressedVenues } from './signal-suppress'
 
 export type VibeFilter = EnergyRating | 'any'
 
@@ -20,6 +21,8 @@ export interface TonightPick {
   reportCount: number
   distanceMiles: number | null
   energyMatch: boolean
+  /** True when this pick occupies a sponsored slot (organic score unchanged). */
+  isSponsored?: boolean
 }
 
 function energyMatchesFilter(score: number, vibe: VibeFilter): boolean {
@@ -49,7 +52,15 @@ export function getTonightPicks(
 ): TonightPick[] {
   const vibe = options.vibe ?? 'any'
   const limit = options.limit ?? 12
-  const base = getRecommendations(user, venues, pulses, options.userLocation, options.now, limit * 2)
+  const visibleVenues = filterNonSuppressedVenues(venues)
+  const base = getRecommendations(
+    user,
+    visibleVenues,
+    pulses,
+    options.userLocation,
+    options.now,
+    limit * 2,
+  )
 
   const picks: TonightPick[] = base.map((rec) => {
     const signal = computeVenueSignal(rec.venue, pulses, { now: options.now })

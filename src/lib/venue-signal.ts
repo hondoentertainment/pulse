@@ -1,6 +1,7 @@
 import type { EnergyRating, Pulse, Venue } from './types'
 import { PULSE_DECAY_MINUTES } from './types'
 import type { EnergyTrend, SignalConfidence } from './decision-explanations'
+import { isVenueSignalSuppressed } from './signal-suppress'
 
 /** Versioned signal model — bump when thresholds or decay change (PRD §5). */
 export const VENUE_SIGNAL_MODEL_VERSION = '1.0.0'
@@ -123,6 +124,18 @@ export function computeVenueSignal(
   pulses: Pulse[],
   options: { config?: VenueSignalModelConfig; now?: Date } = {},
 ): VenueSignal {
+  if (isVenueSignalSuppressed(venue)) {
+    return {
+      venueId: venue.id,
+      confidence: 'none',
+      trend: 'unknown',
+      freshnessMinutes: null,
+      reportCount: 0,
+      modelVersion: (options.config ?? DEFAULT_SIGNAL_MODEL).version,
+      sourceMix: { pulses: 0, venueMeta: 0 },
+    }
+  }
+
   const config = options.config ?? DEFAULT_SIGNAL_MODEL
   const now = options.now?.getTime() ?? Date.now()
   const { minutes, reportCount, sourceMix } = getSignalFreshness(venue, pulses, config, now)

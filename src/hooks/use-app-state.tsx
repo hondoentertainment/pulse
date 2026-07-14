@@ -30,6 +30,7 @@ import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { createEvent } from '@/lib/events'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
+import { filterNonSuppressedVenues } from '@/lib/signal-suppress'
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
 import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
@@ -734,8 +735,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   )
 
   const visibleVenues = useMemo(
-    () => getVenuesForMarket(venues || [], selectedMarket),
-    [selectedMarket, venues]
+    () => filterNonSuppressedVenues(getVenuesForMarket(venues || [], selectedMarket)),
+    [selectedMarket, venues],
   )
 
   const sortedVenues = useMemo(

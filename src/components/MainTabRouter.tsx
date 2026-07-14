@@ -120,6 +120,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               pulses={visiblePulses}
               currentUser={currentUser}
               userLocation={userLocation}
+              promotions={promotions}
               isFavorite={isFavorite}
               onVenueClick={navigateToVenue}
               onToggleFavorite={handleToggleFavorite}

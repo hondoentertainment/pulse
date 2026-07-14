@@ -113,6 +113,9 @@ function mapVenueRow(row: {
   price_range?: number | null
   place_id?: string | null
   enriched_at?: string | null
+  signal_suppressed?: boolean | null
+  signal_suppressed_reason?: string | null
+  signal_suppressed_at?: string | null
   latest_activity_at?: string | null
 }, liveAggregate: VenueLiveAggregateRow | null): Venue {
   const categoryKey = row.category_key
@@ -154,6 +157,9 @@ function mapVenueRow(row: {
     priceRange: (row.price_range as VenuePriceRange | null) ?? null,
     placeId: row.place_id ?? null,
     enrichedAt: row.enriched_at ?? null,
+    signalSuppressed: row.signal_suppressed ?? false,
+    signalSuppressedReason: row.signal_suppressed_reason ?? null,
+    signalSuppressedAt: row.signal_suppressed_at ?? null,
     liveSummary: liveAggregate ? mapVenueLiveAggregate(liveAggregate) : undefined
   }
 }

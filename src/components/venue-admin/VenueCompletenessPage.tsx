@@ -141,9 +141,14 @@ export function VenueCompletenessPage() {
               Ranked worst-first so the team can prioritize fixes.
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            Back
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/signal')}>
+              Signal admin
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              Back
+            </Button>
+          </div>
         </div>
 
         {loading && (

@@ -41,6 +41,7 @@ import {
   COVER_CHARGE_NOTE_MAX,
   VENUE_DRESS_CODES,
   VENUE_INDOOR_OUTDOOR,
+  enrichVenueFromPlaces,
   updateVenueMetadata,
   type VenueMetadataPayload,
 } from '@/lib/venue-admin-client'
@@ -86,9 +87,12 @@ export interface VenueMetadataFormInitial {
 export interface VenueMetadataFormProps {
   venueId: string
   venueName?: string
+  venueLat?: number
+  venueLng?: number
   initial?: VenueMetadataFormInitial
   /** Injected in tests so we can assert outbound calls without a fetch mock. */
   onSubmitOverride?: typeof updateVenueMetadata
+  onEnrichOverride?: typeof enrichVenueFromPlaces
   onSaved?: (payload: VenueMetadataPayload) => void
 }
 
@@ -166,12 +170,17 @@ function toPayload(state: FormState): VenueMetadataPayload {
 export function VenueMetadataForm({
   venueId,
   venueName,
+  venueLat,
+  venueLng,
   initial,
   onSubmitOverride,
+  onEnrichOverride,
   onSaved,
 }: VenueMetadataFormProps) {
   const [state, setState] = useState<FormState>(() => toFormState(initial))
   const [submitting, setSubmitting] = useState(false)
+  const [enriching, setEnriching] = useState(false)
+  const [enrichPreview, setEnrichPreview] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const errors = useMemo(() => validate(state), [state])
@@ -206,6 +215,60 @@ export function VenueMetadataForm({
     }
   }
 
+  const handleEnrichPreview = async () => {
+    setEnriching(true)
+    setEnrichPreview(null)
+    setServerError(null)
+    try {
+      const enrich = onEnrichOverride ?? enrichVenueFromPlaces
+      const preview = await enrich(venueId, {
+        name: venueName,
+        lat: venueLat,
+        lng: venueLng,
+        dryRun: true,
+      })
+      const fields = [
+        preview.phone ? `phone: ${preview.phone}` : null,
+        preview.website ? `website: ${preview.website}` : null,
+        preview.address ? `address: ${preview.address}` : null,
+        preview.place_id ? `place_id: ${preview.place_id}` : null,
+      ].filter(Boolean)
+      setEnrichPreview(
+        fields.length > 0
+          ? `Preview — ${fields.join(' · ')}`
+          : 'No new Places data found for this venue.',
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Places enrich failed'
+      setServerError(msg)
+      toast.error('Enrich preview failed', { description: msg })
+    } finally {
+      setEnriching(false)
+    }
+  }
+
+  const handleEnrichApply = async () => {
+    setEnriching(true)
+    setServerError(null)
+    try {
+      const enrich = onEnrichOverride ?? enrichVenueFromPlaces
+      await enrich(venueId, {
+        name: venueName,
+        lat: venueLat,
+        lng: venueLng,
+        dryRun: false,
+      })
+      toast.success('Venue enriched from Google Places')
+      setEnrichPreview('Enrichment applied — refresh to see updated fields.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Places enrich failed'
+      setServerError(msg)
+      toast.error('Enrich failed', { description: msg })
+    } finally {
+      setEnriching(false)
+    }
+  }
+
   return (
     <Card className="p-5 space-y-5 border-border" data-testid="venue-metadata-form-card">
       <div>
@@ -218,6 +281,31 @@ export function VenueMetadataForm({
         <p className="text-xs text-muted-foreground mt-1">
           Admin-only. Fields default to <em>Not set</em>; leave blank to clear.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={enriching}
+            onClick={handleEnrichPreview}
+            data-testid="venue-places-enrich-preview"
+          >
+            {enriching ? 'Loading…' : 'Preview Places enrich'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={enriching}
+            onClick={handleEnrichApply}
+            data-testid="venue-places-enrich-apply"
+          >
+            Apply Places enrich
+          </Button>
+        </div>
+        {enrichPreview && (
+          <p className="text-xs text-muted-foreground mt-2">{enrichPreview}</p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">

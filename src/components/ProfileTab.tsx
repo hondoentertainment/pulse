@@ -5,7 +5,7 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck, Binoculars } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
@@ -15,6 +15,9 @@ import {
   calculateAchievementProgress,
   type AchievementId,
 } from '@/lib/achievements'
+import { SCOUT_TIERS } from '@/lib/scout-program'
+import { ScoutApplySheet } from '@/components/ScoutApplySheet'
+import { isGuestUser } from '@/lib/guest-browse'
 import { toast } from 'sonner'
 
 interface ProfileTabProps {
@@ -46,6 +49,8 @@ export function ProfileTab({
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [scoutSheetOpen, setScoutSheetOpen] = useState(false)
+  const [scoutApplied, setScoutApplied] = useKV<boolean>(`scout-applied-${currentUser.id}`, false)
   const [storedShowcasedIds] = useKV<AchievementId[]>(`achievement-showcase-${currentUser.id}`, [])
   const showcasedIds = useMemo(() => storedShowcasedIds ?? [], [storedShowcasedIds])
 
@@ -100,6 +105,11 @@ export function ProfileTab({
             )}
             {tierProgress.currentTier && (
               <CreatorProfileBadge tier={tierProgress.currentTier} size="sm" />
+            )}
+            {currentUser.scoutTier && (
+              <Badge variant="outline" className="text-xs">
+                {SCOUT_TIERS[currentUser.scoutTier].label}
+              </Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -190,6 +200,42 @@ export function ProfileTab({
       </div>
 
       <Separator />
+
+      {!isGuestUser(currentUser) && !currentUser.scoutTier && (
+        <>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Binoculars size={20} weight="fill" className="text-[#833AB4]" />
+              <h3 className="text-lg font-semibold">Scout program</h3>
+            </div>
+            {scoutApplied ? (
+              <p className="text-sm text-muted-foreground">
+                Your scout application is pending review.
+              </p>
+            ) : (
+              <button
+                onClick={() => setScoutSheetOpen(true)}
+                className="w-full p-4 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors text-left flex items-center gap-3 shadow-lg"
+                data-testid="scout-apply-open"
+              >
+                <Binoculars size={20} className="text-[#833AB4]" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Apply to be a Scout</p>
+                  <p className="text-xs text-muted-foreground">
+                    Submit verified energy reports in your neighborhoods
+                  </p>
+                </div>
+              </button>
+            )}
+          </div>
+          <ScoutApplySheet
+            open={scoutSheetOpen}
+            onOpenChange={setScoutSheetOpen}
+            onSubmitted={() => setScoutApplied(true)}
+          />
+          <Separator />
+        </>
+      )}
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">

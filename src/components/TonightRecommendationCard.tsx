@@ -43,7 +43,14 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
       <Card className="p-4 bg-card/90 border-border space-y-3" data-testid="tonight-pick-card">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-base truncate">{venue.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-base truncate">{venue.name}</p>
+              {pick.isSponsored && (
+                <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wide">
+                  Sponsored
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground truncate">
               {venue.category}
               {venue.city ? ` · ${venue.city}` : ''}

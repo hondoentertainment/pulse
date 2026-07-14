@@ -201,3 +201,149 @@ export async function updateVenueMetadata(
   const json = (await res.json()) as { data: VenueMetadataResponse }
   return json.data
 }
+
+export interface PlacesEnrichPreview {
+  phone?: string | null
+  website?: string | null
+  hours?: Record<string, string>
+  address?: string | null
+  place_id?: string | null
+  dry_run?: boolean
+}
+
+export async function enrichVenueFromPlaces(
+  venueId: string,
+  options: {
+    name?: string
+    lat?: number
+    lng?: number
+    dryRun?: boolean
+    force?: boolean
+  } = {},
+): Promise<PlacesEnrichPreview> {
+  if (!venueId || typeof venueId !== 'string') {
+    throw new Error('venueId is required')
+  }
+
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch('/api/integrations/places-enrich', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      venue_id: venueId,
+      name: options.name,
+      lat: options.lat,
+      lng: options.lng,
+      dry_run: options.dryRun ?? false,
+      force: options.force ?? false,
+    }),
+  })
+
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`
+    try {
+      const body = (await res.json()) as { error?: { message?: string } | string }
+      if (body?.error) {
+        message =
+          typeof body.error === 'string'
+            ? body.error
+            : body.error.message ?? message
+      }
+    } catch {
+      // keep generic message
+    }
+    throw new Error(message)
+  }
+
+  const json = (await res.json()) as { data: PlacesEnrichPreview }
+  return json.data
+}
+
+export interface SignalSuppressResponse {
+  id: string
+  name: string
+  signal_suppressed: boolean
+  signal_suppressed_reason: string | null
+  signal_suppressed_at: string | null
+}
+
+export async function setVenueSignalSuppression(
+  venueId: string,
+  suppressed: boolean,
+  reason?: string | null,
+): Promise<SignalSuppressResponse> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch('/api/admin/signal-suppress', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ venue_id: venueId, suppressed, reason: reason ?? null }),
+  })
+
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`
+    try {
+      const body = (await res.json()) as { error?: { message?: string } | string }
+      if (body?.error) {
+        message =
+          typeof body.error === 'string'
+            ? body.error
+            : body.error.message ?? message
+      }
+    } catch {
+      // keep generic message
+    }
+    throw new Error(message)
+  }
+
+  const json = (await res.json()) as { data: SignalSuppressResponse }
+  return json.data
+}
+
+export async function submitScoutApplication(payload: {
+  motivation?: string
+  neighborhoods?: string[]
+}): Promise<{ id: string; status: string; created_at: string }> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch('/api/scouts/apply', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`
+    try {
+      const body = (await res.json()) as { error?: { message?: string } | string }
+      if (body?.error) {
+        message =
+          typeof body.error === 'string'
+            ? body.error
+            : body.error.message ?? message
+      }
+    } catch {
+      // keep generic message
+    }
+    throw new Error(message)
+  }
+
+  const json = (await res.json()) as { data: { id: string; status: string; created_at: string } }
+  return json.data
+}

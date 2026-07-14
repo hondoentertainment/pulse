@@ -77,6 +77,8 @@ export interface User {
   }
   postStreak?: number
   lastPostDate?: string
+  scoutTier?: 'rookie' | 'regular' | 'lead' | null
+  scoutWeeklyQuota?: number
 }
 
 export interface Venue {
@@ -142,6 +144,9 @@ export interface Venue {
   }
   liveSummary?: VenueLiveSummary
   accessibilityFeatures?: AccessibilityFeature[]
+  signalSuppressed?: boolean
+  signalSuppressedReason?: string | null
+  signalSuppressedAt?: string | null
 }
 
 export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'

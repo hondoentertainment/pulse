@@ -21,8 +21,8 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 | P0-8 | **3-tap energy report** on venue detail (not only full pulse create) | RPT-01 | **Done** — `EnergyReportSheet.tsx` | Eng |
 | P0-9 | **Arrival prompt + mismatch feedback** | RPT-05–06, §7.2 | **Done** — `ArrivalPromptSheet`, `arrival-prompt.ts` | Eng |
 | P0-10 | **Guest browse** without account | ONB-01 | **Done** — `guest-browse.ts`, AuthGate skip | Eng |
-| P0-11 | **Admin: signal suppress + Scout approval** | §13, §6.7 | **Not started** | Eng |
-| P0-12 | **Sponsorship integrity audit** — labeled, separated from organic rank | §10, §18 | **Mostly done** — UI labels; needs contract tests | Eng |
+| P0-11 | **Admin: signal suppress + Scout approval** | §13, §6.7 | **Done** — `/admin/signal`, APIs, scout apply on Profile | Eng |
+| P0-12 | **Sponsorship integrity audit** — labeled, separated from organic rank | §10, §18 | **Done** — `sponsorship-integrity.ts` + Tonight sponsored slots | Eng |
 
 ---
 
@@ -30,7 +30,7 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 
 | ID | Work item | PRD ref | Status |
 |----|-----------|---------|--------|
-| P1-1 | Scout program — apply, approve, tier, weekly quota | §6.7, §15.2 | Not started |
+| P1-1 | Scout program — apply, approve, tier, weekly quota | §6.7, §15.2 | **Done** — apply sheet + admin approval + tier quotas | Eng |
 | P1-2 | Limited energy alerts with confidence threshold | §6.6 | Partial — surge notifications exist |
 | P1-3 | Energy timeline on venue detail | §14 | Not started |
 | P1-4 | Venue portal pilot (5–10 operators) | §6.8, §15.1 phase 3 | Partial — `OwnerDashboardPage` |

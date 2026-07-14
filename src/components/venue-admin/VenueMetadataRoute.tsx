@@ -79,6 +79,8 @@ export function VenueMetadataRoute() {
         <VenueMetadataForm
           venueId={id}
           venueName={venue?.name}
+          venueLat={venue?.location.lat}
+          venueLng={venue?.location.lng}
           initial={
             venue
               ? {

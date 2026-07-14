@@ -3,6 +3,8 @@ import type { Pulse, User, Venue } from '@/lib/types'
 import type { EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { getTonightPicks, type VibeFilter } from '@/lib/tonight-feed'
+import { getActivePromotions, type PromotedVenue } from '@/lib/promoted-discoveries'
+import { mergeTonightPicksWithSponsorship } from '@/lib/sponsorship-integrity'
 import { TonightRecommendationCard } from '@/components/TonightRecommendationCard'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -32,6 +34,7 @@ interface TonightTabProps {
   pulses: Pulse[]
   currentUser: User
   userLocation: { lat: number; lng: number } | null
+  promotions?: PromotedVenue[]
   isFavorite: (venueId: string) => boolean
   onVenueClick: (venue: Venue) => void
   onToggleFavorite: (venueId: string) => void
@@ -43,6 +46,7 @@ export function TonightTab({
   pulses,
   currentUser,
   userLocation,
+  promotions = [],
   isFavorite,
   onVenueClick,
   onToggleFavorite,
@@ -55,15 +59,19 @@ export function TonightTab({
     trackEvent({ type: 'app_open', timestamp: Date.now() })
   }, [])
 
-  const picks = useMemo(
-    () =>
-      getTonightPicks(currentUser, venues, pulses, {
-        vibe,
-        userLocation: userLocation ?? undefined,
-        limit: 10,
-      }),
-    [currentUser, venues, pulses, vibe, userLocation],
+  const promotedVenueIds = useMemo(
+    () => new Set(getActivePromotions(promotions).map((promo) => promo.venueId)),
+    [promotions],
   )
+
+  const picks = useMemo(() => {
+    const organic = getTonightPicks(currentUser, venues, pulses, {
+      vibe,
+      userLocation: userLocation ?? undefined,
+      limit: 10,
+    })
+    return mergeTonightPicksWithSponsorship(organic, promotedVenueIds)
+  }, [currentUser, venues, pulses, vibe, userLocation, promotedVenueIds])
 
   useEffect(() => {
     picks.slice(0, 5).forEach((pick, index) => {
