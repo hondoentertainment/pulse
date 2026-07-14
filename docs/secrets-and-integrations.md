@@ -68,6 +68,42 @@ fine to expose for map tile rendering because the token is locked to the
 app's domain. The *server* token should be a **different** token without
 URL restrictions so geocoding can run from Vercel's outbound IPs.
 
+### Places enrich (`api/integrations/places-enrich.ts`)
+
+| Variable | Used for |
+| --- | --- |
+| `GOOGLE_MAPS_SERVER_KEY` | Google Places "Find Place from Text" + "Place Details" lookups that backfill a venue's phone, website, hours, address, and `place_id`. Same key as the Google geocoding path above — no separate credential needed. |
+
+`POST /api/integrations/places-enrich` is **admin-only** (`app_metadata.role
+=== 'admin'`, enforced server-side via a local JWT decode — see
+`api/_lib/auth.ts`). Request body:
+
+```json
+{ "venue_id": "<uuid>", "dry_run": false, "force": false }
+```
+
+- `dry_run: true` previews the resolved Places data without writing to the
+  `venues` row — used by the "Preview Places enrich" button in
+  `VenueMetadataForm`.
+- `force: true` overwrites existing non-null fields; otherwise only
+  empty/null columns are backfilled.
+- Without a matching request, or when `GOOGLE_MAPS_SERVER_KEY` isn't
+  configured, the endpoint returns `404 place_not_found` / `503
+  not_configured` respectively — both are non-fatal for the admin UI (it
+  surfaces the error via a toast and leaves the row untouched).
+
+Called from two admin surfaces:
+
+- The per-row **Enrich** button on `/admin/venues/completeness`
+  (`src/components/venue-admin/VenueCompletenessPage.tsx`) — applies
+  directly (`dry_run: false`).
+- The **Preview / Apply Places enrich** buttons on
+  `/admin/venues/:id/metadata` (`src/components/venue-admin/VenueMetadataForm.tsx`)
+  — preview first, then apply.
+
+Both go through the shared client helper `enrichVenueFromPlaces()` in
+`src/lib/venue-admin-client.ts`.
+
 ### Webhook signing (`api/webhooks/sign.ts`)
 
 | Variable | Used for |
@@ -110,6 +146,7 @@ differs.
 | Lyft | `POST /api/integrations/lyft` with sample coordinates returns non-empty `costEstimates`. |
 | Geocode (Mapbox) | `GET /api/integrations/geocode?lat=37.77&lng=-122.41` returns a `city` value. |
 | Geocode (Google) | Same with `&provider=google`. |
+| Places enrich | `POST /api/integrations/places-enrich` (admin-auth) with `{ "venue_id": "<uuid>", "dry_run": true }` returns a `resolved` preview object (phone/website/hours/address may be `null` if Places has no match — that's OK). |
 | Webhook sign | `POST /api/webhooks/sign` (admin-auth) returns a 64-char hex `signature`. |
 | API key gen | `POST /api/keys/generate` (admin-auth) returns a `pk_<tier>_<hex>` key. |
 

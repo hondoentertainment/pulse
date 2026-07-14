@@ -31,7 +31,7 @@ interface MainTabRouterProps {
 export function MainTabRouter({ tab }: MainTabRouterProps) {
   const state = useAppState()
   const handlers = useAppHandlers()
-  const { navigateToSubPage, navigateToVenue } = useRouteNavigation()
+  const { navigateToSubPage, navigateToVenue, navigate } = useRouteNavigation()
   const {
     activeTab: stateActiveTab,
     venues,
@@ -229,6 +229,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
                 navigateToSubPage('owner-dashboard')
               }}
               onOpenModerationQueue={() => navigateToSubPage('moderation')}
+              onOpenVenueDataQuality={() => navigate('/admin/venues/completeness')}
             />
           </motion.div>
         )}

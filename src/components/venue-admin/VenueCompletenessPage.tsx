@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { Card } from '@/components/ui/card'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { cn } from '@/lib/utils'
 import type { CompletenessField } from '@/lib/venue-completeness'
+import { enrichVenueFromPlaces } from '@/lib/venue-admin-client'
 
 interface VenueCompletenessSummary {
   count: number
@@ -65,6 +67,7 @@ export function VenueCompletenessPage() {
   const [data, setData] = useState<VenuesCompletenessResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [enrichingId, setEnrichingId] = useState<string | null>(null)
 
   const role =
     (session?.user?.app_metadata as Record<string, unknown> | undefined)?.role ?? null
@@ -105,6 +108,19 @@ export function VenueCompletenessPage() {
     }
   }, [authLoading, isAdmin, session?.access_token])
 
+  const handleEnrich = async (venueId: string, venueName: string) => {
+    setEnrichingId(venueId)
+    try {
+      await enrichVenueFromPlaces(venueId, { name: venueName, dryRun: false })
+      toast.success(`Enriched "${venueName}" from Google Places`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Places enrich failed'
+      toast.error('Enrich failed', { description: msg })
+    } finally {
+      setEnrichingId(null)
+    }
+  }
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -141,7 +157,13 @@ export function VenueCompletenessPage() {
               Ranked worst-first so the team can prioritize fixes.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/venues/data-reports')}>
+              Data reports
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/venues/duplicates')}>
+              Duplicates
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/admin/signal')}>
               Signal admin
             </Button>
@@ -218,13 +240,24 @@ export function VenueCompletenessPage() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/admin/venues/${encodeURIComponent(venue.id)}/metadata`)}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={enrichingId === venue.id}
+                      onClick={() => handleEnrich(venue.id, venue.name)}
+                      data-testid={`venue-enrich-${venue.id}`}
+                    >
+                      {enrichingId === venue.id ? 'Enriching…' : 'Enrich'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/venues/${encodeURIComponent(venue.id)}/metadata`)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>

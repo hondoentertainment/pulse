@@ -57,6 +57,16 @@ const SignalAdminPage = lazy(() =>
     default: m.SignalAdminPage,
   })),
 )
+const VenueDataReportsPage = lazy(() =>
+  import('@/components/venue-admin/VenueDataReportsPage').then((m) => ({
+    default: m.VenueDataReportsPage,
+  })),
+)
+const VenueDuplicatesPage = lazy(() =>
+  import('@/components/venue-admin/VenueDuplicatesPage').then((m) => ({
+    default: m.VenueDuplicatesPage,
+  })),
+)
 
 /** Trending home — redirects legacy `/?pulse=` deep links to `/pulse/:id`. */
 function TrendingHomeRoute({
@@ -249,6 +259,28 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <VenueCompletenessPage />
+            </Suspense>
+          }
+        />
+
+        {/* Admin-only: user-submitted catalog quality report queue.
+            Non-admins get a 403 rendered by VenueDataReportsPage itself. */}
+        <Route
+          path="/admin/venues/data-reports"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <VenueDataReportsPage />
+            </Suspense>
+          }
+        />
+
+        {/* Admin-only: likely duplicate venue detection. Non-admins get a
+            403 rendered by VenueDuplicatesPage itself. */}
+        <Route
+          path="/admin/venues/duplicates"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <VenueDuplicatesPage />
             </Suspense>
           }
         />

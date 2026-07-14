@@ -34,6 +34,7 @@ Safe to leave on (no extra secrets): `VITE_WEATHER_BOOST_ENABLED`, `VITE_WAIT_TI
 | `VITE_SENTRY_DSN` | Recommended | Client error monitoring |
 | `STRIPE_WEBHOOK_SECRET` | When ticketing on | |
 | `TICKET_QR_SECRET` | When ticketing on | Rotate per environment |
+| `GOOGLE_MAPS_SERVER_KEY` | Recommended | Google Places lookups for `/api/integrations/places-enrich` (admin-only venue enrichment) and the `?provider=google` path of `/api/integrations/geocode`. See `docs/secrets-and-integrations.md`. Without it, the admin "Enrich" buttons on the venue completeness/metadata pages return `503 not_configured`. |
 
 ## GitHub Actions secrets (CI)
 

@@ -311,6 +311,55 @@ export async function setVenueSignalSuppression(
   return json.data
 }
 
+export interface VenueDataReportRow {
+  id: string
+  venue_id: string
+  user_id: string
+  reason: string
+  note: string | null
+  menu_url: string | null
+  price_range: number | null
+  status: 'pending' | 'reviewed' | 'actioned' | 'dismissed'
+  created_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
+  venues?: { name: string | null; city: string | null } | null
+}
+
+export async function updateVenueDataReportStatus(
+  id: string,
+  status: 'reviewed' | 'actioned' | 'dismissed',
+): Promise<VenueDataReportRow> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch('/api/admin/venue-data-reports', {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id, status }),
+  })
+
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`
+    try {
+      const body = (await res.json()) as { error?: { message?: string } | string }
+      if (body?.error) {
+        message = typeof body.error === 'string' ? body.error : body.error.message ?? message
+      }
+    } catch {
+      // keep generic message
+    }
+    throw new Error(message)
+  }
+
+  const json = (await res.json()) as { data: VenueDataReportRow }
+  return json.data
+}
+
 export async function submitScoutApplication(payload: {
   motivation?: string
   neighborhoods?: string[]

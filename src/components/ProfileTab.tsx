@@ -5,7 +5,7 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck, Binoculars } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck, Binoculars, ChartBar } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
@@ -32,6 +32,7 @@ interface ProfileTabProps {
   onOpenOwnerDashboard?: () => void
   onOpenCreatorDashboard?: () => void
   onOpenModerationQueue?: () => void
+  onOpenVenueDataQuality?: () => void
 }
 
 export function ProfileTab({
@@ -46,6 +47,7 @@ export function ProfileTab({
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,
   onOpenModerationQueue,
+  onOpenVenueDataQuality,
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
@@ -296,6 +298,12 @@ export function ProfileTab({
           <button onClick={onOpenModerationQueue} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
             <ShieldCheck size={18} weight="fill" className="text-[#833AB4]" />
             <span className="text-sm font-medium">Moderation Queue</span>
+          </button>
+        )}
+        {onOpenVenueDataQuality && (
+          <button onClick={onOpenVenueDataQuality} className="flex items-center gap-2 p-3 bg-card/95 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#833AB4]/30 transition-colors w-full">
+            <ChartBar size={18} weight="fill" className="text-[#833AB4]" />
+            <span className="text-sm font-medium">Venue Data Quality</span>
           </button>
         )}
         {onOpenSettings && (
