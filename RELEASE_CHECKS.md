@@ -39,19 +39,34 @@ Current caveats:
 
 ## Recommended GitHub Required Checks
 
-Configure these workflow checks as required on the default branch:
+Configure these workflow checks as required on the default branch (see
+[`docs/branch-protection.md`](docs/branch-protection.md) for the full table
+and a `gh` CLI snippet):
 
 - `lint`
 - `test`
 - `build`
+- `bundle-size`
+- `typecheck-strict`
 - `smoke-preview`
+- `e2e-signal`
 
-The workflow now also runs:
+The workflow also runs these advisory (`continue-on-error`) jobs — surface
+debt without keeping every PR red, so **do not** mark them required:
 
-- `smoke-preview`
-  Runs Playwright against a preview build with auth bypass enabled and uploads the HTML report.
+- `smoke-preview-venue`
+  Playwright venue-mode smoke against a preview build; uploads the HTML report.
 - `dependency-audit`
-  Uploads `npm audit` output as an artifact so dependency debt is visible without keeping every PR red.
+  Uploads `npm audit --audit-level=high` output as an artifact.
+
+Notes on the smoke jobs:
+
+- The suite is split by app mode — `smoke-preview-signal` (blocking) and
+  `smoke-preview-venue` (advisory). The `smoke-preview` required context is
+  produced by an aggregator job that gates on `smoke-preview-signal`; keep it
+  in sync if the smoke jobs are renamed. `lighthouse.yml` also runs on PRs
+  (perf assertions are warnings) and enforces the gzip bundle budget via
+  `npm run bundle-size`.
 
 ## Next Check To Harden
 

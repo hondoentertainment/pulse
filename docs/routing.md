@@ -140,9 +140,14 @@ These render above the tab shell without changing the URL:
 | `CreatePulseDialog` | FAB or venue action |
 | `StoryViewer` | Story ring tap |
 | `SocialPulseDashboard` | Admin toggle |
-| `VenuePage` (state mode) | Venue card tap in `AppShell` |
 | `PresenceSheet` | Presence settings |
 | Feature sheets | Safety, ticketing, concierge |
+
+> **Venue card taps** in `AppRoutes` (venue mode) navigate to `/venue/:id`
+> (`MainTabRouter` → `useNavigate`), rendering `VenuePage` via `VenueRoute` —
+> they are a real route change, not a URL-less overlay. (The legacy
+> `AppShell`, which showed `VenuePage` as a state-driven overlay, is no longer
+> mounted.)
 
 ---
 

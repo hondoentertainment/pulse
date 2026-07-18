@@ -7,17 +7,32 @@ merge, without over-fitting to the current state of the app.
 
 ## What's enforced
 
-| Gate           | Job step               | Fails CI when                                             | Config location                    |
+| Gate           | Job                    | Fails CI when                                             | Config location                    |
 | -------------- | ---------------------- | --------------------------------------------------------- | ---------------------------------- |
-| Lint errors    | `Lint`                 | Any ESLint error.                                         | `eslint.config.js`                 |
-| Lint warnings  | `Lint`                 | More than 500 warnings (regression guard).                | `package.json` → `lint` script     |
-| Unit tests     | `Unit Tests ...`       | Any test fails.                                           | `vite.config.ts` → `test`          |
-| Coverage       | `Unit Tests ...`       | Coverage on `src/lib/**` falls below per-metric floors (stmts 35%, branches 33%, funcs 42%, lines 34%). | `vite.config.ts` → `test.coverage` |
-| Build          | `Build`                | `bun run build` exits non-zero.                           | —                                  |
-| Bundle size    | `Bundle-size budget`   | Any JS chunk (or the total) exceeds its gzip budget.      | `scripts/check-bundle-size.mjs`, `docs/bundle-budget.md` |
-| Smoke tests    | `Smoke Tests`          | Playwright smoke scenarios fail.                          | `playwright.config.ts`             |
+| Lint errors    | `lint`                 | Any ESLint error.                                         | `eslint.config.js`                 |
+| Lint warnings  | `lint`                 | More than 500 warnings (regression guard).                | `package.json` → `lint` script     |
+| Unit tests     | `test`                 | Any test fails.                                           | `vite.config.ts` → `test`          |
+| Coverage       | `test`                 | Coverage on `src/lib/**` falls below per-metric floors (stmts 35%, branches 33%, funcs 42%, lines 34%). | `vite.config.ts` → `test.coverage` |
+| Build          | `build`                | `npm run build` exits non-zero.                           | —                                  |
+| TypeScript     | `typecheck-strict`     | `tsc -b` reports any error.                               | `tsconfig*.json`                   |
+| Bundle size    | `bundle-size`          | Any JS chunk (or the total) exceeds its gzip budget.      | `scripts/check-bundle-size.mjs`, `docs/bundle-budget.md` |
+| Signal smoke   | `smoke-preview-signal` | Playwright signal-mode smoke scenarios fail.              | `playwright.config.ts`             |
+| Signal E2E     | `e2e-signal`           | Playwright signal E2E scenarios fail.                     | `playwright.config.ts`             |
+| Smoke gate     | `smoke-preview`        | Aggregator: `smoke-preview-signal` did not pass.          | `.github/workflows/ci.yml`         |
 
-All gates are hard-fail: no `continue-on-error: true`.
+Advisory jobs run with `continue-on-error: true` — they surface debt without
+keeping PRs red, and are **not** part of the required set:
+
+| Advisory job           | Purpose                                                              |
+| ---------------------- | ------------------------------------------------------------------- |
+| `smoke-preview-venue`  | Venue-mode Playwright smoke against a preview build; uploads report. |
+| `dependency-audit`     | `npm audit --audit-level=high` output as an artifact.               |
+
+`lighthouse.yml` (separate workflow, on PRs) runs Lighthouse — perf assertions
+are warnings — and enforces the gzip bundle budget via `npm run bundle-size`.
+
+See [`branch-protection.md`](./branch-protection.md) for which of these are
+required on `main` and how the `smoke-preview` aggregator context works.
 
 ## Coverage thresholds
 
