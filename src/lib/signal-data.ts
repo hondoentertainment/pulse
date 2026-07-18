@@ -58,6 +58,38 @@ export async function fetchSignalEntries(userId: string): Promise<SignalEntry[]>
   return ((data ?? []) as SignalEntryRow[]).map(fromRow)
 }
 
+/**
+ * Fetch the user's COMPLETE signal history, paginating past the 60-row cap that
+ * {@link fetchSignalEntries} applies for hydration. Used by data export, where
+ * silently truncating "every check-in" would be wrong. Returns [] when Supabase
+ * isn't configured (callers fall back to locally-stored entries).
+ */
+export async function fetchAllSignalEntries(userId: string): Promise<SignalEntry[]> {
+  if (!hasSupabaseConfig) return []
+
+  const pageSize = 1000
+  const all: SignalEntry[] = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('signal_entries')
+      .select('id,user_id,created_at,focus,score,energy,mood,stress,sleep_quality,tags')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1)
+
+    if (error) {
+      console.warn('Signal entries full fetch failed', error.message)
+      throw new Error(error.message || 'Could not load full signal history')
+    }
+
+    const rows = (data ?? []) as SignalEntryRow[]
+    all.push(...rows.map(fromRow))
+    if (rows.length < pageSize) break
+  }
+
+  return all
+}
+
 export async function saveSignalEntry(entry: SignalEntry): Promise<void> {
   if (!hasSupabaseConfig) return
 

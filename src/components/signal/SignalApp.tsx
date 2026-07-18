@@ -7,9 +7,9 @@ import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, Tr
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { fetchSignalEntries } from '@/lib/signal-data'
+import { fetchSignalEntries, fetchAllSignalEntries } from '@/lib/signal-data'
 import { hasSupabaseConfig } from '@/lib/supabase'
-import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type TrendDirection } from '@/lib/signal-insights'
+import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type SignalEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useHaptics } from '@/hooks/use-haptics'
@@ -281,20 +281,47 @@ function HistoryPage() {
 }
 
 function SettingsPage() {
-  const { signOut } = useSupabaseAuth()
+  const { signOut, user } = useSupabaseAuth()
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
+  const [exporting, setExporting] = useState(false)
 
-  const handleExport = () => {
+  const handleExport = async () => {
     trackEvent({ type: 'signal_export_click', timestamp: Date.now(), entryCount: entries.length })
-    const started = downloadSignalCsv(entries)
-    if (started) {
-      toast.success('Export started', { description: `${entries.length} check-in${entries.length === 1 ? '' : 's'} saved as CSV.` })
-    } else {
-      toast.error('Export unavailable', { description: 'Downloads are not supported in this environment.' })
+    setExporting(true)
+    try {
+      // Locally-persisted entries are only the hydrated set (remote fetch caps
+      // at 60). For a true "every check-in" export, pull the full history from
+      // the backend when signed in and merge it with local, deduped by id.
+      let full = entries
+      if (hasSupabaseConfig && user?.id) {
+        try {
+          const remote = await fetchAllSignalEntries(user.id)
+          if (remote.length > 0) {
+            const byId = new Map<string, SignalEntry>()
+            for (const entry of [...remote, ...entries]) byId.set(entry.id, entry)
+            full = Array.from(byId.values()).sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            )
+          }
+        } catch {
+          toast.warning('Exporting local history only', {
+            description: "Couldn't reach the server — some older entries may be missing.",
+          })
+        }
+      }
+
+      const started = downloadSignalCsv(full)
+      if (started) {
+        toast.success('Export ready', { description: `${full.length} check-in${full.length === 1 ? '' : 's'} saved as CSV.` })
+      } else {
+        toast.error('Export unavailable', { description: 'Downloads are not supported in this environment.' })
+      }
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -372,10 +399,10 @@ function SettingsPage() {
         <Button
           variant="outline"
           className="h-12 w-full rounded-2xl"
-          disabled={entries.length === 0}
-          onClick={handleExport}
+          disabled={entries.length === 0 || exporting}
+          onClick={() => void handleExport()}
         >
-          Export as CSV
+          {exporting ? 'Preparing…' : 'Export as CSV'}
         </Button>
       </section>
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>

@@ -22,10 +22,12 @@ describe('toSignalCsv', () => {
     expect(csv).toBe('date,time,focus,score,energy,mood,stress,sleep_quality,tags')
   })
 
-  it('serialises entries newest-first with tags space-joined', () => {
+  it('serialises entries newest-first with local date/time and tags space-joined', () => {
+    // Build createdAt from LOCAL components so the expected local formatting is
+    // timezone-independent (export uses the viewer's local date, like History).
     const csv = toSignalCsv([
-      entry({ id: 'a', createdAt: '2026-07-01T09:30:00Z', score: 60, tags: ['calm', 'active'] }),
-      entry({ id: 'b', createdAt: '2026-07-03T18:05:00Z', score: 82, tags: ['clear'] }),
+      entry({ id: 'a', createdAt: new Date(2026, 6, 1, 9, 30, 0).toISOString(), score: 60, tags: ['calm', 'active'] }),
+      entry({ id: 'b', createdAt: new Date(2026, 6, 3, 18, 5, 0).toISOString(), score: 82, tags: ['clear'] }),
     ])
     const lines = csv.split('\n')
     expect(lines).toHaveLength(3)

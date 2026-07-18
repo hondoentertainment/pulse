@@ -28,6 +28,22 @@ function escapeCsvField(value: string): string {
   return value
 }
 
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
+/**
+ * Local `YYYY-MM-DD` / `HH:MM` for a check-in. The app treats entries as local
+ * daily records everywhere else (History renders with `toLocaleDateString`), so
+ * the export must use the viewer's timezone too — otherwise an evening check-in
+ * west of UTC exports under the following day.
+ */
+function localDate(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+function localTime(date: Date): string {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
 /**
  * Serialise entries to a CSV string (newest first). Tags are joined with a
  * space inside a single quoted column so the row width stays fixed.
@@ -41,8 +57,8 @@ export function toSignalCsv(entries: SignalEntry[]): string {
   const rows = sorted.map((entry) => {
     const date = new Date(entry.createdAt)
     const fields = [
-      date.toISOString().slice(0, 10),
-      date.toISOString().slice(11, 16),
+      localDate(date),
+      localTime(date),
       entry.focus,
       String(entry.score),
       String(entry.energy),
