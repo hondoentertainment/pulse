@@ -131,7 +131,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return
     }
 
-    const rows = (data ?? []) as VenueDuplicateRow[]
+    const rows = (data ?? []) as unknown as VenueDuplicateRow[]
     const venues = rows.map(toVenueShape)
     const groups = findDuplicateGroups(venues)
 
