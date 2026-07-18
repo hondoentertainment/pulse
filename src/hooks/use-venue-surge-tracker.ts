@@ -80,8 +80,9 @@ export function useVenueSurgeTracker(
             return [notification, ...current]
           })
 
-          toast.success('Venue surging nearby', {
-            description: `${venue.name} just jumped to ${currentScore} energy (${signal.confidence} confidence)`,
+          // Medium+ confidence only (gated by shouldEmitSurgeAlert).
+          toast.success(`${venue.name} is surging nearby`, {
+            description: `${currentScore} energy · ${signal.confidence} confidence · ${distance.toFixed(1)} mi`,
             duration: 5000,
           })
 

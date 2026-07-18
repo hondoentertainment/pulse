@@ -8,6 +8,7 @@ export type FeatureFlag =
   | 'safetyKit'
   | 'ticketing'
   | 'aiConcierge'
+  | 'vibeVision'
   | 'creatorEconomy'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
@@ -24,17 +25,19 @@ const isProdBuild = import.meta.env.PROD
 
 const defaults: FeatureFlagMap = {
   integrations: true,
+  // Social pulse admin dashboard — off for public venue launch polish.
   socialDashboard: !isProdBuild,
   smartMap: true,
   // Differentiator pack — all default on (safe, no API keys required).
   weatherBoost: true,
   waitTime: true,
   accessibilityFilter: true,
-  // Safety kit — off in production until Twilio creds are configured.
-  safetyKit: !isProdBuild,
-  // Ticketing & AI concierge — default OFF (require env configuration).
+  // Safety kit / ticketing / AI / creators — off until explicitly enabled.
+  safetyKit: false,
   ticketing: false,
   aiConcierge: false,
+  // Photo → energy vibe assessment (Anthropic vision); off until keyed.
+  vibeVision: false,
   creatorEconomy: false,
 }
 
@@ -51,6 +54,7 @@ export const featureFlags: FeatureFlagMap = {
   safetyKit: parseFlag(import.meta.env.VITE_SAFETY_KIT_ENABLED, defaults.safetyKit),
   ticketing: parseFlag(import.meta.env.VITE_TICKETING_ENABLED, defaults.ticketing),
   aiConcierge: parseFlag(import.meta.env.VITE_AI_CONCIERGE_ENABLED, defaults.aiConcierge),
+  vibeVision: parseFlag(import.meta.env.VITE_VIBE_VISION_ENABLED, defaults.vibeVision),
   creatorEconomy: parseFlag(import.meta.env.VITE_CREATOR_ECONOMY_ENABLED, defaults.creatorEconomy),
 }
 

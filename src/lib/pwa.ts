@@ -19,14 +19,19 @@ export interface InstallPromptState {
 let deferredPrompt: BeforeInstallPromptEvent | null = null
 
 /**
- * Register the service worker.
+ * Resolve the active service worker registration.
+ *
+ * VitePWA (`vite.config.ts`, `injectRegister: 'auto'`) owns registration and
+ * Workbox caching. Do not also register `public/sw.js` — dual SWs fight for
+ * control and break install/offline updates.
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-    return registration
+    const existing = await navigator.serviceWorker.getRegistration()
+    if (existing) return existing
+    return await navigator.serviceWorker.ready
   } catch {
     return null
   }

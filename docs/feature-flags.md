@@ -12,17 +12,18 @@ Accepted falsy values: `0`, `false`, `no`, `off`
 | Flag key | Env variable | Default | Gated behavior |
 |----------|--------------|---------|--------------|
 | `integrations` | `VITE_FF_ENABLE_INTEGRATIONS` | `true` | Spotify, Uber, Lyft integration UI |
-| `socialDashboard` | `VITE_FF_ENABLE_SOCIAL_DASHBOARD` | `true` | Social pulse / X correlation dashboard |
+| `socialDashboard` | `VITE_FF_ENABLE_SOCIAL_DASHBOARD` | `true` in dev / `false` in prod | Social pulse admin dashboard (hidden for public launch) |
 | `smartMap` | `VITE_FF_ENABLE_SMART_MAP` | `true` | Enhanced map features |
 | `weatherBoost` | `VITE_WEATHER_BOOST_ENABLED` | `true` | Weather-aware venue ranking (`useWeather`) |
 | `waitTime` | `VITE_WAIT_TIME_ENABLED` | `true` | Wait-time chip on venue cards |
 | `accessibilityFilter` | `VITE_ACCESSIBILITY_FILTER_ENABLED` | `true` | Accessibility section in map filters |
-| `safetyKit` | `VITE_SAFETY_KIT_ENABLED` | `true`* | Safety Kit UI (contacts, sessions) |
+| `safetyKit` | `VITE_SAFETY_KIT_ENABLED` | `false` | Safety Kit UI (contacts, sessions) — opt-in only |
 | `ticketing` | `VITE_TICKETING_ENABLED` | `false` | Ticket purchase, QR codes, staff scanner |
-| `aiConcierge` | `VITE_AI_CONCIERGE_ENABLED` | `false` | AI night-planning chat sheet |
+| `aiConcierge` | `VITE_AI_CONCIERGE_ENABLED` | `false` | AI night-planning chat sheet + `/night-planner` |
+| `vibeVision` | `VITE_VIBE_VISION_ENABLED` | `false` | Photo → energy vibe assess in Create Pulse (`/api/vibe/assess`) |
 | `creatorEconomy` | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab, referrals, payouts |
 
-\* Safety Kit defaults to on in dev (`.env.example`) but should stay **off in production** until Twilio and server env are configured. See [Safety Kit](safety-kit.md).
+Unfinished surfaces stay **off** for Seattle public launch (see `.env.example`). Routes for tickets / night-planner / safety redirect home when their flag is off.
 
 ### Usage in code
 

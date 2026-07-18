@@ -19,6 +19,8 @@ import { VenueRoute } from '@/components/VenueRoute'
 import { PulseRoute } from '@/components/PulseRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import { isGuestBrowseEnabled } from '@/lib/guest-browse'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { shouldRedirectToWelcome } from '@/lib/welcome-gate'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
 // ── Lazy page imports ────────────────────────────────────────
@@ -72,6 +74,11 @@ const ShortlistPage = lazy(() =>
     default: m.ShortlistPage,
   })),
 )
+const SeattleLandingPage = lazy(() =>
+  import('@/components/SeattleLandingPage').then((m) => ({
+    default: m.SeattleLandingPage,
+  })),
+)
 
 /** Trending home — redirects legacy `/?pulse=` deep links to `/pulse/:id`. */
 function TrendingHomeRoute({
@@ -93,16 +100,37 @@ function NotFoundRoute() {
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">404</p>
       <h1 className="text-2xl font-bold tracking-tight">This Pulse page does not exist.</h1>
       <p className="max-w-sm text-sm text-muted-foreground">
-        The link may be outdated, or the page may have moved. Head back to trending venues to keep exploring.
+        The link may be outdated, or the page may have moved. Head back to Tonight to keep deciding.
       </p>
       <Link
         to="/"
         className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
       >
-        Back to Trending
+        Back to Tonight
       </Link>
     </div>
   )
+}
+
+function WelcomeRedirect({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  if (shouldRedirectToWelcome(location.pathname)) {
+    return <Navigate to="/welcome" replace />
+  }
+  return <>{children}</>
+}
+
+function FeatureFlaggedRoute({
+  flag,
+  children,
+}: {
+  flag: Parameters<typeof isFeatureEnabled>[0]
+  children: ReactNode
+}) {
+  if (!isFeatureEnabled(flag)) {
+    return <Navigate to="/" replace />
+  }
+  return <>{children}</>
 }
 
 /**
@@ -246,6 +274,16 @@ export function AppRoutes() {
         {/* Pulse detail (Wave 4) */}
         <Route path="/pulse/:pulseId" element={<PulseRoute />} />
 
+        {/* Seattle conversion landing */}
+        <Route
+          path="/welcome"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <SeattleLandingPage />
+            </Suspense>
+          }
+        />
+
         {/* Shareable group shortlist (P1-5) */}
         <Route
           path="/shortlist"
@@ -322,9 +360,30 @@ export function AppRoutes() {
         <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
         <Route path="/owner-dashboard" element={<SubPageRouter page="owner-dashboard" />} />
         <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
-        <Route path="/safety/contacts" element={<SubPageRouter page="safety-contacts" />} />
+        <Route
+          path="/my-tickets"
+          element={
+            <FeatureFlaggedRoute flag="ticketing">
+              <SubPageRouter page="my-tickets" />
+            </FeatureFlaggedRoute>
+          }
+        />
+        <Route
+          path="/night-planner"
+          element={
+            <FeatureFlaggedRoute flag="aiConcierge">
+              <SubPageRouter page="night-planner" />
+            </FeatureFlaggedRoute>
+          }
+        />
+        <Route
+          path="/safety/contacts"
+          element={
+            <FeatureFlaggedRoute flag="safetyKit">
+              <SubPageRouter page="safety-contacts" />
+            </FeatureFlaggedRoute>
+          }
+        />
 
         {/* Main tabs */}
         <Route path="/discover" element={wrapTab('discover')} />
@@ -334,11 +393,14 @@ export function AppRoutes() {
         <Route
           path="/"
           element={(
-            <TrendingHomeRoute>
-              {wrapTab('tonight')}
-            </TrendingHomeRoute>
+            <WelcomeRedirect>
+              <TrendingHomeRoute>
+                {wrapTab('tonight')}
+              </TrendingHomeRoute>
+            </WelcomeRedirect>
           )}
         />
+        {/* Legacy social feed path — keep for deep links, not primary IA */}
         <Route path="/trending" element={wrapTab('trending')} />
 
         {/* Catch-all: keep the miss visible instead of silently losing the bad URL. */}

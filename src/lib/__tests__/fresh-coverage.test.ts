@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeFreshCoverage,
+  computeNeighborhoodCoverageGaps,
   countUserReportsThisWeek,
   getScoutQuotaProgress,
   FRESH_COVERAGE_SLA_PCT,
@@ -64,6 +65,19 @@ describe('fresh-coverage', () => {
     expect(summary.freshCount).toBe(7)
     expect(summary.coveragePct).toBe(70)
     expect(summary.meetsSla).toBe(true)
+  })
+
+  it('ranks neighborhood coverage gaps', () => {
+    const venues = [
+      { ...venue('a'), neighborhood: 'Capitol Hill' },
+      { ...venue('b'), neighborhood: 'Capitol Hill' },
+      { ...venue('c'), neighborhood: 'Ballard' },
+    ]
+    const pulses = [pulse('a', 'u1', '2026-07-16T03:30:00Z')]
+    const summary = computeFreshCoverage(venues, pulses, { now })
+    const gaps = computeNeighborhoodCoverageGaps(summary)
+    expect(gaps[0]?.neighborhood).toBe('Ballard')
+    expect(gaps[0]?.coveragePct).toBe(0)
   })
 
   it('tracks scout weekly quota progress', () => {

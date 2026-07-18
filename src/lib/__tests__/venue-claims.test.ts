@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  claimVenue,
   claimVenueForPilot,
   clearVenueClaimsForTests,
   getVerifiedClaimedVenueIds,
@@ -19,6 +20,13 @@ describe('venue-claims + operator persistence', () => {
     expect(getVerifiedClaimedVenueIds('owner-1')).toEqual(['venue-a'])
     expect(getVerifiedClaimForVenue('owner-1', 'venue-a')?.businessName).toBe('Neon Room')
   })
+
+  it('claimVenue without token falls back to local pilot verify', async () => {
+    const claim = await claimVenue('owner-1', 'venue-b', 'Bar Two', 'ops@bar.test')
+    expect(claim.status).toBe('verified')
+    expect(getVerifiedClaimedVenueIds('owner-1')).toContain('venue-b')
+  })
+
 
   it('persists operator status across store clears via localStorage', () => {
     updateVenueOperatorStatus('venue-a', 'owner-1', {

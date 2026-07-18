@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { MapPin, NavigationArrow, BookmarkSimple, ShareNetwork } from '@phosphor-icons/react'
+import { MapPin, NavigationArrow, BookmarkSimple, ShareNetwork, Lightning } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getEnergyColor, getEnergyLabel } from '@/lib/pulse-engine'
@@ -17,6 +17,7 @@ interface TonightRecommendationCardProps {
   onDirections: () => void
   onSave: () => void
   onShare?: () => void
+  onReport?: () => void
   onExpand?: () => void
 }
 
@@ -35,6 +36,7 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
   onDirections,
   onSave,
   onShare,
+  onReport,
   onExpand,
 }: TonightRecommendationCardProps) {
   const reduceMotion = useReducedMotion()
@@ -154,6 +156,19 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
               <BookmarkSimple size={14} weight={isSaved ? 'fill' : 'regular'} />
               {isSaved ? 'Saved' : 'Save'}
             </Button>
+            {onReport && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11 gap-1 touch-manipulation border-accent/40 text-accent"
+                data-testid="tonight-report"
+                aria-label="Leave a live review"
+                onClick={onReport}
+              >
+                <Lightning size={14} weight="fill" />
+                Review
+              </Button>
+            )}
             {onShare && (
               <Button
                 size="sm"

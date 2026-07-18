@@ -31,12 +31,16 @@ describe('featureFlags defaults', () => {
     expect(featureFlags).toHaveProperty('safetyKit')
   })
 
-  it('defaults to true for all flags when no env vars override', () => {
-    // In test environment, no VITE_FF_ / VITE_SAFETY_KIT_ env vars are set,
-    // so parseFlag falls back to defaults which are all true
+  it('defaults core flags on and unfinished surfaces off', () => {
+    // In test environment, no VITE_* overrides — fall back to module defaults.
     expect(featureFlags.integrations).toBe(true)
-    expect(featureFlags.socialDashboard).toBe(true)
+    expect(featureFlags.socialDashboard).toBe(true) // !isProdBuild
     expect(featureFlags.smartMap).toBe(true)
-    expect(featureFlags.safetyKit).toBe(true)
+    expect(featureFlags.safetyKit).toBe(false)
+    expect(featureFlags.ticketing).toBe(false)
+    expect(featureFlags.aiConcierge).toBe(false)
+    expect(featureFlags.vibeVision).toBe(false)
+    expect(featureFlags.creatorEconomy).toBe(false)
   })
 })
+

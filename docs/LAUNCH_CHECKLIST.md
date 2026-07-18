@@ -111,7 +111,11 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 | [ ] Staging smoke + unit tests green on release branch | Eng | `npm run release-check` + `npm run test:e2e:venue` |
 | [x] Pulse/venue fetch failures show a retry affordance (no silent blank states) | Eng | Done |
 | [x] Production builds refuse silent mock fallback without Supabase creds | Eng | `ProductionConfigGuard` — override with `VITE_ALLOW_MOCK_BACKEND=true` |
-| [ ] Feature flags OFF for unfinished surfaces (ticketing, safety, concierge) unless ready | Product | Defaults documented in [prod-vercel-env.md](prod-vercel-env.md); `safetyKit` off in prod builds |
+| [x] Feature flags OFF for unfinished surfaces (ticketing, safety, concierge) unless ready | Product | `.env.example` + route gates in `AppRoutes`; Discover hides night-planner/tickets when flags off |
+| [x] Public brand = venue nightlife (not Signal check-in) | Eng | `index.html`, `manifest.json`, `/welcome` landing |
+| [x] PWA icons + single SW owner (VitePWA) | Eng | `public/icons/*`; removed dual `public/sw.js` registration |
+| [x] SEO baseline (robots, sitemap, OG helpers) | Eng | `public/robots.txt`, `sitemap.xml`, `document-meta.ts` |
+| [x] Expansion gate scoreboard available to admins | Eng | `/admin/signal` + [EXPANSION_GATE_SCOREBOARD.md](EXPANSION_GATE_SCOREBOARD.md) |
 
 ---
 
@@ -119,7 +123,7 @@ See [accessibility-audit.md](accessibility-audit.md) for component-level finding
 
 | Item | Owner | Status |
 |------|-------|--------|
-| [ ] `VITE_LAUNCHED_CITIES` set for first city (e.g. `Seattle,WA`) | Product | |
+| [x] `VITE_LAUNCHED_CITIES` set for first city (e.g. `Seattle,WA`) | Product | Documented in `.env.example` + [prod-vercel-env.md](prod-vercel-env.md); confirm in Vercel project |
 | [ ] Supabase venue seed verified for launch city | Eng | |
 | [ ] Map + venue detail QA in launch city on real mobile devices | QA | |
 

@@ -1,0 +1,12 @@
+# Pulse — Seattle nightlife decision PWA
+User-agent: *
+Allow: /
+Allow: /welcome
+Allow: /shortlist
+Allow: /venue/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /settings
+Disallow: /safety/
+
+Sitemap: /sitemap.xml

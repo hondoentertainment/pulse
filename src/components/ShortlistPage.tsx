@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, ShareNetwork } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import {
 } from '@/lib/shortlist'
 import { formatDistance } from '@/lib/units'
 import { getEnergyLabel } from '@/lib/pulse-engine'
+import { resetDocumentMeta, setDocumentMeta, shortlistDocumentMeta } from '@/lib/document-meta'
 
 function milesBetween(
   lat1: number,
@@ -42,6 +43,11 @@ export function ShortlistPage() {
     () => resolveShortlistVenues(venueIds, venues || []),
     [venueIds, venues],
   )
+
+  useEffect(() => {
+    setDocumentMeta(shortlistDocumentMeta(shortlist.map((v) => v.name)))
+    return () => resetDocumentMeta()
+  }, [shortlist])
 
   const share = async () => {
     if (shortlist.length === 0) return
@@ -91,7 +97,7 @@ export function ShortlistPage() {
             Star spots you care about, then share a shortlist link with your group.
           </p>
           <Link
-            to="/trending"
+            to="/discover"
             className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
           >
             Browse venues

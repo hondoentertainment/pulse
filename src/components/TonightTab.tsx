@@ -7,6 +7,8 @@ import { getTonightPicks, type VibeFilter } from '@/lib/tonight-feed'
 import { getActivePromotions, type PromotedVenue } from '@/lib/promoted-discoveries'
 import { mergeTonightPicksWithSponsorship } from '@/lib/sponsorship-integrity'
 import { TonightRecommendationCard } from '@/components/TonightRecommendationCard'
+import { EnergyReportSheet } from '@/components/EnergyReportSheet'
+import { DecisionConversionStrip } from '@/components/DecisionConversionStrip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -41,6 +43,7 @@ interface TonightTabProps {
   onVenueClick: (venue: Venue) => void
   onToggleFavorite: (venueId: string) => void
   onExplore?: () => void
+  onQuickEnergyReport?: (venue: Venue, energy: EnergyRating) => void
 }
 
 export function TonightTab({
@@ -53,6 +56,7 @@ export function TonightTab({
   onVenueClick,
   onToggleFavorite,
   onExplore,
+  onQuickEnergyReport,
 }: TonightTabProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const vibeFromUrl = searchParams.get('vibe')
@@ -61,6 +65,7 @@ export function TonightTab({
     VIBE_OPTIONS.map((o) => o.id),
   )
   const [vibe, setVibe] = useState<VibeFilter>(initialVibe)
+  const [reportVenue, setReportVenue] = useState<Venue | null>(null)
 
   useEffect(() => {
     startDecisionSession()
@@ -149,9 +154,11 @@ export function TonightTab({
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Right now</p>
         <h1 className="text-2xl font-bold tracking-tight">What&apos;s hot tonight</h1>
         <p className="text-sm text-muted-foreground">
-          Live reviews fade in 90 minutes — pick a vibe and go.
+          Live reviews fade in 90 minutes — pick a vibe, go, or leave a tip in three taps.
         </p>
       </header>
+
+      <DecisionConversionStrip compact />
 
       <div
         className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none"
@@ -209,9 +216,26 @@ export function TonightTab({
               onDirections={() => openDirections(pick.recommendation.venue)}
               onSave={() => handleSave(pick.recommendation.venue.id)}
               onShare={() => void handleShare(pick.recommendation.venue)}
+              onReport={
+                onQuickEnergyReport
+                  ? () => setReportVenue(pick.recommendation.venue)
+                  : undefined
+              }
             />
           ))}
         </div>
+      )}
+
+      {onQuickEnergyReport && (
+        <EnergyReportSheet
+          open={Boolean(reportVenue)}
+          venueName={reportVenue?.name ?? ''}
+          onClose={() => setReportVenue(null)}
+          onSubmit={(energy) => {
+            if (reportVenue) onQuickEnergyReport(reportVenue, energy)
+            setReportVenue(null)
+          }}
+        />
       )}
     </div>
   )

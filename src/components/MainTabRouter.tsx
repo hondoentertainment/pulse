@@ -76,6 +76,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
     handlePulseReport,
     handlePromotionImpression,
     handlePromotionClick,
+    handleQuickEnergyReport,
   } = handlers
 
   const visibleVenueIds = useMemo(
@@ -125,6 +126,9 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               onVenueClick={navigateToVenue}
               onToggleFavorite={handleToggleFavorite}
               onExplore={() => handlers.handleTabChange('discover')}
+              onQuickEnergyReport={(venue, energy) => {
+                void handleQuickEnergyReport(venue, energy)
+              }}
             />
           </motion.div>
         )}

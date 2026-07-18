@@ -11,10 +11,12 @@ import {
   updateVenueOperatorStatus,
 } from '@/lib/venue-operator-live'
 import {
-  claimVenueForPilot,
+  claimVenue,
   getVerifiedClaimedVenueIds,
   listVenueClaims,
+  syncVenueClaimsFromServer,
 } from '@/lib/venue-claims'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { Button } from '@/components/ui/button'
 
 interface OwnerDashboardPageProps {
@@ -30,14 +32,31 @@ export function OwnerDashboardPage({
   pulses,
   onBack,
 }: OwnerDashboardPageProps) {
+  const { session } = useSupabaseAuth()
   const [claimsVersion, setClaimsVersion] = useState(0)
-  const claimedIds = useMemo(() => {
+  const claims = useMemo(() => {
+    void claimsVersion
+    return listVenueClaims(currentUser.id)
+  }, [currentUser.id, claimsVersion])
+  const verifiedIds = useMemo(() => {
     void claimsVersion
     return new Set(getVerifiedClaimedVenueIds(currentUser.id))
   }, [currentUser.id, claimsVersion])
+  const claimIds = useMemo(
+    () => new Set(claims.map((c) => c.venueId)),
+    [claims],
+  )
+
+  useEffect(() => {
+    const token = session?.access_token
+    if (!token) return
+    void syncVenueClaimsFromServer(currentUser.id, token).then(() => {
+      setClaimsVersion((n) => n + 1)
+    })
+  }, [currentUser.id, session?.access_token])
 
   const managedVenues = useMemo(() => {
-    const claimed = venues.filter((venue) => claimedIds.has(venue.id))
+    const claimed = venues.filter((venue) => claimIds.has(venue.id))
     if (claimed.length > 0) return claimed
     const favorites = new Set(currentUser.favoriteVenues ?? [])
     const followed = new Set(currentUser.followedVenues ?? [])
@@ -45,7 +64,7 @@ export function OwnerDashboardPage({
       (venue) => favorites.has(venue.id) || followed.has(venue.id),
     )
     return preferred.length > 0 ? preferred : venues.slice(0, 5)
-  }, [claimedIds, currentUser.favoriteVenues, currentUser.followedVenues, venues])
+  }, [claimIds, currentUser.favoriteVenues, currentUser.followedVenues, venues])
 
   const [selectedVenueId, setSelectedVenueId] = useState<string>(
     managedVenues[0]?.id ?? venues[0]?.id ?? '',
@@ -61,7 +80,10 @@ export function OwnerDashboardPage({
   }, [managedVenues, selectedVenueId])
 
   const selectedVenue = venues.find((venue) => venue.id === selectedVenueId) ?? managedVenues[0]
-  const isClaimed = selectedVenue ? claimedIds.has(selectedVenue.id) : false
+  const selectedClaim = selectedVenue
+    ? claims.find((c) => c.venueId === selectedVenue.id) ?? null
+    : null
+  const isVerified = selectedVenue ? verifiedIds.has(selectedVenue.id) : false
   void statusTick
   const operatorStatus = selectedVenue ? getVenueOperatorStatus(selectedVenue.id) : null
   const publishedStatus =
@@ -77,8 +99,12 @@ export function OwnerDashboardPage({
     announcementBody: string,
   ) => {
     if (!selectedVenue) return
-    if (!isClaimed) {
-      toast.error('Claim this venue before publishing live updates')
+    if (!isVerified) {
+      toast.error(
+        selectedClaim?.status === 'pending'
+          ? 'Claim pending admin verification'
+          : 'Claim and verify this venue before publishing live updates',
+      )
       return
     }
     updateVenueOperatorStatus(selectedVenue.id, currentUser.id, updates)
@@ -98,23 +124,26 @@ export function OwnerDashboardPage({
     toast.success('Live update published')
   }
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     if (!selectedVenue) return
-    claimVenueForPilot(
+    const claim = await claimVenue(
       currentUser.id,
       selectedVenue.id,
       selectedVenue.name,
       `${currentUser.username}@pulse.local`,
+      session?.access_token,
     )
     setClaimsVersion((n) => n + 1)
-    toast.success(`Claimed ${selectedVenue.name} for the operator pilot`)
+    toast.success(
+      claim.status === 'verified'
+        ? `Claimed ${selectedVenue.name}`
+        : `Claim submitted for ${selectedVenue.name} — pending verification`,
+    )
   }
 
   if (!selectedVenue || !dashboard) {
     return null
   }
-
-  const claims = listVenueClaims(currentUser.id)
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -151,24 +180,32 @@ export function OwnerDashboardPage({
             onChange={(event) => setSelectedVenueId(event.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-11"
           >
-            {(claimedIds.size > 0 ? managedVenues : venues).map((venue) => (
+            {(claimIds.size > 0 ? managedVenues : venues).map((venue) => (
               <option key={venue.id} value={venue.id}>
                 {venue.name}
-                {claimedIds.has(venue.id) ? ' (claimed)' : ''}
+                {verifiedIds.has(venue.id)
+                  ? ' (verified)'
+                  : claimIds.has(venue.id)
+                    ? ' (pending)'
+                    : ''}
               </option>
             ))}
           </select>
           <div className="flex flex-wrap items-center gap-2">
-            {isClaimed ? (
+            {isVerified ? (
               <p className="text-xs text-emerald-400">
-                Verified claim — publishes persist across reloads.
+                Verified claim — publishes sync across devices after sign-in.
+              </p>
+            ) : selectedClaim?.status === 'pending' ? (
+              <p className="text-xs text-amber-400">
+                Claim pending admin verification. You can still browse the dashboard.
               </p>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground flex-1">
-                  Pilot claim binds this venue to your account so live status is durable.
+                  Claim this venue to publish live updates guests see on the venue page.
                 </p>
-                <Button type="button" size="sm" onClick={handleClaim}>
+                <Button type="button" size="sm" onClick={() => void handleClaim()}>
                   Claim venue
                 </Button>
               </>
@@ -176,8 +213,9 @@ export function OwnerDashboardPage({
           </div>
           {claims.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              {claims.filter((c) => c.status === 'verified').length} verified claim
-              {claims.filter((c) => c.status === 'verified').length === 1 ? '' : 's'} on this device.
+              {claims.filter((c) => c.status === 'verified').length} verified ·{' '}
+              {claims.filter((c) => c.status === 'pending').length} pending claim
+              {claims.length === 1 ? '' : 's'}.
             </p>
           )}
         </div>

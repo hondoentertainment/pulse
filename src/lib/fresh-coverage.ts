@@ -137,3 +137,34 @@ export function getScoutQuotaProgress(
     label: `${Math.min(reportsThisWeek, weeklyQuota)}/${weeklyQuota} scout reports this week`,
   }
 }
+
+export interface NeighborhoodCoverageGap {
+  neighborhood: string
+  total: number
+  freshCount: number
+  staleCount: number
+  coveragePct: number
+}
+
+/** Neighborhoods sorted by worst fresh coverage (ops queue). */
+export function computeNeighborhoodCoverageGaps(
+  summary: FreshCoverageSummary,
+): NeighborhoodCoverageGap[] {
+  const byHood = new Map<string, { total: number; freshCount: number }>()
+  for (const row of [...summary.fresh, ...summary.stale]) {
+    const key = row.neighborhood?.trim() || 'Unknown'
+    const cur = byHood.get(key) ?? { total: 0, freshCount: 0 }
+    cur.total += 1
+    if (row.isFresh) cur.freshCount += 1
+    byHood.set(key, cur)
+  }
+  return [...byHood.entries()]
+    .map(([neighborhood, { total, freshCount }]) => ({
+      neighborhood,
+      total,
+      freshCount,
+      staleCount: total - freshCount,
+      coveragePct: total === 0 ? 0 : Math.round((freshCount / total) * 1000) / 10,
+    }))
+    .sort((a, b) => a.coveragePct - b.coveragePct || b.staleCount - a.staleCount)
+}

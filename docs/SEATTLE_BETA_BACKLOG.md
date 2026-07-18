@@ -101,3 +101,15 @@ Do **not** expand geography until all are true for **8 consecutive weeks**:
 - Week-4 retention ≥ 25%
 - Misleading signal rate &lt; 10%
 - Scout weekly participation ≥ 50% (once program live)
+
+Ops scoreboard: [EXPANSION_GATE_SCOREBOARD.md](./EXPANSION_GATE_SCOREBOARD.md) + `/admin/signal`.
+
+## World-class 90-day track (post P1)
+
+| Track | Status |
+|-------|--------|
+| Venue-only public brand + PWA icons / single SW | Done — `index.html`, VitePWA, `public/icons` |
+| Seattle landing `/welcome` | Done — `SeattleLandingPage` |
+| SEO / OG / robots / sitemap | Done — `document-meta.ts`, `robots.txt`, `sitemap.xml` |
+| Durable venue claims | Done — migration `20260718000000_venue_claims.sql` + `/api/venues/claim` |
+| Expansion gate scoreboard | Done — `expansion-gates.ts` + admin card |

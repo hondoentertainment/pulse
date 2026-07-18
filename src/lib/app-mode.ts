@@ -1,11 +1,11 @@
 /**
  * Which product shell to mount at the root.
  *
- *   signal (default) — Pulse Signal daily check-in (`SignalApp`)
- *   venue            — venue decision PWA (`AppRoutes`) — **MVP launch surface**
+ *   venue (default) — nightlife decision PWA (`AppRoutes`) — **public launch surface**
+ *   signal          — Pulse Signal research / wellness shell (`SignalApp`)
  *
- * Set `VITE_APP_MODE=signal` for the Pulse Signal research shell.
- * Production defaults to `venue` when `VITE_ALLOW_VENUE_SHELL=true`.
+ * Set `VITE_APP_MODE=signal` only for the research deploy.
+ * Production requires `VITE_ALLOW_VENUE_SHELL=true` for the venue shell.
  */
 
 export type AppMode = 'signal' | 'venue'

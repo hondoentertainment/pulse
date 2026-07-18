@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { SCOUT_TIERS, type ScoutTier } from '@/lib/scout-program'
 import { setVenueSignalSuppression } from '@/lib/venue-admin-client'
+import { ExpansionGatesCard } from '@/components/venue-admin/ExpansionGatesCard'
 
 interface ScoutApplicationRow {
   id: string
@@ -41,24 +42,35 @@ interface FreshCoverageSummary {
   stale: { venueId: string; venueName: string; neighborhood: string | null; freshnessMinutes: number | null }[]
 }
 
+interface VenueClaimRow {
+  id: string
+  venueId: string
+  businessName: string
+  businessEmail: string
+  status: string
+  createdAt: string
+}
+
 export function SignalAdminPage() {
   const navigate = useNavigate()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const [venues, setVenues] = useState<VenuesCompletenessRow[]>([])
   const [applications, setApplications] = useState<ScoutApplicationRow[]>([])
   const [freshCoverage, setFreshCoverage] = useState<FreshCoverageSummary | null>(null)
+  const [pendingClaims, setPendingClaims] = useState<VenueClaimRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [suppressReason, setSuppressReason] = useState<Record<string, string>>({})
   const [busyVenueId, setBusyVenueId] = useState<string | null>(null)
   const [busyApplicationId, setBusyApplicationId] = useState<string | null>(null)
+  const [busyClaimId, setBusyClaimId] = useState<string | null>(null)
 
   const role =
     (session?.user?.app_metadata as Record<string, unknown> | undefined)?.role ?? null
   const isAdmin = !isPlaceholder && role === 'admin'
 
   const loadData = async (token: string) => {
-    const [venuesRes, appsRes, freshRes] = await Promise.all([
+    const [venuesRes, appsRes, freshRes, claimsRes] = await Promise.all([
       fetch('/api/admin/venues-completeness?limit=100', {
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -66,6 +78,9 @@ export function SignalAdminPage() {
         headers: { Authorization: `Bearer ${token}` },
       }),
       fetch('/api/admin/fresh-coverage?city=Seattle', {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch('/api/admin/venue-claims?status=pending', {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ])
@@ -83,6 +98,13 @@ export function SignalAdminPage() {
       setFreshCoverage(freshJson.data?.summary ?? null)
     } else {
       setFreshCoverage(null)
+    }
+
+    if (claimsRes.ok) {
+      const claimsJson = (await claimsRes.json()) as { data: { claims: VenueClaimRow[] } }
+      setPendingClaims(claimsJson.data?.claims ?? [])
+    } else {
+      setPendingClaims([])
     }
   }
 
@@ -126,6 +148,29 @@ export function SignalAdminPage() {
       toast.error(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setBusyVenueId(null)
+    }
+  }
+
+  const handleClaimReview = async (claimId: string, status: 'verified' | 'rejected') => {
+    const token = session?.access_token
+    if (!token) return
+    setBusyClaimId(claimId)
+    try {
+      const res = await fetch('/api/admin/venue-claims', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ claimId, status }),
+      })
+      if (!res.ok) throw new Error(`Claim update failed: ${res.status}`)
+      toast.success(status === 'verified' ? 'Claim verified' : 'Claim rejected')
+      await loadData(token)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Claim update failed')
+    } finally {
+      setBusyClaimId(null)
     }
   }
 
@@ -240,9 +285,77 @@ export function SignalAdminPage() {
                 </ul>
               </div>
             )}
+            {freshCoverage.stale.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Neighborhood stale queue
+                </p>
+                <ul className="text-sm space-y-1">
+                  {[
+                    ...freshCoverage.stale.reduce((map, row) => {
+                      const key = row.neighborhood?.trim() || 'Unknown'
+                      map.set(key, (map.get(key) ?? 0) + 1)
+                      return map
+                    }, new Map<string, number>()),
+                  ]
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([neighborhood, stale]) => (
+                      <li key={neighborhood} className="flex justify-between gap-2">
+                        <span>{neighborhood}</span>
+                        <span className="text-muted-foreground">{stale} stale</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Coverage unavailable.</p>
+        )}
+      </Card>
+
+      <ExpansionGatesCard liveFreshCoveragePct={freshCoverage?.coveragePct ?? null} />
+
+      <Card className="p-4 space-y-3" data-testid="venue-claims-card">
+        <h2 className="font-semibold">Venue claims</h2>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading claims…</p>
+        ) : pendingClaims.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No pending venue claims.</p>
+        ) : (
+          <ul className="space-y-3">
+            {pendingClaims.map((claim) => (
+              <li key={claim.id} className="rounded-lg border border-border p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{claim.businessName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {claim.businessEmail} · venue {claim.venueId.slice(0, 8)}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">Pending</Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={busyClaimId === claim.id}
+                    onClick={() => void handleClaimReview(claim.id, 'verified')}
+                  >
+                    Verify
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyClaimId === claim.id}
+                    onClick={() => void handleClaimReview(claim.id, 'rejected')}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 

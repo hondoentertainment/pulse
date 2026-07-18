@@ -16,6 +16,7 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | Configure env vars & secrets | [Secrets & Integrations](secrets-and-integrations.md) |
 | Call server APIs | [API Reference](api-reference.md) |
 | Toggle features | [Feature Flags](feature-flags.md) |
+| Track expansion gates | [Expansion Gate Scoreboard](EXPANSION_GATE_SCOREBOARD.md) |
 | Look up a term | [Glossary](glossary.md) |
 | Run or write tests | [Testing Guide](testing.md) |
 | Switch mock → Supabase data | [Data Layer](data-layer.md) + [Backend Migration](backend-migration.md) |
@@ -36,6 +37,7 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Data Layer](data-layer.md) | Mock fixtures vs Supabase backend, toggle behavior |
 | [API Reference](api-reference.md) | Vercel serverless routes under `/api/*` |
 | [Feature Flags](feature-flags.md) | All `VITE_*` flags and defaults |
+| [Vibe Vision](vibe-vision.md) | Photo → energy rating for agents + Create Pulse |
 | [Environment Variables](environment-variables.md) | Master env var reference (client + server) |
 | [Testing Guide](testing.md) | Vitest, Playwright, coverage, CI integration |
 | [PWA & Offline](pwa-offline.md) | Service worker, install prompt, offline queue |

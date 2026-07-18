@@ -15,6 +15,7 @@ import {
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DecisionConversionStrip } from '@/components/DecisionConversionStrip'
 
 interface PersonalDashboardPageProps {
   currentUser: User
@@ -87,15 +88,17 @@ export function PersonalDashboardPage({
             <CaretLeft size={24} />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold truncate">Your Dashboard</h1>
+            <h1 className="text-xl font-bold truncate">Your nights</h1>
             <p className="text-xs text-muted-foreground truncate">
-              History that steers @{currentUser.username}&apos;s night
+              Past choices → better Tonight defaults for @{currentUser.username}
             </p>
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        <DecisionConversionStrip />
+
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

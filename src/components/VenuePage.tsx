@@ -18,8 +18,10 @@ import {
   TShirt, Ticket, CurrencyDollar, Compass, LinkSimple, Warning,
 } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
-import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
+import { resetDocumentMeta, setDocumentMeta, venueDocumentMeta } from '@/lib/document-meta'
+import { computeVenueSignal } from '@/lib/venue-signal'
 import { cn } from '@/lib/utils'
 import { formatDressCodeLabel } from '@/lib/dress-code'
 import { PRICE_RANGE_OPTIONS, summarizeVenueHours } from '@/lib/venue-data-reports'
@@ -183,6 +185,21 @@ export function VenuePage({
   useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
   }, [venue.id])
+
+  useEffect(() => {
+    const signal = computeVenueSignal(venue, venuePulses)
+    setDocumentMeta(
+      venueDocumentMeta({
+        name: venue.name,
+        city: venue.city,
+        category: venue.category,
+        energyLabel: getEnergyLabel(venue.pulseScore),
+        confidence: signal.confidence,
+        venueId: venue.id,
+      }),
+    )
+    return () => resetDocumentMeta()
+  }, [venue, venuePulses])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)

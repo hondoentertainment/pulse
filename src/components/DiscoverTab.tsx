@@ -178,19 +178,21 @@ export function DiscoverTab({
               transition={{ duration: 0.2 }}
               className="overflow-hidden space-y-3"
             >
-              <button
-                type="button"
-                onClick={() => onNavigate('night-planner')}
-                className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/12 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left min-h-11 touch-manipulation"
-              >
-                <Sparkle size={24} weight="fill" className="text-primary" />
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-sm">Plan Your Night</p>
-                  <p className="text-xs text-muted-foreground">
-                    {aiConciergeEnabled ? 'AI-powered multi-stop itinerary' : 'Build a multi-stop itinerary'}
-                  </p>
-                </div>
-              </button>
+              {aiConciergeEnabled && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('night-planner')}
+                  className="w-full rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/12 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left min-h-11 touch-manipulation"
+                >
+                  <Sparkle size={24} weight="fill" className="text-primary" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-sm">Plan Your Night</p>
+                    <p className="text-xs text-muted-foreground">
+                      AI-powered multi-stop itinerary
+                    </p>
+                  </div>
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <QuickAction
