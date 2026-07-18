@@ -16,6 +16,7 @@ import { useHaptics } from '@/hooks/use-haptics'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalPatterns } from '@/components/signal/SignalPatterns'
+import { SignalWeeklySummary } from '@/components/signal/SignalWeeklySummary'
 import { downloadSignalCsv } from '@/lib/signal-export'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
 import { FirstWinDialog } from '@/components/signal/FirstWinDialog'
@@ -214,6 +215,7 @@ function TrendsPage() {
         <h1 className="mt-2 text-4xl font-black tracking-tight">Your state over time.</h1>
         <p className="mt-2 text-sm text-muted-foreground">Chart and pattern — see how your signal moves across the week.</p>
       </div>
+      <SignalWeeklySummary entries={entries} />
       <SignalChart data={buildChartSeries(entries)} />
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard label="Average" value={metrics.sevenDayAverage || '--'} detail="last 7 days" />

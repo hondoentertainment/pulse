@@ -1,23 +1,48 @@
 # Pulse
 
+**Pulse Signal — a daily check-in that reveals your best patterns.**
+
+Pulse ships two products from one codebase, selected at build time by
+[`VITE_APP_MODE`](docs/feature-flags.md):
+
+| Mode | Value | What it is |
+|------|-------|------------|
+| **Signal** *(default)* | `signal` | A daily well-being check-in: rate energy, mood, stress, and sleep, tag the day, and watch trends, streaks, and patterns emerge over time. |
+| **Venue** | `venue` | The original real-time venue-energy discovery app for nightlife (below). Used for E2E/staging of the full venue surface. |
+
+The production app is **Pulse Signal**. The venue product remains in the tree
+behind the flag; its documentation continues below.
+
+## Pulse Signal — how it works
+
+1. **Check in** — a 10-second slider pass on energy, mood, stress, and sleep quality, plus a couple of tags
+2. **Get your signal** — a single 0–100 score, a plain-language insight, and one recovery/next-step recommendation
+3. **Build the streak** — check in once a day; the streak and 7-day average keep the loop honest
+4. **See your patterns** — the app correlates your tags with your score ("what lifts you / what drains you"), tracks personal records, and recaps each week
+
+Signal state lives locally (zustand + persisted storage) and syncs to Supabase
+when configured, so the app is fully usable offline and without a backend.
+
+### Signal feature surface
+
+- Onboarding (tracking focus + goal) → daily check-in → first-win moment
+- Trends: 7-day chart, average, direction, streak
+- **Weekly summary** — average, best day, top lift tag, and movement vs. last week
+- **Pattern discovery** — per-tag correlation with signal score, plus lifetime personal records
+- **CSV export** — download your full check-in history
+- History log, reminder preference, research/pilot CTAs
+
+## Venue product (mode: `venue`)
+
 **Real-time venue energy discovery for nightlife.**
 
-Pulse is a mobile-first PWA that shows users where the energy is happening right now. Check into venues, post short-lived "pulses" with energy ratings, and discover what's buzzing nearby through live scores, interactive maps, social feeds, and crew coordination.
+A mobile-first PWA that shows where the energy is happening right now. Check into
+venues, post short-lived "pulses" with energy ratings, and discover what's
+buzzing nearby through live scores, interactive maps, social feeds, and crew
+coordination. Pulses decay after 90 minutes, so scores reflect what's happening
+now — not last night.
 
-## How It Works
-
-1. **Open the app** — see nearby venues ranked by live energy scores
-2. **Check in** — post a pulse with an energy rating (Chill → Buzzing → Electric)
-3. **Score updates** — your pulse raises the venue's live score, triggering friend and surge notifications
-4. **Friends discover** — the cycle repeats, amplifying where the energy is right now
-
-Pulses decay after 90 minutes, so scores always reflect what's happening now — not last night.
-
-## Current Status
-
-Pulse is an **advanced product prototype**. The feature surface is broad and functional, but production infrastructure (backend persistence, auth, observability) is not yet complete.
-
-**Working today:**
+**Venue surface:**
 
 - Multi-tab app shell — map, discover, trending, notifications, profile
 - Venue pages with live energy scores, score breakdowns, pulse feeds, and stories
@@ -25,16 +50,16 @@ Pulse is an **advanced product prototype**. The feature surface is broad and fun
 - Interactive map with clustering, compare mode, route-aware previews, accessibility controls
 - Social features — crews, presence, stories, playlists, friend activity, venue following
 - Venue owner dashboards, analytics, social pulse correlation, and moderation tools
-- 470+ unit tests across scoring, recommendations, analytics, sharing, moderation, map helpers, and UI components
-- CI pipeline with lint, test, build, smoke checks, and dependency audit
-- PWA support with offline queue and service worker
 
-**Still prototype-grade:**
+## Current status
 
-- Venue and user data seeded from mock datasets and Spark KV storage
-- Simulated location fallback still present
-- Reverse geocoding called directly from the client
-- Auth, backend APIs, durable persistence, and production observability not fully implemented
+The combined codebase carries **1,100+ unit tests** (scoring, recommendations,
+analytics, sharing, moderation, map helpers, Signal patterns/summary/export, and
+UI components), a CI pipeline (lint, test, build, per-mode Playwright smoke,
+dependency audit), and PWA support with an offline queue and service worker.
+
+Still prototype-grade on the venue side: mock-seeded venue/user data, simulated
+location fallback, and client-side reverse geocoding.
 
 ## Tech Stack
 
@@ -181,9 +206,9 @@ Three GitHub Actions workflows plus Lighthouse on PRs. Full reference: [docs/git
 
 | Workflow | Trigger | Steps |
 |----------|---------|-------|
-| **ci.yml** | Push/PR | Lint, unit tests, build |
-| **deploy.yml** | Push to main | Production deployment |
-| **lighthouse.yml** | Scheduled | Performance, accessibility, best practices audits |
+| **ci.yml** | Push/PR | Lint, unit tests, build, per-mode Playwright smoke, bundle-size, dependency audit |
+| **deploy.yml** | Manual (`workflow_dispatch`, target `preview`/`production`) | Quality gate → Vercel deploy |
+| **lighthouse.yml** | Pull requests | Performance, accessibility, best-practices audits |
 
 ## Production Readiness
 

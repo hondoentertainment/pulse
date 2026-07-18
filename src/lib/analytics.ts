@@ -42,6 +42,7 @@ export type AnalyticsEvent =
   | { type: 'signal_sync_retry'; timestamp: number }
   | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
   | { type: 'signal_patterns_view'; timestamp: number; liftCount: number; drainCount: number }
+  | { type: 'signal_weekly_summary_view'; timestamp: number; checkInCount: number; averageScore: number }
   | { type: 'signal_export_click'; timestamp: number; entryCount: number }
   | { type: 'performance'; timestamp: number; metric: string; value: number; unit: string }
 
