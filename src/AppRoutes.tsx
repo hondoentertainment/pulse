@@ -1,11 +1,16 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAppState } from '@/hooks/use-app-state'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import {
+  useRouteNavigation,
+  deriveActiveTab,
+  deriveSubPage,
+  isTabPath,
+} from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -53,17 +58,16 @@ const VenueMetadataRoute = lazy(() =>
  * (`isVenueAppMode()`); the default Signal mode mounts `SignalApp` instead.
  * Venue mode is a staging/E2E surface today.
  *
- * **Known limitation (venue mode):** routing here is one-way. The bottom nav
- * derives `activeTab` from the URL and navigates on tap, but `MainTabRouter`
- * and `SubPageRouter` read the active tab / sub-page from `useAppState`, and
- * nothing syncs URL → app state. So a direct load / refresh of `/discover`,
- * `/map`, `/events`, etc. can render the default tab (or a blank sub-page,
- * since `SubPageRouter` returns null when `subPage` is unset). Deep-linking
- * those routes needs a pathname → app-state effect first.
+ * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
+ * (`activeTab` / `subPage`), while the bottom nav derives `activeTab` from the
+ * URL and navigates on tap. A `useEffect` below closes the loop the other way —
+ * syncing app state *from* the pathname — so a direct load / refresh of
+ * `/discover`, `/events`, etc. renders the right tab / sub-page instead of the
+ * default (or a blank `SubPageRouter`).
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const { activeTab, navigateToTab, location } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -83,7 +87,24 @@ export function AppRoutes() {
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
+    setActiveTab, setSubPage,
   } = state
+
+  // URL → app-state sync. MainTabRouter/SubPageRouter render from useAppState,
+  // so without this a direct load / refresh of /discover, /events, etc. would
+  // show the default tab or a blank sub-page. Drive that state from the path:
+  // a tab route sets activeTab and clears subPage; a sub-page route sets
+  // subPage; anything else (e.g. /venue/:id) is left untouched.
+  const pathname = location.pathname
+  useEffect(() => {
+    if (isTabPath(pathname)) {
+      setActiveTab(deriveActiveTab(pathname))
+      setSubPage(null)
+      return
+    }
+    const sub = deriveSubPage(pathname)
+    if (sub) setSubPage(sub)
+  }, [pathname, setActiveTab, setSubPage])
 
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
@@ -149,9 +170,8 @@ export function AppRoutes() {
     queuedPulseCount,
   }
 
-  // MainTabRouter reads the active tab from useAppState, not from this URL
-  // segment, so the arg is unused today. See the "Known limitation" note in
-  // this file's header re: URL → app-state sync for deep-linkable tabs.
+  // MainTabRouter reads the active tab from useAppState, which the URL → state
+  // effect above keeps in sync with this route, so the arg is unused here.
   const wrapTab = (_tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
     <>
       <AppHeader {...headerProps} />
@@ -179,9 +199,9 @@ export function AppRoutes() {
           }
         />
 
-        {/* Sub-pages — SubPageRouter reads subPage from useAppState, not the
-            path, so it renders null on a direct load until state is set. See
-            the "Known limitation" note in this file's header. */}
+        {/* Sub-pages — SubPageRouter reads subPage from useAppState; the
+            URL → state effect above sets it from the path so direct loads of
+            these routes render instead of returning null. */}
         <Route path="/events" element={<SubPageRouter />} />
         <Route path="/crews" element={<SubPageRouter />} />
         <Route path="/achievements" element={<SubPageRouter />} />
