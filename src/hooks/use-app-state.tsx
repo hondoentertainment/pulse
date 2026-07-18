@@ -393,7 +393,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Location
   const availableMarkets = useMemo(() => getUsMarkets(venues || []), [venues])
   const selectedMarket = useMemo(
-    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey ?? 'seattle'),
+    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey),
     [availableMarkets, selectedMarketKey]
   )
 

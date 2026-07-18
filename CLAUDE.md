@@ -105,7 +105,7 @@ Always use functional updates with `useKV` setters. Don't replace Spark KV en ma
 
 ## CI
 
-`.github/workflows/ci.yml` runs four jobs on push/PR: `lint`, `test`, `build`, `smoke-preview` (uploads Playwright report), plus a non-blocking `dependency-audit`. Required checks per `RELEASE_CHECKS.md`: `lint`, `test`, `build`, `smoke-preview`. `deploy.yml` is manual (`workflow_dispatch`) and deploys to Vercel preview/production after a quality gate. `lighthouse.yml` runs scheduled performance audits. `native-sync.yml` syncs Capacitor on `native-*` tags.
+`.github/workflows/ci.yml` runs on push/PR: `lint`, `test`, `build`, `typecheck-strict` (`tsc -b`), `bundle-size`, `smoke-preview-signal` and `smoke-preview-venue` (Playwright, split by `VITE_APP_MODE`; venue is `continue-on-error`), `e2e-signal`, a non-blocking `dependency-audit`, and a `smoke-preview` aggregator that republishes the required-check context (gates on `smoke-preview-signal`). Branch protection on `main` requires an approving review plus the `smoke-preview` context; keep the aggregator (or update the required-check list) if the smoke jobs are renamed again. `deploy.yml` is manual (`workflow_dispatch`, target `preview`/`production`) and deploys to Vercel after a `quality_gate` (build + `test:smoke`). `lighthouse.yml` runs on PRs (perf assertions are warnings) and enforces the bundle budget via `npm run bundle-size`. `native-sync.yml` syncs Capacitor on `native-*` tags.
 
 ## Where to Look
 

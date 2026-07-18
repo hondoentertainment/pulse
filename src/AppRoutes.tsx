@@ -49,8 +49,17 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
- * This file remains the venue / discovery experience for reuse or future entry switches.
+ * **Mounting:** `src/App.tsx` mounts this router only in venue app mode
+ * (`isVenueAppMode()`); the default Signal mode mounts `SignalApp` instead.
+ * Venue mode is a staging/E2E surface today.
+ *
+ * **Known limitation (venue mode):** routing here is one-way. The bottom nav
+ * derives `activeTab` from the URL and navigates on tap, but `MainTabRouter`
+ * and `SubPageRouter` read the active tab / sub-page from `useAppState`, and
+ * nothing syncs URL → app state. So a direct load / refresh of `/discover`,
+ * `/map`, `/events`, etc. can render the default tab (or a blank sub-page,
+ * since `SubPageRouter` returns null when `subPage` is unset). Deep-linking
+ * those routes needs a pathname → app-state effect first.
  */
 export function AppRoutes() {
   const state = useAppState()
@@ -140,10 +149,9 @@ export function AppRoutes() {
     queuedPulseCount,
   }
 
-  // MainTabRouter/SubPageRouter read their target tab/page from useAppState,
-  // so we don't thread the URL segment through here. AppRoutes is currently
-  // reference-only (App.tsx mounts SignalApp) — a real activation would need
-  // to sync the URL back into state before rendering.
+  // MainTabRouter reads the active tab from useAppState, not from this URL
+  // segment, so the arg is unused today. See the "Known limitation" note in
+  // this file's header re: URL → app-state sync for deep-linkable tabs.
   const wrapTab = (_tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
     <>
       <AppHeader {...headerProps} />
@@ -171,8 +179,9 @@ export function AppRoutes() {
           }
         />
 
-        {/* Sub-pages — SubPageRouter reads subPage from useAppState, so we don't
-            forward the path segment as a prop here. */}
+        {/* Sub-pages — SubPageRouter reads subPage from useAppState, not the
+            path, so it renders null on a direct load until state is set. See
+            the "Known limitation" note in this file's header. */}
         <Route path="/events" element={<SubPageRouter />} />
         <Route path="/crews" element={<SubPageRouter />} />
         <Route path="/achievements" element={<SubPageRouter />} />
