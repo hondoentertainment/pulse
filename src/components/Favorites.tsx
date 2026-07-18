@@ -1,9 +1,16 @@
 import { Venue } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { Card } from '@/components/ui/card'
-import { Star, MapPin } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { ShareNetwork, Star, MapPin } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import { formatDistance } from '@/lib/units'
+import {
+  buildShortlistClipboardText,
+  buildShortlistShareText,
+  buildShortlistShareUrl,
+} from '@/lib/shortlist'
 
 interface FavoritesProps {
   favoriteVenues: Venue[]
@@ -28,6 +35,22 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c
 }
 
+async function shareShortlist(venues: Venue[]) {
+  const ids = venues.slice(0, 5).map((v) => v.id)
+  const url = buildShortlistShareUrl(ids)
+  const text = buildShortlistShareText(venues.slice(0, 5))
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({ title: "Tonight's shortlist", text, url })
+      return
+    } catch {
+      /* fall through */
+    }
+  }
+  await navigator.clipboard.writeText(buildShortlistClipboardText(venues.slice(0, 5), url))
+  toast.success('Shortlist link copied')
+}
+
 export function Favorites({
   favoriteVenues,
   userLocation,
@@ -48,72 +71,86 @@ export function Favorites({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {favoriteVenues.slice(0, 4).map((venue, index) => {
-        const distance = userLocation
-          ? calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              venue.location.lat,
-              venue.location.lng
-            )
-          : undefined
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void shareShortlist(favoriteVenues)}
+          aria-label="Share shortlist with your group"
+        >
+          <ShareNetwork size={16} />
+          Share shortlist
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {favoriteVenues.slice(0, 4).map((venue, index) => {
+          const distance = userLocation
+            ? calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                venue.location.lat,
+                venue.location.lng
+              )
+            : undefined
 
-        return (
-          <motion.div
-            key={venue.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card
-              className="relative p-4 cursor-pointer hover:bg-card/80 transition-colors border-border/50 bg-gradient-to-br from-card to-card/50"
-              onClick={() => onVenueClick(venue)}
+          return (
+            <motion.div
+              key={venue.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleFavorite(venue.id)
-                }}
-                aria-label={`Remove ${venue.name} from favorites`}
-                className="absolute top-2 right-2 z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm transition-colors hover:bg-background"
+              <Card
+                className="relative p-4 cursor-pointer hover:bg-card/80 transition-colors border-border/50 bg-gradient-to-br from-card to-card/50"
+                onClick={() => onVenueClick(venue)}
               >
-                <Star size={16} weight="fill" className="text-accent" />
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleFavorite(venue.id)
+                  }}
+                  aria-label={`Remove ${venue.name} from favorites`}
+                  className="absolute top-2 right-2 z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm transition-colors hover:bg-background"
+                >
+                  <Star size={16} weight="fill" className="text-accent" />
+                </button>
 
-              <div className="space-y-3">
-                <div className="flex items-start justify-between pr-6">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate">{venue.name}</h3>
-                    {venue.category && (
-                      <p className="text-xs text-muted-foreground font-mono uppercase mt-0.5">
-                        {venue.category}
-                      </p>
-                    )}
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between pr-6">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm truncate">{venue.name}</h3>
+                      {venue.category && (
+                        <p className="text-xs text-muted-foreground font-mono uppercase mt-0.5">
+                          {venue.category}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-center">
-                  <PulseScore score={venue.pulseScore} size="lg" showLabel={false} />
-                </div>
-
-                {distance !== undefined && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center">
-                    <MapPin size={12} weight="fill" />
-                    <span>{formatDistance(distance, unitSystem)}</span>
+                  <div className="flex items-center justify-center">
+                    <PulseScore score={venue.pulseScore} size="lg" showLabel={false} />
                   </div>
-                )}
 
-                {venue.lastPulseAt && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    {formatTimeAgo(venue.lastPulseAt)}
-                  </p>
-                )}
-              </div>
-            </Card>
-          </motion.div>
-        )
-      })}
+                  {distance !== undefined && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center">
+                      <MapPin size={12} weight="fill" />
+                      <span>{formatDistance(distance, unitSystem)}</span>
+                    </div>
+                  )}
+
+                  {venue.lastPulseAt && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {formatTimeAgo(venue.lastPulseAt)}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          )
+        })}
+      </div>
     </div>
   )
 }

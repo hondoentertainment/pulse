@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { PulseMediaCarousel } from '@/components/PulseMediaCarousel'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatPulseTtlLabel } from '@/lib/live-reviews'
 import { getUserTrustBadges, TrustBadge } from '@/lib/credibility'
 import { Fire, Eye, Skull, Lightning, ArrowClockwise, Warning, Flag, ShareNetwork } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
@@ -98,6 +99,9 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
               <p className="text-xs text-muted-foreground">
                 {venueName ? `${venueName} · ` : ''}{formatTimeAgo(pulse.createdAt)}
               </p>
+              <p className="text-[11px] font-medium text-accent mt-0.5" data-testid="pulse-ttl">
+                {formatPulseTtlLabel(pulse)}
+              </p>
               {trustBadges.length > 0 && (
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   {trustBadges.map((badge) => (
@@ -124,7 +128,7 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
           <PulseMediaCarousel
             photos={pulse.photos}
             video={pulse.video}
-            altPrefix={`${pulse.user.username} pulse`}
+            altPrefix={`${pulse.user.username} live review`}
             onDoubleTap={() => {
               setReactionBurst('fire')
               window.setTimeout(() => setReactionBurst(null), 650)
@@ -260,7 +264,7 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
                 setShareOpen(true)
               }}
               className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-accent"
-              aria-label="Share pulse"
+              aria-label="Share live review"
               title="Share"
             >
               <ShareNetwork size={22} />
@@ -269,7 +273,7 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
               <button
                 onClick={() => setShowReport(true)}
                 className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
-                aria-label="Report pulse"
+                aria-label="Report live review"
                 title="Report"
               >
                 <Flag size={20} />
@@ -279,8 +283,9 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
           </div>
 
           {pulse.caption && (
-            <p className="text-sm leading-relaxed">
-              <span className="font-semibold">{pulse.user.username}</span>{' '}
+            <p className="text-sm leading-relaxed border-l-2 border-accent/40 pl-3">
+              <span className="font-semibold">{pulse.user.username}</span>
+              <span className="text-muted-foreground"> · tip </span>
               {pulse.caption}
             </p>
           )}

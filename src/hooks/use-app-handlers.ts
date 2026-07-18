@@ -219,9 +219,11 @@ export function useAppHandlers() {
       lastPostDate: today,
     })
 
-    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
-    toast.success('Pulse posted!', { description: `Your vibe at ${targetVenue.name} is live` })
-    announce(`Pulse posted at ${targetVenue.name}`)
+    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You left the first live review here today.' })
+    toast.success('Thanks — this helps people decide for the next hour.', {
+      description: `Your live review at ${targetVenue.name} fades in 90 minutes`,
+    })
+    announce(`Live review posted at ${targetVenue.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: targetVenue.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
 

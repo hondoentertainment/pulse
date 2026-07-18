@@ -31,11 +31,13 @@ Implementation status tracked against PRD §14–§18 acceptance criteria.
 | ID | Work item | PRD ref | Status |
 |----|-----------|---------|--------|
 | P1-1 | Scout program — apply, approve, tier, weekly quota | §6.7, §15.2 | **Done** — apply sheet + admin approval + tier quotas | Eng |
-| P1-2 | Limited energy alerts with confidence threshold | §6.6 | Partial — surge notifications exist |
-| P1-3 | Energy timeline on venue detail | §14 | Not started |
-| P1-4 | Venue portal pilot (5–10 operators) | §6.8, §15.1 phase 3 | Partial — `OwnerDashboardPage` |
-| P1-5 | Shareable shortlist for groups | §14 | Not started |
-| P1-6 | WCAG 2.2 AA audit on Tonight + Map + reporting | §11.4 | Not started |
+| P1-2 | Limited energy alerts with confidence threshold | §6.6 | **Done** — `surge-alerts.ts` gates on medium+ `VenueSignal` confidence |
+| P1-3 | Energy timeline on venue detail | §14 | **Done** — real pulse history; honest empty state (no synthetic swagger) |
+| P1-4 | Venue portal pilot (5–10 operators) | §6.8, §15.1 phase 3 | **Done** — claim via `venue-claims.ts` + durable operator status in localStorage |
+| P1-5 | Shareable shortlist for groups | §14 | **Done** — `/shortlist?v=` + Share from Favorites |
+| P1-6 | WCAG 2.2 AA audit on Tonight + Map + reporting | §11.4 | **Done** — radiogroups, map pin labels, status summaries on signal/worth-going |
+| P1-7 | Fresh coverage SLA (≥70% &lt;90m) admin visibility | §15.1 | **Done** — `fresh-coverage.ts` + `/api/admin/fresh-coverage` + Signal admin card |
+| P1-8 | Dashboard → Tonight vibe handoff | §14 | **Done** — `/?vibe=` sync + `buildTonightPath` from personal dashboard |
 
 ---
 

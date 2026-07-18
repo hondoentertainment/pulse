@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,8 @@ import { formatTimeAgo } from '@/lib/pulse-engine'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { formatDressCodeLabel } from '@/lib/dress-code'
-import { PRICE_RANGE_OPTIONS } from '@/lib/venue-data-reports'
+import { PRICE_RANGE_OPTIONS, summarizeVenueHours } from '@/lib/venue-data-reports'
+import { isGuestUser } from '@/lib/guest-browse'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -51,7 +52,15 @@ import {
   type VenueLiveData,
   type LiveReport,
 } from '@/lib/live-intelligence'
-import { seedVenueOperatorStatus } from '@/lib/venue-operator-live'
+import {
+  getVenueOperatorStatus,
+  isDemoOperatorStatus,
+  seedVenueOperatorStatus,
+} from '@/lib/venue-operator-live'
+import {
+  countUserReportsThisWeek,
+  getScoutQuotaProgress,
+} from '@/lib/fresh-coverage'
 import { useCurrentTime } from '@/hooks/use-current-time'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
@@ -135,6 +144,13 @@ export function VenuePage({
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
   const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
 
+  const scoutQuotaLabel = useMemo(() => {
+    if (!currentUser?.scoutTier) return null
+    const pool = highlightPulses.length > 0 ? highlightPulses : venuePulses
+    const count = countUserReportsThisWeek(currentUser.id, pool)
+    return getScoutQuotaProgress(currentUser.scoutTier, count)?.label ?? null
+  }, [currentUser, highlightPulses, venuePulses])
+
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
     queryFn: () => fetchVenueLiveReportsFromSupabase(venue.id),
@@ -152,7 +168,11 @@ export function VenuePage({
   useEffect(() => {
     // Seed demo data on first load for this venue
     if (!hasSupabaseConfig) seedDemoReports([venue.id])
-    seedVenueOperatorStatus(venue.id, venue.name)
+    // Never overwrite a real operator publish with demo status
+    const existing = getVenueOperatorStatus(venue.id)
+    if (!existing || isDemoOperatorStatus(existing)) {
+      seedVenueOperatorStatus(venue.id, venue.name)
+    }
     refreshLiveData()
   }, [venue.id, venue.name, refreshLiveData])
 
@@ -403,12 +423,20 @@ export function VenuePage({
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">Venue Details</h3>
                 <button
-                  onClick={() => setDataGapSheetOpen(true)}
+                  onClick={() => {
+                    if (!currentUser || isGuestUser(currentUser) || !session?.access_token) {
+                      toast.error('Sign in to suggest a correction', {
+                        description: 'Your Pulse account is required to recommend venue updates.',
+                      })
+                      return
+                    }
+                    setDataGapSheetOpen(true)
+                  }}
                   className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-orange-400 transition-colors"
                   data-testid="venue-data-gap-trigger"
                 >
                   <Warning size={14} weight="fill" />
-                  Something's wrong?
+                  Suggest a correction
                 </button>
               </div>
 
@@ -565,7 +593,81 @@ export function VenuePage({
           distanceMiles={distance}
         />
 
-        {/* Phase 2: Live Crowd Indicator */}
+        {/* Decision spine: live reviews first, then supporting timeline */}
+        <section className="space-y-3" aria-labelledby="live-reviews-heading">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 id="live-reviews-heading" className="text-lg font-bold">
+                What people say right now
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {venue.lastPulseAt
+                  ? `Last review ${formatTimeAgo(venue.lastPulseAt)} · fades in 90m`
+                  : 'Fresh tips expire after 90 minutes — like a review on a short clock.'}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              {onQuickEnergyReport && (
+                <Button
+                  variant="outline"
+                  className="min-h-11 touch-manipulation"
+                  data-testid="quick-energy-report"
+                  onClick={() => setEnergyReportOpen(true)}
+                >
+                  Leave a live review
+                </Button>
+              )}
+              <Button
+                onClick={onCreatePulse}
+                className="min-h-11 bg-primary hover:bg-primary/90 touch-manipulation"
+              >
+                <Plus size={20} weight="bold" className="mr-2" />
+                Add photo review
+              </Button>
+            </div>
+          </div>
+          {venuePulses.length === 0 ? (
+            <AnimatedEmptyState
+              variant="no-pulses"
+              onAction={onQuickEnergyReport ? () => setEnergyReportOpen(true) : onCreatePulse}
+              actionLabel="Leave a live review"
+            />
+          ) : (
+            <div className="space-y-4">
+              {[...venuePulses]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((pulse) => (
+                  <PulseCard
+                    key={pulse.id}
+                    pulse={pulse}
+                    allPulses={venuePulses}
+                    onReaction={(type) => onReaction(pulse.id, type)}
+                    currentUserId={currentUser?.id}
+                    onReport={onReportPulse}
+                  />
+                ))}
+              {onLoadMoreVenuePulses && hasMoreVenuePulses ? (
+                <Button
+                  variant="outline"
+                  className="w-full min-h-11"
+                  disabled={isLoadingMoreVenuePulses}
+                  onClick={onLoadMoreVenuePulses}
+                >
+                  {isLoadingMoreVenuePulses ? 'Loading…' : 'Load more reviews'}
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+        <VenueEnergyTimeline
+          venueId={venue.id}
+          currentScore={venue.pulseScore}
+          pulses={venuePulses}
+        />
+
+        <Separator />
+
         <LiveCrowdIndicator
           count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
           trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
@@ -573,7 +675,6 @@ export function VenuePage({
           isEstimated={!presenceData}
         />
 
-        {/* Phase 4: Venue Memory Card */}
         {currentUser && (
           <VenueMemoryCard
             venue={venue}
@@ -589,46 +690,11 @@ export function VenuePage({
           />
         )}
 
-        {/* Phase 2: Energy Timeline */}
-        <VenueEnergyTimeline
-          venueId={venue.id}
-          currentScore={venue.pulseScore}
-        />
-
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold">Live Energy</h2>
-            {venue.lastPulseAt && (
-              <p className="text-sm text-muted-foreground">
-                Last pulse {formatTimeAgo(venue.lastPulseAt)}
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {onQuickEnergyReport && (
-              <Button
-                variant="outline"
-                data-testid="quick-energy-report"
-                onClick={() => setEnergyReportOpen(true)}
-              >
-                Report energy
-              </Button>
-            )}
-            <Button
-              onClick={onCreatePulse}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus size={20} weight="bold" className="mr-2" />
-              Create Pulse
-            </Button>
-          </div>
-        </div>
-
         {onStartCrewCheckIn && (
           <Button
             variant="outline"
             onClick={onStartCrewCheckIn}
-            className="w-full border-primary/30 text-primary hover:bg-primary/10"
+            className="w-full border-primary/30 text-primary hover:bg-primary/10 min-h-11"
           >
             <CalendarCheck size={18} weight="bold" className="mr-2" />
             Check In With Crew
@@ -641,13 +707,12 @@ export function VenuePage({
           <Button
             variant="outline"
             onClick={onOpenIntegrations}
-            className="w-full border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+            className="w-full border-border text-muted-foreground hover:border-primary/30 hover:text-foreground min-h-11"
           >
             More Partner Links
           </Button>
         )}
 
-        {/* Live Venue Intelligence Panel */}
         {liveData && (
           <VenueLivePanel
             liveData={liveData}
@@ -656,7 +721,6 @@ export function VenuePage({
           />
         )}
 
-        {/* Phase 2: Quick Actions Bar */}
         <VenueQuickActions
           onCheckIn={onCreatePulse}
           onShare={handleShare}
@@ -689,44 +753,10 @@ export function VenuePage({
           pulses={highlightPulses.length > 0 ? highlightPulses : venuePulses}
         />
 
-        {/* Phase 2: Activity Stream */}
         <VenueActivityStream
           venueId={venue.id}
           venueName={venue.name}
         />
-
-        <Separator />
-
-        {venuePulses.length === 0 ? (
-          <AnimatedEmptyState
-            variant="no-pulses"
-            onAction={onCreatePulse}
-            actionLabel="Create Pulse"
-          />
-        ) : (
-          <div className="space-y-4">
-            {venuePulses.map((pulse) => (
-              <PulseCard
-                key={pulse.id}
-                pulse={pulse}
-                allPulses={venuePulses}
-                onReaction={(type) => onReaction(pulse.id, type)}
-                currentUserId={currentUser?.id}
-                onReport={onReportPulse}
-              />
-            ))}
-            {onLoadMoreVenuePulses && hasMoreVenuePulses ? (
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={isLoadingMoreVenuePulses}
-                onClick={onLoadMoreVenuePulses}
-              >
-                {isLoadingMoreVenuePulses ? 'Loading…' : 'Load more pulses'}
-              </Button>
-            ) : null}
-          </div>
-        )}
       </motion.div>
 
       <ShareSheet
@@ -768,6 +798,14 @@ export function VenuePage({
         venueName={venue.name}
         venueId={venue.id}
         accessToken={session?.access_token}
+        currentValues={{
+          address: venue.location.address,
+          phone: venue.phone,
+          hours: summarizeVenueHours(venue.hours),
+          website: venue.website,
+          menuUrl: venue.menuUrl,
+          priceRange: venue.priceRange,
+        }}
       />
 
       {onQuickEnergyReport && (
@@ -776,6 +814,7 @@ export function VenuePage({
           venueName={venue.name}
           onClose={() => setEnergyReportOpen(false)}
           onSubmit={(energy) => onQuickEnergyReport(energy)}
+          scoutQuotaLabel={scoutQuotaLabel}
         />
       )}
     </div>

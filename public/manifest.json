@@ -1,13 +1,13 @@
 {
-  "name": "Pulse Signal",
+  "name": "Pulse",
   "short_name": "Pulse",
-  "description": "A quick daily check-in for energy, mood, and focus—trends, streaks, and one clear next step.",
+  "description": "Know where to go right now — live nightlife energy, confidence, and Tonight picks for Seattle.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
   "theme_color": "#6d28d9",
-  "categories": ["health", "lifestyle", "wellness"],
+  "categories": ["nightlife", "lifestyle", "social", "entertainment"],
   "icons": [
     {
       "src": "/icons/icon-72.png",
@@ -58,7 +58,7 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Pulse — your daily signal"
+      "label": "Pulse — live nightlife energy"
     }
   ],
   "share_target": {

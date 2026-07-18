@@ -225,6 +225,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
                 setShowAdminDashboard(true)
               }}
               onOpenSettings={() => navigateToSubPage('settings')}
+              onOpenDashboard={() => navigateToSubPage('dashboard')}
               onOpenOwnerDashboard={() => {
                 navigateToSubPage('owner-dashboard')
               }}

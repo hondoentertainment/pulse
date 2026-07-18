@@ -5,7 +5,7 @@ import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck, Binoculars, ChartBar } from '@phosphor-icons/react'
+import { Star, MapPin, Gear, Storefront, UserPlus, Link, Check, Lightning, ShieldCheck, Binoculars, ChartBar, UserCircle } from '@phosphor-icons/react'
 import { createFriendInviteLink } from '@/lib/social-graph'
 import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
@@ -29,6 +29,7 @@ interface ProfileTabProps {
   onReaction: (pulseId: string, type: 'fire' | 'eyes' | 'skull' | 'lightning') => void
   onOpenSocialPulseDashboard: () => void
   onOpenSettings?: () => void
+  onOpenDashboard?: () => void
   onOpenOwnerDashboard?: () => void
   onOpenCreatorDashboard?: () => void
   onOpenModerationQueue?: () => void
@@ -44,6 +45,7 @@ export function ProfileTab({
   onReaction,
   onOpenSocialPulseDashboard: _onOpenSocialPulseDashboard,
   onOpenSettings,
+  onOpenDashboard,
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,
   onOpenModerationQueue,
@@ -125,6 +127,22 @@ export function ProfileTab({
       </div>
 
       <Separator />
+
+      {onOpenDashboard && (
+        <button
+          type="button"
+          onClick={onOpenDashboard}
+          className="w-full rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/12 to-accent/10 p-4 flex items-center gap-3 hover:border-primary/40 transition-colors text-left"
+        >
+          <UserCircle size={24} weight="fill" className="text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm">Your Dashboard</p>
+            <p className="text-xs text-muted-foreground">
+              Personalized history that helps direct tonight&apos;s choices
+            </p>
+          </div>
+        </button>
+      )}
 
       {favoriteVenues.length > 0 && (
         <>

@@ -125,6 +125,18 @@ vi.mock('@/components/PulseScore', () => ({
 vi.mock('@/lib/pulse-engine', () => ({
   formatTimeAgo: (_d: string) => 'just now',
   calculateDistance: () => 1.5,
+  calculatePulseScore: (pulses: { energyRating: string }[]) => {
+    if (pulses.length === 0) return 0
+    const map: Record<string, number> = {
+      dead: 10,
+      chill: 30,
+      buzzing: 60,
+      electric: 90,
+    }
+    const avg =
+      pulses.reduce((sum, p) => sum + (map[p.energyRating] ?? 40), 0) / pulses.length
+    return Math.round(avg)
+  },
   getEnergyLabel: (score: number) => {
     if (score >= 80) return 'Electric'
     if (score >= 60) return 'Buzzing'
@@ -280,13 +292,48 @@ describe('VenueQuickActions', () => {
 // ── 2. VenueEnergyTimeline ───────────────────────────────────────────
 
 describe('VenueEnergyTimeline', () => {
-  it('renders with SVG element and "Now" label', async () => {
-    const { container } = render(
-      <VenueEnergyTimeline venueId="venue-1" currentScore={75} />
+  it('shows awaiting-reports empty state without a fake curve', async () => {
+    render(<VenueEnergyTimeline venueId="venue-1" currentScore={75} />)
+    expect(screen.getByText('Energy from live reviews')).toBeDefined()
+    expect(screen.getByText('Awaiting live reviews')).toBeDefined()
+    expect(screen.queryByText('Now')).toBeNull()
+  })
+
+  it('shows live trend label when pulses are provided', async () => {
+    const now = Date.now()
+    render(
+      <VenueEnergyTimeline
+        venueId="venue-1"
+        currentScore={80}
+        pulses={[
+          {
+            id: 'p1',
+            venueId: 'venue-1',
+            userId: 'u1',
+            energyRating: 'chill',
+            caption: '',
+            photos: [],
+            reactions: { fire: [], lightning: [], eyes: [] },
+            views: 0,
+            createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
+            expiresAt: new Date(now + 60 * 60 * 1000).toISOString(),
+          },
+          {
+            id: 'p2',
+            venueId: 'venue-1',
+            userId: 'u2',
+            energyRating: 'electric',
+            caption: '',
+            photos: [],
+            reactions: { fire: [], lightning: [], eyes: [] },
+            views: 0,
+            createdAt: new Date(now - 15 * 60 * 1000).toISOString(),
+            expiresAt: new Date(now + 60 * 60 * 1000).toISOString(),
+          },
+        ]}
+      />,
     )
-    const svg = container.querySelector('svg')
-    expect(svg).not.toBeNull()
-    expect(screen.getByText('Now')).toBeDefined()
+    expect(screen.getByText('Heating up')).toBeDefined()
   })
 })
 

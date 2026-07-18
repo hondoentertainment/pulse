@@ -1,9 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Venue, Notification } from '@/lib/types'
+import { Venue, Notification, Pulse } from '@/lib/types'
 import { toast } from 'sonner'
 import { notifyTrendingVenueViaApi } from '@/lib/api-client'
 import { USE_SUPABASE_BACKEND } from '@/lib/data'
+import { computeVenueSignal } from '@/lib/venue-signal'
+import {
+  milesBetween,
+  shouldEmitSurgeAlert,
+} from '@/lib/surge-alerts'
 
 interface VenueSurgeState {
   [venueId: string]: {
@@ -13,19 +18,15 @@ interface VenueSurgeState {
   }
 }
 
-const SURGE_THRESHOLD = 60
-const MIN_SCORE_INCREASE = 20
-const ALERT_COOLDOWN_MS = 15 * 60 * 1000
-const MAX_ALERTS_PER_VENUE = 3
-
 export function useVenueSurgeTracker(
   venues: Venue[],
   userLocation: { lat: number; lng: number } | null,
   enabled: boolean,
-  opts?: { accessToken?: string | null },
+  opts?: { accessToken?: string | null; pulses?: Pulse[] },
 ) {
   const [, setNotifications] = useKV<Notification[]>('notifications', [])
   const surgeStateRef = useRef<VenueSurgeState>({})
+  const pulses = opts?.pulses ?? []
 
   useEffect(() => {
     if (!enabled || !userLocation || !venues) return
@@ -41,64 +42,65 @@ export function useVenueSurgeTracker(
           surgeStateRef.current[venue.id] = {
             lastScore: currentScore,
             lastAlertTime: 0,
-            alertCount: 0
+            alertCount: 0,
           }
           return
         }
 
-        const scoreIncrease = currentScore - state.lastScore
-        const timeSinceLastAlert = now - state.lastAlertTime
-        const isSurging = currentScore >= SURGE_THRESHOLD
-        const hasSignificantIncrease = scoreIncrease >= MIN_SCORE_INCREASE
-        const canAlert = 
-          timeSinceLastAlert >= ALERT_COOLDOWN_MS &&
-          state.alertCount < MAX_ALERTS_PER_VENUE
+        const signal = computeVenueSignal(venue, pulses)
+        const distance = milesBetween(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng,
+        )
 
-        if (isSurging && hasSignificantIncrease && canAlert) {
-          const distance = calculateDistance(
-            userLocation.lat,
-            userLocation.lng,
-            venue.location.lat,
-            venue.location.lng
-          )
+        const shouldAlert = shouldEmitSurgeAlert({
+          currentScore,
+          lastScore: state.lastScore,
+          lastAlertTime: state.lastAlertTime,
+          alertCount: state.alertCount,
+          now,
+          confidence: signal.confidence,
+          distanceMiles: distance,
+        })
 
-          if (distance <= 5) {
-            const notification: Notification = {
-              id: `notif-surge-${venue.id}-${Date.now()}`,
-              type: 'trending_venue',
-              userId: 'system',
-              venueId: venue.id,
-              createdAt: new Date().toISOString(),
-              read: false
-            }
+        if (shouldAlert) {
+          const notification: Notification = {
+            id: `notif-surge-${venue.id}-${Date.now()}`,
+            type: 'trending_venue',
+            userId: 'system',
+            venueId: venue.id,
+            createdAt: new Date().toISOString(),
+            read: false,
+          }
 
-            setNotifications((current) => {
-              if (!current) return [notification]
-              return [notification, ...current]
-            })
+          setNotifications((current) => {
+            if (!current) return [notification]
+            return [notification, ...current]
+          })
 
-            toast.success('🔥 Venue Surging!', {
-              description: `${venue.name} is popping off right now (${currentScore} energy)`,
-              duration: 5000
-            })
+          toast.success('Venue surging nearby', {
+            description: `${venue.name} just jumped to ${currentScore} energy (${signal.confidence} confidence)`,
+            duration: 5000,
+          })
 
-            if (USE_SUPABASE_BACKEND && opts?.accessToken) {
-              void notifyTrendingVenueViaApi(
-                { venueId: venue.id, pulseScore: currentScore },
-                { accessToken: opts.accessToken },
-              )
-            }
+          if (USE_SUPABASE_BACKEND && opts?.accessToken) {
+            void notifyTrendingVenueViaApi(
+              { venueId: venue.id, pulseScore: currentScore },
+              { accessToken: opts.accessToken },
+            )
+          }
 
-            surgeStateRef.current[venue.id] = {
-              lastScore: currentScore,
-              lastAlertTime: now,
-              alertCount: state.alertCount + 1
-            }
+          surgeStateRef.current[venue.id] = {
+            lastScore: currentScore,
+            lastAlertTime: now,
+            alertCount: state.alertCount + 1,
           }
         } else {
           surgeStateRef.current[venue.id] = {
             ...state,
-            lastScore: currentScore
+            lastScore: currentScore,
           }
         }
       })
@@ -109,25 +111,5 @@ export function useVenueSurgeTracker(
     const interval = setInterval(checkForSurges, 30000)
 
     return () => clearInterval(interval)
-  }, [venues, userLocation, enabled, opts?.accessToken, setNotifications])
-}
-
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 3958.8
-  const φ1 = (lat1 * Math.PI) / 180
-  const φ2 = (lat2 * Math.PI) / 180
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-  return R * c
+  }, [venues, userLocation, enabled, opts?.accessToken, pulses, setNotifications])
 }

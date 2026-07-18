@@ -28,8 +28,10 @@ describe('buildDecisionExplanation', () => {
 
     expect(result.headline).toContain('Little Red Hen')
     expect(result.headline).toContain('Buzzing')
-    expect(result.explanation).toContain('Confidence: High')
-    expect(result.explanation).toContain('14 min ago')
+    expect(result.explanation).toContain('Strong live consensus')
+    expect(result.explanation).toContain('14 min')
+    expect(result.confidenceLabel).toBe('Strong live consensus')
+    expect(result.freshnessLabel).toMatch(/5 live reviews/)
     expect(result.worthGoing).toBe('yes')
   })
 

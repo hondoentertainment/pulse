@@ -128,7 +128,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Create Pulse at Test Venue/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Photo review at Test Venue/)).not.toBeInTheDocument()
   })
 
   it('renders venue name in title when open', () => {
@@ -140,14 +140,14 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Create Pulse at The Buzzy Bar/)).toBeInTheDocument()
+    expect(screen.getByText(/Photo review at The Buzzy Bar/)).toBeInTheDocument()
   })
 
   it('fills caption and enforces 140 char cap', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={makeVenue()} onSubmit={vi.fn()} />
     )
-    const textarea = screen.getByPlaceholderText(/What's the vibe/i) as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(/Tip for others/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'Amazing night!' } })
     expect(textarea.value).toBe('Amazing night!')
     expect(screen.getByText(/14\/140/)).toBeInTheDocument()
@@ -187,13 +187,13 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    fireEvent.change(screen.getByPlaceholderText(/What's the vibe/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Tip for others/i), {
       target: { value: 'Great vibes' },
     })
     fireEvent.click(screen.getByText('Set Buzzing'))
     fireEvent.click(screen.getByText('Add Photo'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -215,10 +215,10 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    fireEvent.change(screen.getByPlaceholderText(/What's the vibe/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Tip for others/i), {
       target: { value: 'this has badword inside' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalled()
@@ -248,7 +248,7 @@ describe('CreatePulseDialog', () => {
       <CreatePulseDialog open onClose={vi.fn()} venue={null} onSubmit={onSubmit} />
     )
     // Button still renders; click should be a no-op
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled()
     })

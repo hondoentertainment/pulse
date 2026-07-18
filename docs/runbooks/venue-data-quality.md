@@ -13,6 +13,7 @@ come from:
 
 ```
 supabase/migrations/20260712000000_venue_data_quality.sql
+supabase/migrations/20260716000000_venue_correction_proposals.sql
 ```
 
 The curated Seattle nightlife seed (mirrors
@@ -77,9 +78,12 @@ Drop `dry_run` (or set it `false`) once the preview looks right.
 
 ## 4. Review user-submitted data reports
 
-Users flag catalog issues ("hours are wrong", "no menu listed", etc.) via
-the data-gap sheet on the venue page (`src/components/VenueDataGapSheet.tsx`),
-which lands in the `venue_data_reports` table.
+Signed-in Pulse users recommend catalog corrections ("hours are wrong",
+"no menu listed", suggested phone/address/hours, etc.) via the correction
+sheet on the venue page (`src/components/VenueDataGapSheet.tsx`). Reports
+land in `venue_data_reports`, including optional structured
+`proposed_fields` (migration
+`20260716000000_venue_correction_proposals.sql`). Guests cannot submit.
 
 Open `/admin/venues/data-reports` to triage the **Pending** queue:
 

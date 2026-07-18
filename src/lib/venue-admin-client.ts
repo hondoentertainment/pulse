@@ -319,6 +319,7 @@ export interface VenueDataReportRow {
   note: string | null
   menu_url: string | null
   price_range: number | null
+  proposed_fields?: Partial<Record<'hours' | 'address' | 'phone' | 'website' | 'name', string>> | null
   status: 'pending' | 'reviewed' | 'actioned' | 'dismissed'
   created_at: string
   reviewed_at: string | null

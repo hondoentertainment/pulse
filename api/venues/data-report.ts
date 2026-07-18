@@ -7,11 +7,13 @@
  *   note?: string,
  *   menuUrl?: string,
  *   priceRange?: 1 | 2 | 3 | 4,
+ *   proposedFields?: { hours?, address?, phone?, website?, name? },
  * }
  *
  * Inserts a row into `venue_data_reports` (see
- * `supabase/migrations/20260712000000_venue_data_quality.sql`). Mirrors the
- * catalog quality signals defined in `src/lib/venue-data-reports.ts`.
+ * `supabase/migrations/20260712000000_venue_data_quality.sql` and
+ * `20260716000000_venue_correction_proposals.sql`). Mirrors the catalog
+ * quality signals defined in `src/lib/venue-data-reports.ts`.
  *
  * Auth: requires a Bearer Supabase JWT (`requireAuth`). We write via the
  * user's JWT so RLS ("Users can insert venue data reports.") enforces
@@ -48,8 +50,27 @@ export const VENUE_DATA_REPORT_REASONS = [
 
 type VenueDataReportReason = (typeof VENUE_DATA_REPORT_REASONS)[number]
 
+export const VENUE_PROPOSED_FIELD_KEYS = [
+  'hours',
+  'address',
+  'phone',
+  'website',
+  'name',
+] as const
+
+type VenueProposedFieldKey = (typeof VENUE_PROPOSED_FIELD_KEYS)[number]
+type VenueProposedFields = Partial<Record<VenueProposedFieldKey, string>>
+
 const PRICE_RANGES = [1, 2, 3, 4] as const
 const NOTE_MAX = 500
+
+const PROPOSED_FIELD_MAX: Record<VenueProposedFieldKey, number> = {
+  hours: 500,
+  address: 300,
+  phone: 40,
+  website: 2048,
+  name: 120,
+}
 
 interface DataReportBody {
   venueId: string
@@ -57,6 +78,7 @@ interface DataReportBody {
   note?: string
   menuUrl?: string
   priceRange?: 1 | 2 | 3 | 4
+  proposedFields?: VenueProposedFields
 }
 
 interface ValidationOk {
@@ -66,6 +88,38 @@ interface ValidationOk {
 interface ValidationErr {
   ok: false
   errors: string[]
+}
+
+export function validateProposedFields(
+  input: unknown,
+): { ok: true; value?: VenueProposedFields } | { ok: false; errors: string[] } {
+  if (input === undefined || input === null) return { ok: true, value: undefined }
+  if (!isPlainObject(input)) return { ok: false, errors: ['proposedFields must be an object'] }
+
+  const errors: string[] = []
+  const value: VenueProposedFields = {}
+
+  for (const key of Object.keys(input)) {
+    if (!(VENUE_PROPOSED_FIELD_KEYS as readonly string[]).includes(key)) {
+      errors.push(`proposedFields.${key} is not a supported field`)
+    }
+  }
+
+  for (const key of VENUE_PROPOSED_FIELD_KEYS) {
+    const entry = input[key]
+    if (entry === undefined || entry === null) continue
+    if (typeof entry === 'string' && entry.trim() === '') continue
+    const max = PROPOSED_FIELD_MAX[key]
+    const parsed = asString(entry, 1, max)
+    if (!parsed) {
+      errors.push(`proposedFields.${key} must be a string up to ${max} characters`)
+      continue
+    }
+    value[key] = parsed
+  }
+
+  if (errors.length > 0) return { ok: false, errors }
+  return { ok: true, value: Object.keys(value).length > 0 ? value : undefined }
 }
 
 export function validateBody(body: unknown): ValidationOk | ValidationErr {
@@ -105,6 +159,10 @@ export function validateBody(body: unknown): ValidationOk | ValidationErr {
     }
   }
 
+  const proposed = validateProposedFields(body.proposedFields)
+  if (!proposed.ok) errors.push(...proposed.errors)
+  else if (proposed.value) value.proposedFields = proposed.value
+
   if (errors.length > 0) return { ok: false, errors }
   return { ok: true, value }
 }
@@ -139,7 +197,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const { venueId, reason, note, menuUrl, priceRange } = validated.value
+  const { venueId, reason, note, menuUrl, priceRange, proposedFields } = validated.value
 
   try {
     const client = createUserClient(auth.context.token)
@@ -152,8 +210,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         note: note ?? null,
         menu_url: menuUrl ?? null,
         price_range: priceRange ?? null,
+        proposed_fields: proposedFields ?? null,
       })
-      .select('id, venue_id, user_id, reason, note, menu_url, price_range, status, created_at')
+      .select(
+        'id, venue_id, user_id, reason, note, menu_url, price_range, proposed_fields, status, created_at',
+      )
       .single()
 
     if (error) {

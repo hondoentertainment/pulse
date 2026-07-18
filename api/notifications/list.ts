@@ -16,10 +16,18 @@ import {
 import { requireAuth } from '../_lib/auth'
 import { createUserClient } from '../_lib/supabase-server'
 
-const SELECT_COLUMNS = `
-  id, user_id, type, pulse_id, venue_id, reaction_type,
-  energy_threshold, recommended_venue_id, read, created_at
-`.trim()
+type NotificationListRow = {
+  id: string
+  user_id: string
+  type: string
+  pulse_id: string | null
+  venue_id: string | null
+  reaction_type: string | null
+  energy_threshold: number | null
+  recommended_venue_id: string | null
+  read: boolean | null
+  created_at: string
+}
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return
@@ -43,10 +51,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const client = createUserClient(auth.context.token)
   const { data, error } = await client
     .from('notifications')
-    .select(SELECT_COLUMNS)
+    .select(
+      'id, user_id, type, pulse_id, venue_id, reaction_type, energy_threshold, recommended_venue_id, read, created_at',
+    )
     .eq('user_id', auth.context.userId)
     .order('created_at', { ascending: false })
     .limit(limit)
+    .returns<NotificationListRow[]>()
 
   if (error) {
     fail(res, 500, 'notifications_list_failed', error.message)

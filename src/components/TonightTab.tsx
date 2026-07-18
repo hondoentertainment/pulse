@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Pulse, User, Venue } from '@/lib/types'
 import type { EnergyRating } from '@/lib/types'
 import { ENERGY_CONFIG } from '@/lib/types'
@@ -20,6 +21,7 @@ import {
 } from '@/lib/decision-analytics'
 import { trackEvent } from '@/lib/analytics'
 import { generateVenueShareCard, buildNativeShareData, buildClipboardShareText } from '@/lib/sharing'
+import { parseTonightVibeParam } from '@/lib/tonight-route'
 
 const VIBE_OPTIONS: { id: VibeFilter; label: string; rating?: EnergyRating }[] = [
   { id: 'any', label: 'Any vibe' },
@@ -52,12 +54,25 @@ export function TonightTab({
   onToggleFavorite,
   onExplore,
 }: TonightTabProps) {
-  const [vibe, setVibe] = useState<VibeFilter>('any')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const vibeFromUrl = searchParams.get('vibe')
+  const initialVibe: VibeFilter = parseTonightVibeParam(
+    vibeFromUrl,
+    VIBE_OPTIONS.map((o) => o.id),
+  )
+  const [vibe, setVibe] = useState<VibeFilter>(initialVibe)
 
   useEffect(() => {
     startDecisionSession()
     trackEvent({ type: 'app_open', timestamp: Date.now() })
   }, [])
+
+  useEffect(() => {
+    setVibe(initialVibe)
+    if (initialVibe !== 'any') {
+      trackVibeSelected(initialVibe)
+    }
+  }, [initialVibe])
 
   const promotedVenueIds = useMemo(
     () => new Set(getActivePromotions(promotions).map((promo) => promo.venueId)),
@@ -83,6 +98,10 @@ export function TonightTab({
     setVibe(next)
     trackVibeSelected(next)
     trackFilterApplied(`vibe:${next}`)
+    const nextParams = new URLSearchParams(searchParams)
+    if (next === 'any') nextParams.delete('vibe')
+    else nextParams.set('vibe', next)
+    setSearchParams(nextParams, { replace: true })
   }
 
   const openDirections = (venue: Venue) => {
@@ -127,15 +146,16 @@ export function TonightTab({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" data-testid="tonight-tab">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Tonight</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Right now</p>
+        <h1 className="text-2xl font-bold tracking-tight">What&apos;s hot tonight</h1>
         <p className="text-sm text-muted-foreground">
-          Pick your vibe — we&apos;ll show where to go right now with live confidence.
+          Live reviews fade in 90 minutes — pick a vibe and go.
         </p>
       </header>
 
       <div
-        className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-        role="group"
+        className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none"
+        role="radiogroup"
         aria-label="Desired energy level"
       >
         {VIBE_OPTIONS.map((option) => {
@@ -147,9 +167,16 @@ export function TonightTab({
               size="sm"
               variant={active ? 'default' : 'outline'}
               data-testid={`vibe-${option.id}`}
-              className={cn('shrink-0 min-h-9', active && !accent && 'bg-primary')}
+              className={cn(
+                'shrink-0 min-h-11 rounded-full px-4 touch-manipulation transition-transform',
+                active && 'scale-[1.03]',
+                active && !accent && 'bg-primary text-primary-foreground',
+                active && accent && 'text-white',
+                !active && 'bg-card/60',
+              )}
               style={active && accent ? { backgroundColor: accent, borderColor: accent } : undefined}
-              aria-pressed={active}
+              role="radio"
+              aria-checked={active}
               onClick={() => handleVibeChange(option.id)}
             >
               {option.label}
@@ -159,24 +186,24 @@ export function TonightTab({
       </div>
 
       {picks.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-3">
-          <p className="font-semibold">No live signal for this vibe</p>
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center space-y-3">
+          <p className="font-semibold">No live reviews for this vibe</p>
           <p className="text-sm text-muted-foreground">
-            Try another energy level or explore the neighborhood list for venues without recent
-            confirmations.
+            Try another energy level or explore places that need a fresh check-in.
           </p>
           {onExplore && (
-            <Button variant="secondary" onClick={onExplore}>
+            <Button variant="secondary" className="min-h-11" onClick={onExplore}>
               Explore venues
             </Button>
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {picks.map((pick) => (
             <TonightRecommendationCard
               key={pick.recommendation.venue.id}
               pick={pick}
+              pulses={pulses}
               isSaved={isFavorite(pick.recommendation.venue.id)}
               onGo={() => handleGo(pick.recommendation.venue)}
               onDirections={() => openDirections(pick.recommendation.venue)}

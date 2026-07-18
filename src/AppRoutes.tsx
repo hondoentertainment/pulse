@@ -67,6 +67,11 @@ const VenueDuplicatesPage = lazy(() =>
     default: m.VenueDuplicatesPage,
   })),
 )
+const ShortlistPage = lazy(() =>
+  import('@/components/ShortlistPage').then((m) => ({
+    default: m.ShortlistPage,
+  })),
+)
 
 /** Trending home — redirects legacy `/?pulse=` deep links to `/pulse/:id`. */
 function TrendingHomeRoute({
@@ -241,6 +246,16 @@ export function AppRoutes() {
         {/* Pulse detail (Wave 4) */}
         <Route path="/pulse/:pulseId" element={<PulseRoute />} />
 
+        {/* Shareable group shortlist (P1-5) */}
+        <Route
+          path="/shortlist"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <ShortlistPage />
+            </Suspense>
+          }
+        />
+
         {/* Admin-only: structured venue metadata editor. Non-admins get a 403
             rendered by VenueMetadataRoute itself. */}
         <Route
@@ -299,6 +314,7 @@ export function AppRoutes() {
         <Route path="/crews" element={<SubPageRouter page="crews" />} />
         <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
         <Route path="/insights" element={<SubPageRouter page="insights" />} />
+        <Route path="/dashboard" element={<SubPageRouter page="dashboard" />} />
         <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
         <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
         <Route path="/settings" element={<SubPageRouter page="settings" />} />
@@ -389,7 +405,7 @@ export function AppRoutes() {
             setSearchMode('create')
             setSearchOpen(true)
           }}
-          aria-label="Create a pulse"
+          aria-label="Leave a live review"
           data-testid="create-pulse-fab"
           className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-[60]"
           style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}

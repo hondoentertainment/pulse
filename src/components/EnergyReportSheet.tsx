@@ -17,6 +17,8 @@ interface EnergyReportSheetProps {
   venueName: string
   onClose: () => void
   onSubmit: (energy: EnergyRating) => void
+  /** Optional scout weekly quota progress label (e.g. "2/3 scout reports this week"). */
+  scoutQuotaLabel?: string | null
 }
 
 export function EnergyReportSheet({
@@ -24,6 +26,7 @@ export function EnergyReportSheet({
   venueName,
   onClose,
   onSubmit,
+  scoutQuotaLabel,
 }: EnergyReportSheetProps) {
   const [selected, setSelected] = useState<EnergyRating | null>(null)
 
@@ -46,13 +49,23 @@ export function EnergyReportSheet({
     >
       <SheetContent side="bottom" className="rounded-t-2xl" data-testid="energy-report-sheet">
         <SheetHeader>
-          <SheetTitle>How&apos;s the energy at {venueName}?</SheetTitle>
+          <SheetTitle>Leave a live review at {venueName}</SheetTitle>
           <SheetDescription>
-            Three taps: pick the vibe, confirm, done. No photo required.
+            A 90-minute review — pick the vibe, confirm, done. No photo required.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        {scoutQuotaLabel && (
+          <p className="mt-3 text-xs text-muted-foreground" role="status">
+            {scoutQuotaLabel}
+          </p>
+        )}
+
+        <div
+          className="mt-5 grid grid-cols-2 gap-3"
+          role="radiogroup"
+          aria-label="Energy level"
+        >
           {ENERGY_OPTIONS.map((energy) => {
             const config = ENERGY_CONFIG[energy]
             const active = selected === energy
@@ -60,8 +73,9 @@ export function EnergyReportSheet({
               <button
                 key={energy}
                 type="button"
+                role="radio"
                 data-testid={`energy-report-${energy}`}
-                aria-pressed={active}
+                aria-checked={active}
                 onClick={() => setSelected(energy)}
                 className={cn(
                   'min-h-16 rounded-2xl border px-3 py-3 text-left transition-colors',
@@ -81,7 +95,7 @@ export function EnergyReportSheet({
           disabled={!selected}
           onClick={handleSubmit}
         >
-          Submit energy report
+          Post live review
         </Button>
       </SheetContent>
     </Sheet>

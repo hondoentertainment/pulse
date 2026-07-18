@@ -142,7 +142,7 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
             <SettingRow
               icon={<TrendUp size={16} weight="fill" className="text-primary" />}
               label="Trending Venues"
-              description="Venues surging near you"
+              description="Nearby surges with medium or high signal confidence"
             >
               <Switch
                 checked={settings?.trendingVenues ?? true}

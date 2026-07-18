@@ -8,11 +8,13 @@ import { ChallengeFeed } from '@/components/ChallengeFeed'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import { toast } from 'sonner'
 import type { SubPage } from '@/hooks/use-app-state'
+import { buildTonightPath } from '@/lib/tonight-route'
 
 const AchievementsPage = lazy(() => import('@/components/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
 const EventsPage = lazy(() => import('@/components/EventsPage').then(m => ({ default: m.EventsPage })))
 const CrewPage = lazy(() => import('@/components/CrewPage').then(m => ({ default: m.CrewPage })))
 const InsightsPage = lazy(() => import('@/components/InsightsPage').then(m => ({ default: m.InsightsPage })))
+const PersonalDashboardPage = lazy(() => import('@/components/PersonalDashboardPage').then(m => ({ default: m.PersonalDashboardPage })))
 const NeighborhoodView = lazy(() => import('@/components/NeighborhoodView').then(m => ({ default: m.NeighborhoodView })))
 const PlaylistsPage = lazy(() => import('@/components/PlaylistsPage').then(m => ({ default: m.PlaylistsPage })))
 const SettingsPage = lazy(() => import('@/components/SettingsPage').then(m => ({ default: m.SettingsPage })))
@@ -95,6 +97,25 @@ export function SubPageRouter({ page }: SubPageRouterProps) {
       <>
         <Suspense fallback={pageFallback}>
           <InsightsPage currentUser={currentUser} pulses={moderatedPulses} venues={venues} onBack={goBack} />
+        </Suspense>
+        {nav}
+      </>
+    ),
+    dashboard: () => (
+      <>
+        <Suspense fallback={pageFallback}>
+          <PersonalDashboardPage
+            currentUser={currentUser}
+            pulses={moderatedPulses}
+            venues={venues}
+            onBack={goBack}
+            onVenueClick={(venue) => navigate(`/venue/${encodeURIComponent(venue.id)}`)}
+            onGoTonight={(vibe) => {
+              navigate(buildTonightPath(vibe ?? null))
+            }}
+            onOpenInsights={() => navigate('/insights')}
+            onOpenDiscover={() => navigate('/discover')}
+          />
         </Suspense>
         {nav}
       </>

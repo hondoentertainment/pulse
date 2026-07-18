@@ -85,7 +85,7 @@ export function Settings({ onOpenSocialPulseDashboard }: SettingsProps) {
                   <TrendUp size={18} weight="fill" className="text-primary" />
                   <div>
                     <p className="text-sm font-medium">Trending Venues</p>
-                    <p className="text-xs text-muted-foreground">Hot spots popping off near you</p>
+                    <p className="text-xs text-muted-foreground">Nearby surges with medium+ confidence</p>
                   </div>
                 </div>
                 <Switch

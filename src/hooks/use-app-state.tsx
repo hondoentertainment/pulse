@@ -59,6 +59,7 @@ export type SubPage =
   | 'crews'
   | 'achievements'
   | 'insights'
+  | 'dashboard'
   | 'neighborhoods'
   | 'playlists'
   | 'settings'
@@ -504,6 +505,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true, {
     accessToken: session?.access_token,
+    pulses: pulses || [],
   })
 
   useEffect(() => {

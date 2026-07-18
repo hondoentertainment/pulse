@@ -211,7 +211,7 @@ export function AppShell() {
 
       <motion.button
         data-testid="create-pulse-fab"
-        aria-label="Create a pulse"
+        aria-label="Leave a live review"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}

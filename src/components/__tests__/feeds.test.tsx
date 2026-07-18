@@ -603,6 +603,7 @@ describe('Favorites', () => {
 
     expect(screen.getByText('Favorite Bar')).toBeDefined()
     expect(screen.getByText('Favorite Club')).toBeDefined()
+    expect(screen.getByLabelText('Share shortlist with your group')).toBeDefined()
   })
 
   it('shows empty state when no favorites', async () => {

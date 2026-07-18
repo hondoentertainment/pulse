@@ -1,9 +1,16 @@
 import { useMemo, useId, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import type { Pulse } from '@/lib/types'
+import {
+  buildEnergyTimelineFromPulses,
+  ENERGY_TIMELINE_WINDOW_HOURS,
+} from '@/lib/energy-timeline'
 
 interface VenueEnergyTimelineProps {
   venueId: string
   currentScore: number
+  /** Recent venue pulses — when present, timeline uses real report history. */
+  pulses?: Pulse[]
 }
 
 function getEnergyColor(score: number): { line: string; fill: string; glow: string } {
@@ -14,42 +21,11 @@ function getEnergyColor(score: number): { line: string; fill: string; glow: stri
   return { line: '#3b82f6', fill: '#3b82f6', glow: 'rgba(59,130,246,0.3)' }
 }
 
-function generateHistoricalData(venueId: string, currentScore: number): number[] {
-  // Seeded random based on venueId for consistency
-  let seed = 0
-  for (let i = 0; i < venueId.length; i++) {
-    seed = ((seed << 5) - seed + venueId.charCodeAt(i)) | 0
-  }
-  const seededRandom = () => {
-    seed = (seed * 16807 + 0) % 2147483647
-    return (seed & 0x7fffffff) / 2147483647
-  }
-
-  const points = 12
-  const data: number[] = []
-
-  // Start low, build up to current score to simulate buildup
-  const baseStart = Math.max(5, currentScore * 0.15)
-
-  for (let i = 0; i < points; i++) {
-    const progress = i / (points - 1)
-    // Exponential buildup curve with random noise
-    const base = baseStart + (currentScore - baseStart) * Math.pow(progress, 1.5)
-    const noise = (seededRandom() - 0.5) * currentScore * 0.2
-    data.push(Math.max(0, Math.min(100, Math.round(base + noise))))
-  }
-
-  // Ensure last point is exactly the current score
-  data[data.length - 1] = currentScore
-
-  return data
-}
-
 function buildSmoothPath(
   data: number[],
   width: number,
   height: number,
-  padding: { top: number; bottom: number; left: number; right: number }
+  padding: { top: number; bottom: number; left: number; right: number },
 ): string {
   const chartW = width - padding.left - padding.right
   const chartH = height - padding.top - padding.bottom
@@ -83,12 +59,16 @@ function buildSmoothPath(
   return d
 }
 
-export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimelineProps) {
+export function VenueEnergyTimeline({ venueId, currentScore, pulses = [] }: VenueEnergyTimelineProps) {
   const uniqueId = useId()
   const gradientId = `energy-gradient-${uniqueId}`
   const glowFilterId = `glow-${uniqueId}`
 
-  const data = useMemo(() => generateHistoricalData(venueId, currentScore), [venueId, currentScore])
+  const summary = useMemo(
+    () => buildEnergyTimelineFromPulses(venueId, pulses, currentScore),
+    [venueId, pulses, currentScore],
+  )
+  const data = summary.points
   const colors = getEnergyColor(currentScore)
 
   const width = 360
@@ -97,7 +77,6 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
 
   const linePath = useMemo(() => buildSmoothPath(data, width, height, padding), [data, padding])
 
-  // Build fill path (line + close at bottom)
   const fillPath = useMemo(() => {
     if (!linePath) return ''
     const chartBottom = height - padding.bottom
@@ -106,14 +85,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
     return `${linePath} L ${lastX},${chartBottom} L ${firstX},${chartBottom} Z`
   }, [linePath, padding.bottom, padding.left, padding.right])
 
-  // Find peak point
-  const peakIndex = useMemo(() => {
-    let maxI = 0
-    for (let i = 1; i < data.length; i++) {
-      if (data[i] > data[maxI]) maxI = i
-    }
-    return maxI
-  }, [data])
+  const peakIndex = summary.peakIndex
 
   const chartW = width - padding.left - padding.right
   const chartH = height - padding.top - padding.bottom
@@ -124,9 +96,8 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
   const currentX = getX(data.length - 1)
   const currentY = getY(currentScore)
   const peakX = getX(peakIndex)
-  const peakY = getY(data[peakIndex])
+  const peakY = getY(data[peakIndex] ?? 0)
 
-  // Calculate approximate path length for animation
   const pathLength = useMemo(() => {
     let len = 0
     for (let i = 1; i < data.length; i++) {
@@ -137,19 +108,47 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
     return Math.ceil(len)
   }, [data, getX, getY])
 
+  const halfWindow = ENERGY_TIMELINE_WINDOW_HOURS / 2
   const timeLabels = [
-    { label: '6h ago', x: padding.left },
-    { label: '3h ago', x: padding.left + chartW / 2 },
+    { label: `${ENERGY_TIMELINE_WINDOW_HOURS}h ago`, x: padding.left },
+    { label: `${halfWindow}h ago`, x: padding.left + chartW / 2 },
     { label: 'Now', x: width - padding.right },
   ]
 
+  if (!summary.hasLiveHistory) {
+    return (
+      <section aria-label="Live review energy over the last 6 hours" className="w-full space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold">Energy from live reviews</h3>
+          <span className="text-xs text-muted-foreground">{summary.trendLabel}</span>
+        </div>
+        <div
+          className="flex min-h-[80px] flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-center"
+          role="status"
+        >
+          <p className="text-sm font-medium">Awaiting live reviews</p>
+          <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+            No live reviews in the last {ENERGY_TIMELINE_WINDOW_HOURS} hours.
+            Leave a review to start a real energy curve — we will not invent one.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <div className="w-full">
+    <section aria-label="Live review energy over the last 6 hours" className="w-full space-y-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold">Energy from live reviews</h3>
+        <span className="text-xs text-muted-foreground">{summary.trendLabel}</span>
+      </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="w-full"
         style={{ height: 80 }}
         preserveAspectRatio="none"
+        role="img"
+        aria-label={`Energy trend: ${summary.trendLabel}`}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -162,7 +161,6 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           </filter>
         </defs>
 
-        {/* Fill under curve */}
         <motion.path
           d={fillPath}
           fill={`url(#${gradientId})`}
@@ -171,7 +169,6 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           transition={{ delay: 0.5, duration: 0.6 }}
         />
 
-        {/* Animated line */}
         <motion.path
           d={linePath}
           fill="none"
@@ -185,8 +182,7 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           transition={{ duration: 1.2, ease: 'easeOut' }}
         />
 
-        {/* Peak label */}
-        {peakIndex !== data.length - 1 && (
+        {peakIndex !== data.length - 1 && (data[peakIndex] ?? 0) > 0 && (
           <motion.g
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -207,7 +203,6 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           </motion.g>
         )}
 
-        {/* Current point - pulsing */}
         <motion.circle
           cx={currentX}
           cy={currentY}
@@ -237,13 +232,12 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           }}
         />
 
-        {/* Time labels */}
         {timeLabels.map(({ label, x }) => (
           <text
             key={label}
             x={x}
             y={height - 4}
-            textAnchor={label === 'Now' ? 'end' : label === '6h ago' ? 'start' : 'middle'}
+            textAnchor={label === 'Now' ? 'end' : label.includes('6h') ? 'start' : 'middle'}
             fill="currentColor"
             className="text-muted-foreground"
             fontSize={8}
@@ -254,6 +248,6 @@ export function VenueEnergyTimeline({ venueId, currentScore }: VenueEnergyTimeli
           </text>
         ))}
       </svg>
-    </div>
+    </section>
   )
 }

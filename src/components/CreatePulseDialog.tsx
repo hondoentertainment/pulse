@@ -279,16 +279,16 @@ export function CreatePulseDialog({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">
-            Create Pulse at {venue?.name}
+            Photo review at {venue?.name}
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Share the current energy, add a caption, photos, video, and hashtags.
+          <DialogDescription>
+            Share what it&apos;s like right now. Live reviews fade after 90 minutes.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <div>
-            <label className="text-sm font-medium mb-3 block">How's the energy?</label>
+            <label className="text-sm font-medium mb-3 block">What&apos;s the vibe right now?</label>
             <EnergySlider 
               value={energyRating} 
               onChange={setEnergyRating}
@@ -380,7 +380,7 @@ export function CreatePulseDialog({
             </label>
             <Textarea
               id="create-pulse-caption"
-              placeholder="What's the vibe?"
+              placeholder="Tip for others — line, music, crowd…"
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, 140))}
               maxLength={140}
@@ -459,7 +459,7 @@ export function CreatePulseDialog({
               onClick={handleSubmit}
               disabled={isSubmitting || isCompressing}
             >
-              {isSubmitting ? 'Posting...' : 'Post Pulse'}
+              {isSubmitting ? 'Posting...' : 'Post live review'}
             </Button>
           </div>
         </div>

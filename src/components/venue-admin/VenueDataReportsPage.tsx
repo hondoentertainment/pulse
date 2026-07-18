@@ -14,7 +14,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { VENUE_DATA_REPORT_LABELS, type VenueDataReportReason } from '@/lib/venue-data-reports'
+import {
+  VENUE_DATA_REPORT_LABELS,
+  VENUE_PROPOSED_FIELD_LABELS,
+  type VenueDataReportReason,
+  type VenueProposedFieldKey,
+} from '@/lib/venue-data-reports'
 import { updateVenueDataReportStatus, type VenueDataReportRow } from '@/lib/venue-admin-client'
 
 type StatusFilter = 'pending' | 'reviewed' | 'actioned' | 'dismissed'
@@ -194,6 +199,18 @@ export function VenueDataReportsPage() {
                       <p className="text-xs text-muted-foreground">{report.venues.city}</p>
                     )}
                     {report.note && <p className="text-sm mt-1">{report.note}</p>}
+                    {report.proposed_fields &&
+                      Object.entries(report.proposed_fields).map(([key, value]) => {
+                        if (!value) return null
+                        const label =
+                          VENUE_PROPOSED_FIELD_LABELS[key as VenueProposedFieldKey] ?? key
+                        return (
+                          <p key={key} className="text-xs mt-1" data-testid="venue-correction-proposal">
+                            <span className="text-muted-foreground">{label}:</span>{' '}
+                            <span className="font-medium break-words">{value}</span>
+                          </p>
+                        )
+                      })}
                     {report.menu_url && (
                       <p className="text-xs mt-1">
                         Menu:{' '}

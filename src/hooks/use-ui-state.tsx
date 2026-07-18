@@ -8,6 +8,7 @@ export type SubPage =
   | 'crews'
   | 'achievements'
   | 'insights'
+  | 'dashboard'
   | 'neighborhoods'
   | 'playlists'
   | 'settings'

@@ -8,7 +8,7 @@ import { venuePassesAccessibilityFilter } from '@/components/filters/Accessibili
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire
+  Fire
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
 import { SignalIntelBadges } from '@/components/SignalIntelBadges'
+import { buildLiveReviewProof, getLatestVenuePulsePhoto } from '@/lib/live-reviews'
 import {
   buildVenueRenderPoints,
   clampCenter,
@@ -1220,11 +1221,19 @@ export function InteractiveMap({
         >
           <button
             className="pointer-events-auto relative z-30 cursor-pointer rounded-full"
-            aria-label={`Open ${node.venue.name}`}
+            aria-label={`Open ${node.venue.name}, score ${node.venue.pulseScore}`}
             onClick={() => {
               triggerHapticFeedback('medium')
               setExpandedClusterId(null)
               onVenueClick(node.venue)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                triggerHapticFeedback('medium')
+                setExpandedClusterId(null)
+                onVenueClick(node.venue)
+              }
             }}
           >
             <div className="w-11 h-11" />
@@ -1248,11 +1257,19 @@ export function InteractiveMap({
           >
             <button
               className="pointer-events-auto relative z-20 cursor-pointer hover:scale-110 transition-transform"
+              aria-label={`${venue.name}, ${venue.pulseScore >= 75 ? 'Electric' : venue.pulseScore >= 50 ? 'Buzzing' : venue.pulseScore >= 25 ? 'Chill' : 'Dead'} energy, score ${venue.pulseScore}${distance != null ? `, ${distance.toFixed(1)} miles away` : ''}`}
               onMouseEnter={() => setHoveredVenue(venue)}
               onMouseLeave={() => setHoveredVenue(null)}
               onClick={() => {
                 triggerHapticFeedback('medium')
                 onVenueClick(venue)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  triggerHapticFeedback('medium')
+                  onVenueClick(venue)
+                }
               }}
             >
               <div className="w-10 h-10" />
@@ -1350,17 +1367,28 @@ export function InteractiveMap({
               }}
             >
               <Card className="bg-card/98 backdrop-blur-md border-border shadow-2xl relative overflow-hidden">
-                {/* Header Decoration */}
-                <div
-                  className={cn(
-                    "absolute top-0 left-0 right-0 h-1",
-                    hoveredVenue.pulseScore >= 80 ? "bg-gradient-to-r from-fuchsia-500 to-cyan-500" :
-                      hoveredVenue.pulseScore >= 60 ? "bg-rose-500" :
-                        hoveredVenue.pulseScore >= 30 ? "bg-sky-500" : "bg-slate-700"
-                  )}
-                />
+                {(() => {
+                  const hoverPhoto = getLatestVenuePulsePhoto(hoveredVenue.id, pulses)
+                  const hoverProof = buildLiveReviewProof(hoveredVenue, pulses)
+                  return (
+                    <>
+                {hoverPhoto ? (
+                  <div className="relative h-16 w-full overflow-hidden">
+                    <img src={hoverPhoto} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card/98 to-transparent" />
+                  </div>
+                ) : (
+                  <div
+                    className={cn(
+                      "absolute top-0 left-0 right-0 h-1",
+                      hoveredVenue.pulseScore >= 80 ? "bg-gradient-to-r from-fuchsia-500 to-cyan-500" :
+                        hoveredVenue.pulseScore >= 60 ? "bg-rose-500" :
+                          hoveredVenue.pulseScore >= 30 ? "bg-sky-500" : "bg-slate-700"
+                    )}
+                  />
+                )}
 
-                <div className="p-3 pt-4 space-y-2">
+                <div className={cn('p-3 space-y-2', !hoverPhoto && 'pt-4')}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -1398,19 +1426,18 @@ export function InteractiveMap({
                     </div>
                   )}
 
-                  {/* Signal parity — confidence, trend, freshness */}
                   <SignalIntelBadges venue={hoveredVenue} pulses={pulses} compact className="pt-1" />
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Users size={12} />
-                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-primary font-bold">View</span>
+                    <p className="text-[10px] text-muted-foreground truncate max-w-[70%]">
+                      {hoverProof.proofLine}
+                    </p>
+                    <span className="text-[10px] text-primary font-bold">Go</span>
                   </div>
                 </div>
+                    </>
+                  )
+                })()}
                 {/* Pointer arrow */}
                 <div
                   className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-card/98"
@@ -1780,36 +1807,49 @@ export function InteractiveMap({
                       className="w-full text-left"
                       onClick={() => handleVenueSelect(point.venue)}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold truncate">{point.venue.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase truncate">
-                            {point.venue.category || 'Venue'}
-                          </p>
-                          {isAhead && (
-                            <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
-                              Ahead
-                            </Badge>
-                          )}
-                          {point.distance !== undefined && (
-                            <p className="text-[10px] text-accent font-mono mt-0.5">
-                              {formatDistance(point.distance, unitSystem)}
-                            </p>
-                          )}
-                        </div>
-                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
-                      </div>
+                      {(() => {
+                        const thumb = getLatestVenuePulsePhoto(point.venue.id, pulses)
+                        const proof = buildLiveReviewProof(point.venue, pulses)
+                        return (
+                          <>
+                            {thumb && (
+                              <div className="mb-2 -mx-2.5 -mt-2.5 h-14 overflow-hidden rounded-t-[inherit]">
+                                <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
+                              </div>
+                            )}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold truncate">{point.venue.name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {proof.proofChip}
+                                </p>
+                                {isAhead && (
+                                  <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1.5 bg-primary/15 text-primary border-primary/25">
+                                    Ahead
+                                  </Badge>
+                                )}
+                                {point.distance !== undefined && (
+                                  <p className="text-[10px] text-accent font-mono mt-0.5">
+                                    {formatDistance(point.distance, unitSystem)}
+                                  </p>
+                                )}
+                              </div>
+                              <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                            </div>
+                          </>
+                        )
+                      })()}
                     </button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="mt-1 h-7 w-full text-[11px]"
+                      className="mt-1 h-11 w-full text-[11px] touch-manipulation"
                       onClick={() => {
                         triggerHapticFeedback('medium')
                         onVenueClick(point.venue)
                       }}
                     >
-                      Open
+                      Go
                     </Button>
                     <Button
                       size="sm"

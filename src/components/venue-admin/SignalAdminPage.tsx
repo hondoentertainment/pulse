@@ -31,11 +31,22 @@ interface VenuesCompletenessRow {
   city: string | null
 }
 
+interface FreshCoverageSummary {
+  total: number
+  freshCount: number
+  coveragePct: number
+  meetsSla: boolean
+  slaPct: number
+  maxFreshnessMinutes: number
+  stale: { venueId: string; venueName: string; neighborhood: string | null; freshnessMinutes: number | null }[]
+}
+
 export function SignalAdminPage() {
   const navigate = useNavigate()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const [venues, setVenues] = useState<VenuesCompletenessRow[]>([])
   const [applications, setApplications] = useState<ScoutApplicationRow[]>([])
+  const [freshCoverage, setFreshCoverage] = useState<FreshCoverageSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [suppressReason, setSuppressReason] = useState<Record<string, string>>({})
@@ -47,11 +58,14 @@ export function SignalAdminPage() {
   const isAdmin = !isPlaceholder && role === 'admin'
 
   const loadData = async (token: string) => {
-    const [venuesRes, appsRes] = await Promise.all([
+    const [venuesRes, appsRes, freshRes] = await Promise.all([
       fetch('/api/admin/venues-completeness?limit=100', {
         headers: { Authorization: `Bearer ${token}` },
       }),
       fetch('/api/admin/scout-applications', {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch('/api/admin/fresh-coverage?city=Seattle', {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ])
@@ -63,6 +77,13 @@ export function SignalAdminPage() {
     const appsJson = (await appsRes.json()) as { data: { applications: ScoutApplicationRow[] } }
     setVenues(venuesJson.data?.venues ?? [])
     setApplications(appsJson.data?.applications ?? [])
+
+    if (freshRes.ok) {
+      const freshJson = (await freshRes.json()) as { data: { summary: FreshCoverageSummary } }
+      setFreshCoverage(freshJson.data?.summary ?? null)
+    } else {
+      setFreshCoverage(null)
+    }
   }
 
   useEffect(() => {
@@ -176,6 +197,54 @@ export function SignalAdminPage() {
       {error && (
         <Card className="p-3 border-destructive/40 text-sm text-destructive">{error}</Card>
       )}
+
+      <Card className="p-4 space-y-3" data-testid="fresh-coverage-card">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Fresh coverage SLA</h2>
+            <p className="text-xs text-muted-foreground">
+              Expansion gate: ≥{freshCoverage?.slaPct ?? 70}% of Seattle venues with evidence under{' '}
+              {freshCoverage?.maxFreshnessMinutes ?? 90} minutes.
+            </p>
+          </div>
+          {freshCoverage && (
+            <Badge variant={freshCoverage.meetsSla ? 'default' : 'secondary'}>
+              {freshCoverage.meetsSla ? 'SLA met' : 'Below SLA'}
+            </Badge>
+          )}
+        </div>
+        {loading && !freshCoverage ? (
+          <p className="text-sm text-muted-foreground">Loading coverage…</p>
+        ) : freshCoverage ? (
+          <div className="space-y-2">
+            <p className="text-2xl font-bold tabular-nums">
+              {freshCoverage.coveragePct}%
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({freshCoverage.freshCount}/{freshCoverage.total} fresh)
+              </span>
+            </p>
+            {freshCoverage.stale.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                  Stale venues (top)
+                </p>
+                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                  {freshCoverage.stale.slice(0, 8).map((row) => (
+                    <li key={row.venueId} className="flex justify-between gap-2">
+                      <span className="truncate">{row.venueName}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        {row.freshnessMinutes == null ? 'No signal' : `${row.freshnessMinutes}m`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Coverage unavailable.</p>
+        )}
+      </Card>
 
       <Card className="p-4 space-y-3">
         <h2 className="font-semibold">Scout applications</h2>

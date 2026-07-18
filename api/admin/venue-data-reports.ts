@@ -47,7 +47,7 @@ const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
 
 const SELECT_COLUMNS =
-  'id, venue_id, user_id, reason, note, menu_url, price_range, status, created_at, reviewed_at, reviewed_by, venues(name, city)'
+  'id, venue_id, user_id, reason, note, menu_url, price_range, proposed_fields, status, created_at, reviewed_at, reviewed_by, venues(name, city)'
 
 interface PatchBody {
   id: string

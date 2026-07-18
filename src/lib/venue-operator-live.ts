@@ -13,17 +13,58 @@ export interface VenueOperatorStatus {
   special?: string
 }
 
+const STORAGE_KEY = 'pulse-venue-operator-status'
+
 let operatorStatusStore: Record<string, VenueOperatorStatus> = {}
+let hydrated = false
+
+function canUseStorage(): boolean {
+  return typeof localStorage !== 'undefined'
+}
+
+function hydrateFromStorage(): void {
+  if (hydrated || !canUseStorage()) {
+    hydrated = true
+    return
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, VenueOperatorStatus>
+      if (parsed && typeof parsed === 'object') {
+        operatorStatusStore = parsed
+      }
+    }
+  } catch {
+    /* ignore corrupt storage */
+  }
+  hydrated = true
+}
+
+function persistStore(): void {
+  if (!canUseStorage()) return
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(operatorStatusStore))
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 export function getVenueOperatorStatus(venueId: string): VenueOperatorStatus | null {
+  hydrateFromStorage()
   return operatorStatusStore[venueId] ?? null
+}
+
+export function isDemoOperatorStatus(status: VenueOperatorStatus | null | undefined): boolean {
+  return !status || status.updatedBy === 'owner-demo'
 }
 
 export function updateVenueOperatorStatus(
   venueId: string,
   updatedBy: string,
-  updates: Partial<Omit<VenueOperatorStatus, 'venueId' | 'updatedBy' | 'updatedAt'>>
+  updates: Partial<Omit<VenueOperatorStatus, 'venueId' | 'updatedBy' | 'updatedAt'>>,
 ): VenueOperatorStatus {
+  hydrateFromStorage()
   const next: VenueOperatorStatus = {
     venueId,
     updatedBy,
@@ -37,11 +78,17 @@ export function updateVenueOperatorStatus(
   }
 
   operatorStatusStore[venueId] = next
+  persistStore()
   return next
 }
 
+/**
+ * Demo seed for unclaimed venues only. Never overwrites a real operator publish.
+ */
 export function seedVenueOperatorStatus(venueId: string, venueName: string): VenueOperatorStatus {
+  hydrateFromStorage()
   const existing = getVenueOperatorStatus(venueId)
+  if (existing && !isDemoOperatorStatus(existing)) return existing
   if (existing) return existing
 
   const hash = `${venueId}-${venueName}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
@@ -92,4 +139,8 @@ export function formatKitchenStatus(status: KitchenStatus | null | undefined): s
 
 export function clearVenueOperatorStatuses(): void {
   operatorStatusStore = {}
+  hydrated = true
+  if (canUseStorage()) {
+    localStorage.removeItem(STORAGE_KEY)
+  }
 }

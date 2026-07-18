@@ -17,6 +17,7 @@ const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
   crews: '/crews',
   achievements: '/achievements',
   insights: '/insights',
+  dashboard: '/dashboard',
   neighborhoods: '/neighborhoods',
   playlists: '/playlists',
   settings: '/settings',

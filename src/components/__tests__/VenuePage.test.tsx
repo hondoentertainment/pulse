@@ -262,15 +262,15 @@ describe.skip('VenuePage', () => {
     expect(screen.getAllByText(/123 Main St/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows the Create Pulse CTA', () => {
+  it('shows the Add photo review CTA', () => {
     render(<VenuePage {...baseProps()} />)
-    expect(screen.getAllByRole('button', { name: /Create Pulse/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Add photo review/ }).length).toBeGreaterThan(0)
   })
 
-  it('calls onCreatePulse when Create Pulse is clicked', () => {
+  it('calls onCreatePulse when Add photo review is clicked', () => {
     const onCreatePulse = vi.fn()
     render(<VenuePage {...baseProps()} onCreatePulse={onCreatePulse} />)
-    const buttons = screen.getAllByRole('button', { name: /Create Pulse/ })
+    const buttons = screen.getAllByRole('button', { name: /Add photo review/ })
     fireEvent.click(buttons[0])
     expect(onCreatePulse).toHaveBeenCalled()
   })
@@ -297,7 +297,7 @@ describe.skip('VenuePage', () => {
 
   it('check-in/create pulse still renders without currentUser (auth-gated reporting)', () => {
     render(<VenuePage {...baseProps()} currentUser={null} />)
-    expect(screen.getAllByRole('button', { name: /Create Pulse/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Add photo review/ }).length).toBeGreaterThan(0)
     // Venue memory card should NOT render when there is no user
     expect(screen.queryByTestId('venue-memory')).not.toBeInTheDocument()
   })

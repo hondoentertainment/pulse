@@ -50,23 +50,23 @@ function trendPhrase(trend: EnergyTrend): string | null {
 function confidenceLabel(level: SignalConfidence): string {
   switch (level) {
     case 'high':
-      return 'Confidence: High'
+      return 'Strong live consensus'
     case 'medium':
-      return 'Confidence: Medium'
+      return 'Moderate live consensus'
     case 'low':
-      return 'Confidence: Low'
+      return 'Thin live consensus'
     default:
-      return 'No live signal'
+      return 'No live reviews'
   }
 }
 
 function freshnessLabel(minutes: number | null, reportCount: number): string {
-  if (minutes === null || reportCount === 0) return 'No recent confirmations'
-  const people = reportCount === 1 ? '1 person' : `${reportCount} people`
-  if (minutes <= 15) return `Last confirmed ${minutes} min ago by ${people}`
-  if (minutes <= 45) return `Last confirmed ${minutes} min ago by ${people}`
-  if (minutes <= 90) return `Last known ${minutes} min ago (${people})`
-  return 'Signal is aging — treat as last known'
+  if (minutes === null || reportCount === 0) return 'No live reviews yet'
+  const reviews = reportCount === 1 ? '1 live review' : `${reportCount} live reviews`
+  if (minutes <= 15) return `${reviews} · last ${minutes} min`
+  if (minutes <= 45) return `${reviews} · last ${minutes} min`
+  if (minutes <= 90) return `${reviews} · last known ${minutes} min ago`
+  return 'Live reviews are aging — treat as last known'
 }
 
 export function deriveWorthGoing(
@@ -111,9 +111,9 @@ export function buildDecisionExplanation(input: DecisionExplanationInput): Decis
   )}. ${confidenceLabel(input.confidence)}.`
 
   const frictionNotes: string[] = []
-  if (input.confidence === 'low') frictionNotes.push('Limited recent evidence')
+  if (input.confidence === 'low') frictionNotes.push('Few live reviews so far')
   if (input.freshnessMinutes !== null && input.freshnessMinutes > 60) {
-    frictionNotes.push('Signal may be stale')
+    frictionNotes.push('Reviews may be going stale')
   }
   if (distance && input.distanceMiles !== null && input.distanceMiles > 3) {
     frictionNotes.push('Farther than your usual picks')

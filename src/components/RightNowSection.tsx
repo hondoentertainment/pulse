@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { Compass, Lightning, MapPin, SealCheck, TrendUp, HeartStraight } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { getEnergyLabel, getEnergyColor } from '@/lib/pulse-engine'
+import { buildLiveReviewProof, getLatestVenuePulsePhoto } from '@/lib/live-reviews'
 import { getRightNowDecisionSections, type RightNowDecision } from '@/lib/right-now-decisions'
 import type { Pulse, User, Venue } from '@/lib/types'
 import { SignalIntelBadges } from '@/components/SignalIntelBadges'
@@ -28,7 +29,7 @@ const SECTION_CONFIG: SectionConfig[] = [
   {
     id: 'surgingNow',
     title: 'Surging Now',
-    subtitle: 'The strongest live momentum in the city right now.',
+    subtitle: 'Places heating up from live reviews right now.',
     icon: <Lightning size={18} weight="fill" className="text-yellow-400" />,
   },
   {
@@ -67,7 +68,7 @@ export function RightNowSection({
           <TrendUp size={20} weight="fill" className="text-primary" />
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wide">Right Now</h3>
-            <p className="text-xs text-muted-foreground">Live signals are still warming up. Open the map or post the first pulse nearby.</p>
+            <p className="text-xs text-muted-foreground">No live reviews yet. Open the map or leave the first review nearby.</p>
           </div>
         </div>
       </div>
@@ -133,8 +134,10 @@ function RightNowCard({
 }) {
   const energyColor = getEnergyColor(item.venue.pulseScore)
   const energyLabel = getEnergyLabel(item.venue.pulseScore)
+  const photo = getLatestVenuePulsePhoto(item.venue.id, pulses)
+  const proof = buildLiveReviewProof(item.venue, pulses)
   const waitLabel = item.liveData.waitTime === null
-    ? item.freshnessLabel
+    ? proof.proofChip
     : item.liveData.waitTime === 0
       ? 'No wait reported'
       : `~${item.liveData.waitTime} min line`
@@ -143,16 +146,29 @@ function RightNowCard({
     <motion.div
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
-      className="relative w-full rounded-2xl border border-border bg-card/90 transition-colors hover:border-primary/30"
+      className="relative w-full overflow-hidden rounded-2xl border border-border bg-card/90 transition-colors hover:border-primary/30"
     >
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          'w-full rounded-2xl p-4 text-left',
+          'w-full text-left touch-manipulation',
           onToggleFollow && 'pr-14',
         )}
       >
+        {photo ? (
+          <div className="relative aspect-[16/7] w-full overflow-hidden">
+            <img src={photo} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+          </div>
+        ) : (
+          <div
+            className="h-2 w-full"
+            style={{ background: `linear-gradient(90deg, ${energyColor}88, transparent)` }}
+            aria-hidden
+          />
+        )}
+        <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -169,13 +185,13 @@ function RightNowCard({
             </p>
           </div>
           <div className="rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1 text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pulse</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Score</p>
             <p className="text-sm font-bold text-primary">{item.venue.pulseScore}</p>
           </div>
         </div>
 
         <p className="mt-3 text-sm font-medium">{item.headline}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{proof.proofLine}</p>
         <SignalIntelBadges venue={item.venue} pulses={pulses} compact className="mt-2" />
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -187,6 +203,7 @@ function RightNowCard({
         </div>
 
         <p className="mt-2 text-[11px] text-muted-foreground">{item.trustLabel}</p>
+        </div>
       </button>
       {onToggleFollow && (
         <button
