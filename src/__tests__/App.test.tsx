@@ -37,6 +37,15 @@ vi.mock('@/lib/analytics', () => ({
   trackError: vi.fn(),
 }))
 
+// This test exercises the signal login branch; the app now defaults to the
+// venue shell, so pin the mode explicitly.
+vi.mock('@/lib/app-mode', () => ({
+  APP_MODE: 'signal',
+  resolveAppMode: () => 'signal',
+  isVenueAppMode: () => false,
+  isSignalAppMode: () => true,
+}))
+
 import App from '@/App'
 
 describe('App', () => {

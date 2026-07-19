@@ -7,16 +7,15 @@ import type { Pulse } from '../types'
 
 function makePulse(overrides: Partial<Pulse> & { createdAt: string }): Pulse {
   return {
-    id: overrides.id ?? 'p1',
-    venueId: overrides.venueId ?? 'venue-1',
-    userId: overrides.userId ?? 'u1',
-    energyRating: overrides.energyRating ?? 'buzzing',
+    id: 'p1',
+    venueId: 'venue-1',
+    userId: 'u1',
+    energyRating: 'buzzing',
     caption: '',
     photos: [],
-    reactions: { fire: [], lightning: [], eyes: [] },
+    reactions: { fire: [], lightning: [], eyes: [], skull: [] },
     views: 0,
-    createdAt: overrides.createdAt,
-    expiresAt: overrides.expiresAt ?? new Date(Date.now() + 90 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
     ...overrides,
   }
 }

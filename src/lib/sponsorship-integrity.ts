@@ -34,7 +34,10 @@ export function assertBoostDoesNotAffectOrganicRanking(
   const organicRank = rankOrganicByScore(venueScores, (v) => v.baseScore).map((v) => v.id)
   const boostedScores = venueScores.map((v) => ({
     ...v,
-    boostedScore: applyBoostToScore(v.baseScore, boosts),
+    boostedScore: applyBoostToScore(
+      v.baseScore,
+      boosts.filter((boost) => boost.venueId === v.id),
+    ),
   }))
   const boostedRank = rankOrganicByScore(boostedScores, (v) => v.boostedScore).map((v) => v.id)
   return organicRank.join('|') !== boostedRank.join('|')
