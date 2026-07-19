@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   normalizeShortlistVenueIds,
   parseShortlistVenueIds,
+  parseShortlistVotes,
+  applyShortlistVote,
+  leadingShortlistVenueId,
   buildShortlistPath,
   resolveShortlistVenues,
   buildShortlistShareText,
@@ -50,5 +53,28 @@ describe('shortlist', () => {
     expect(resolved.venues.map((v) => v.id)).toEqual(['x', 'z'])
     expect(resolved.missingIds).toEqual(['missing'])
     expect(buildShortlistShareText(resolved.venues)).toContain('X')
+  })
+
+  it('parses vote tallies scoped to shortlist venues', () => {
+    expect(parseShortlistVotes('v=a,b&go=a:2,b:1')).toEqual({ a: 2, b: 1 })
+    expect(parseShortlistVotes('go=a:2,intruder:5', ['a', 'b'])).toEqual({ a: 2 })
+    expect(parseShortlistVotes('go=a:zero,b:-3,c:')).toEqual({})
+  })
+
+  it('applies votes immutably and finds the leader', () => {
+    const votes = applyShortlistVote({}, 'a', 1)
+    expect(votes).toEqual({ a: 1 })
+    const more = applyShortlistVote(applyShortlistVote(votes, 'b', 1), 'b', 1)
+    expect(more).toEqual({ a: 1, b: 2 })
+    expect(leadingShortlistVenueId(more)).toBe('b')
+    expect(applyShortlistVote(votes, 'a', -1)).toEqual({})
+    expect(leadingShortlistVenueId({})).toBeNull()
+  })
+
+  it('encodes votes into the share path and text', () => {
+    expect(buildShortlistPath(['x', 'y'], { x: 2 })).toBe('/shortlist?v=x,y&go=x:2')
+    expect(buildShortlistPath(['x'], {})).toBe('/shortlist?v=x')
+    const text = buildShortlistShareText([venue('x', 'X', 80)], { x: 3 })
+    expect(text).toContain('3 say go')
   })
 })

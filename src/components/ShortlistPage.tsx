@@ -1,16 +1,21 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, ShareNetwork } from '@phosphor-icons/react'
+import { ArrowLeft, CheckCircle, MapPin, ShareNetwork, ThumbsUp } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { PulseScore } from '@/components/PulseScore'
 import { Button } from '@/components/ui/button'
 import { useAppState } from '@/hooks/use-app-state'
 import {
+  applyShortlistVote,
   buildShortlistClipboardText,
+  buildShortlistPath,
   buildShortlistShareText,
   buildShortlistShareUrl,
+  leadingShortlistVenueId,
   parseShortlistVenueIds,
+  parseShortlistVotes,
   resolveShortlistVenues,
+  type ShortlistVotes,
 } from '@/lib/shortlist'
 import { formatDistance } from '@/lib/units'
 import { getEnergyLabel } from '@/lib/pulse-engine'
@@ -35,7 +40,7 @@ function milesBetween(
 
 export function ShortlistPage() {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const { venues, userLocation, unitSystem } = useAppState()
 
   const venueIds = useMemo(() => parseShortlistVenueIds(params), [params])
@@ -43,6 +48,33 @@ export function ShortlistPage() {
     () => resolveShortlistVenues(venueIds, venues || []),
     [venueIds, venues],
   )
+  const votes = useMemo(
+    () => parseShortlistVotes(params, venueIds),
+    [params, venueIds],
+  )
+  const [myVotes, setMyVotes] = useState<Set<string>>(() => new Set())
+  const leadingId = leadingShortlistVenueId(votes)
+  const leadingVenue = leadingId
+    ? shortlist.find((v) => v.id === leadingId)
+    : undefined
+
+  const toggleVote = (venueId: string) => {
+    const hasVoted = myVotes.has(venueId)
+    const nextVotes: ShortlistVotes = applyShortlistVote(
+      votes,
+      venueId,
+      hasVoted ? -1 : 1,
+    )
+    setMyVotes((prev) => {
+      const next = new Set(prev)
+      if (hasVoted) next.delete(venueId)
+      else next.add(venueId)
+      return next
+    })
+    const path = buildShortlistPath(venueIds, nextVotes)
+    const query = path.split('?')[1] ?? ''
+    setParams(new URLSearchParams(query), { replace: true })
+  }
 
   useEffect(() => {
     setDocumentMeta(shortlistDocumentMeta(shortlist.map((v) => v.name)))
@@ -51,8 +83,8 @@ export function ShortlistPage() {
 
   const share = async () => {
     if (shortlist.length === 0) return
-    const url = buildShortlistShareUrl(shortlist.map((v) => v.id))
-    const text = buildShortlistShareText(shortlist)
+    const url = buildShortlistShareUrl(shortlist.map((v) => v.id), undefined, votes)
+    const text = buildShortlistShareText(shortlist, votes)
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({ title: "Tonight's shortlist", text, url })
@@ -79,7 +111,7 @@ export function ShortlistPage() {
           </button>
           <h1 className="text-2xl font-bold tracking-tight">Group shortlist</h1>
           <p className="text-sm text-muted-foreground">
-            Live energy for a shared night-out shortlist.
+            Tap “I’d go” to vote, then share the link back — votes travel with it.
           </p>
         </div>
         {shortlist.length > 0 && (
@@ -114,6 +146,19 @@ export function ShortlistPage() {
         </div>
       )}
 
+      {leadingVenue && (
+        <div
+          className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm"
+          data-testid="shortlist-leader"
+        >
+          <CheckCircle size={18} weight="fill" className="shrink-0 text-emerald-400" />
+          <p>
+            <span className="font-bold">{leadingVenue.name}</span> is winning —{' '}
+            {votes[leadingVenue.id]} say go
+          </p>
+        </div>
+      )}
+
       <ul className="space-y-3">
         {shortlist.map((venue) => {
           const distance =
@@ -125,26 +170,47 @@ export function ShortlistPage() {
                   venue.location.lng,
                 )
               : undefined
+          const voteCount = votes[venue.id] ?? 0
+          const iVoted = myVotes.has(venue.id)
           return (
             <li key={venue.id}>
-              <button
-                type="button"
-                onClick={() => navigate(`/venue/${encodeURIComponent(venue.id)}`)}
-                className="flex w-full items-center gap-4 rounded-2xl border border-border/60 bg-card/60 p-4 text-left transition-colors hover:bg-card"
-              >
-                <PulseScore score={venue.pulseScore} size="md" showLabel={false} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold">{venue.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {getEnergyLabel(venue.pulseScore)}
-                    {venue.category ? ` · ${venue.category}` : ''}
-                    {distance !== undefined
-                      ? ` · ${formatDistance(distance, unitSystem ?? 'imperial')}`
-                      : ''}
-                  </p>
-                </div>
-                <MapPin size={16} className="shrink-0 text-muted-foreground" />
-              </button>
+              <div className="flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-card/60 p-4 transition-colors hover:bg-card">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/venue/${encodeURIComponent(venue.id)}`)}
+                  className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                  aria-label={`Open ${venue.name}`}
+                >
+                  <PulseScore score={venue.pulseScore} size="md" showLabel={false} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold">{venue.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getEnergyLabel(venue.pulseScore)}
+                      {venue.category ? ` · ${venue.category}` : ''}
+                      {distance !== undefined
+                        ? ` · ${formatDistance(distance, unitSystem ?? 'imperial')}`
+                        : ''}
+                      {voteCount > 0
+                        ? ` · ${voteCount} say go`
+                        : ''}
+                    </p>
+                  </div>
+                  <MapPin size={16} className="shrink-0 text-muted-foreground" />
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={iVoted ? 'default' : 'outline'}
+                  className="min-h-11 shrink-0 gap-1 touch-manipulation"
+                  aria-pressed={iVoted}
+                  aria-label={iVoted ? `Remove your vote for ${venue.name}` : `Vote to go to ${venue.name}`}
+                  data-testid="shortlist-vote"
+                  onClick={() => toggleVote(venue.id)}
+                >
+                  <ThumbsUp size={14} weight={iVoted ? 'fill' : 'regular'} />
+                  {iVoted ? 'Going' : "I'd go"}
+                </Button>
+              </div>
             </li>
           )
         })}

@@ -13,12 +13,24 @@ interface TonightRecommendationCardProps {
   pick: TonightPick
   pulses?: Pulse[]
   isSaved?: boolean
+  /** First visible card: load hero photo eagerly for LCP. */
+  priority?: boolean
   onGo: () => void
   onDirections: () => void
   onSave: () => void
   onShare?: () => void
   onReport?: () => void
   onExpand?: () => void
+}
+
+const SCOUT_STALE_MINUTES = 45
+
+function scoutPromptCopy(reportCount: number, freshnessMinutes: number | null): string | null {
+  if (reportCount === 0) return 'No live reviews yet — be the first scout tonight.'
+  if (freshnessMinutes !== null && freshnessMinutes > SCOUT_STALE_MINUTES) {
+    return `Last review ${freshnessMinutes}m ago — still like this? A 3-tap check-in helps.`
+  }
+  return null
 }
 
 const WORTH_LABELS = {
@@ -32,6 +44,7 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
   pick,
   pulses = [],
   isSaved = false,
+  priority = false,
   onGo,
   onDirections,
   onSave,
@@ -46,6 +59,9 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
   const worth = WORTH_LABELS[pick.explanation.worthGoing]
   const photo = getLatestVenuePulsePhoto(venue.id, pulses)
   const proof = buildLiveReviewProof(venue, pulses)
+  const scoutPrompt = onReport
+    ? scoutPromptCopy(proof.reportCount, proof.freshnessMinutes)
+    : null
 
   return (
     <motion.div
@@ -70,7 +86,8 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
               src={photo}
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : 'auto'}
               decoding="async"
             />
           ) : (
@@ -121,6 +138,18 @@ export const TonightRecommendationCard = memo(function TonightRecommendationCard
               {proof.proofChip}
             </Badge>
           </div>
+
+          {scoutPrompt && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-left text-xs font-medium text-accent touch-manipulation min-h-9"
+              data-testid="scout-prompt"
+              onClick={onReport}
+            >
+              <Lightning size={14} weight="fill" className="shrink-0" />
+              {scoutPrompt}
+            </button>
+          )}
 
           {pick.explanation.frictionNotes.length > 0 && (
             <button

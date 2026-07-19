@@ -122,6 +122,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               currentUser={currentUser}
               userLocation={userLocation}
               promotions={promotions}
+              stories={stories || []}
               isFavorite={isFavorite}
               onVenueClick={navigateToVenue}
               onToggleFavorite={handleToggleFavorite}
@@ -129,6 +130,7 @@ export function MainTabRouter({ tab }: MainTabRouterProps) {
               onQuickEnergyReport={(venue, energy) => {
                 void handleQuickEnergyReport(venue, energy)
               }}
+              onStoryClick={(storyList) => { setStoryViewerStories(storyList); setStoryViewerOpen(true) }}
             />
           </motion.div>
         )}

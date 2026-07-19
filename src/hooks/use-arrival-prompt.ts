@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import type { Venue } from '@/lib/types'
 import {
   clearPendingArrival,
@@ -29,6 +30,9 @@ export function useArrivalPrompt(venues: Venue[]) {
     trackArrivalConfirmed(pending.venueId)
     clearPendingArrival(pending.venueId)
     setPending(null)
+    toast.success('Tip confirmed', {
+      description: `${pending.venueName} stays accurate for the next crowd. Thanks.`,
+    })
   }, [pending])
 
   const reportMismatch = useCallback(() => {
@@ -36,6 +40,9 @@ export function useArrivalPrompt(venues: Venue[]) {
     trackMismatchReported(pending.venueId, pending.displayedEnergy)
     clearPendingArrival(pending.venueId)
     setPending(null)
+    toast.success("You fixed tonight's tip", {
+      description: `${pending.venueName} now shows honest energy because you spoke up.`,
+    })
   }, [pending])
 
   const dismiss = useCallback(() => {

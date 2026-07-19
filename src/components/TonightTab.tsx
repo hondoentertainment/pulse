@@ -6,6 +6,8 @@ import { ENERGY_CONFIG } from '@/lib/types'
 import { getTonightPicks, type VibeFilter } from '@/lib/tonight-feed'
 import { getActivePromotions, type PromotedVenue } from '@/lib/promoted-discoveries'
 import { mergeTonightPicksWithSponsorship } from '@/lib/sponsorship-integrity'
+import { getActiveStories, type PulseStory } from '@/lib/stories'
+import { StoryRing } from '@/components/StoryRing'
 import { TonightRecommendationCard } from '@/components/TonightRecommendationCard'
 import { EnergyReportSheet } from '@/components/EnergyReportSheet'
 import { Button } from '@/components/ui/button'
@@ -39,11 +41,13 @@ interface TonightTabProps {
   currentUser: User
   userLocation: { lat: number; lng: number } | null
   promotions?: PromotedVenue[]
+  stories?: PulseStory[]
   isFavorite: (venueId: string) => boolean
   onVenueClick: (venue: Venue) => void
   onToggleFavorite: (venueId: string) => void
   onExplore?: () => void
   onQuickEnergyReport?: (venue: Venue, energy: EnergyRating) => void
+  onStoryClick?: (stories: PulseStory[], index: number) => void
 }
 
 export function TonightTab({
@@ -52,11 +56,13 @@ export function TonightTab({
   currentUser,
   userLocation,
   promotions = [],
+  stories = [],
   isFavorite,
   onVenueClick,
   onToggleFavorite,
   onExplore,
   onQuickEnergyReport,
+  onStoryClick,
 }: TonightTabProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const vibeFromUrl = searchParams.get('vibe')
@@ -149,6 +155,10 @@ export function TonightTab({
   }
 
   const header = tonightHeaderCopy()
+  const activeStories = useMemo(
+    () => getActiveStories(stories).filter((story) => story.photos.length > 0),
+    [stories],
+  )
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" data-testid="tonight-tab">
@@ -159,6 +169,19 @@ export function TonightTab({
         <h1 className="text-2xl font-bold tracking-tight">{header.title}</h1>
         <p className="text-sm text-muted-foreground">{header.subtitle}</p>
       </header>
+
+      {onStoryClick && activeStories.length > 0 && (
+        <section aria-label="Tonight's photo stories" className="-mx-4" data-testid="tonight-story-ring">
+          <StoryRing
+            stories={activeStories}
+            currentUserId={currentUser.id}
+            onStoryClick={(userId) => {
+              const userStories = activeStories.filter((s) => s.userId === userId)
+              onStoryClick(userStories, 0)
+            }}
+          />
+        </section>
+      )}
 
       <div
         className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none"
@@ -206,11 +229,12 @@ export function TonightTab({
         </div>
       ) : (
         <div className="space-y-4">
-          {picks.map((pick) => (
+          {picks.map((pick, index) => (
             <TonightRecommendationCard
               key={pick.recommendation.venue.id}
               pick={pick}
               pulses={pulses}
+              priority={index === 0}
               isSaved={isFavorite(pick.recommendation.venue.id)}
               onGo={() => handleGo(pick.recommendation.venue)}
               onDirections={() => openDirections(pick.recommendation.venue)}
