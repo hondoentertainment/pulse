@@ -69,6 +69,15 @@ Requires `ANTHROPIC_API_KEY` and `VITE_AI_CONCIERGE_ENABLED=1`.
 |--------|------|------|-------------|
 | `POST` | `/api/concierge/chat` | JWT | Streaming Claude chat with venue tools |
 
+## Vibe Vision
+
+Requires `ANTHROPIC_API_KEY`. Client UI gated by `VITE_VIBE_VISION_ENABLED=1`. See [Vibe Vision](vibe-vision.md).
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/photos/upload-url` | JWT | Signed upload URL for pulse/venue photos (`pulse-videos`) |
+| `POST` | `/api/vibe/assess` | JWT | Assess venue energy from `imageUrl`, `storageKey`, or base64 |
+
 ## Ticketing & Reservations
 
 Requires Stripe env vars. Gated by `VITE_TICKETING_ENABLED`.

@@ -28,6 +28,13 @@ export interface AnthropicTextBlock {
   cache_control?: { type: 'ephemeral'; ttl?: '5m' | '1h' }
 }
 
+export interface AnthropicImageBlock {
+  type: 'image'
+  source:
+    | { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'; data: string }
+    | { type: 'url'; url: string }
+}
+
 export interface AnthropicToolUseBlock {
   type: 'tool_use'
   id: string
@@ -44,6 +51,7 @@ export interface AnthropicToolResultBlock {
 
 export type AnthropicContentBlock =
   | AnthropicTextBlock
+  | AnthropicImageBlock
   | AnthropicToolUseBlock
   | AnthropicToolResultBlock
 

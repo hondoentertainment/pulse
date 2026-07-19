@@ -48,6 +48,8 @@ bookable itinerary of 2-4 stops: dinner → drinks → dancing → latenight
      deterministic engine; trust its output)
    - call \`estimate_rideshare\` for transit legs the user cares about
    - call \`check_surge\` before recommending a venue the user asked about
+   - call \`assess_venue_photo\` when the user shares a photo URL of a
+     venue/scene and wants a vibe read (energy rating + tags)
    - call \`check_moderation\` BEFORE echoing any user-provided free text
      publicly (e.g., if they ask you to draft a group text).
 3. When \`build_plan\` returns, summarize in 3-5 short bullets (venue,
@@ -236,6 +238,38 @@ export const CONCIERGE_TOOLS: AnthropicToolDef[] = [
         },
       },
       required: ['content'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'assess_venue_photo',
+    description:
+      'Assess the live vibe of a location from a photo URL or Pulse storage key using ' +
+      'vision. Returns Pulse energyRating (dead/chill/buzzing/electric), confidence, a ' +
+      'short summary, scene tags, optional crowdDensity/lighting, and a suggestedCaption. ' +
+      'Use when the user pastes or references a photo of a venue/crowd and asks what the ' +
+      'vibe is. Provide imageUrl OR storageKey. Shape: { energyRating, confidence, ' +
+      'summary, tags, crowdDensity?, lighting?, suggestedCaption? }',
+    input_schema: {
+      type: 'object',
+      properties: {
+        imageUrl: {
+          type: 'string',
+          description: 'HTTPS URL of the venue/scene photo to assess.',
+        },
+        storageKey: {
+          type: 'string',
+          description: 'Supabase storage object key under pulse-videos (e.g. userId/photos/…).',
+        },
+        venueName: {
+          type: 'string',
+          description: 'Optional venue name for context.',
+        },
+        venueCategory: {
+          type: 'string',
+          description: 'Optional coarse category (bar, club, lounge, etc.).',
+        },
+      },
       additionalProperties: false,
     },
   },

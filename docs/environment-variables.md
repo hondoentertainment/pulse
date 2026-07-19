@@ -44,6 +44,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_SAFETY_KIT_ENABLED` | `true` dev / `false` prod | Safety Kit UI |
 | `VITE_TICKETING_ENABLED` | `false` | Ticketing + scanner |
 | `VITE_AI_CONCIERGE_ENABLED` | `false` | AI Concierge chat |
+| `VITE_VIBE_VISION_ENABLED` | `false` | Photo → energy vibe assess UI |
 | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab |
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Video pulse feed |
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disable writes during outage |
@@ -84,6 +85,7 @@ Full detail: [Feature Flags](feature-flags.md).
 | `ANTHROPIC_API_KEY` | server | Claude API access |
 | `CONCIERGE_MODEL` | server | Model override (default in handler) |
 | `CONCIERGE_SESSION_CENTS_CAP` | server | Per-session cost cap |
+| `VIBE_VISION_MODEL` | server | Vision model for `/api/vibe/assess` (default Sonnet) |
 
 ---
 

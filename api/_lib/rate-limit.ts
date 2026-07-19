@@ -151,6 +151,10 @@ export const RATE_LIMITS = {
   pulse_reaction: { maxTokens: 120, refillRate: 120 / 3600, windowMs: 3_600_000 },
   // 20 trending-venue alerts per hour per user.
   trending_venue: { maxTokens: 20, refillRate: 20 / 3600, windowMs: 3_600_000 },
+  // Vision vibe assessments — Anthropic-backed; keep tight (20/hour).
+  vibe_assess: { maxTokens: 20, refillRate: 20 / 3600, windowMs: 3_600_000 },
+  // Photo signed-upload URLs (Create Pulse / vibe vision).
+  photo_upload_url: { maxTokens: 30, refillRate: 30 / 3600, windowMs: 3_600_000 },
   // Generic write default — used when an endpoint forgets to pick a bucket.
   default_write: { maxTokens: 30, refillRate: 0.5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>

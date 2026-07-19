@@ -43,6 +43,7 @@ Key files:
 | `estimate_rideshare` | Live     | `api/integrations/{uber,lyft}` handlers  |
 | `check_surge`        | Live     | `analyzeVenuePatterns` + `predictSurge`  |
 | `check_moderation`   | Live     | `checkContent` in `api/_lib/moderation`  |
+| `assess_venue_photo` | Live     | `assessVenueVibe` in `api/_lib/vibe-vision` |
 
 Dispatch lives in `api/_lib/concierge-tools.ts` — `executeToolCall(name,
 input, ctx)`. The chat handler wraps it in a `try` so any thrown error
@@ -82,6 +83,13 @@ Each tool is a single in-process call, with the following characteristics:
 - **`check_moderation`** — Pure in-process call to `checkContent` (no
   I/O). Sub-millisecond. Never returns an error — even malformed input
   gets a safe default result.
+- **`assess_venue_photo`** — Anthropic vision via `assessVenueVibe`
+  (`api/_lib/vibe-vision`). Accepts `imageUrl` or a `pulse-videos`
+  `storageKey` (resolved to a public URL). Returns
+  `{ energyRating, confidence, summary, tags, … }`. Failure modes:
+  missing `ANTHROPIC_API_KEY` (`not_configured`), bad input, or upstream
+  parse/API errors (`upstream_error`). Latency dominated by vision
+  tokens (typical p50 ≈ 1–3s).
 
 When a tool throws, the dispatcher returns
 `{ error: { code, message } }` as the tool-result content with

@@ -30,6 +30,26 @@ vi.mock('@phosphor-icons/react', () => ({
   VideoCamera: (p: any) => <span data-testid="icon-VideoCamera" {...p} />,
   CheckCircle: (p: any) => <span data-testid="icon-CheckCircle" {...p} />,
   Hash: (p: any) => <span data-testid="icon-Hash" {...p} />,
+  Camera: (p: any) => <span data-testid="icon-Camera" {...p} />,
+  Sparkle: (p: any) => <span data-testid="icon-Sparkle" {...p} />,
+}))
+
+vi.mock('@/lib/feature-flags', () => ({
+  isFeatureEnabled: () => false,
+}))
+
+vi.mock('@/lib/platform/platform', () => ({
+  Platform: {
+    camera: {
+      pick: vi.fn(async () => null),
+    },
+  },
+}))
+
+vi.mock('@/lib/vibe-photo-flow', () => ({
+  preparePulsePhoto: vi.fn(),
+  assessPreparedPhoto: vi.fn(),
+  photosForPulseSubmit: () => [],
 }))
 
 vi.mock('@github/spark/hooks', () => ({
@@ -82,14 +102,12 @@ vi.mock('@/lib/haptics', () => ({
 
 // ── Child mocks ────────────────────────────────────────────────
 vi.mock('@/components/EnergySlider', () => ({
-  EnergySlider: ({ value, onChange, onAddPhoto, onRemovePhoto }: any) => (
+  EnergySlider: ({ value, onChange }: any) => (
     <div data-testid="energy-slider">
       <p data-testid="current-energy">{value}</p>
       <button onClick={() => onChange('electric')}>Set Electric</button>
       <button onClick={() => onChange('buzzing')}>Set Buzzing</button>
       <button onClick={() => onChange('dead')}>Set Dead</button>
-      <button onClick={() => onAddPhoto(value)}>Add Photo</button>
-      <button onClick={() => onRemovePhoto(value)}>Remove Photo</button>
     </div>
   ),
 }))
@@ -167,16 +185,15 @@ describe('CreatePulseDialog', () => {
     expect(screen.getByTestId('current-energy').textContent).toBe('electric')
   })
 
-  it('adds a photo for the current energy level', () => {
+  it('shows Add photo control', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={makeVenue()} onSubmit={vi.fn()} />
     )
-    // Just assert that clicking add photo doesn't throw and component still mounted.
-    fireEvent.click(screen.getByText('Add Photo'))
+    expect(screen.getByRole('button', { name: /Add photo/i })).toBeInTheDocument()
     expect(screen.getByTestId('energy-slider')).toBeInTheDocument()
   })
 
-  it('submits with caption, energy, and photos', async () => {
+  it('submits with caption and energy', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const onClose = vi.fn()
     render(
@@ -191,7 +208,6 @@ describe('CreatePulseDialog', () => {
       target: { value: 'Great vibes' },
     })
     fireEvent.click(screen.getByText('Set Buzzing'))
-    fireEvent.click(screen.getByText('Add Photo'))
 
     fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
 
@@ -201,7 +217,7 @@ describe('CreatePulseDialog', () => {
     const payload = onSubmit.mock.calls[0][0]
     expect(payload.energyRating).toBe('buzzing')
     expect(payload.caption).toBe('Great vibes')
-    expect(payload.photos.length).toBe(1)
+    expect(payload.photos).toEqual([])
     expect(onClose).toHaveBeenCalled()
   })
 

@@ -11,8 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { EnergySlider } from './EnergySlider'
-import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext } from '@/lib/types'
-import { X, VideoCamera, CheckCircle, Hash } from '@phosphor-icons/react'
+import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext, ENERGY_CONFIG } from '@/lib/types'
+import { X, VideoCamera, CheckCircle, Hash, Camera, Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
@@ -21,6 +21,16 @@ import { moderateServer } from '@/lib/moderation-client'
 import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { Platform } from '@/lib/platform/platform'
+import { vibeTagsToHashtagNames } from '@/lib/vibe-assess-client'
+import {
+  assessPreparedPhoto,
+  photosForPulseSubmit,
+  preparePulsePhoto,
+  type PreparedPulsePhoto,
+  type VibeAssessment,
+} from '@/lib/vibe-photo-flow'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -44,12 +54,7 @@ export function CreatePulseDialog({
   const [energyRating, setEnergyRating] = useState<EnergyRating>('chill')
   const [caption, setCaption] = useState('')
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([])
-  const [energyPhotos, setEnergyPhotos] = useState<Record<EnergyRating, string | null>>({
-    dead: null,
-    chill: null,
-    buzzing: null,
-    electric: null
-  })
+  const [pulsePhoto, setPulsePhoto] = useState<PreparedPulsePhoto | null>(null)
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -61,6 +66,9 @@ export function CreatePulseDialog({
   const hasSubmittedFirstPulse = useRef<boolean>(false)
   const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
+  const [isWorkingPhoto, setIsWorkingPhoto] = useState(false)
+  const [vibeAssessment, setVibeAssessment] = useState<VibeAssessment | null>(null)
+  const vibeVisionEnabled = isFeatureEnabled('vibeVision')
 
   useEffect(() => {
     if (venue && allHashtags && allHashtags.length > 0) {
@@ -72,7 +80,7 @@ export function CreatePulseDialog({
         pulseScore: venue.pulseScore,
         energyRating
       }
-      
+
       const suggestions = suggestHashtags(context, allHashtags, 5)
       setSuggestedGroups(suggestions)
     }
@@ -93,10 +101,23 @@ export function CreatePulseDialog({
     })
   }
 
+  const applyVibeTagHashtags = (assessment: VibeAssessment) => {
+    const names = vibeTagsToHashtagNames(assessment.tags)
+    if (names.length === 0) return
+    setSelectedHashtags((prev) => {
+      const next = [...prev]
+      for (const name of names) {
+        if (next.length >= 5) break
+        if (!next.includes(name)) next.push(name)
+      }
+      return next
+    })
+  }
+
   const handleSubmit = async () => {
     if (!venue) return
 
-    const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
+    const photos = photosForPulseSubmit(pulsePhoto)
 
     const contentIssues = screenContent(caption)
     if (contentIssues.length > 0) {
@@ -106,7 +127,6 @@ export function CreatePulseDialog({
 
     setIsSubmitting(true)
 
-    // Authoritative server-side moderation check before persisting.
     if (caption && caption.trim().length > 0) {
       const verdict = await moderateServer(caption, 'pulse')
       if (!verdict.allowed) {
@@ -133,21 +153,18 @@ export function CreatePulseDialog({
       hasPhoto: photos.length > 0,
       hashtagCount: selectedHashtags.length,
       energyRating,
+      vibeAssessed: Boolean(vibeAssessment),
       isFirstPulse: !hasSubmittedFirstPulse.current,
     })
     hasSubmittedFirstPulse.current = true
 
     setIsSubmitting(false)
-    
+
     setEnergyRating('chill')
     setCaption('')
     setSelectedHashtags([])
-    setEnergyPhotos({
-      dead: null,
-      chill: null,
-      buzzing: null,
-      electric: null
-    })
+    setPulsePhoto(null)
+    setVibeAssessment(null)
     setVideo(null)
     setVideoDuration(0)
     setOriginalSize(0)
@@ -156,24 +173,77 @@ export function CreatePulseDialog({
     onClose()
   }
 
-  const handlePhotoUpload = (energy: EnergyRating) => {
-    const mockPhotos = [
-      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
-    ]
-    const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    setEnergyPhotos(prev => ({
-      ...prev,
-      [energy]: randomPhoto
-    }))
+  const clearPhoto = () => {
+    setPulsePhoto(null)
+    setVibeAssessment(null)
   }
 
-  const removePhoto = (energy: EnergyRating) => {
-    setEnergyPhotos(prev => ({
-      ...prev,
-      [energy]: null
-    }))
+  const handleAddPhoto = async (opts: { assess: boolean }) => {
+    if (!venue || isWorkingPhoto) return
+
+    const picked = await Platform.camera.pick({ source: 'prompt', quality: 70 })
+    if (!picked?.dataUrl) {
+      toast.error('No photo selected')
+      return
+    }
+
+    setIsWorkingPhoto(true)
+    toast.loading(opts.assess ? 'Uploading & reading vibe…' : 'Uploading photo…', {
+      id: 'pulse-photo',
+    })
+
+    const prepared = await preparePulsePhoto({
+      dataUrl: picked.dataUrl,
+      format: picked.format,
+      blob: picked.blob,
+    })
+    setPulsePhoto(prepared)
+
+    if (!opts.assess || !vibeVisionEnabled) {
+      setIsWorkingPhoto(false)
+      toast.success(prepared.storageKey ? 'Photo added' : 'Photo added (local preview)', {
+        id: 'pulse-photo',
+      })
+      return
+    }
+
+    const result = await assessPreparedPhoto({
+      photo: prepared,
+      dataUrl: picked.dataUrl,
+      venueName: venue.name,
+      venueCategory: venue.category,
+    })
+
+    setIsWorkingPhoto(false)
+
+    if (!result.ok) {
+      toast.error('Photo saved, but vibe assess failed', {
+        id: 'pulse-photo',
+        description: result.message,
+      })
+      return
+    }
+
+    const { assessment } = result
+    setVibeAssessment(assessment)
+    setEnergyRating(assessment.energyRating)
+    if (!caption.trim() && assessment.suggestedCaption) {
+      setCaption(assessment.suggestedCaption.slice(0, 140))
+    }
+    applyVibeTagHashtags(assessment)
+
+    track('vibe_assessed_from_photo', {
+      venueId: venue.id,
+      energyRating: assessment.energyRating,
+      confidence: assessment.confidence,
+      tagCount: assessment.tags.length,
+      uploaded: Boolean(prepared.storageKey),
+    })
+
+    toast.success(`Looks ${ENERGY_CONFIG[assessment.energyRating].label}`, {
+      id: 'pulse-photo',
+      description: assessment.summary,
+    })
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,10 +261,10 @@ export function CreatePulseDialog({
 
     const videoElement = document.createElement('video')
     videoElement.preload = 'metadata'
-    
+
     videoElement.onloadedmetadata = async () => {
       window.URL.revokeObjectURL(videoElement.src)
-      
+
       if (videoElement.duration > 30) {
         toast.error('Video too long', {
           description: 'Videos must be 30 seconds or less'
@@ -244,7 +314,7 @@ export function CreatePulseDialog({
           id: 'video-compression',
           description: 'Using original video instead'
         })
-        
+
         const videoUrl = URL.createObjectURL(file)
         setVideo(videoUrl)
         setCompressedSize(file.size)
@@ -289,13 +359,81 @@ export function CreatePulseDialog({
         <div className="space-y-6 py-4">
           <div>
             <label className="text-sm font-medium mb-3 block">What&apos;s the vibe right now?</label>
-            <EnergySlider 
-              value={energyRating} 
+            <EnergySlider
+              value={energyRating}
               onChange={setEnergyRating}
-              energyPhotos={energyPhotos}
-              onAddPhoto={handlePhotoUpload}
-              onRemovePhoto={removePhoto}
             />
+          </div>
+
+          <div className="space-y-3">
+            {pulsePhoto ? (
+              <div className="relative overflow-hidden rounded-xl bg-secondary aspect-[4/3]">
+                <img
+                  src={pulsePhoto.previewUrl}
+                  alt="Venue photo"
+                  className="h-full w-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  aria-label="Remove photo"
+                  className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black"
+                >
+                  <X size={16} weight="bold" />
+                </button>
+                {vibeAssessment && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 text-white">
+                    <p className="text-sm font-medium">
+                      {ENERGY_CONFIG[vibeAssessment.energyRating].emoji}{' '}
+                      {ENERGY_CONFIG[vibeAssessment.energyRating].label}
+                      <span className="ml-2 text-xs font-normal opacity-80">
+                        {Math.round(vibeAssessment.confidence * 100)}% match
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-xs opacity-90">{vibeAssessment.summary}</p>
+                    {vibeAssessment.tags.length > 0 && (
+                      <p className="mt-1 text-[11px] opacity-70">
+                        {vibeAssessment.tags.map((t) => `#${t}`).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isWorkingPhoto || isSubmitting}
+                  onClick={() => void handleAddPhoto({ assess: false })}
+                >
+                  <Camera size={20} weight="fill" className="mr-2" />
+                  {isWorkingPhoto ? 'Working…' : 'Add photo'}
+                </Button>
+                {vibeVisionEnabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={isWorkingPhoto || isSubmitting}
+                    onClick={() => void handleAddPhoto({ assess: true })}
+                  >
+                    {isWorkingPhoto ? (
+                      <>
+                        <Sparkle size={20} weight="fill" className="mr-2 animate-pulse" />
+                        Reading vibe…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkle size={20} weight="fill" className="mr-2" />
+                        Assess vibe from photo
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {video && (
@@ -407,7 +545,7 @@ export function CreatePulseDialog({
                     {group.hashtags.map((hashtag) => {
                       const isSelected = selectedHashtags.includes(hashtag.name)
                       const isSeeded = hashtag.seeded
-                      
+
                       return (
                         <motion.button
                           key={hashtag.id}
@@ -419,8 +557,8 @@ export function CreatePulseDialog({
                           <Badge
                             variant={isSelected ? "default" : "outline"}
                             className={`cursor-pointer transition-all ${
-                              isSelected 
-                                ? 'bg-primary text-primary-foreground border-primary' 
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary'
                                 : 'hover:border-primary/50'
                             } ${
                               isSeeded && !isSelected ? 'border-dashed' : ''
@@ -445,6 +583,21 @@ export function CreatePulseDialog({
             </div>
           )}
 
+          {vibeAssessment && selectedHashtags.length > 0 && suggestedGroups.length === 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedHashtags.map((name) => (
+                <Badge
+                  key={name}
+                  variant="default"
+                  className="cursor-pointer"
+                  onClick={() => toggleHashtag(name)}
+                >
+                  #{name}
+                </Badge>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -457,7 +610,7 @@ export function CreatePulseDialog({
             <Button
               className="flex-1 bg-primary hover:bg-primary/90"
               onClick={handleSubmit}
-              disabled={isSubmitting || isCompressing}
+              disabled={isSubmitting || isCompressing || isWorkingPhoto}
             >
               {isSubmitting ? 'Posting...' : 'Post live review'}
             </Button>

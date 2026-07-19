@@ -4,11 +4,12 @@
  * The chat handler (`api/concierge/chat.ts`) hands tool calls to
  * `executeToolCall` which routes each by name to the right engine:
  *
- *   search_venues     -> Supabase `venues` (RLS under the caller JWT)
- *   build_plan        -> generateNightPlan (pure engine in src/lib/night-planner)
- *   estimate_rideshare-> api/integrations/{uber,lyft} handlers via mock req/res
- *   check_surge       -> Supabase `pulses` + analyzeVenuePatterns/predictSurge
- *   check_moderation  -> checkContent from api/_lib/moderation
+ *   search_venues       -> Supabase `venues` (RLS under the caller JWT)
+ *   build_plan          -> generateNightPlan (pure engine in src/lib/night-planner)
+ *   estimate_rideshare  -> api/integrations/{uber,lyft} handlers via mock req/res
+ *   check_surge         -> Supabase `pulses` + analyzeVenuePatterns/predictSurge
+ *   check_moderation    -> checkContent from api/_lib/moderation
+ *   assess_venue_photo  -> Anthropic vision via api/_lib/vibe-vision
  *
  * Contracts:
  *   - Pure functions where possible; the side-effect boundary is the
@@ -24,8 +25,11 @@
  * result.
  */
 import type { ToolCallResult } from './anthropic'
+import { AnthropicError } from './anthropic'
 import { createUserClient } from './supabase-server'
 import { checkContent, type ContentKind, type ModerationResult } from './moderation'
+import { assessVenueVibe } from './vibe-vision'
+import { storageKeyToPublicUrl } from './storage-public-url'
 import uberHandler from '../integrations/uber'
 import lyftHandler from '../integrations/lyft'
 import type { RequestLike, ResponseLike } from './http'
@@ -64,6 +68,7 @@ export type ToolName =
   | 'estimate_rideshare'
   | 'check_surge'
   | 'check_moderation'
+  | 'assess_venue_photo'
 
 type LoggerLike = {
   child?: (bound: Record<string, unknown>) => LoggerLike
@@ -626,6 +631,61 @@ export function checkModerationTool(input: CheckModerationInput): ToolCallResult
 }
 
 /* -------------------------------------------------------------------------- */
+/* assess_venue_photo                                                         */
+/* -------------------------------------------------------------------------- */
+
+interface AssessVenuePhotoInput {
+  imageUrl?: string
+  storageKey?: string
+  venueName?: string
+  venueCategory?: string
+}
+
+export async function assessVenuePhotoTool(
+  input: AssessVenuePhotoInput,
+): Promise<ToolCallResult> {
+  const imageUrl = typeof input.imageUrl === 'string' ? input.imageUrl.trim() : ''
+  const storageKey = typeof input.storageKey === 'string' ? input.storageKey.trim() : ''
+  if (!imageUrl && !storageKey) {
+    return errJson('invalid_input', 'imageUrl or storageKey is required')
+  }
+  if (imageUrl && storageKey) {
+    return errJson('invalid_input', 'Provide either imageUrl or storageKey, not both')
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return errJson('not_configured', 'ANTHROPIC_API_KEY is not configured')
+  }
+
+  try {
+    let image: { type: 'url'; url: string }
+    if (storageKey) {
+      const url = storageKeyToPublicUrl(storageKey)
+      if (!url) return errJson('invalid_input', 'storageKey is invalid')
+      image = { type: 'url', url }
+    } else {
+      image = { type: 'url', url: imageUrl }
+    }
+
+    const assessment = await assessVenueVibe({
+      apiKey,
+      image,
+      venueName: typeof input.venueName === 'string' ? input.venueName.slice(0, 120) : undefined,
+      venueCategory:
+        typeof input.venueCategory === 'string' ? input.venueCategory.slice(0, 64) : undefined,
+    })
+    return okJson(assessment)
+  } catch (err) {
+    if (err instanceof AnthropicError) {
+      return errJson(err.status === 400 ? 'invalid_input' : 'upstream_error', err.message)
+    }
+    const message = err instanceof Error ? err.message : String(err)
+    return errJson('upstream_error', message)
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Dispatcher                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -635,6 +695,7 @@ const TOOL_NAMES: ReadonlySet<ToolName> = new Set<ToolName>([
   'estimate_rideshare',
   'check_surge',
   'check_moderation',
+  'assess_venue_photo',
 ])
 
 export function isKnownTool(name: string): name is ToolName {
@@ -664,6 +725,8 @@ export async function executeToolCall(
         return await checkSurgeTool(input as CheckSurgeInput, ctx)
       case 'check_moderation':
         return checkModerationTool(input as CheckModerationInput)
+      case 'assess_venue_photo':
+        return await assessVenuePhotoTool(input as AssessVenuePhotoInput)
       default:
         return errJson('unknown_tool', `No implementation for tool: ${name}`)
     }

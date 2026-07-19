@@ -6,9 +6,6 @@ import { triggerEnergyChangeHaptic } from '@/lib/haptics'
 interface EnergySliderProps {
   value: EnergyRating
   onChange: (value: EnergyRating) => void
-  energyPhotos: Record<EnergyRating, string | null>
-  onAddPhoto: (energy: EnergyRating) => void
-  onRemovePhoto: (energy: EnergyRating) => void
 }
 
 const energyLevels: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']

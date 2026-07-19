@@ -381,6 +381,32 @@ describe('executeToolCall — check_moderation', () => {
   })
 })
 
+describe('executeToolCall — assess_venue_photo', () => {
+  it('requires imageUrl or storageKey', async () => {
+    const result = await executeToolCall('assess_venue_photo', {}, baseCtx)
+    const payload = parse(result.content)
+    expect(result.isError).toBe(true)
+    expect(payload.error).toMatchObject({ code: 'invalid_input' })
+  })
+
+  it('returns not_configured when ANTHROPIC_API_KEY is missing', async () => {
+    const prev = process.env.ANTHROPIC_API_KEY
+    delete process.env.ANTHROPIC_API_KEY
+    try {
+      const result = await executeToolCall(
+        'assess_venue_photo',
+        { imageUrl: 'https://cdn.example.com/bar.jpg' },
+        baseCtx,
+      )
+      const payload = parse(result.content)
+      expect(result.isError).toBe(true)
+      expect(payload.error).toMatchObject({ code: 'not_configured' })
+    } finally {
+      if (prev !== undefined) process.env.ANTHROPIC_API_KEY = prev
+    }
+  })
+})
+
 describe('executeToolCall — unknown tool', () => {
   it('returns an unknown_tool error instead of throwing', async () => {
     const result = await executeToolCall('make_coffee', {}, baseCtx)

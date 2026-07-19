@@ -69,6 +69,15 @@ export interface EventRegistry {
     hashtagCount?: number
     energyRating?: string
     isFirstPulse?: boolean
+    /** True when the energy was pre-filled by AI photo vibe assessment. */
+    vibeAssessed?: boolean
+  }
+  vibe_assessed_from_photo: {
+    venueId: string
+    energyRating?: string
+    confidence?: number
+    tagCount?: number
+    uploaded?: boolean
   }
   pulse_viewed: {
     pulseId: string
@@ -378,6 +387,7 @@ export const REGISTERED_EVENTS: EventName[] = [
   'onboarding_started',
   'onboarding_completed',
   'pulse_created',
+  'vibe_assessed_from_photo',
   'pulse_viewed',
   'reaction_added',
   'venue_viewed',
