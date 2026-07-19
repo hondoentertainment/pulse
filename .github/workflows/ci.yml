@@ -202,6 +202,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -211,18 +214,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Require Supabase secrets on main
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && (secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '') }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && (env.SUPABASE_URL == '' || env.SUPABASE_ANON_KEY == '') }}
         run: |
           echo "::error::Supabase smoke secrets missing on main. Add SUPABASE_URL and SUPABASE_ANON_KEY repository secrets (Settings → Secrets → Actions). See docs/github-workflows.md."
           exit 1
       - name: Supabase data-path smoke
-        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        if: ${{ env.SUPABASE_URL != '' && env.SUPABASE_ANON_KEY != '' }}
         run: npm run smoke:supabase
       - name: Skip (Supabase secrets not configured)
-        if: ${{ github.event_name == 'pull_request' && (secrets.SUPABASE_URL == '' || secrets.SUPABASE_ANON_KEY == '') }}
+        if: ${{ github.event_name == 'pull_request' && (env.SUPABASE_URL == '' || env.SUPABASE_ANON_KEY == '') }}
         run: |
           echo "::warning::Skipping supabase-smoke on PR — add SUPABASE_URL and SUPABASE_ANON_KEY to repository secrets to gate the live data path."
 
