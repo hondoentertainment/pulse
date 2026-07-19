@@ -49,9 +49,9 @@ export function EnergyReportSheet({
     >
       <SheetContent side="bottom" className="rounded-t-2xl" data-testid="energy-report-sheet">
         <SheetHeader>
-          <SheetTitle>Leave a live review at {venueName}</SheetTitle>
+          <SheetTitle>What&apos;s it like at {venueName}?</SheetTitle>
           <SheetDescription>
-            A 90-minute review — pick the vibe, confirm, done. No photo required.
+            Your tip helps people decide for the next hour — then it fades. Three taps, no photo required.
           </SheetDescription>
         </SheetHeader>
 

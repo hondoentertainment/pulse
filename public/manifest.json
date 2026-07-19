@@ -1,7 +1,7 @@
 {
   "name": "Pulse",
   "short_name": "Pulse",
-  "description": "Know where to go right now — live nightlife energy, confidence, and Tonight picks for Seattle.",
+  "description": "Stop guessing where to go tonight. Live nightlife tips that fade in 90 minutes — Seattle first.",
   "start_url": "/",
   "scope": "/",
   "id": "/",
@@ -73,7 +73,7 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Pulse Tonight — live Seattle nightlife picks"
+      "label": "Pulse Tonight — what's live in Seattle right now"
     }
   ],
   "share_target": {

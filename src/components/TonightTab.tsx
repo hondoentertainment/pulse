@@ -8,9 +8,9 @@ import { getActivePromotions, type PromotedVenue } from '@/lib/promoted-discover
 import { mergeTonightPicksWithSponsorship } from '@/lib/sponsorship-integrity'
 import { TonightRecommendationCard } from '@/components/TonightRecommendationCard'
 import { EnergyReportSheet } from '@/components/EnergyReportSheet'
-import { DecisionConversionStrip } from '@/components/DecisionConversionStrip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { tonightHeaderCopy } from '@/lib/value-prop'
 import {
   startDecisionSession,
   trackDirectionsStarted,
@@ -148,17 +148,17 @@ export function TonightTab({
     trackVenueShared(venue.id, 'clipboard')
   }
 
+  const header = tonightHeaderCopy()
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" data-testid="tonight-tab">
       <header className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Right now</p>
-        <h1 className="text-2xl font-bold tracking-tight">What&apos;s hot tonight</h1>
-        <p className="text-sm text-muted-foreground">
-          Live reviews fade in 90 minutes — pick a vibe, go, or leave a tip in three taps.
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#f59e0b]">
+          {header.eyebrow}
         </p>
+        <h1 className="text-2xl font-bold tracking-tight">{header.title}</h1>
+        <p className="text-sm text-muted-foreground">{header.subtitle}</p>
       </header>
-
-      <DecisionConversionStrip compact />
 
       <div
         className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none"

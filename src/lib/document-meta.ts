@@ -64,9 +64,9 @@ export function setDocumentMeta(input: DocumentMetaInput): void {
 
 export function resetDocumentMeta(): void {
   setDocumentMeta({
-    title: 'Pulse — Know where to go right now',
+    title: 'Pulse — Stop guessing where to go tonight',
     description:
-      'Live Seattle nightlife energy, confidence, and Tonight picks—before you waste the night.',
+      "Pulse shows live nightlife tips that fade in 90 minutes. Pick a vibe, see what's actually packed, and go.",
     url: typeof window !== 'undefined' ? `${window.location.origin}/` : 'https://pulse.app/',
     image: DEFAULT_IMAGE,
   })
@@ -91,10 +91,10 @@ export function venueDocumentMeta(input: {
 }): DocumentMetaInput {
   const place = [input.category, input.city].filter(Boolean).join(' · ')
   const energy = input.energyLabel ? `${input.energyLabel} right now` : 'Live energy'
-  const confidence = input.confidence ? ` · ${input.confidence} confidence` : ''
+  const proof = input.confidence ? ` · ${input.confidence}` : ''
   return {
-    title: input.name,
-    description: `${place ? `${place}. ` : ''}${energy}${confidence}. Know where to go on Pulse.`,
+    title: `${input.name} — live on Pulse`,
+    description: `${place ? `${place}. ` : ''}${energy}${proof}. Tips fade in 90 minutes.`,
     url: absoluteUrl(`/venue/${encodeURIComponent(input.venueId)}`),
   }
 }

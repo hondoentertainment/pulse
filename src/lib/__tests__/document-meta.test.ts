@@ -26,8 +26,10 @@ describe('document-meta', () => {
       confidence: 'High',
       venueId: 'v1',
     })
-    expect(meta.title).toBe('Neon Room')
+    expect(meta.title).toContain('Neon Room')
+    expect(meta.title).toContain('Pulse')
     expect(meta.description).toContain('Buzzing')
+    expect(meta.description).toMatch(/90/)
     expect(meta.url).toContain('/venue/v1')
   })
 

@@ -74,10 +74,10 @@ export function DiscoverTab({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <header className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Explore</p>
-        <h2 className="text-2xl font-bold tracking-tight">See it. Decide. Go.</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#f59e0b]">Explore</p>
+        <h2 className="text-2xl font-bold tracking-tight">See it before you go</h2>
         <p className="text-sm text-muted-foreground">
-          Stories and right-now places first — live reviews fade in 90 minutes.
+          Stories and places that are live right now — tips fade in 90 minutes.
         </p>
       </header>
 
