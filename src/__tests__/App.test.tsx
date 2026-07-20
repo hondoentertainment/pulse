@@ -37,6 +37,10 @@ vi.mock('@/lib/analytics', () => ({
   trackError: vi.fn(),
 }))
 
+vi.mock('@github/spark/hooks', () => ({
+  useKV: (_key: string, defaultValue: unknown) => [defaultValue, vi.fn()],
+}))
+
 // This test exercises the signal login branch; the app now defaults to the
 // venue shell, so pin the mode explicitly.
 vi.mock('@/lib/app-mode', () => ({
