@@ -76,7 +76,9 @@ Requires `ANTHROPIC_API_KEY`. Client UI gated by `VITE_VIBE_VISION_ENABLED=1`. S
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/photos/upload-url` | JWT | Signed upload URL for pulse/venue photos (`pulse-videos`) |
-| `POST` | `/api/vibe/assess` | JWT | Assess venue energy from `imageUrl`, `storageKey`, or base64 |
+| `POST` | `/api/vibe/assess` | JWT | Assess venue energy from `imageUrl`, `storageKey`, or base64 (daily ¢ cap + safety) |
+| `GET` | `/api/admin/vibe-vision` | admin | 24h vibe-vision telemetry |
+| `POST` | `/api/admin/vibe-vision` | admin | Batch-assess photo URLs (scout QA) |
 
 ## Ticketing & Reservations
 

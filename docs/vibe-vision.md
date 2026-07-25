@@ -5,96 +5,69 @@ Agents (and the Create Pulse UI) can read a venue's live vibe from a single phot
 ## Architecture
 
 ```
-CreatePulseDialog / Concierge
+CreatePulseDialog / Concierge / Admin batch
         │
+        ├─ compressImageDataUrl (client)
         ├─ POST /api/photos/upload-url  →  PUT signed URL (pulse-videos)
         │
         ▼
- POST /api/vibe/assess  ──or──  tool: assess_venue_photo
-   (imageUrl | storageKey | imageBase64)
+ POST /api/vibe/assess
+   rate limit + daily ¢ cap + safety screen + telemetry
         │
         ▼
  api/_lib/vibe-vision.ts  →  Anthropic Messages (vision)
         │
         ▼
- { energyRating, confidence, summary, tags, … }
+ { energyRating, confidence, safe, tags, applyEnergy, … }
 ```
 
 | Area | Path |
 |------|------|
 | Edge API | `api/vibe/assess.ts` |
 | Photo upload | `api/photos/upload-url.ts` |
+| Admin / telemetry | `api/admin/vibe-vision.ts` |
 | Vision lib | `api/_lib/vibe-vision.ts` |
-| Storage URL | `api/_lib/storage-public-url.ts` |
-| Photo client | `src/lib/photo-client.ts` |
-| Assess client | `src/lib/vibe-assess-client.ts` |
+| Cost / events | `api/_lib/vibe-assess-cost.ts` |
+| Migration | `supabase/migrations/20260725000000_vibe_vision_storage_and_usage.sql` |
+| Image compress | `src/lib/image-compress.ts` |
 | Create-pulse flow | `src/lib/vibe-photo-flow.ts` |
-| Concierge tool | `assess_venue_photo` in `api/_lib/concierge-{prompts,tools}.ts` |
-| UI | `CreatePulseDialog` — Add photo / Assess vibe from photo |
+| Concierge attach | `ConciergeChatSheet` |
+| Admin card | `VibeVisionAdminCard` on `/admin/signal` |
 | Flag | `VITE_VIBE_VISION_ENABLED` |
+| Smoke | `npm run smoke:vibe-vision -- <base-url>` |
 
 ## Enablement
 
-1. Set server `ANTHROPIC_API_KEY`.
-2. Optional: `VIBE_VISION_MODEL` (default `claude-sonnet-4-6`).
-3. Client flag: `VITE_VIBE_VISION_ENABLED=1`.
-4. Supabase Storage bucket `pulse-videos` with owner-folder write RLS (same as video).
+1. Apply migration `20260725000000` (image MIME allowlist + `vibe_assess_*` tables).
+2. Set server `ANTHROPIC_API_KEY`.
+3. Optional: `VIBE_VISION_MODEL`, `VIBE_VISION_DAILY_CENTS_CAP` (default **50¢**/user/UTC day).
+4. Client: `VITE_VIBE_VISION_ENABLED=1`.
 
-Off by default for Seattle launch until the key and cost budget are ready.
+## Product behavior
 
-## Photo upload
+| Behavior | Detail |
+|----------|--------|
+| Upload | Camera/gallery → JPEG downscale (≤1280px) → signed upload under `{userId}/photos/` |
+| Confidence gate | Auto-apply energy only when `confidence ≥ 0.4` (`applyEnergy`) |
+| Override | **Keep my rating** / **Use AI rating** / **Re-scan vibe** |
+| Safety | Model returns `safe` + `blockedReason`; unsafe → **422** `content_blocked` |
+| Cost | Hourly token bucket (20) + daily cents cap → **402** `cap_reached` |
+| Concierge | Attach photo → message includes `storageKey` for `assess_venue_photo` |
+| Admin | 24h telemetry + batch URL assess for scout QA |
 
-`POST /api/photos/upload-url` (JWT, 30/hour/user)
+## Staging smoke
 
-```json
-{ "filename": "scene.jpg", "mime": "image/jpeg", "bytes": 240000 }
+```bash
+npm run smoke:vibe-vision -- https://your-preview.vercel.app
+VIBE_SMOKE_TOKEN=<jwt> npm run smoke:vibe-vision -- https://your-preview.vercel.app
 ```
 
-Returns `{ bucket, path, signedUrl, publicUrl, mime, maxBytes, expiresAt }`.
-Client PUTs the blob to `signedUrl`, then stores `path` on the pulse (`photos[]`).
+Then complete the manual checklist printed by the script (Create Pulse upload, assess, override, concierge attach, admin card).
 
-## Assess API
+## API sketch
 
-`POST /api/vibe/assess` (JWT, 20/hour/user) — exactly one of:
+`POST /api/vibe/assess` — JWT; body exactly one of `imageUrl` | `storageKey` | `imageBase64`.
 
-```json
-{ "storageKey": "userId/photos/…", "venueName": "Canon" }
-```
+Success includes `applyEnergy`, `confidenceThreshold`, `costCents`, and `spend`.
 
-```json
-{ "imageUrl": "https://…", "venueName": "Canon" }
-```
-
-```json
-{ "imageBase64": "data:image/jpeg;base64,…", "venueName": "Canon" }
-```
-
-Response `data`:
-
-```json
-{
-  "energyRating": "buzzing",
-  "confidence": 0.84,
-  "summary": "Standing-room crowd at the bar, lively but not packed.",
-  "tags": ["packed-bar", "craft-cocktails"],
-  "crowdDensity": "moderate",
-  "lighting": "dim",
-  "suggestedCaption": "Good mid-evening energy — bar is lively"
-}
-```
-
-## Concierge tool
-
-`assess_venue_photo` accepts `imageUrl` or `storageKey`. The Night Concierge summarizes the energy rating before recommending that stop.
-
-## Create Pulse UX
-
-1. **Add photo** — camera/gallery → signed upload → preview (works without vibeVision).
-2. **Assess vibe from photo** (flag on) — upload, then vision assess; prefills energy, caption, and hashtag chips from tags.
-3. Submit sends `photos: [storageKey]` when upload succeeded.
-
-## Product notes
-
-- Assessment **suggests** energy; the user still posts the pulse with their chosen rating.
-- Vision output does **not** write directly to venue `pulse_score` (scores stay pulse-derived).
-- Oversized local data URLs are not persisted on the pulse (API item length cap 2048) — upload is required for durable photos.
+`GET/POST /api/admin/vibe-vision` — admin telemetry + batch assess.

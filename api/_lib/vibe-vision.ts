@@ -10,15 +10,20 @@
 
 import {
   callClaude,
+  estimateCostCents,
   AnthropicError,
   type AnthropicContentBlock,
   type AnthropicImageBlock,
+  type AnthropicUsage,
 } from './anthropic'
 import type { EnergyRating } from '../../src/lib/types'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 const MAX_BASE64_CHARS = 5_500_000 // ~4 MB binary after decode
 const ENERGY_VALUES = ['dead', 'chill', 'buzzing', 'electric'] as const
+
+/** Auto-apply energy rating only at or above this confidence. */
+export const VIBE_CONFIDENCE_APPLY_THRESHOLD = 0.4
 
 export type VibeImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 
@@ -28,6 +33,7 @@ export type VibeImageSource =
 
 export type CrowdDensity = 'empty' | 'sparse' | 'moderate' | 'packed'
 export type SceneLighting = 'bright' | 'dim' | 'dark' | 'colorful'
+export type VibeBlockReason = 'nsfw' | 'violence' | 'hate' | 'illegal' | 'not_a_photo'
 
 export interface VibeAssessResult {
   energyRating: EnergyRating
@@ -37,6 +43,9 @@ export interface VibeAssessResult {
   crowdDensity?: CrowdDensity
   lighting?: SceneLighting
   suggestedCaption?: string
+  /** False when the image should not be used for vibe / publishing. */
+  safe: boolean
+  blockedReason?: VibeBlockReason | null
 }
 
 export interface AssessVenueVibeParams {
@@ -48,6 +57,13 @@ export interface AssessVenueVibeParams {
   fetchImpl?: typeof fetch
 }
 
+export interface AssessVenueVibeOutcome {
+  result: VibeAssessResult
+  usage: AnthropicUsage
+  costCents: number
+  model: string
+}
+
 const SYSTEM_PROMPT = `You assess nightlife venue vibes from a single photo for Pulse,
 a live social app. Map the scene to exactly one energy rating:
 
@@ -55,6 +71,10 @@ a live social app. Map the scene to exactly one energy rating:
 - chill: relaxed, seated, conversation, soft music
 - buzzing: lively crowd, lines forming, people standing/mingling
 - electric: packed dance floor, peak energy, high intensity
+
+Also screen for unsafe content. Set "safe" to false and set blockedReason when
+the image shows pornography/sexual content, graphic violence, hate symbols,
+or clear illegal activity. Ordinary bar/club crowds (including alcohol) are safe.
 
 Respond with ONLY a JSON object (no markdown fences) matching:
 {
@@ -64,13 +84,17 @@ Respond with ONLY a JSON object (no markdown fences) matching:
   "tags": ["up to 5 short lowercase kebab-case tags"],
   "crowdDensity": "empty" | "sparse" | "moderate" | "packed",
   "lighting": "bright" | "dim" | "dark" | "colorful",
-  "suggestedCaption": "optional tip under 100 chars for other guests"
+  "suggestedCaption": "optional tip under 100 chars for other guests",
+  "safe": true | false,
+  "blockedReason": null | "nsfw" | "violence" | "hate" | "illegal" | "not_a_photo"
 }
 
 Rules:
 - Judge the room energy visible in the photo, not brand marketing.
 - If the image is not a venue/nightlife scene, still pick the closest
   energyRating with low confidence and say so in summary.
+- If unsafe, still return JSON with safe=false, a low confidence, and a
+  short non-graphic summary (do not describe the prohibited content).
 - Never invent specific venue names or claim you know the location
   unless venue context was provided.
 - Keep tags concrete (e.g. "packed-dancefloor", "craft-cocktails",
@@ -95,6 +119,19 @@ function asLighting(v: unknown): SceneLighting | undefined {
   return undefined
 }
 
+function asBlockReason(v: unknown): VibeBlockReason | null {
+  if (
+    v === 'nsfw' ||
+    v === 'violence' ||
+    v === 'hate' ||
+    v === 'illegal' ||
+    v === 'not_a_photo'
+  ) {
+    return v
+  }
+  return null
+}
+
 /** Strip `data:image/...;base64,` prefix if present. */
 export function normalizeBase64Payload(raw: string): {
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
@@ -110,7 +147,6 @@ export function normalizeBase64Payload(raw: string): {
       | 'image/webp'
     return { mediaType, data: dataUrlMatch[2].replace(/\s+/g, '') }
   }
-  // Bare base64 — assume jpeg.
   if (/^[A-Za-z0-9+/=\s]+$/.test(trimmed) && trimmed.replace(/\s+/g, '').length > 32) {
     return { mediaType: 'image/jpeg', data: trimmed.replace(/\s+/g, '') }
   }
@@ -128,7 +164,6 @@ export function parseVibeAssessJson(text: string): VibeAssessResult | null {
   try {
     parsed = JSON.parse(cleaned)
   } catch {
-    // Model sometimes wraps JSON in prose — try first {...} slice.
     const start = cleaned.indexOf('{')
     const end = cleaned.lastIndexOf('}')
     if (start === -1 || end <= start) return null
@@ -160,6 +195,9 @@ export function parseVibeAssessJson(text: string): VibeAssessResult | null {
       ? obj.suggestedCaption.trim().slice(0, 100)
       : undefined
 
+  const safe = obj.safe === false ? false : true
+  const blockedReason = safe ? null : asBlockReason(obj.blockedReason) ?? 'nsfw'
+
   return {
     energyRating: obj.energyRating,
     confidence: clamp01(typeof obj.confidence === 'number' ? obj.confidence : 0.5),
@@ -168,6 +206,8 @@ export function parseVibeAssessJson(text: string): VibeAssessResult | null {
     crowdDensity: asCrowd(obj.crowdDensity),
     lighting: asLighting(obj.lighting),
     suggestedCaption,
+    safe,
+    blockedReason,
   }
 }
 
@@ -207,19 +247,17 @@ function validateImage(image: VibeImageSource): string | null {
 }
 
 /**
- * Call Claude vision and return a structured vibe assessment.
- * Throws AnthropicError / Error on transport failures; returns a
- * low-confidence fallback only when the model text cannot be parsed
- * (caller should treat that as soft failure via `parseFailed`).
+ * Call Claude vision and return a structured vibe assessment plus usage/cost.
  */
 export async function assessVenueVibe(
   params: AssessVenueVibeParams,
-): Promise<VibeAssessResult> {
+): Promise<AssessVenueVibeOutcome> {
   const invalid = validateImage(params.image)
   if (invalid) {
     throw new AnthropicError(invalid, 400)
   }
 
+  const model = params.model || process.env.VIBE_VISION_MODEL || DEFAULT_MODEL
   const contextBits: string[] = []
   if (params.venueName) contextBits.push(`Venue name: ${params.venueName}`)
   if (params.venueCategory) contextBits.push(`Category: ${params.venueCategory}`)
@@ -236,7 +274,7 @@ export async function assessVenueVibe(
 
   const result = await callClaude({
     apiKey: params.apiKey,
-    model: params.model || process.env.VIBE_VISION_MODEL || DEFAULT_MODEL,
+    model,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userBlocks }],
     maxTokens: 512,
@@ -248,5 +286,11 @@ export async function assessVenueVibe(
   if (!parsed) {
     throw new AnthropicError('Model returned unparseable vibe assessment', 502)
   }
-  return parsed
+
+  return {
+    result: parsed,
+    usage: result.totalUsage,
+    costCents: estimateCostCents(result.totalUsage, model),
+    model,
+  }
 }

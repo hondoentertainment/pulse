@@ -668,14 +668,24 @@ export async function assessVenuePhotoTool(
       image = { type: 'url', url: imageUrl }
     }
 
-    const assessment = await assessVenueVibe({
+    const outcome = await assessVenueVibe({
       apiKey,
       image,
       venueName: typeof input.venueName === 'string' ? input.venueName.slice(0, 120) : undefined,
       venueCategory:
         typeof input.venueCategory === 'string' ? input.venueCategory.slice(0, 64) : undefined,
     })
-    return okJson(assessment)
+    if (!outcome.result.safe) {
+      return errJson('content_blocked', 'Photo failed safety screening', {
+        blockedReason: outcome.result.blockedReason,
+        summary: outcome.result.summary,
+      })
+    }
+    return okJson({
+      ...outcome.result,
+      costCents: outcome.costCents,
+      model: outcome.model,
+    })
   } catch (err) {
     if (err instanceof AnthropicError) {
       return errJson(err.status === 400 ? 'invalid_input' : 'upstream_error', err.message)

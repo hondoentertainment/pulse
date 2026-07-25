@@ -87,9 +87,12 @@ Each tool is a single in-process call, with the following characteristics:
   (`api/_lib/vibe-vision`). Accepts `imageUrl` or a `pulse-videos`
   `storageKey` (resolved to a public URL). Returns
   `{ energyRating, confidence, summary, tags, … }`. Failure modes:
-  missing `ANTHROPIC_API_KEY` (`not_configured`), bad input, or upstream
-  parse/API errors (`upstream_error`). Latency dominated by vision
-  tokens (typical p50 ≈ 1–3s).
+  missing `ANTHROPIC_API_KEY` (`not_configured`), bad input, content
+  blocked (`content_blocked`), or upstream parse/API errors
+  (`upstream_error`). The chat sheet can attach a photo; the client
+  uploads then injects `storageKey` into the user message so the model
+  can call this tool. Latency dominated by vision tokens (typical p50 ≈
+  1–3s).
 
 When a tool throws, the dispatcher returns
 `{ error: { code, message } }` as the tool-result content with

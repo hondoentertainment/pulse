@@ -25,7 +25,7 @@ export async function preparePulsePhoto(args: {
 
   if (uploaded.ok) {
     return {
-      previewUrl: args.dataUrl,
+      previewUrl: uploaded.data.previewDataUrl ?? args.dataUrl,
       storageKey: uploaded.data.storageKey,
       publicUrl: uploaded.data.publicUrl,
     }
@@ -44,31 +44,35 @@ export async function assessPreparedPhoto(args: {
   dataUrl: string
   venueName?: string
   venueCategory?: string
+  venueId?: string
+  source?: string
 }): Promise<VibeAssessClientResult> {
-  const { photo, dataUrl, venueName, venueCategory } = args
+  const { photo, dataUrl, venueName, venueCategory, venueId, source } = args
+  const meta = { venueName, venueCategory, venueId, source: source ?? 'create_pulse' }
 
   if (photo.storageKey) {
     const byKey = await assessVibeFromPhoto({
       storageKey: photo.storageKey,
-      venueName,
-      venueCategory,
+      ...meta,
     })
-    if (byKey.ok) return byKey
+    if (byKey.ok || byKey.code === 'content_blocked' || byKey.code === 'cap_reached') {
+      return byKey
+    }
   }
 
   if (photo.publicUrl?.startsWith('http')) {
     const byUrl = await assessVibeFromPhoto({
       imageUrl: photo.publicUrl,
-      venueName,
-      venueCategory,
+      ...meta,
     })
-    if (byUrl.ok) return byUrl
+    if (byUrl.ok || byUrl.code === 'content_blocked' || byUrl.code === 'cap_reached') {
+      return byUrl
+    }
   }
 
   return assessVibeFromPhoto({
-    imageBase64: dataUrl,
-    venueName,
-    venueCategory,
+    imageBase64: photo.previewUrl.startsWith('data:') ? photo.previewUrl : dataUrl,
+    ...meta,
   })
 }
 

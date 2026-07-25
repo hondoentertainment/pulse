@@ -78,6 +78,25 @@ export interface EventRegistry {
     confidence?: number
     tagCount?: number
     uploaded?: boolean
+    applied?: boolean
+    lowConfidence?: boolean
+  }
+  vibe_assess_blocked: {
+    venueId: string
+    reason: string
+  }
+  vibe_assess_cap_hit: {
+    venueId?: string
+    surface: 'create_pulse' | 'concierge' | 'admin_batch'
+  }
+  vibe_assess_overridden: {
+    venueId: string
+    aiEnergy?: string
+    keptEnergy?: string
+  }
+  concierge_photo_attached: {
+    sessionId: string
+    uploaded?: boolean
   }
   pulse_viewed: {
     pulseId: string

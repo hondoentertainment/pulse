@@ -17,7 +17,8 @@ Recommended Production values for the Pulse Vercel project. Staging should mirro
 |----------|------------|-------|
 | `VITE_TICKETING_ENABLED` | `false` | Until Stripe + QR HMAC creds verified |
 | `VITE_AI_CONCIERGE_ENABLED` | `false` | Until AI provider creds configured |
-| `VITE_VIBE_VISION_ENABLED` | `false` | Until `ANTHROPIC_API_KEY` + photo Storage RLS verified |
+| `VITE_VIBE_VISION_ENABLED` | `false` | Until `ANTHROPIC_API_KEY` + migration `20260725000000` verified |
+| `VIBE_VISION_DAILY_CENTS_CAP` | `50` | Per-user daily vision spend (cents); raise only with monitoring |
 | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Post-launch |
 | `VITE_SAFETY_KIT_ENABLED` | `false` | Until Twilio creds configured |
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Q3 roadmap |

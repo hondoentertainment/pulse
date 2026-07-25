@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PaperPlaneTilt, Sparkle, Wrench } from '@phosphor-icons/react'
+import { Camera, PaperPlaneTilt, Sparkle, Wrench, X } from '@phosphor-icons/react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,6 +10,10 @@ import {
   type ConciergeFinalPayload,
 } from '@/lib/concierge-client'
 import { PlanPreviewCard, type ProposedPlan } from './PlanPreviewCard'
+import { Platform } from '@/lib/platform/platform'
+import { preparePulsePhoto, type PreparedPulsePhoto } from '@/lib/vibe-photo-flow'
+import { track } from '@/lib/observability/analytics'
+import { toast } from 'sonner'
 
 interface ConciergeChatSheetProps {
   open: boolean
@@ -22,7 +26,7 @@ interface ConciergeChatSheetProps {
 }
 
 type UiMessage =
-  | { id: string; role: 'user'; text: string }
+  | { id: string; role: 'user'; text: string; photoPreview?: string }
   | { id: string; role: 'assistant'; text: string; toolCalls: Array<{ name: string; input: unknown }> }
   | { id: string; role: 'system'; text: string }
 
@@ -64,6 +68,8 @@ export function ConciergeChatSheet({
   const [savingPlan, setSavingPlan] = useState(false)
   const [plan, setPlan] = useState<ProposedPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingPhoto, setPendingPhoto] = useState<PreparedPulsePhoto | null>(null)
+  const [attachingPhoto, setAttachingPhoto] = useState(false)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
   const samplePrompts = useMemo(
@@ -80,15 +86,56 @@ export function ConciergeChatSheet({
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, plan])
 
+  const attachPhoto = useCallback(async () => {
+    if (attachingPhoto || sending) return
+    const picked = await Platform.camera.pick({ source: 'prompt', quality: 70 })
+    if (!picked?.dataUrl) return
+    setAttachingPhoto(true)
+    try {
+      const prepared = await preparePulsePhoto({
+        dataUrl: picked.dataUrl,
+        format: picked.format,
+        blob: picked.blob,
+      })
+      setPendingPhoto(prepared)
+      track('concierge_photo_attached', {
+        sessionId,
+        uploaded: Boolean(prepared.storageKey),
+      })
+      toast.success(prepared.storageKey ? 'Photo attached' : 'Photo attached (local)')
+    } catch {
+      toast.error('Could not attach photo')
+    } finally {
+      setAttachingPhoto(false)
+    }
+  }, [attachingPhoto, sending, sessionId])
+
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
-      if (!trimmed || sending) return
+      const photo = pendingPhoto
+      if ((!trimmed && !photo) || sending) return
       setSending(true)
       setError(null)
-      const userMsg: UiMessage = { id: crypto.randomUUID(), role: 'user', text: trimmed }
+
+      const photoHint = photo
+        ? photo.storageKey
+          ? `[Attached venue photo — storageKey: ${photo.storageKey}. Call assess_venue_photo with this storageKey to read the vibe.]`
+          : photo.publicUrl
+            ? `[Attached venue photo — imageUrl: ${photo.publicUrl}. Call assess_venue_photo with this imageUrl.]`
+            : '[Attached a venue photo but upload failed; ask the user for a public image URL to assess_venue_photo.]'
+        : ''
+
+      const content = [trimmed, photoHint].filter(Boolean).join('\n\n')
+      const userMsg: UiMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: trimmed || 'What vibe is this photo?',
+        photoPreview: photo?.previewUrl,
+      }
       setMessages((prev) => [...prev, userMsg])
       setInput('')
+      setPendingPhoto(null)
 
       const apiMessages = [
         ...messages
@@ -96,7 +143,7 @@ export function ConciergeChatSheet({
             m.role === 'user' || m.role === 'assistant',
           )
           .map((m) => ({ role: m.role, content: m.text })),
-        { role: 'user' as const, content: trimmed },
+        { role: 'user' as const, content },
       ]
 
       const assistantMsg: UiMessage = {
@@ -154,7 +201,7 @@ export function ConciergeChatSheet({
         setSending(false)
       }
     },
-    [messages, sending, sessionId, userLocation, authToken],
+    [messages, sending, sessionId, userLocation, authToken, pendingPhoto],
   )
 
   const handleSavePlan = useCallback(async () => {
@@ -204,8 +251,17 @@ export function ConciergeChatSheet({
               if (m.role === 'user') {
                 return (
                   <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
-                      {m.text}
+                    <div className="max-w-[80%] space-y-2">
+                      {m.photoPreview && (
+                        <img
+                          src={m.photoPreview}
+                          alt="Attached venue"
+                          className="ml-auto h-28 w-28 rounded-xl object-cover"
+                        />
+                      )}
+                      <div className="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
+                        {m.text}
+                      </div>
                     </div>
                   </div>
                 )
@@ -256,6 +312,28 @@ export function ConciergeChatSheet({
           </div>
         </ScrollArea>
 
+        {pendingPhoto && (
+          <div className="flex items-center gap-2 border-t px-3 pt-2">
+            <img
+              src={pendingPhoto.previewUrl}
+              alt="Pending attach"
+              className="h-12 w-12 rounded-md object-cover"
+            />
+            <p className="flex-1 text-xs text-muted-foreground">
+              Photo ready — send to assess vibe
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Remove photo"
+              onClick={() => setPendingPhoto(null)}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        )}
+
         <form
           className="flex items-end gap-2 border-t p-3"
           onSubmit={(e) => {
@@ -263,6 +341,16 @@ export function ConciergeChatSheet({
             void send(input)
           }}
         >
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={sending || attachingPhoto}
+            aria-label="Attach venue photo"
+            onClick={() => void attachPhoto()}
+          >
+            <Camera weight="fill" className="size-4" />
+          </Button>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -276,7 +364,12 @@ export function ConciergeChatSheet({
               }
             }}
           />
-          <Button type="submit" size="icon" disabled={sending || input.trim().length === 0} aria-label="Send">
+          <Button
+            type="submit"
+            size="icon"
+            disabled={sending || (input.trim().length === 0 && !pendingPhoto)}
+            aria-label="Send"
+          >
             <PaperPlaneTilt weight="fill" className="size-4" />
           </Button>
         </form>

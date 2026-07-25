@@ -4,6 +4,7 @@
 
 import { supabase } from './supabase'
 import { resolvePulseMediaUrl } from './pulse-media'
+import { compressImageDataUrl } from './image-compress'
 
 export interface PhotoUploadUrlResponse {
   bucket: string
@@ -146,21 +147,41 @@ export async function uploadPulsePhoto(args: {
   format?: string
   filename?: string
   fetchImpl?: typeof fetch
+  /** Skip canvas downscale (default false). */
+  skipCompress?: boolean
 }): Promise<
   PhotoClientResult<{
     storageKey: string
     publicUrl: string
     mime: PhotoMime
+    previewDataUrl?: string
   }>
 > {
-  const mime = mimeFromFormat(args.format)
-  const blob =
-    args.blob ??
-    (args.dataUrl ? dataUrlToBlob(args.dataUrl) : null) ??
-    null
+  let workingDataUrl = args.dataUrl
+  let blob = args.blob ?? (workingDataUrl ? dataUrlToBlob(workingDataUrl) : null)
+  let mime = mimeFromFormat(args.format)
+
+  if (!args.skipCompress && workingDataUrl) {
+    try {
+      const compressed = await compressImageDataUrl(workingDataUrl, {
+        maxWidth: 1280,
+        maxHeight: 1280,
+        quality: 0.72,
+      })
+      if (compressed) {
+        workingDataUrl = compressed.dataUrl
+        blob = compressed.blob
+        mime = 'image/jpeg'
+      }
+    } catch {
+      // Keep original blob on compress failure.
+    }
+  }
+
   if (!blob) return err('No photo blob available to upload')
 
-  const filename = args.filename ?? `pulse-${Date.now()}.${mime.split('/')[1] || 'jpg'}`
+  const ext = mime.split('/')[1] || 'jpg'
+  const filename = args.filename ?? `pulse-${Date.now()}.${ext}`
   const urlResult = await requestPhotoUploadUrl(
     { filename, mime, bytes: blob.size },
     { fetchImpl: args.fetchImpl },
@@ -183,6 +204,7 @@ export async function uploadPulsePhoto(args: {
       storageKey: urlResult.data.path,
       publicUrl,
       mime,
+      previewDataUrl: workingDataUrl,
     },
   }
 }

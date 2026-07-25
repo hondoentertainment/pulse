@@ -1,22 +1,13 @@
 /**
  * POST /api/vibe/assess
  *
- * Authenticated vision endpoint: accepts a venue photo (URL, storage key,
- * or base64) and returns a structured energy/vibe assessment via Claude.
- *
- * Body (exactly one of imageUrl | storageKey | imageBase64):
- *   {
- *     imageUrl?: string,
- *     storageKey?: string,   // pulse-videos object key
- *     imageBase64?: string,  // raw or data-URL
- *     mediaType?: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
- *     venueName?: string,
- *     venueCategory?: string
- *   }
+ * Authenticated vision endpoint with rate limit + daily spend cap.
+ * Body: exactly one of imageUrl | storageKey | imageBase64.
  *
  * Env:
  *   ANTHROPIC_API_KEY (required)
- *   VIBE_VISION_MODEL (optional, default claude-sonnet-4-6)
+ *   VIBE_VISION_MODEL (optional)
+ *   VIBE_VISION_DAILY_CENTS_CAP (optional, default 50)
  */
 
 import {
@@ -35,9 +26,15 @@ import { storageKeyToPublicUrl } from '../_lib/storage-public-url'
 import {
   assessVenueVibe,
   normalizeBase64Payload,
+  VIBE_CONFIDENCE_APPLY_THRESHOLD,
   type VibeImageMediaType,
   type VibeImageSource,
 } from '../_lib/vibe-vision'
+import {
+  loadDailySpend,
+  recordAssessEvent,
+  recordDailySpend,
+} from '../_lib/vibe-assess-cost'
 
 const ALLOWED_MEDIA: readonly VibeImageMediaType[] = [
   'image/jpeg',
@@ -47,7 +44,7 @@ const ALLOWED_MEDIA: readonly VibeImageMediaType[] = [
 ]
 
 function resolveImage(body: Record<string, unknown>):
-  | { ok: true; image: VibeImageSource }
+  | { ok: true; image: VibeImageSource; storageKey?: string }
   | { ok: false; error: string } {
   const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : ''
   const storageKey = typeof body.storageKey === 'string' ? body.storageKey.trim() : ''
@@ -64,7 +61,7 @@ function resolveImage(body: Record<string, unknown>):
   if (storageKey) {
     const url = storageKeyToPublicUrl(storageKey)
     if (!url) return { ok: false, error: 'storageKey is invalid' }
-    return { ok: true, image: { type: 'url', url } }
+    return { ok: true, image: { type: 'url', url }, storageKey }
   }
 
   if (imageUrl) {
@@ -123,6 +120,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
+  const spend = await loadDailySpend(auth.context.userId, auth.context.token)
+  if (spend.spentCents >= spend.capCents) {
+    fail(res, 402, 'cap_reached', 'Daily vibe vision spend cap reached', {
+      capCents: spend.capCents,
+      spentCents: spend.spentCents,
+      day: spend.day,
+    })
+    return
+  }
+
   if (!isPlainObject(req.body)) {
     fail(res, 400, 'invalid_body', 'Request body must be a JSON object')
     return
@@ -140,18 +147,71 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     typeof req.body.venueCategory === 'string'
       ? req.body.venueCategory.trim().slice(0, 64)
       : undefined
+  const venueId =
+    typeof req.body.venueId === 'string' ? req.body.venueId.trim().slice(0, 128) : undefined
+  const source =
+    typeof req.body.source === 'string' ? req.body.source.trim().slice(0, 32) : 'create_pulse'
 
   try {
-    const assessment = await assessVenueVibe({
+    const outcome = await assessVenueVibe({
       apiKey,
       image: resolved.image,
       venueName: venueName || undefined,
       venueCategory: venueCategory || undefined,
     })
 
+    const { result, costCents, usage, model } = outcome
+    const lowConfidence = result.confidence < VIBE_CONFIDENCE_APPLY_THRESHOLD
+
+    await recordDailySpend({
+      userId: auth.context.userId,
+      userJwt: auth.context.token,
+      costCents,
+      blocked: !result.safe,
+      lowConfidence,
+    })
+
+    await recordAssessEvent({
+      userId: auth.context.userId,
+      userJwt: auth.context.token,
+      venueId,
+      energyRating: result.energyRating,
+      confidence: result.confidence,
+      safe: result.safe,
+      blockedReason: result.blockedReason,
+      costCents,
+      source,
+      storageKey: resolved.storageKey,
+    })
+
+    if (!result.safe) {
+      fail(res, 422, 'content_blocked', 'Photo failed safety screening', {
+        blockedReason: result.blockedReason,
+        summary: result.summary,
+        costCents,
+      })
+      return
+    }
+
     res.setHeader('X-RateLimit-Limit', String(rl.limit))
     res.setHeader('X-RateLimit-Remaining', String(rl.remaining))
-    ok(res, assessment, 200)
+    ok(
+      res,
+      {
+        ...result,
+        applyEnergy: !lowConfidence,
+        confidenceThreshold: VIBE_CONFIDENCE_APPLY_THRESHOLD,
+        costCents,
+        usage,
+        model,
+        spend: {
+          day: spend.day,
+          spentCents: spend.spentCents + costCents,
+          capCents: spend.capCents,
+        },
+      },
+      200,
+    )
   } catch (err) {
     if (err instanceof AnthropicError) {
       const status = err.status >= 400 && err.status < 600 ? err.status : 502

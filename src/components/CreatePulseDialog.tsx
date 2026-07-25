@@ -23,7 +23,10 @@ import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashta
 import { useKV } from '@github/spark/hooks'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { Platform } from '@/lib/platform/platform'
-import { vibeTagsToHashtagNames } from '@/lib/vibe-assess-client'
+import {
+  vibeTagsToHashtagNames,
+  VIBE_CONFIDENCE_APPLY_THRESHOLD,
+} from '@/lib/vibe-assess-client'
 import {
   assessPreparedPhoto,
   photosForPulseSubmit,
@@ -68,6 +71,9 @@ export function CreatePulseDialog({
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
   const [isWorkingPhoto, setIsWorkingPhoto] = useState(false)
   const [vibeAssessment, setVibeAssessment] = useState<VibeAssessment | null>(null)
+  /** When true, user explicitly kept/overrode the AI energy suggestion. */
+  const [energyOverridden, setEnergyOverridden] = useState(false)
+  const [userEnergyBeforeAssess, setUserEnergyBeforeAssess] = useState<EnergyRating | null>(null)
   const vibeVisionEnabled = isFeatureEnabled('vibeVision')
 
   useEffect(() => {
@@ -165,6 +171,8 @@ export function CreatePulseDialog({
     setSelectedHashtags([])
     setPulsePhoto(null)
     setVibeAssessment(null)
+    setEnergyOverridden(false)
+    setUserEnergyBeforeAssess(null)
     setVideo(null)
     setVideoDuration(0)
     setOriginalSize(0)
@@ -176,6 +184,98 @@ export function CreatePulseDialog({
   const clearPhoto = () => {
     setPulsePhoto(null)
     setVibeAssessment(null)
+    setEnergyOverridden(false)
+    setUserEnergyBeforeAssess(null)
+  }
+
+  const applyAssessment = (
+    assessment: VibeAssessment,
+    prepared: PreparedPulsePhoto,
+    opts?: { forceEnergy?: boolean },
+  ) => {
+    if (!venue) return
+    setVibeAssessment(assessment)
+    setEnergyOverridden(false)
+
+    const shouldApply =
+      Boolean(opts?.forceEnergy) ||
+      (assessment.applyEnergy !== false &&
+        assessment.confidence >=
+          (assessment.confidenceThreshold ?? VIBE_CONFIDENCE_APPLY_THRESHOLD))
+
+    if (shouldApply) {
+      setUserEnergyBeforeAssess(energyRating)
+      setEnergyRating(assessment.energyRating)
+    }
+
+    if (!caption.trim() && assessment.suggestedCaption && shouldApply) {
+      setCaption(assessment.suggestedCaption.slice(0, 140))
+    }
+    applyVibeTagHashtags(assessment)
+
+    track('vibe_assessed_from_photo', {
+      venueId: venue.id,
+      energyRating: assessment.energyRating,
+      confidence: assessment.confidence,
+      tagCount: assessment.tags.length,
+      uploaded: Boolean(prepared.storageKey),
+      applied: shouldApply,
+      lowConfidence: !shouldApply,
+    })
+
+    if (shouldApply) {
+      toast.success(`Looks ${ENERGY_CONFIG[assessment.energyRating].label}`, {
+        id: 'pulse-photo',
+        description: assessment.summary,
+      })
+    } else {
+      toast.message('Unsure about the vibe — pick manually', {
+        id: 'pulse-photo',
+        description: assessment.summary,
+      })
+    }
+  }
+
+  const runAssessOnCurrentPhoto = async (prepared: PreparedPulsePhoto, dataUrl: string) => {
+    if (!venue) return
+    const result = await assessPreparedPhoto({
+      photo: prepared,
+      dataUrl,
+      venueName: venue.name,
+      venueCategory: venue.category,
+      venueId: venue.id,
+      source: 'create_pulse',
+    })
+
+    if (!result.ok) {
+      if (result.code === 'content_blocked') {
+        toast.error('Photo blocked by safety screening', {
+          id: 'pulse-photo',
+          description: result.message,
+        })
+        track('vibe_assess_blocked', {
+          venueId: venue.id,
+          reason: result.blockedReason ?? 'unknown',
+        })
+        clearPhoto()
+        return
+      }
+      if (result.code === 'cap_reached') {
+        toast.error('Daily vibe vision limit reached', {
+          id: 'pulse-photo',
+          description: result.message,
+        })
+        track('vibe_assess_cap_hit', { venueId: venue.id, surface: 'create_pulse' })
+        return
+      }
+      toast.error('Photo saved, but vibe assess failed', {
+        id: 'pulse-photo',
+        description: result.message,
+      })
+      return
+    }
+
+    applyAssessment(result.assessment, prepared)
   }
 
   const handleAddPhoto = async (opts: { assess: boolean }) => {
@@ -207,43 +307,39 @@ export function CreatePulseDialog({
       return
     }
 
-    const result = await assessPreparedPhoto({
-      photo: prepared,
-      dataUrl: picked.dataUrl,
-      venueName: venue.name,
-      venueCategory: venue.category,
-    })
-
+    await runAssessOnCurrentPhoto(prepared, prepared.previewUrl)
     setIsWorkingPhoto(false)
+  }
 
-    if (!result.ok) {
-      toast.error('Photo saved, but vibe assess failed', {
-        id: 'pulse-photo',
-        description: result.message,
-      })
-      return
+  const handleReassess = async () => {
+    if (!venue || !pulsePhoto || isWorkingPhoto) return
+    setIsWorkingPhoto(true)
+    toast.loading('Re-reading vibe…', { id: 'pulse-photo' })
+    await runAssessOnCurrentPhoto(pulsePhoto, pulsePhoto.previewUrl)
+    setIsWorkingPhoto(false)
+  }
+
+  const handleKeepMyRating = () => {
+    if (userEnergyBeforeAssess) {
+      setEnergyRating(userEnergyBeforeAssess)
     }
+    setEnergyOverridden(true)
+    track('vibe_assess_overridden', {
+      venueId: venue?.id ?? 'unknown',
+      aiEnergy: vibeAssessment?.energyRating,
+      keptEnergy: userEnergyBeforeAssess ?? energyRating,
+    })
+    toast.message('Keeping your energy rating')
+  }
 
-    const { assessment } = result
-    setVibeAssessment(assessment)
-    setEnergyRating(assessment.energyRating)
-    if (!caption.trim() && assessment.suggestedCaption) {
-      setCaption(assessment.suggestedCaption.slice(0, 140))
+  const handleApplyAiEnergy = () => {
+    if (!vibeAssessment) return
+    setUserEnergyBeforeAssess(energyRating)
+    setEnergyRating(vibeAssessment.energyRating)
+    setEnergyOverridden(false)
+    if (!caption.trim() && vibeAssessment.suggestedCaption) {
+      setCaption(vibeAssessment.suggestedCaption.slice(0, 140))
     }
-    applyVibeTagHashtags(assessment)
-
-    track('vibe_assessed_from_photo', {
-      venueId: venue.id,
-      energyRating: assessment.energyRating,
-      confidence: assessment.confidence,
-      tagCount: assessment.tags.length,
-      uploaded: Boolean(prepared.storageKey),
-    })
-
-    toast.success(`Looks ${ENERGY_CONFIG[assessment.energyRating].label}`, {
-      id: 'pulse-photo',
-      description: assessment.summary,
-    })
   }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,6 +484,10 @@ export function CreatePulseDialog({
                       {ENERGY_CONFIG[vibeAssessment.energyRating].label}
                       <span className="ml-2 text-xs font-normal opacity-80">
                         {Math.round(vibeAssessment.confidence * 100)}% match
+                        {vibeAssessment.confidence < VIBE_CONFIDENCE_APPLY_THRESHOLD
+                          ? ' · low confidence'
+                          : ''}
+                        {energyOverridden ? ' · using yours' : ''}
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs opacity-90">{vibeAssessment.summary}</p>
@@ -432,6 +532,45 @@ export function CreatePulseDialog({
                     )}
                   </Button>
                 )}
+              </div>
+            )}
+            {pulsePhoto && vibeVisionEnabled && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isWorkingPhoto || isSubmitting}
+                  onClick={() => void handleReassess()}
+                >
+                  <Sparkle size={16} weight="fill" className="mr-1.5" />
+                  Re-scan vibe
+                </Button>
+                {vibeAssessment &&
+                  energyRating === vibeAssessment.energyRating &&
+                  !energyOverridden && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isWorkingPhoto}
+                      onClick={handleKeepMyRating}
+                    >
+                      Keep my rating
+                    </Button>
+                  )}
+                {vibeAssessment &&
+                  (energyOverridden || energyRating !== vibeAssessment.energyRating) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isWorkingPhoto}
+                      onClick={handleApplyAiEnergy}
+                    >
+                      Use AI rating
+                    </Button>
+                  )}
               </div>
             )}
           </div>

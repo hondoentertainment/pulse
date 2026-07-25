@@ -26,7 +26,7 @@ describe('normalizeBase64Payload', () => {
 })
 
 describe('parseVibeAssessJson', () => {
-  it('parses a clean JSON object', () => {
+  it('parses a clean JSON object with safety fields', () => {
     const result = parseVibeAssessJson(
       JSON.stringify({
         energyRating: 'buzzing',
@@ -36,6 +36,8 @@ describe('parseVibeAssessJson', () => {
         crowdDensity: 'moderate',
         lighting: 'dim',
         suggestedCaption: 'Solid mid-evening energy',
+        safe: true,
+        blockedReason: null,
       }),
     )
     expect(result).toMatchObject({
@@ -44,13 +46,29 @@ describe('parseVibeAssessJson', () => {
       crowdDensity: 'moderate',
       lighting: 'dim',
       suggestedCaption: 'Solid mid-evening energy',
+      safe: true,
     })
     expect(result?.tags).toEqual(['packed-bar', 'livemusic', 'cocktails'])
   })
 
+  it('marks unsafe content', () => {
+    const result = parseVibeAssessJson(
+      JSON.stringify({
+        energyRating: 'dead',
+        confidence: 0.1,
+        summary: 'Blocked',
+        tags: [],
+        safe: false,
+        blockedReason: 'nsfw',
+      }),
+    )
+    expect(result?.safe).toBe(false)
+    expect(result?.blockedReason).toBe('nsfw')
+  })
+
   it('strips markdown fences and clamps confidence', () => {
     const result = parseVibeAssessJson(`\`\`\`json
-{"energyRating":"electric","confidence":1.4,"summary":"Packed dance floor"}
+{"energyRating":"electric","confidence":1.4,"summary":"Packed dance floor","safe":true}
 \`\`\``)
     expect(result?.energyRating).toBe('electric')
     expect(result?.confidence).toBe(1)
@@ -62,7 +80,7 @@ describe('parseVibeAssessJson', () => {
 })
 
 describe('assessVenueVibe', () => {
-  it('calls Claude with an image block and returns parsed vibe', async () => {
+  it('calls Claude with an image block and returns outcome', async () => {
     const response: AnthropicResponse = {
       id: 'msg_1',
       type: 'message',
@@ -78,6 +96,7 @@ describe('assessVenueVibe', () => {
             tags: ['lounge'],
             crowdDensity: 'sparse',
             lighting: 'dim',
+            safe: true,
           }),
         },
       ],
@@ -99,15 +118,17 @@ describe('assessVenueVibe', () => {
       })
     }) as unknown as typeof fetch
 
-    const result = await assessVenueVibe({
+    const outcome = await assessVenueVibe({
       apiKey: 'test-key',
       image: { type: 'url', url: 'https://cdn.example.com/venue.jpg' },
       venueName: "Joe's",
       fetchImpl,
     })
 
-    expect(result.energyRating).toBe('chill')
-    expect(result.tags).toContain('lounge')
+    expect(outcome.result.energyRating).toBe('chill')
+    expect(outcome.result.tags).toContain('lounge')
+    expect(outcome.result.safe).toBe(true)
+    expect(outcome.costCents).toBeGreaterThan(0)
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 

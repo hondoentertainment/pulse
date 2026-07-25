@@ -7,6 +7,7 @@ import type { EnergyRating } from './types'
 
 export type CrowdDensity = 'empty' | 'sparse' | 'moderate' | 'packed'
 export type SceneLighting = 'bright' | 'dim' | 'dark' | 'colorful'
+export type VibeBlockReason = 'nsfw' | 'violence' | 'hate' | 'illegal' | 'not_a_photo'
 
 export interface VibeAssessment {
   energyRating: EnergyRating
@@ -16,6 +17,12 @@ export interface VibeAssessment {
   crowdDensity?: CrowdDensity
   lighting?: SceneLighting
   suggestedCaption?: string
+  safe?: boolean
+  blockedReason?: VibeBlockReason | null
+  /** Server hint: apply energyRating to the slider when true. */
+  applyEnergy?: boolean
+  confidenceThreshold?: number
+  costCents?: number
 }
 
 export type VibeAssessError = {
@@ -23,6 +30,7 @@ export type VibeAssessError = {
   message: string
   status: number
   code?: string
+  blockedReason?: string
 }
 
 export type VibeAssessSuccess = {
@@ -32,31 +40,21 @@ export type VibeAssessSuccess = {
 
 export type VibeAssessClientResult = VibeAssessSuccess | VibeAssessError
 
-export type AssessVibeRequest =
-  | {
-      imageUrl: string
-      imageBase64?: never
-      storageKey?: never
-      mediaType?: never
-      venueName?: string
-      venueCategory?: string
-    }
-  | {
-      storageKey: string
-      imageUrl?: never
-      imageBase64?: never
-      mediaType?: never
-      venueName?: string
-      venueCategory?: string
-    }
+export type AssessVibeRequest = {
+  venueName?: string
+  venueCategory?: string
+  venueId?: string
+  source?: string
+} & (
+  | { imageUrl: string; imageBase64?: never; storageKey?: never; mediaType?: never }
+  | { storageKey: string; imageUrl?: never; imageBase64?: never; mediaType?: never }
   | {
       imageBase64: string
       imageUrl?: never
       storageKey?: never
       mediaType?: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
-      venueName?: string
-      venueCategory?: string
     }
+)
 
 const ENDPOINT = '/api/vibe/assess'
 
@@ -69,8 +67,13 @@ const getAccessToken = async (): Promise<string | null> => {
   }
 }
 
-function err(message: string, status: number, code?: string): VibeAssessError {
-  return { ok: false, message, status, code }
+function err(
+  message: string,
+  status: number,
+  code?: string,
+  blockedReason?: string,
+): VibeAssessError {
+  return { ok: false, message, status, code, blockedReason }
 }
 
 /**
@@ -111,11 +114,14 @@ export async function assessVibeFromPhoto(
   }
 
   if (!res.ok) {
-    const envelope = payload as { error?: { message?: string; code?: string } }
+    const envelope = payload as {
+      error?: { message?: string; code?: string; blockedReason?: string }
+    }
     return err(
       envelope.error?.message ?? `Vibe assess failed (status ${res.status})`,
       res.status,
       envelope.error?.code,
+      envelope.error?.blockedReason,
     )
   }
 
@@ -141,3 +147,6 @@ export function vibeTagsToHashtagNames(tags: string[]): string[] {
     .filter((name) => name.length >= 2 && name.length <= 32)
     .slice(0, 5)
 }
+
+/** Mirror of server `VIBE_CONFIDENCE_APPLY_THRESHOLD` — auto-apply energy at/above this. */
+export const VIBE_CONFIDENCE_APPLY_THRESHOLD = 0.4

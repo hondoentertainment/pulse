@@ -86,6 +86,7 @@ Full detail: [Feature Flags](feature-flags.md).
 | `CONCIERGE_MODEL` | server | Model override (default in handler) |
 | `CONCIERGE_SESSION_CENTS_CAP` | server | Per-session cost cap |
 | `VIBE_VISION_MODEL` | server | Vision model for `/api/vibe/assess` (default Sonnet) |
+| `VIBE_VISION_DAILY_CENTS_CAP` | server | Per-user daily spend cap in cents (default `50`) |
 
 ---
 

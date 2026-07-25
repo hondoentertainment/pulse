@@ -14,6 +14,7 @@ import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { SCOUT_TIERS, type ScoutTier } from '@/lib/scout-program'
 import { setVenueSignalSuppression } from '@/lib/venue-admin-client'
 import { ExpansionGatesCard } from '@/components/venue-admin/ExpansionGatesCard'
+import { VibeVisionAdminCard } from '@/components/venue-admin/VibeVisionAdminCard'
 
 interface ScoutApplicationRow {
   id: string
@@ -316,6 +317,8 @@ export function SignalAdminPage() {
       </Card>
 
       <ExpansionGatesCard liveFreshCoveragePct={freshCoverage?.coveragePct ?? null} />
+
+      <VibeVisionAdminCard authToken={session?.access_token ?? null} />
 
       <Card className="p-4 space-y-3" data-testid="venue-claims-card">
         <h2 className="font-semibold">Venue claims</h2>
