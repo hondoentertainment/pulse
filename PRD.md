@@ -1,8 +1,15 @@
 # Pulse — Real-Time Venue Energy Tracker
 
-> **Canonical MVP spec (July 2026):** [docs/PRD-v1.0-SEATTLE-MVP.md](docs/PRD-v1.0-SEATTLE-MVP.md) — Seattle nightlife decision engine.  
-> Delivery backlog: [docs/SEATTLE_BETA_BACKLOG.md](docs/SEATTLE_BETA_BACKLOG.md).  
-> This file retains the original feature-oriented prototype spec for reference.
+> **⚠️ This file is historical.** The canonical product specification is
+> **[docs/PRD-v1.0-SEATTLE-MVP.md](docs/PRD-v1.0-SEATTLE-MVP.md) (PRD v1.1, complete)** — the Seattle
+> nightlife decision engine, including personas, numbered requirements, data model, monetization,
+> non-functional requirements, launch and expansion gates, and acceptance criteria.
+>
+> Delivery backlog: [docs/SEATTLE_BETA_BACKLOG.md](docs/SEATTLE_BETA_BACKLOG.md).
+> Flagged feature specs: [docs/prd/](docs/prd/).
+>
+> This file retains the original feature-oriented prototype spec for reference only. Where the two
+> disagree, the canonical PRD wins. Do not plan new work from this document.
 
 Pulse shows users where the energy is happening right now by letting them check into venues and share the vibe through quick posts with photos, videos, and energy ratings.
 

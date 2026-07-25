@@ -6,6 +6,7 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 
 | I want to… | Start here |
 |------------|------------|
+| Understand what we're building and why | [PRD v1.1 (canonical)](PRD-v1.0-SEATTLE-MVP.md) |
 | Run the app locally | [Getting Started](getting-started.md) |
 | Understand the architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | Find a React component | [Component Catalog](component-catalog.md) |
@@ -57,7 +58,9 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 
 | Document | Description |
 |----------|-------------|
-| [PRD.md](../PRD.md) | Product requirements, core loop, feature specs |
+| **[PRD v1.1 — canonical](PRD-v1.0-SEATTLE-MVP.md)** | **Canonical product spec: personas, numbered requirements, signal model, data model, monetization, launch + expansion gates, acceptance criteria** |
+| [Seattle Beta Backlog](SEATTLE_BETA_BACKLOG.md) | Delivery tracking against PRD §14–§18 |
+| [PRD.md](../PRD.md) | Legacy prototype spec — historical reference only |
 | [IMPLEMENTATION_SUMMARY.md](../IMPLEMENTATION_SUMMARY.md) | Core loop, score transparency, impact notifications |
 | [SOCIAL_PULSE_IMPLEMENTATION.md](../SOCIAL_PULSE_IMPLEMENTATION.md) | Social pulse correlation system |
 | [Differentiators](differentiators.md) | Weather boost, wait time, accessibility filter pack |
