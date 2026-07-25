@@ -112,6 +112,7 @@ export async function saveSignalProfile(userId: string, profile: SignalProfile):
       tracking_focus: profile.trackingFocus,
       goal: profile.goal,
       reminder_time: profile.reminderTime ?? null,
+      reminder_enabled: profile.reminderEnabled ?? false,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
 

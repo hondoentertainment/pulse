@@ -24,7 +24,7 @@ interface SignalStore {
   updateDraft: (patch: Partial<DraftSignal>) => void
   saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
   closeFirstWin: () => void
-  setReminder: (enabled: boolean, reminderTime?: string) => void
+  setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -100,14 +100,22 @@ export const useSignalStore = create<SignalStore>()(
         return entry
       },
       closeFirstWin: () => set({ firstWinOpen: false }),
-      setReminder: (enabled, reminderTime) => {
-        const nextProfile = get().profile
-          ? { ...get().profile!, reminderTime: reminderTime ?? get().profile!.reminderTime }
+      setReminder: (enabled, reminderTime, userId) => {
+        const current = get().profile
+        const nextProfile = current
+          ? {
+              ...current,
+              reminderTime: reminderTime ?? current.reminderTime,
+              reminderEnabled: enabled,
+            }
           : null
         set({
           reminderEnabled: enabled,
           profile: nextProfile,
         })
+        // Persist so the preference survives a reinstall and reaches any
+        // future server-side scheduler (signal_profiles.reminder_enabled).
+        if (userId && nextProfile) void saveSignalProfile(userId, nextProfile)
       },
     }),
     {

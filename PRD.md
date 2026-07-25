@@ -1,5 +1,14 @@
 # Pulse — Real-Time Venue Energy Tracker
 
+> ⚠️ **This spec covers the venue product only — `VITE_APP_MODE=venue`.**
+> It is **not** the shipping product. Production defaults to **Pulse Signal**,
+> the daily check-in app specified in **[PRD_SIGNAL.md](PRD_SIGNAL.md)**.
+>
+> The venue surface remains in the tree behind the mode flag and is used for
+> E2E/staging. Treat this document as the reference for that surface; some of
+> it describes intent that was never built. Notably, §6.2 *Personal Insights
+> Dashboard* was the seed of what became Pulse Signal.
+
 Pulse shows users where the energy is happening right now by letting them check into venues and share the vibe through quick posts with photos, videos, and energy ratings.
 
 ## Pulse Core Loop

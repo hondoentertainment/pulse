@@ -1,157 +1,97 @@
 # Pulse — Recommended Next Steps
 
-> Generated 2026-04-04 from a full codebase audit. Prioritized by impact and unblock potential.
+> Regenerated 2026-07-25 from a full audit against the **Pulse Signal** product
+> (`VITE_APP_MODE=signal`, the production default). The previous revision was
+> dated 2026-04-04, described the pre-pivot venue app, and reported a broken
+> test suite that has long since been fixed.
 
-## Current Health Snapshot
+## Current health snapshot
 
 | Metric | Status |
 |--------|--------|
-| **Build** | Passes (chunk warning: `react-vendor` ~672 KB) |
-| **Lint** | Warnings present (unused vars/imports) |
-| **Unit tests (lib/)** | 519 passing, 1 failing (`interactive-map` clustering) |
-| **Component tests** | 6 of 7 suites failing (icon mock gap) |
-| **E2E** | Smoke suite passing |
-| **Backend** | Mock data only — Supabase schema exists but not wired |
+| **Build** | Passes; bundle-size budgets OK |
+| **Typecheck** (`tsc -b --noCheck`) | Clean |
+| **Lint** | 0 errors (warnings within budget) |
+| **Unit tests** | 1,190+ passing, 20 skipped |
+| **E2E** | Signal smoke passing |
+| **Product** | Pulse Signal ships by default; venue app dormant behind `VITE_APP_MODE=venue` |
+| **Signal backend** | Tables added (`20260725000000_signal_core.sql`) — **must be applied to production** |
 
 ---
 
-## Immediate Priority: Fix Test Suite (1-2 days)
+## Blocking launch
 
-### 1. Fix component test icon mock
+### 1. Apply the Signal migrations to the production Supabase project
 
-**Root cause:** The Phosphor icon proxy mock in tests doesn't export all icons used by components (e.g., `Users`, `Crown`, `Heart` in `GuestCRM.tsx`). This breaks **6 of 7 component test suites** — not actual component bugs.
+`signal_entries` / `signal_profiles` / `signal_pilot_signups` now exist as
+migrations but must actually be applied. Until they are, Signal is
+**localStorage-only**: clearing browser data destroys a user's streak and
+history, and there is no cross-device support. For a product whose value is
+"check in daily for months," this is the single largest risk.
 
-**Fix:** Update the icon mock (likely in `vitest.setup.ts` or a shared mock file) to use `importOriginal` so all Phosphor icons are available:
+### 2. Production environment configuration
 
-```ts
-vi.mock("@phosphor-icons/react", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual };
-});
-```
+Vercel production needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and
+`VITE_APP_MODE=signal`, plus any of `VITE_SENTRY_DSN` / `VITE_MAPBOX_TOKEN` /
+Stripe keys that are actually used. Missing values deploy green but run degraded.
 
-Or add the missing icon exports (`Users`, `Crown`, `Heart`, `TrendUp`, `TrendDown`, etc.) to the existing mock.
+### 3. Land the built-but-unmerged Signal features
 
-**Impact:** Fixes 28 of the 29 failing tests in one change.
-
-### 2. Fix interactive-map clustering test
-
-**Root cause:** `clusterVenueRenderPoints` clustering test has a flaky distance/grouping assertion.
-
-**File:** `src/lib/__tests__/interactive-map.test.ts`
-
-**Action:** Review the test's coordinate inputs and clustering radius — likely needs a tolerance adjustment or the clustering algorithm changed without updating the test.
+Pattern discovery, personal records, weekly summary, CSV export, real daily
+reminders, and pilot capture are implemented and tested but not on `main`.
+Merging them is what makes the core loop pay off (see PRD_SIGNAL.md §2).
 
 ---
 
-## Short-Term: Code Health (1 week)
+## High value, next
 
-### 3. Lint cleanup
+### 4. Server-side reminder delivery
 
-- Fix unused imports/vars flagged by ESLint (or prefix with `_`)
-- Target: zero lint errors, warnings below 20
-- Prevents lint noise from hiding real issues
+Local scheduling covers "app open or backgrounded". Firing when the app is fully
+closed needs a real VAPID key (the one in `pwa.ts` is a dev placeholder) and a
+scheduled job reading `signal_profiles.reminder_enabled` / `reminder_time`.
+Reminders are the primary retention lever for a daily-habit product.
 
-### 4. Dead code audit
+### 5. Account deletion / data controls
 
-Candidates with no component consumers:
-- `src/lib/white-label.ts` — white-label theming (unused)
-- `src/lib/public-api.ts` — API key generation (client-side, should be server-side or removed)
-- `src/lib/twitter-ingestion.ts` — Twitter data pipeline (prototype only)
+CSV export exists; self-serve delete does not. Required for app-store review and
+most privacy regimes.
 
-**Impact:** Reduces bundle size and maintenance surface.
+### 6. Correlation-driven insights
 
-### 5. Bundle size optimization
-
-| Target | Action |
-|--------|--------|
-| Sentry (~257 KB) | Lazy-load after first render |
-| Three.js | Defer until 3D features accessed |
-| Index chunk (~202 KB) | Route-split sub-pages (settings, achievements, events) |
-| `react-vendor` (~672 KB) | Audit — may need React import optimization |
+`generateInsight` / `getRecommendation` are hand-written heuristics. The tag
+correlation engine (`signal-patterns.ts`) already computes what actually moves a
+user's score — feeding that into the daily recommendation is the obvious upgrade.
 
 ---
 
-## Medium-Term: Architecture (2-3 weeks)
+## Health & hygiene
 
-### 6. Split monolithic state provider
+### 7. `typecheck-strict` venue type debt
 
-`src/hooks/use-app-state.tsx` manages all app state in one provider. Split into:
-- **VenueContext** — venue data, selections, filters
-- **SocialContext** — crews, friends, follows, reactions
-- **UIContext** — tabs, modals, navigation state
+Bare `tsc -b` reports ~69 errors, **all** in dormant venue-app files (Venue type
+and component-prop drift, stale test fixtures). It's cross-cutting, so partial
+fixes give no gate benefit. Either fix it wholesale in a dedicated PR with venue
+verification, or exclude the venue surface from the strict project if that
+product stays dormant.
 
-This reduces re-renders and makes the codebase easier to reason about.
+### 8. Decide the venue product's fate
 
-### 7. Replace mock data with API layer
+It is a large, dormant surface carrying real maintenance cost (type debt, a
+second e2e suite, mock data). Either commit to reviving it or archive it
+deliberately — leaving it half-alive is the expensive option.
 
-- `src/lib/mock-data.ts` (~280 KB) contains hardcoded venue/user data
-- `src/lib/global-venues.ts`, `src/lib/us-venues.ts` are static datasets
-- Wire TanStack Query (already configured via `query-client.ts`) to Supabase
-- Move mock data to test fixtures only
+### 9. Documentation drift
 
-### 8. Route-based code splitting
-
-Sub-pages that should be lazy-loaded:
-- Settings, Achievements, Events, Playlists, Night Planner
-- Venue Owner Dashboard, Creator Dashboard, Moderation Queue
-- Crew Page, Insights Page
+`README.md` and the PRDs are now accurate. Remaining venue-era docs
+(`PRODUCTION_ROLLOUT.md`, `NEXT_PHASES.md`, `IMPLEMENTATION_SUMMARY.md`,
+`SOCIAL_PULSE_IMPLEMENTATION.md`) still describe the pre-pivot product and
+should be archived or re-scoped.
 
 ---
 
-## Medium-Long Term: Backend & Production (4-6 weeks)
+## Deliberately not doing
 
-### 9. Supabase backend wiring
-
-Supabase schema and migrations exist in `supabase/` but aren't connected to the app:
-
-- [ ] Wire auth enforcement on all protected routes
-- [ ] Implement CRUD for venues, pulses, reactions, stories via Edge Functions
-- [ ] Enable real-time subscriptions for live venue scores
-- [ ] Move geocoding, API key management, webhook signing server-side
-- [ ] Enforce RLS policies for multi-tenant data access
-
-### 10. Security hardening
-
-Critical items before any public launch:
-- [ ] Server-side content moderation (currently client-only)
-- [ ] Move API secrets out of client bundle (`public-api.ts`)
-- [ ] Server-side rate limiting
-- [ ] Input sanitization on all user content (captions, hashtags, media)
-- [ ] CSP headers and HTTPS-only enforcement
-- [ ] Auth token rotation and session management
-
-### 11. Integration tests for critical flows
-
-- Supabase auth flow (OAuth + magic link)
-- Offline queue sync (queue → Supabase when back online)
-- Real-time subscription lifecycle
-- Pulse creation end-to-end
-
----
-
-## Suggested Execution Order
-
-| # | Task | Effort | Unblocks |
-|---|------|--------|----------|
-| 1 | Fix icon mock (28 tests) | 30 min | Green CI |
-| 2 | Fix interactive-map test | 1 hr | Green CI |
-| 3 | Lint cleanup | 1 day | Clean CI output |
-| 4 | Dead code audit | 1 day | Smaller bundle |
-| 5 | Bundle optimization | 1-2 days | Performance |
-| 6 | State management split | 1-2 weeks | Scalability |
-| 7 | API layer + mock removal | 2-3 weeks | Real product |
-| 8 | Route code splitting | 1 week | Performance |
-| 9 | Supabase backend | 3-4 weeks | Launch readiness |
-| 10 | Security hardening | 1-2 weeks | Public launch |
-| 11 | Integration tests | 1-2 weeks | Confidence |
-
----
-
-## Related Docs
-
-- [NEXT_PHASES.md](NEXT_PHASES.md) — detailed phase plan
-- [ARCHITECTURE.md](ARCHITECTURE.md) — system design
-- [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) — rollout plan
-- [SECURITY.md](SECURITY.md) — security priorities
-- [RELEASE_CHECKS.md](RELEASE_CHECKS.md) — pre-deploy checklist
+- **Social features in Signal** — out of scope per PRD_SIGNAL.md §4.3
+- **Clinical/diagnostic scoring** — the score is an explainable heuristic and
+  must never be presented as a validated instrument

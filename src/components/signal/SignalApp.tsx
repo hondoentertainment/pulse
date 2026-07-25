@@ -18,6 +18,16 @@ import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalPatterns } from '@/components/signal/SignalPatterns'
 import { SignalWeeklySummary } from '@/components/signal/SignalWeeklySummary'
 import { downloadSignalCsv } from '@/lib/signal-export'
+import {
+  DEFAULT_REMINDER_TIME,
+  getReminderPermission,
+  parseReminderTime,
+  requestReminderPermission,
+  shouldNudgeForCheckIn,
+  type ReminderPermission,
+} from '@/lib/signal-reminder'
+import { useSignalReminder } from '@/hooks/use-signal-reminder'
+import { isValidEmail, submitPilotSignup } from '@/lib/signal-pilot'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
 import { FirstWinDialog } from '@/components/signal/FirstWinDialog'
 import { SignalPageTransition } from '@/components/signal/SignalPageTransition'
@@ -128,8 +138,13 @@ function HomePage({ userId }: { userId: string }) {
   const entries = useSignalStore((state) => state.entries)
   const saveEntry = useSignalStore((state) => state.saveEntry)
   const savedAt = useSignalStore((state) => state.savedAt)
+  const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
   const todayEntry = getTodayEntry(entries)
+  const nudge = shouldNudgeForCheckIn(entries, {
+    enabled: reminderEnabled,
+    reminderTime: profile?.reminderTime ?? DEFAULT_REMINDER_TIME,
+  })
 
   const focusLabel = profile ? TRACKING_OPTIONS.find((o) => o.id === profile.trackingFocus)?.label : null
   const goalShort = profile ? GOAL_OPTIONS.find((o) => o.id === profile.goal)?.label : null
@@ -174,6 +189,18 @@ function HomePage({ userId }: { userId: string }) {
           </div>
         </div>
       </section>
+
+      {nudge && (
+        <div
+          className="flex items-center gap-3 rounded-[1.75rem] border border-primary/30 bg-primary/10 px-4 py-3"
+          role="status"
+        >
+          <Bell size={20} weight="fill" className="shrink-0 text-primary" />
+          <p className="text-sm font-bold text-primary">
+            Your {profile?.reminderTime ?? DEFAULT_REMINDER_TIME} check-in is still open — it only takes 10 seconds.
+          </p>
+        </div>
+      )}
 
       {todayEntry ? (
         <motion.section
@@ -280,12 +307,178 @@ function HistoryPage() {
   )
 }
 
-function SettingsPage() {
-  const { signOut, user } = useSupabaseAuth()
+/**
+ * Pulse Pro pilot waitlist. Captures a real email address into
+ * `signal_pilot_signups` so demand is measurable and signups are contactable —
+ * the CTA previously only fired a toast.
+ */
+function PilotSignupCard({ userId, defaultEmail }: { userId: string | null; defaultEmail: string }) {
+  const [email, setEmail] = useState(defaultEmail)
+  const [submitting, setSubmitting] = useState(false)
+  const [joined, setJoined] = useState(false)
+
+  const handleSubmit = async () => {
+    trackEvent({ type: 'signal_research_cta_click', timestamp: Date.now(), target: 'pro_pilot' })
+
+    if (!isValidEmail(email)) {
+      toast.error('Check that email', { description: 'Enter a valid address so we can reach you.' })
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const result = await submitPilotSignup({ email, userId })
+      switch (result.status) {
+        case 'saved':
+          setJoined(true)
+          toast.success("You're on the list", { description: 'We will reach out when the pilot opens.' })
+          break
+        case 'already_registered':
+          setJoined(true)
+          toast.message('Already on the list', { description: 'That address is registered for the pilot.' })
+          break
+        case 'unconfigured':
+          toast.message('Thanks!', { description: 'Noted locally — sync is not configured in this build.' })
+          break
+        case 'invalid_email':
+          toast.error('Check that email', { description: 'Enter a valid address so we can reach you.' })
+          break
+        case 'error':
+          toast.error("Couldn't save that", { description: result.message })
+          break
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+      <p className="font-black">Pulse Pro pilot</p>
+      <p className="text-sm text-muted-foreground">
+        {joined
+          ? "You're on the list — we'll be in touch before the pilot opens."
+          : 'We are lining up pricing and premium insights. Leave your email for early access.'}
+      </p>
+      {!joined && (
+        <>
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            aria-label="Email for the Pulse Pro pilot"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <Button
+            variant="secondary"
+            className="h-12 w-full rounded-2xl"
+            disabled={submitting}
+            onClick={() => void handleSubmit()}
+          >
+            {submitting ? 'Saving…' : 'Join the pilot list'}
+          </Button>
+        </>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Daily reminder controls. Enabling asks for real notification permission and
+ * schedules an OS notification at the chosen local time; the in-app nudge on
+ * Home covers the case where the app wasn't running. See signal-reminder.ts
+ * for why fire-when-fully-closed needs server push.
+ */
+function ReminderSettings({ userId }: { userId: string }) {
   const profile = useSignalStore((state) => state.profile)
-  const entries = useSignalStore((state) => state.entries)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
+  const [permission, setPermission] = useState<ReminderPermission>(() => getReminderPermission())
+
+  const reminderTime = profile?.reminderTime ?? DEFAULT_REMINDER_TIME
+
+  const handleToggle = async (checked: boolean) => {
+    if (!checked) {
+      setReminder(false, reminderTime, userId)
+      return
+    }
+
+    let next = getReminderPermission()
+    if (next === 'default') next = await requestReminderPermission()
+    setPermission(next)
+
+    if (next === 'denied') {
+      setReminder(false, reminderTime, userId)
+      toast.error('Notifications are blocked', {
+        description: 'Allow notifications for this site in your browser settings, then try again.',
+      })
+      return
+    }
+
+    setReminder(true, reminderTime, userId)
+    toast.success('Daily reminder on', {
+      description:
+        next === 'granted'
+          ? `We'll nudge you at ${reminderTime}.`
+          : `This browser can't show notifications, so we'll remind you inside the app at ${reminderTime}.`,
+    })
+  }
+
+  const handleTimeChange = (value: string) => {
+    if (!parseReminderTime(value)) return
+    setReminder(reminderEnabled, value, userId)
+  }
+
+  return (
+    <section className="rounded-[2rem] border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Bell size={22} weight="fill" />
+          </span>
+          <div>
+            <p className="font-black">Daily reminder</p>
+            <p className="text-sm text-muted-foreground">
+              A once-a-day nudge to log your signal.
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={reminderEnabled}
+          aria-label="Daily reminder"
+          onCheckedChange={(checked) => void handleToggle(checked)}
+        />
+      </div>
+
+      {reminderEnabled && (
+        <div className="mt-4 space-y-3">
+          <label className="flex items-center justify-between gap-4 rounded-2xl bg-secondary/40 px-4 py-3">
+            <span className="text-sm font-bold">Remind me at</span>
+            <input
+              type="time"
+              value={reminderTime}
+              onChange={(event) => handleTimeChange(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          <p className="rounded-2xl bg-primary/10 p-3 text-sm text-primary">
+            {permission === 'granted'
+              ? `Notification set for ${reminderTime} local time. Days you've already logged are skipped.`
+              : `We'll remind you inside the app at ${reminderTime}. Enable browser notifications to get nudged outside it.`}
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function SettingsPage() {
+  const { signOut, user } = useSupabaseAuth()
+  const userId = user?.id ?? 'local-user'
+  const entries = useSignalStore((state) => state.entries)
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
   const [exporting, setExporting] = useState(false)
 
@@ -332,22 +525,7 @@ function SettingsPage() {
         <p className="text-sm font-bold text-primary">Settings</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Keep the loop simple.</h1>
       </div>
-      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
-        <p className="font-black">Pulse Pro pilot</p>
-        <p className="text-sm text-muted-foreground">
-          We are lining up pricing and premium insights. Raise your hand if you want early access.
-        </p>
-        <Button
-          variant="secondary"
-          className="h-12 w-full rounded-2xl"
-          onClick={() => {
-            trackEvent({ type: 'signal_research_cta_click', timestamp: Date.now(), target: 'pro_pilot' })
-            toast.message('Thanks!', { description: 'We will reach out when the pilot opens.' })
-          }}
-        >
-          Join the pilot list
-        </Button>
-      </section>
+      <PilotSignupCard userId={user?.id ?? null} defaultEmail={user?.email ?? ''} />
       <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
         <p className="font-black">Research</p>
         <p className="text-sm text-muted-foreground">
@@ -368,27 +546,7 @@ function SettingsPage() {
           </Button>
         ) : null}
       </section>
-      <section className="rounded-[2rem] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Bell size={22} weight="fill" />
-            </span>
-            <div>
-              <p className="font-black">Daily reminder</p>
-              <p className="text-sm text-muted-foreground">
-                {profile?.reminderTime ?? '09:00'} local time · push notifications coming soon
-              </p>
-            </div>
-          </div>
-          <Switch checked={reminderEnabled} onCheckedChange={(checked) => setReminder(checked, profile?.reminderTime ?? '09:00')} />
-        </div>
-        {reminderEnabled && (
-          <p className="mt-4 rounded-2xl bg-primary/10 p-3 text-sm text-primary">
-            Reminder preference saved for {profile?.reminderTime ?? '09:00'}. We&apos;ll notify you here once browser push is enabled.
-          </p>
-        )}
-      </section>
+      <ReminderSettings userId={userId} />
       <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
         <p className="font-black">Your data</p>
         <p className="text-sm text-muted-foreground">
@@ -421,6 +579,13 @@ function SignalRoutes() {
   const mergeRemoteEntries = useSignalStore((state) => state.mergeRemoteEntries)
   const firstWinOpen = useSignalStore((state) => state.firstWinOpen)
   const closeFirstWin = useSignalStore((state) => state.closeFirstWin)
+  const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
+
+  useSignalReminder({
+    enabled: reminderEnabled,
+    reminderTime: profile?.reminderTime ?? DEFAULT_REMINDER_TIME,
+    entries,
+  })
 
   const remoteEntries = useQuery({
     queryKey: ['signal-entries', userId],
