@@ -15,7 +15,7 @@ export function storageKeyToPublicUrl(storageKey: string, bucket = DEFAULT_BUCKE
   const trimmed = storageKey.trim()
   if (!trimmed || trimmed.length > 512) return null
   if (trimmed.includes('..') || trimmed.startsWith('/')) return null
-  if (!/^[a-zA-Z0-9/_.\-]+$/.test(trimmed)) return null
+  if (!/^[a-zA-Z0-9/_.-]+$/.test(trimmed)) return null
 
   const { url } = getSupabaseConfig()
   const base = url.replace(/\/$/, '')
