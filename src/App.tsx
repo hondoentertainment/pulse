@@ -44,6 +44,25 @@ function AppLoadingFallback({ label }: { label: string }) {
 
 const pageFallback = <AppLoadingFallback label="Loading Pulse…" />
 
+/**
+ * `index.html` ships the venue nightlife brand for SEO and share previews, so the
+ * Signal research shell has to claim its own title once it mounts.
+ */
+const SIGNAL_DOCUMENT_TITLE = 'Pulse Signal'
+
+function SignalShell() {
+  useEffect(() => {
+    document.title = SIGNAL_DOCUMENT_TITLE
+  }, [])
+
+  return (
+    <SupabaseAuthProvider>
+      <Toaster position="top-center" theme="dark" richColors />
+      <AppContent />
+    </SupabaseAuthProvider>
+  )
+}
+
 function AppContent() {
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
 
@@ -83,10 +102,7 @@ function App() {
           </AppBootstrap>
         </AppProviders>
       ) : (
-        <SupabaseAuthProvider>
-          <Toaster position="top-center" theme="dark" richColors />
-          <AppContent />
-        </SupabaseAuthProvider>
+        <SignalShell />
       )}
     </ProductionConfigGuard>
   )
