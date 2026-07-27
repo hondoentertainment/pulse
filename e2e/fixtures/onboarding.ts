@@ -1,5 +1,32 @@
 import type { Page } from '@playwright/test'
 
+/** Mirrors WELCOME_SEEN_KEY in src/lib/welcome-gate.ts. */
+const WELCOME_SEEN_KEY = 'pulse-welcome-seen'
+
+/**
+ * `/` sends first-time visitors to the Seattle landing page, which renders no
+ * bottom nav. Every E2E run starts from a fresh profile, so without this the
+ * app shell is unreachable and each suite times out waiting for navigation.
+ */
+async function markWelcomeSeen(page: Page): Promise<void> {
+  const seed = (key: string) => {
+    try {
+      localStorage.setItem(key, '1')
+    } catch {
+      /* storage unavailable — nothing to seed */
+    }
+  }
+
+  // Covers this document plus any later navigation or reload.
+  await page.addInitScript(seed, WELCOME_SEEN_KEY)
+  await page.evaluate(seed, WELCOME_SEEN_KEY).catch(() => undefined)
+
+  if (new URL(page.url()).pathname === '/welcome') {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+  }
+}
+
 /**
  * Completes the onboarding flow for new users. Idempotent — if onboarding is
  * already complete (no Welcome screen), returns immediately.
@@ -13,6 +40,8 @@ export async function completeOnboarding(page: Page, options?: {
   locationEnabled?: boolean
   notificationsEnabled?: boolean
 }): Promise<void> {
+  await markWelcomeSeen(page)
+
   const getStarted = page.getByRole('button', { name: /Get Started/i })
   const visible = await getStarted
     .waitFor({ state: 'visible', timeout: 6_000 })

@@ -9,8 +9,11 @@ test.describe('Tonight golden path', () => {
   })
 
   test('shows vibe picker and recommendation cards', async ({ page }) => {
-    await expect(page.getByTestId('tonight-tab')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: /^Tonight$/i })).toBeVisible()
+    const tonight = page.getByTestId('tonight-tab')
+    await expect(tonight).toBeVisible({ timeout: 15_000 })
+    // Assert the header structure rather than its wording, which is marketing copy.
+    await expect(tonight.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(tonight.getByText(/^Tonight ·/)).toBeVisible()
     await page.getByTestId('vibe-buzzing').click()
     await expect(page.getByTestId('tonight-pick-card').first()).toBeVisible({ timeout: 10_000 })
     await expect(page.getByTestId('tonight-go').first()).toBeVisible()

@@ -1,47 +1,6 @@
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
 import { completeOnboarding } from './fixtures/onboarding'
-
-async function openCreatePulseDialog(page: Page) {
-  const createPulseFab = page.getByRole('button', { name: /^Create a pulse$/i }).first()
-  const hasCreateFab = await createPulseFab
-    .waitFor({ state: 'visible', timeout: 5_000 })
-    .then(() => true)
-    .catch(() => false)
-
-  if (!hasCreateFab) {
-    test.skip(true, 'Create pulse FAB not surfaced in current build')
-    return
-  }
-
-  await createPulseFab.evaluate((button) => {
-    if (button instanceof HTMLButtonElement) button.click()
-  })
-
-  const search = page.getByPlaceholder(/Search venues, cities, categories/i)
-  await expect(search).toBeVisible({ timeout: 5_000 })
-  await search.fill('bar')
-
-  const firstVenueResult = page.locator('[data-result-index]').first()
-  const hasResult = await firstVenueResult
-    .waitFor({ state: 'visible', timeout: 5_000 })
-    .then(() => true)
-    .catch(() => false)
-
-  if (!hasResult) {
-    test.skip(true, 'No searchable seeded venues available')
-    return
-  }
-
-  // The result is a framer-motion button; a synthetic DOM click avoids
-  // Playwright actionability deadlocks from residual transforms.
-  await firstVenueResult.evaluate((el) => {
-    if (el instanceof HTMLElement) el.click()
-  })
-  await expect(page.locator('text=/Create Pulse at/i').first()).toBeVisible({
-    timeout: 5_000,
-  })
-}
+import { openCreatePulseDialog } from './fixtures/navigation'
 
 test.describe('Pulse creation flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -57,12 +16,12 @@ test.describe('Pulse creation flow', () => {
   test('can fill caption and select energy', async ({ page }) => {
     await openCreatePulseDialog(page)
 
-    const caption = page.getByPlaceholder(/What's the vibe/i)
+    const caption = page.getByRole('textbox', { name: /Caption/i })
     await expect(caption).toBeVisible({ timeout: 5_000 })
     await caption.fill('Testing the vibe')
 
-    // The Post Pulse button should exist
-    await expect(page.getByRole('button', { name: /Post Pulse/i })).toBeVisible()
+    await expect(page.getByRole('slider', { name: /Energy level/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Post live review/i })).toBeVisible()
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
@@ -72,7 +31,7 @@ test.describe('Pulse creation flow', () => {
     await expect(cancel).toBeVisible({ timeout: 5_000 })
     await cancel.click()
 
-    await expect(page.locator('text=/Create Pulse at/i').first()).not.toBeVisible({
+    await expect(page.getByRole('heading', { name: /Photo review at/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

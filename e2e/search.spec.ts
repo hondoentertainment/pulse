@@ -11,15 +11,7 @@ test.describe('Search and filter', () => {
   test('search input becomes focusable and accepts text', async ({ page }) => {
     // Global search lives behind the header button and opens an overlay input.
     const searchButton = page.getByRole('button', { name: /Search venues and cities/i })
-    const hasButton = await searchButton
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!hasButton) {
-      test.skip(true, 'Global search not surfaced in current build')
-      return
-    }
+    await expect(searchButton).toBeVisible({ timeout: 15_000 })
 
     await searchButton.click()
     const input = page.getByPlaceholder(/Search venues, cities, categories/i)
@@ -28,23 +20,12 @@ test.describe('Search and filter', () => {
     await expect(input).toHaveValue('bar')
   })
 
-  test('filter buttons are present on discover/home', async ({ page }) => {
-    // Look for Category or Filter related controls
-    const filterControl = page.locator('button').filter({
-      hasText: /filter|category|all|near/i,
-    }).first()
-
-    const visible = await filterControl
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!visible) {
-      test.skip(true, 'No filter control surfaced without seeded venues')
-      return
-    }
-
-    await expect(filterControl).toBeVisible()
+  test('vibe filter controls are present on home', async ({ page }) => {
+    // Home filters by desired energy rather than the category buttons this
+    // suite originally looked for.
+    const vibeFilter = page.getByRole('radiogroup', { name: /Desired energy level/i })
+    await expect(vibeFilter).toBeVisible({ timeout: 15_000 })
+    await expect(vibeFilter.getByRole('radio', { name: /Any vibe/i })).toBeVisible()
   })
 
   // TODO: requires seeded venue data to exercise end-to-end filtering.

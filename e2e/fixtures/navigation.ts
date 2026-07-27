@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { completeOnboarding } from './onboarding'
 
 export type AppTab = 'tonight' | 'discover' | 'map' | 'notifications' | 'profile'
 
@@ -10,15 +11,23 @@ const TAB_PATHS: Record<AppTab, string> = {
   profile: '/profile',
 }
 
+/** Nav labels differ from tab ids — `discover` is presented as "Explore". */
+const TAB_LABELS: Record<AppTab, string> = {
+  tonight: 'Tonight',
+  discover: 'Explore',
+  map: 'Map',
+  notifications: 'Notifications',
+  profile: 'Profile',
+}
+
 /** Navigate via URL — more reliable than synthetic tab clicks in CI. */
 export async function gotoTab(page: Page, tab: AppTab): Promise<void> {
   await page.goto(TAB_PATHS[tab])
   await page.waitForLoadState('domcontentloaded')
-  await expect(page.getByTestId(`tab-${tabLabel(tab)}`)).toBeVisible({ timeout: 15_000 })
-}
-
-function tabLabel(tab: AppTab): string {
-  return tab.charAt(0).toUpperCase() + tab.slice(1)
+  // Onboarding state does not survive a full page load, so the gate reappears on
+  // every URL navigation and hides the bottom nav. The helper is idempotent.
+  await completeOnboarding(page)
+  await expect(page.getByTestId(`tab-${TAB_LABELS[tab]}`)).toBeVisible({ timeout: 15_000 })
 }
 
 /**
@@ -37,7 +46,7 @@ export async function openCreatePulseDialog(page: Page): Promise<void> {
     if (el instanceof HTMLElement) el.click()
   })
 
-  const dialogHeading = page.getByRole('heading', { name: /Create Pulse at/i })
+  const dialogHeading = page.getByRole('heading', { name: /Photo review at/i })
   const search = page.getByPlaceholder(/Search venues, cities, categories/i)
 
   // Either the dialog opened directly (single venue) or search opened (multi).
@@ -46,7 +55,12 @@ export async function openCreatePulseDialog(page: Page): Promise<void> {
   if (await search.isVisible().catch(() => false)) {
     await search.fill('bar')
     const firstResult = page.locator('[data-result-index]').first()
-    await firstResult.click({ timeout: 10_000 })
+    await expect(firstResult).toBeVisible({ timeout: 10_000 })
+    // Results are framer-motion elements whose residual transforms make Playwright
+    // read them as outside the viewport, so dispatch the click directly.
+    await firstResult.evaluate((el) => {
+      if (el instanceof HTMLElement) el.click()
+    })
   }
 
   await expect(dialogHeading).toBeVisible({ timeout: 10_000 })
