@@ -158,6 +158,27 @@ jobs:
             test-results
           if-no-files-found: ignore
 
+  # Branch protection on main requires a `smoke-preview` context, which predates the
+  # split into signal/venue suites. This aggregates them so the required check resolves.
+  # Venue stays advisory here because its job is continue-on-error.
+  smoke-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [smoke-preview-signal, smoke-preview-venue]
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Report suite results
+        run: |
+          echo "signal: ${{ needs.smoke-preview-signal.result }}"
+          echo "venue (advisory): ${{ needs.smoke-preview-venue.result }}"
+      - name: Require the signal suite to pass
+        if: needs.smoke-preview-signal.result != 'success'
+        run: |
+          echo "::error::smoke-preview-signal did not pass (${{ needs.smoke-preview-signal.result }})."
+          exit 1
+
   e2e-signal:
     runs-on: ubuntu-latest
     timeout-minutes: 20
