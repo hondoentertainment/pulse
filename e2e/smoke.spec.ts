@@ -86,6 +86,15 @@ test.describe('Signal shell', () => {
 
   test('Settings shows honest reminder copy', async ({ page }) => {
     await clickLink(page, /Settings — Preferences/i)
-    await expect(page.getByText(/push notifications coming soon/i)).toBeVisible()
+    // Reminders are real now (permission + scheduled notification + in-app
+    // nudge), so the old "push notifications coming soon" placeholder is gone.
+    // The control is off by default, which shows the description only.
+    await expect(page.getByText(/Daily reminder/i).first()).toBeVisible()
+    await expect(page.getByText(/a once-a-day nudge to log your signal/i)).toBeVisible()
+  })
+
+  test('Settings offers a data export control', async ({ page }) => {
+    await clickLink(page, /Settings — Preferences/i)
+    await expect(page.getByRole('button', { name: /Export as CSV/i })).toBeVisible()
   })
 })
