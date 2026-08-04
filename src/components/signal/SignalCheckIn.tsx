@@ -1,20 +1,19 @@
 import { motion, useReducedMotion } from 'framer-motion'
-import { useMemo, type ReactNode } from 'react'
-import { BatteryHigh, Brain, Moon, Smiley, Sparkle } from '@phosphor-icons/react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { BatteryHigh, Brain, Moon, Plus, Smiley, Sparkle, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useHaptics } from '@/hooks/use-haptics'
 import { computeDraftScore, scoreBucket, scoreBucketColor, scoreBucketLabel } from '@/lib/signal-score'
 import { cn } from '@/lib/utils'
 import { useSignalStore } from '@/stores/use-signal-store'
+import { getAvailableTags, getTagsFromHistory, isBuiltInTag, MAX_TAGS_PER_ENTRY, MAX_CUSTOM_TAGS, MAX_TAG_LENGTH } from '@/lib/signal-tags'
 
 interface SignalCheckInProps {
   onSave: () => void
   compact?: boolean
   saving?: boolean
 }
-
-const TAGS = ['calm', 'clear', 'tired', 'stressed', 'social', 'active']
 
 function MetricSlider({
   label,
@@ -96,7 +95,18 @@ function LiveScorePreview({ score }: { score: number }) {
 export function SignalCheckIn({ onSave, compact = false, saving = false }: SignalCheckInProps) {
   const draft = useSignalStore((state) => state.draft)
   const updateDraft = useSignalStore((state) => state.updateDraft)
+  const customTags = useSignalStore((state) => state.customTags)
+  const addCustomTag = useSignalStore((state) => state.addCustomTag)
+  const removeCustomTag = useSignalStore((state) => state.removeCustomTag)
   const { triggerSelection, triggerSuccess } = useHaptics()
+
+  const [adding, setAdding] = useState(false)
+  const [newTag, setNewTag] = useState('')
+  const entries = useSignalStore((state) => state.entries)
+  const availableTags = useMemo(
+    () => getAvailableTags(customTags, getTagsFromHistory(entries)),
+    [customTags, entries],
+  )
 
   const liveScore = useMemo(
     () =>
@@ -114,8 +124,29 @@ export function SignalCheckIn({ onSave, compact = false, saving = false }: Signa
     updateDraft({
       tags: draft.tags.includes(tag)
         ? draft.tags.filter((item) => item !== tag)
-        : [...draft.tags, tag].slice(0, 3),
+        : [...draft.tags, tag].slice(0, MAX_TAGS_PER_ENTRY),
     })
+  }
+
+  /** Add a custom tag and select it immediately — adding implies intent to use. */
+  const commitNewTag = () => {
+    const added = addCustomTag(newTag)
+    if (added) {
+      triggerSelection()
+      if (!draft.tags.includes(added)) {
+        updateDraft({ tags: [...draft.tags, added].slice(0, MAX_TAGS_PER_ENTRY) })
+      }
+    }
+    setNewTag('')
+    setAdding(false)
+  }
+
+  const handleRemoveCustomTag = (tag: string) => {
+    removeCustomTag(tag)
+    // Drop it from the in-progress draft too, so a deleted tag can't be saved.
+    if (draft.tags.includes(tag)) {
+      updateDraft({ tags: draft.tags.filter((item) => item !== tag) })
+    }
   }
 
   const handleSave = () => {
@@ -171,28 +202,89 @@ export function SignalCheckIn({ onSave, compact = false, saving = false }: Signa
       </div>
 
       <div className="mt-4">
-        <p className="mb-2 text-sm font-semibold">Quick context <span className="font-normal text-muted-foreground">(up to 3)</span></p>
+        <p className="mb-2 text-sm font-semibold">
+          Quick context{' '}
+          <span className="font-normal text-muted-foreground">(up to {MAX_TAGS_PER_ENTRY})</span>
+        </p>
         <div className="flex flex-wrap gap-2">
-          {TAGS.map((tag) => {
+          {availableTags.map((tag) => {
             const selected = draft.tags.includes(tag)
+            const removable = !isBuiltInTag(tag)
             return (
-              <button
-                key={tag}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => toggleTag(tag)}
-                className={cn(
-                  'min-h-11 rounded-full border px-4 text-sm font-semibold transition-all touch-manipulation tap-highlight-none active:scale-95',
-                  selected
-                    ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                    : 'border-border bg-background text-foreground hover:bg-secondary',
+              <span key={tag} className="relative inline-flex">
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleTag(tag)}
+                  className={cn(
+                    'min-h-11 rounded-full border px-4 text-sm font-semibold transition-all touch-manipulation tap-highlight-none active:scale-95',
+                    removable && 'pr-9',
+                    selected
+                      ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                      : 'border-border bg-background text-foreground hover:bg-secondary',
+                  )}
+                >
+                  {tag}
+                </button>
+                {removable && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${tag} tag`}
+                    onClick={() => handleRemoveCustomTag(tag)}
+                    className={cn(
+                      'absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition-colors',
+                      selected
+                        ? 'text-primary-foreground/70 hover:bg-primary-foreground/20 hover:text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                    )}
+                  >
+                    <X size={13} weight="bold" />
+                  </button>
                 )}
-              >
-                {tag}
-              </button>
+              </span>
             )
           })}
+
+          {adding ? (
+            <input
+              autoFocus
+              type="text"
+              value={newTag}
+              maxLength={MAX_TAG_LENGTH}
+              aria-label="New tag name"
+              placeholder="gym, coffee…"
+              onChange={(event) => setNewTag(event.target.value)}
+              onBlur={commitNewTag}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  commitNewTag()
+                } else if (event.key === 'Escape') {
+                  setNewTag('')
+                  setAdding(false)
+                }
+              }}
+              className="min-h-11 w-36 rounded-full border border-primary bg-background px-4 text-sm font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          ) : (
+            customTags.length < MAX_CUSTOM_TAGS && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                aria-label="Add a custom tag"
+                className="flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-border px-4 text-sm font-semibold text-muted-foreground transition-colors touch-manipulation tap-highlight-none hover:bg-secondary hover:text-foreground active:scale-95"
+              >
+                <Plus size={14} weight="bold" />
+                Add
+              </button>
+            )
+          )}
         </div>
+        {availableTags.length > 6 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Your own tags make the pattern insights sharper — track what actually moves your day.
+          </p>
+        )}
       </div>
 
       <Button

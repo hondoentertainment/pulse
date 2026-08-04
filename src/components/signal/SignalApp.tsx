@@ -18,6 +18,7 @@ import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalPatterns } from '@/components/signal/SignalPatterns'
 import { SignalWeeklySummary } from '@/components/signal/SignalWeeklySummary'
 import { downloadSignalCsv } from '@/lib/signal-export'
+import { getPersonalizedAdvice } from '@/lib/signal-advice'
 import {
   DEFAULT_REMINDER_TIME,
   getReminderPermission,
@@ -140,6 +141,7 @@ function HomePage({ userId }: { userId: string }) {
   const savedAt = useSignalStore((state) => state.savedAt)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
+  const advice = useMemo(() => getPersonalizedAdvice(entries, profile), [entries, profile])
   const todayEntry = getTodayEntry(entries)
   const nudge = shouldNudgeForCheckIn(entries, {
     enabled: reminderEnabled,
@@ -185,7 +187,7 @@ function HomePage({ userId }: { userId: string }) {
           <div>
             <p className="text-sm font-bold text-primary">Insight</p>
             <p className="mt-1 text-lg font-black leading-6">{generateInsight(entries, profile)}</p>
-            <p className="mt-3 text-sm text-muted-foreground">{metrics.recommendation}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{advice.text}</p>
           </div>
         </div>
       </section>
@@ -233,6 +235,7 @@ function TrendsPage() {
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
+  const advice = useMemo(() => getPersonalizedAdvice(entries, profile), [entries, profile])
 
   return (
     <SignalPageTransition>
@@ -250,8 +253,10 @@ function TrendsPage() {
         <MetricCard label="Streak" value={metrics.streakCount} detail="daily loop" />
       </div>
       <section className="rounded-[2rem] border border-border bg-card p-5">
-        <p className="text-sm font-bold text-primary">Recommendation</p>
-        <p className="mt-2 text-xl font-black leading-7">{metrics.recommendation}</p>
+        <p className="text-sm font-bold text-primary">
+          {advice.source === 'pattern' ? 'Based on your data' : 'Recommendation'}
+        </p>
+        <p className="mt-2 text-xl font-black leading-7">{advice.text}</p>
       </section>
       <SignalPatterns entries={entries} />
     </div>

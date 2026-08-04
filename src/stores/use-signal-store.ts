@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { saveSignalEntry, saveSignalProfile } from '@/lib/signal-data'
 import { computeDraftScore } from '@/lib/signal-score'
+import { addCustomTag as addCustomTagPure, removeCustomTag as removeCustomTagPure } from '@/lib/signal-tags'
 import type { SignalEntry, SignalGoal, SignalProfile, TrackingFocus } from '@/lib/signal-insights'
 
 interface DraftSignal {
@@ -19,12 +20,16 @@ interface SignalStore {
   savedAt: string | null
   firstWinOpen: boolean
   reminderEnabled: boolean
+  customTags: string[]
   setProfile: (userId: string, profile: SignalProfile) => void
   mergeRemoteEntries: (entries: SignalEntry[]) => void
   updateDraft: (patch: Partial<DraftSignal>) => void
   saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
   closeFirstWin: () => void
   setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
+  /** Returns the normalised tag when added, or null when rejected. */
+  addCustomTag: (raw: string) => string | null
+  removeCustomTag: (tag: string) => void
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -51,6 +56,7 @@ export const useSignalStore = create<SignalStore>()(
       savedAt: null,
       firstWinOpen: false,
       reminderEnabled: false,
+      customTags: [],
       setProfile: (userId, profile) => {
         set({ profile })
         void saveSignalProfile(userId, profile)
@@ -99,6 +105,15 @@ export const useSignalStore = create<SignalStore>()(
         void saveSignalEntry(entry)
         return entry
       },
+      addCustomTag: (raw) => {
+        const result = addCustomTagPure(get().customTags, raw)
+        if (!result.ok) return null
+        set({ customTags: result.tags })
+        return result.tag
+      },
+      removeCustomTag: (tag) => {
+        set((state) => ({ customTags: removeCustomTagPure(state.customTags, tag) }))
+      },
       closeFirstWin: () => set({ firstWinOpen: false }),
       setReminder: (enabled, reminderTime, userId) => {
         const current = get().profile
@@ -125,6 +140,7 @@ export const useSignalStore = create<SignalStore>()(
         entries: state.entries,
         savedAt: state.savedAt,
         reminderEnabled: state.reminderEnabled,
+        customTags: state.customTags,
       }),
     },
   ),
