@@ -87,6 +87,20 @@
 }
 
 @layer base {
+  /*
+   * These custom properties were originally scoped to `#spark-app`, the
+   * wrapper element from the GitHub Spark template. This app mounts into
+   * `<main id="root">` (see index.html) and has no `#spark-app` element, so
+   * every variable below — including the `--size-*` spacing scale that
+   * `tailwind.config.js` maps Tailwind's spacing/sizing utilities onto —
+   * resolved to nothing. `var(--size-16)` was invalid, so `h-16`, `inset-0`,
+   * `p-4`, `gap-2`, etc. silently no-opped app-wide.
+   *
+   * Scope to `:root` as well so the variables actually apply. `#spark-app` is
+   * kept in the selector so the styles still work if the app is ever mounted
+   * inside a Spark wrapper.
+   */
+  :root,
   #spark-app {
     --tomato-contrast: #fff;
     --red-contrast: #fff;
