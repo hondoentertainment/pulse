@@ -90,6 +90,46 @@ export async function fetchAllSignalEntries(userId: string): Promise<SignalEntry
   return all
 }
 
+interface SignalProfileRow {
+  tracking_focus: TrackingFocus
+  goal: SignalProfile['goal']
+  reminder_time: string | null
+  reminder_enabled: boolean | null
+}
+
+/**
+ * Fetch the user's saved onboarding profile.
+ *
+ * Without this, a returning user on a new device (or after clearing storage)
+ * has a null local profile, gets pushed back through onboarding, and overwrites
+ * the focus/goal/reminder settings already stored server-side.
+ *
+ * Returns null when unconfigured or when no profile row exists yet.
+ */
+export async function fetchSignalProfile(userId: string): Promise<SignalProfile | null> {
+  if (!hasSupabaseConfig) return null
+
+  const { data, error } = await supabase
+    .from('signal_profiles')
+    .select('tracking_focus,goal,reminder_time,reminder_enabled')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('Signal profile fetch failed', error.message)
+    throw new Error(error.message || 'Could not load your profile')
+  }
+  if (!data) return null
+
+  const row = data as SignalProfileRow
+  return {
+    trackingFocus: row.tracking_focus,
+    goal: row.goal,
+    reminderTime: row.reminder_time ?? undefined,
+    reminderEnabled: row.reminder_enabled ?? false,
+  }
+}
+
 export async function saveSignalEntry(entry: SignalEntry): Promise<void> {
   if (!hasSupabaseConfig) return
 

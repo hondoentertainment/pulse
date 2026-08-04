@@ -113,6 +113,20 @@ describe('getLongestStreak', () => {
   })
 })
 
+describe('getLongestStreak timezone handling', () => {
+  it('treats consecutive local days as separate, even across a UTC boundary', () => {
+    // 11pm then 1am the next local day. With a UTC key these can collapse into
+    // one day west of UTC and understate the record.
+    const late = new Date(2026, 6, 1, 23, 0, 0)
+    const early = new Date(2026, 6, 2, 1, 0, 0)
+    const entries = [
+      entry({ createdAt: late.toISOString(), score: 70 }),
+      entry({ createdAt: early.toISOString(), score: 72 }),
+    ]
+    expect(getLongestStreak(entries)).toBe(2)
+  })
+})
+
 describe('getMostFrequentTag / getBestDayOfWeek', () => {
   it('finds the most frequent tag', () => {
     const entries = [

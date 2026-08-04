@@ -7,7 +7,7 @@ import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, Tr
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { fetchSignalEntries, fetchAllSignalEntries, deleteAllSignalData } from '@/lib/signal-data'
+import { fetchSignalEntries, fetchAllSignalEntries, fetchSignalProfile, deleteAllSignalData } from '@/lib/signal-data'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type SignalEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
@@ -161,8 +161,14 @@ function HomePage({ userId }: { userId: string }) {
     setSaving(true)
     const wasFirst = entries.length === 0
     const backfilling = backfillDay !== null
-    saveEntry(userId, undefined, backfilling ? backfillTimestamp(backfillDay) : undefined)
-    const score = useSignalStore.getState().entries[0]?.score ?? 0
+    // Use the returned entry: entries are sorted by createdAt, so after a
+    // backfill entries[0] is the newest normal check-in, not the one just saved.
+    const savedEntry = saveEntry(
+      userId,
+      undefined,
+      backfilling ? backfillTimestamp(backfillDay) : undefined,
+    )
+    const score = savedEntry.score
     const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
     trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
     triggerSuccess()
@@ -721,6 +727,7 @@ function SignalRoutes() {
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const mergeRemoteEntries = useSignalStore((state) => state.mergeRemoteEntries)
+  const hydrateProfile = useSignalStore((state) => state.hydrateProfile)
   const firstWinOpen = useSignalStore((state) => state.firstWinOpen)
   const closeFirstWin = useSignalStore((state) => state.closeFirstWin)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
@@ -738,9 +745,28 @@ function SignalRoutes() {
     retry: 1,
   })
 
+  // Without this, a returning user on a new device has a null local profile and
+  // gets pushed back through onboarding, overwriting the focus/goal/reminder
+  // settings already saved server-side.
+  const remoteProfile = useQuery({
+    queryKey: ['signal-profile', userId],
+    queryFn: () => fetchSignalProfile(userId),
+    enabled: Boolean(userId) && hasSupabaseConfig,
+    retry: 1,
+  })
+
   useEffect(() => {
     if (remoteEntries.data) mergeRemoteEntries(remoteEntries.data)
   }, [mergeRemoteEntries, remoteEntries.data])
+
+  useEffect(() => {
+    if (remoteProfile.data) hydrateProfile(remoteProfile.data)
+  }, [hydrateProfile, remoteProfile.data])
+
+  // Don't decide "needs onboarding" until the saved profile has had a chance
+  // to arrive, or a returning user briefly sees onboarding and can complete it.
+  const profileResolved =
+    !hasSupabaseConfig || !userId || remoteProfile.isFetched || remoteProfile.isError
 
   const finishOnboarding = () => {
     toast.success('First signal saved', { description: 'Your baseline, insight, and streak are ready.' })
@@ -748,8 +774,8 @@ function SignalRoutes() {
 
   return (
     <>
-      {!profile && <SignalOnboarding userId={userId} onFinished={finishOnboarding} />}
-      <Shell inertChrome={!profile}>
+      {!profile && profileResolved && <SignalOnboarding userId={userId} onFinished={finishOnboarding} />}
+      <Shell inertChrome={!profile && profileResolved}>
         {hasSupabaseConfig && remoteEntries.isError && (
           <div
             className="mb-4 rounded-2xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-foreground"

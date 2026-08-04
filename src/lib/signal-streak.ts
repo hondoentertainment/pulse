@@ -112,8 +112,22 @@ export function getMostRecentMissedDay(
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const days = new Set(entries.map((entry) => localDayKey(new Date(entry.createdAt))))
 
+  // Never suggest a day before the user started logging. Otherwise a brand-new
+  // user whose only entry is today gets told they "missed" yesterday — and then
+  // the day before that — inviting them to fabricate a week of history.
+  const earliest = entries.reduce((oldest, entry) =>
+    new Date(entry.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? entry : oldest,
+  )
+  const earliestDate = new Date(earliest.createdAt)
+  const earliestDay = new Date(
+    earliestDate.getFullYear(),
+    earliestDate.getMonth(),
+    earliestDate.getDate(),
+  )
+
   for (let offset = 1; offset <= windowDays; offset += 1) {
     const candidate = addDays(today, -offset)
+    if (candidate.getTime() < earliestDay.getTime()) return null
     if (!days.has(localDayKey(candidate))) return candidate
   }
   return null

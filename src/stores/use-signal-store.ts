@@ -22,6 +22,8 @@ interface SignalStore {
   reminderEnabled: boolean
   customTags: string[]
   setProfile: (userId: string, profile: SignalProfile) => void
+  /** Adopt a server-fetched profile without writing it back. */
+  hydrateProfile: (profile: SignalProfile) => void
   mergeRemoteEntries: (entries: SignalEntry[]) => void
   updateDraft: (patch: Partial<DraftSignal>) => void
   /** `createdAt` backfills a past day; defaults to now. */
@@ -63,6 +65,13 @@ export const useSignalStore = create<SignalStore>()(
       setProfile: (userId, profile) => {
         set({ profile })
         void saveSignalProfile(userId, profile)
+      },
+      hydrateProfile: (profile) => {
+        // Server is the source of truth on a fresh device; don't echo it back.
+        set((state) => ({
+          profile: state.profile ?? profile,
+          reminderEnabled: state.profile ? state.reminderEnabled : (profile.reminderEnabled ?? false),
+        }))
       },
       mergeRemoteEntries: (remoteEntries) => {
         if (remoteEntries.length === 0) return

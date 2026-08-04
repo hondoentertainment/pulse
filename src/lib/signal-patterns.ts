@@ -41,7 +41,11 @@ export interface PersonalRecords {
 const mean = (values: number[]): number =>
   values.length === 0 ? 0 : values.reduce((sum, v) => sum + v, 0) / values.length
 
-const dayKey = (date: Date) => date.toISOString().slice(0, 10)
+// Local calendar day, matching signal-streak.ts. A UTC key would collapse an
+// 11pm and a 1am check-in (consecutive local days, west of UTC) into one day
+// and understate the longest-streak record.
+const dayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
 /**
  * Correlate each distinct tag with signal score. A tag is only scored when it

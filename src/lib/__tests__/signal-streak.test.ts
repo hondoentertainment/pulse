@@ -121,6 +121,20 @@ describe('getMostRecentMissedDay', () => {
     const entries = Array.from({ length: 8 }, (_, i) => entryDaysAgo(i))
     expect(getMostRecentMissedDay(entries, NOW)).toBeNull()
   })
+
+  it('never suggests a day before the user started logging', () => {
+    // Brand-new user: only today. Yesterday is not a "gap" — it predates them.
+    expect(getMostRecentMissedDay([entryDaysAgo(0)], NOW)).toBeNull()
+  })
+
+  it('does not walk past the earliest entry into fabricated history', () => {
+    // Started 2 days ago, missed yesterday → that one gap is offerable...
+    const entries = [entryDaysAgo(0), entryDaysAgo(2)]
+    expect(getMostRecentMissedDay(entries, NOW)!.getDate()).toBe(19)
+    // ...but once it is filled, nothing older should ever be suggested.
+    const filled = [entryDaysAgo(0), entryDaysAgo(1), entryDaysAgo(2)]
+    expect(getMostRecentMissedDay(filled, NOW)).toBeNull()
+  })
 })
 
 describe('backfillTimestamp', () => {
