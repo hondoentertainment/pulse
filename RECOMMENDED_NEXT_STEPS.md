@@ -52,28 +52,37 @@ closed needs a real VAPID key (the one in `pwa.ts` is a dev placeholder) and a
 scheduled job reading `signal_profiles.reminder_enabled` / `reminder_time`.
 Reminders are the primary retention lever for a daily-habit product.
 
-### 5. Account deletion / data controls
+### 5. ~~Account deletion / data controls~~ — done
 
-CSV export exists; self-serve delete does not. Required for app-store review and
-most privacy regimes.
+Self-serve delete ships in Settings (typed confirmation, clears
+`signal_entries` / `signal_profiles` / `signal_pilot_signups` under RLS, wipes
+local state, then signs out).
 
-### 6. Correlation-driven insights
+### 6. ~~Correlation-driven insights~~ — done
 
-`generateInsight` / `getRecommendation` are hand-written heuristics. The tag
-correlation engine (`signal-patterns.ts`) already computes what actually moves a
-user's score — feeding that into the daily recommendation is the obvious upgrade.
+`signal-advice.ts` derives the daily recommendation from the user's own tag
+correlations, with a noise floor and a rule-based fallback. Custom tags
+(`signal-tags.ts`) widen the vocabulary that feeds it.
+
+### 6a. Remaining product gaps
+
+- **Multiple check-ins per day** — the schema allows it; the product assumes one.
+  Morning-vs-evening data unlocks the most differentiated insight available.
+- **Health integrations** (Apple Health / Google Fit) — richest data, removes
+  manual entry, but native work plus a privacy surface.
+- **Define Pulse Pro** — wait for signal from the pilot list now being captured.
 
 ---
 
 ## Health & hygiene
 
-### 7. `typecheck-strict` venue type debt
+### 7. `dependency-audit` is red on dev-only tooling
 
-Bare `tsc -b` reports ~69 errors, **all** in dormant venue-app files (Venue type
-and component-prop drift, stale test fixtures). It's cross-cutting, so partial
-fixes give no gate benefit. Either fix it wholesale in a dedicated PR with venue
-verification, or exclude the venue surface from the strict project if that
-product stays dormant.
+`node-tar` advisories reach the tree through `@capacitor/cli`, a
+**devDependency** that never enters the shipped bundle. No non-breaking fix
+exists — clearing it means force-bumping Capacitor's major, which deserves its
+own PR tested against the native builds. Alternative: scope the audit gate to
+`--audit-level=critical` for production dependencies.
 
 ### 8. Decide the venue product's fate
 
@@ -81,12 +90,12 @@ It is a large, dormant surface carrying real maintenance cost (type debt, a
 second e2e suite, mock data). Either commit to reviving it or archive it
 deliberately — leaving it half-alive is the expensive option.
 
-### 9. Documentation drift
+### 9. ~~Documentation drift~~ — done
 
-`README.md` and the PRDs are now accurate. Remaining venue-era docs
+`README.md` and the PRDs are accurate, and the venue-era docs
 (`PRODUCTION_ROLLOUT.md`, `NEXT_PHASES.md`, `IMPLEMENTATION_SUMMARY.md`,
-`SOCIAL_PULSE_IMPLEMENTATION.md`) still describe the pre-pivot product and
-should be archived or re-scoped.
+`SOCIAL_PULSE_IMPLEMENTATION.md`) now carry an archived banner pointing at the
+Signal docs.
 
 ---
 

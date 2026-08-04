@@ -24,12 +24,15 @@ interface SignalStore {
   setProfile: (userId: string, profile: SignalProfile) => void
   mergeRemoteEntries: (entries: SignalEntry[]) => void
   updateDraft: (patch: Partial<DraftSignal>) => void
-  saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
+  /** `createdAt` backfills a past day; defaults to now. */
+  saveEntry: (userId: string, focus?: TrackingFocus, createdAt?: string) => SignalEntry
   closeFirstWin: () => void
   setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
   /** Returns the normalised tag when added, or null when rejected. */
   addCustomTag: (raw: string) => string | null
   removeCustomTag: (tag: string) => void
+  /** Wipe all locally-held Signal state (used by account deletion). */
+  clearLocalSignalData: () => void
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -82,12 +85,12 @@ export const useSignalStore = create<SignalStore>()(
           },
         }))
       },
-      saveEntry: (userId, focus) => {
+      saveEntry: (userId, focus, createdAt) => {
         const state = get()
         const entry: SignalEntry = {
           id: createEntryId(),
           userId,
-          createdAt: new Date().toISOString(),
+          createdAt: createdAt ?? new Date().toISOString(),
           focus: focus ?? state.profile?.trackingFocus ?? 'energy',
           score: scoreDraft(state.draft),
           energy: state.draft.energy,
@@ -98,7 +101,9 @@ export const useSignalStore = create<SignalStore>()(
         }
 
         set((current) => ({
-          entries: [entry, ...current.entries.filter((existing) => existing.id !== entry.id)],
+          entries: [entry, ...current.entries.filter((existing) => existing.id !== entry.id)].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          ),
           savedAt: new Date().toISOString(),
           firstWinOpen: current.entries.length === 0,
         }))
@@ -113,6 +118,17 @@ export const useSignalStore = create<SignalStore>()(
       },
       removeCustomTag: (tag) => {
         set((state) => ({ customTags: removeCustomTagPure(state.customTags, tag) }))
+      },
+      clearLocalSignalData: () => {
+        set({
+          profile: null,
+          entries: [],
+          savedAt: null,
+          firstWinOpen: false,
+          reminderEnabled: false,
+          customTags: [],
+          draft: { energy: 7, mood: 7, stress: 4, sleepQuality: 7, tags: ['calm'] },
+        })
       },
       closeFirstWin: () => set({ firstWinOpen: false }),
       setReminder: (enabled, reminderTime, userId) => {

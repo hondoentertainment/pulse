@@ -1,3 +1,5 @@
+import { getStreakWithGrace } from '@/lib/signal-streak'
+
 export type TrackingFocus = 'energy' | 'mood' | 'focus' | 'sleep'
 export type SignalGoal = 'more_energy' | 'less_stress' | 'better_sleep' | 'deeper_focus'
 export type TrendDirection = 'up' | 'down' | 'flat'
@@ -116,7 +118,9 @@ export function calculateSignalMetrics(entries: SignalEntry[], profile: SignalPr
   return {
     sevenDayAverage: getSevenDayAverage(entries),
     trendDirection: getTrendDirection(entries),
-    streakCount: getStreakCount(entries),
+    // Grace-aware: an unlogged today doesn't zero the streak, and one missed
+    // day is forgiven. See signal-streak.ts.
+    streakCount: getStreakWithGrace(entries),
     recommendation: getRecommendation(entries, profile),
   }
 }

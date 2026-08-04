@@ -102,6 +102,35 @@ export async function saveSignalEntry(entry: SignalEntry): Promise<void> {
   }
 }
 
+/**
+ * Permanently delete every Signal record for a user: check-ins, profile, and
+ * any pilot-waitlist row. RLS restricts each delete to the caller's own rows,
+ * so this cannot be used to erase someone else's data.
+ *
+ * Returns the number of tables cleared. No-ops when Supabase isn't configured
+ * (local-only builds still wipe local state — see `clearLocalSignalData`).
+ */
+export async function deleteAllSignalData(userId: string): Promise<void> {
+  if (!hasSupabaseConfig) return
+
+  const entriesResult = await supabase.from('signal_entries').delete().eq('user_id', userId)
+  if (entriesResult.error) {
+    throw new Error(entriesResult.error.message || 'Could not delete your check-ins')
+  }
+
+  const profileResult = await supabase.from('signal_profiles').delete().eq('user_id', userId)
+  if (profileResult.error) {
+    throw new Error(profileResult.error.message || 'Could not delete your profile')
+  }
+
+  // Best-effort: the waitlist is a separate opt-in, and failing to clear it
+  // must not leave the user believing their check-in data survived.
+  const pilotResult = await supabase.from('signal_pilot_signups').delete().eq('user_id', userId)
+  if (pilotResult.error) {
+    console.warn('Pilot signup not removed', pilotResult.error.message)
+  }
+}
+
 export async function saveSignalProfile(userId: string, profile: SignalProfile): Promise<void> {
   if (!hasSupabaseConfig) return
 

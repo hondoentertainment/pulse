@@ -1,5 +1,11 @@
 # Pulse — Implementation Summary
 
+> ⚠️ **Archived — venue product only.**
+> This document describes the pre-pivot venue app (`VITE_APP_MODE=venue`), not
+> the shipping product. Production runs **Pulse Signal**; see
+> [PRD_SIGNAL.md](PRD_SIGNAL.md) and [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md).
+> Kept for reference on the venue surface; much of it was never built.
+
 ## Overview
 
 This document summarizes the major improvements implemented to strengthen Pulse's core loop, build trust, and improve engagement. For the full product spec, see [PRD.md](PRD.md). For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).

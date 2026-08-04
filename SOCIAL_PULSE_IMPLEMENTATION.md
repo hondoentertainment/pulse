@@ -1,5 +1,11 @@
 # Social Pulse Correlation System — Implementation Summary
 
+> ⚠️ **Archived — venue product only.**
+> This document describes the pre-pivot venue app (`VITE_APP_MODE=venue`), not
+> the shipping product. Production runs **Pulse Signal**; see
+> [PRD_SIGNAL.md](PRD_SIGNAL.md) and [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md).
+> Kept for reference on the venue surface; much of it was never built.
+
 ## Overview
 
 A real-time Social Pulse ingestion and correlation system that pulls posts from X (Twitter) for configurable hashtags and correlates that activity with existing Venue Pulse scores. This powers the Admin Social Pulse Dashboard for monitoring how social media activity relates to physical venue energy.

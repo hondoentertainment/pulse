@@ -7,7 +7,7 @@ import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, Tr
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { fetchSignalEntries, fetchAllSignalEntries } from '@/lib/signal-data'
+import { fetchSignalEntries, fetchAllSignalEntries, deleteAllSignalData } from '@/lib/signal-data'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type SignalEntry, type TrendDirection } from '@/lib/signal-insights'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
@@ -19,6 +19,7 @@ import { SignalPatterns } from '@/components/signal/SignalPatterns'
 import { SignalWeeklySummary } from '@/components/signal/SignalWeeklySummary'
 import { downloadSignalCsv } from '@/lib/signal-export'
 import { getPersonalizedAdvice } from '@/lib/signal-advice'
+import { backfillTimestamp, getMostRecentMissedDay, getStreakDetail } from '@/lib/signal-streak'
 import {
   DEFAULT_REMINDER_TIME,
   getReminderPermission,
@@ -135,6 +136,7 @@ function HomePage({ userId }: { userId: string }) {
   const navigate = useNavigate()
   const { triggerSuccess } = useHaptics()
   const [saving, setSaving] = useState(false)
+  const [backfillDay, setBackfillDay] = useState<Date | null>(null)
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const saveEntry = useSignalStore((state) => state.saveEntry)
@@ -142,6 +144,8 @@ function HomePage({ userId }: { userId: string }) {
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
   const advice = useMemo(() => getPersonalizedAdvice(entries, profile), [entries, profile])
+  const streak = useMemo(() => getStreakDetail(entries), [entries])
+  const missedDay = useMemo(() => getMostRecentMissedDay(entries), [entries])
   const todayEntry = getTodayEntry(entries)
   const nudge = shouldNudgeForCheckIn(entries, {
     enabled: reminderEnabled,
@@ -156,12 +160,18 @@ function HomePage({ userId }: { userId: string }) {
   const handleSave = () => {
     setSaving(true)
     const wasFirst = entries.length === 0
-    saveEntry(userId)
+    const backfilling = backfillDay !== null
+    saveEntry(userId, undefined, backfilling ? backfillTimestamp(backfillDay) : undefined)
     const score = useSignalStore.getState().entries[0]?.score ?? 0
     const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
     trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
     triggerSuccess()
-    toast.success('Saved', { description: 'Your daily signal is now part of your trend.' })
+    toast.success(backfilling ? 'Gap filled' : 'Saved', {
+      description: backfilling
+        ? `${backfillDay.toLocaleDateString(undefined, { weekday: 'long' })} is now part of your trend.`
+        : 'Your daily signal is now part of your trend.',
+    })
+    setBackfillDay(null)
     setSaving(false)
   }
 
@@ -175,7 +185,11 @@ function HomePage({ userId }: { userId: string }) {
       </section>
 
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard label="Streak" value={metrics.streakCount} detail={metrics.streakCount === 1 ? 'day active' : 'days active'} />
+        <MetricCard
+          label="Streak"
+          value={metrics.streakCount}
+          detail={streak.graceUsed ? 'days · 1 grace used' : metrics.streakCount === 1 ? 'day active' : 'days active'}
+        />
         <MetricCard label="7-day avg" value={metrics.sevenDayAverage || '--'} detail="signal score" />
       </div>
 
@@ -204,7 +218,19 @@ function HomePage({ userId }: { userId: string }) {
         </div>
       )}
 
-      {todayEntry ? (
+      {backfillDay ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 rounded-[1.75rem] border border-primary/30 bg-primary/10 px-4 py-3">
+            <p className="text-sm font-bold text-primary">
+              Filling in {backfillDay.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
+            <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setBackfillDay(null)}>
+              Cancel
+            </Button>
+          </div>
+          <SignalCheckIn onSave={handleSave} saving={saving} />
+        </div>
+      ) : todayEntry ? (
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -223,6 +249,24 @@ function HomePage({ userId }: { userId: string }) {
         </motion.section>
       ) : (
         <SignalCheckIn onSave={handleSave} saving={saving} />
+      )}
+
+      {!backfillDay && missedDay && (
+        <button
+          type="button"
+          onClick={() => setBackfillDay(missedDay)}
+          className="flex w-full items-center justify-between gap-3 rounded-[1.75rem] border border-dashed border-border bg-card px-4 py-3 text-left transition-colors hover:bg-secondary"
+        >
+          <span>
+            <span className="block text-sm font-black">
+              You missed {missedDay.toLocaleDateString(undefined, { weekday: 'long' })}
+            </span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Fill it in to keep your history complete.
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-bold text-primary">Log it</span>
+        </button>
       )}
 
       {savedAt && <p className="text-center text-xs text-muted-foreground">Last saved {new Date(savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>}
@@ -309,6 +353,100 @@ function HistoryPage() {
       </div>
     </div>
     </SignalPageTransition>
+  )
+}
+
+/** Typed confirmation required before an irreversible delete. */
+const DELETE_CONFIRMATION = 'DELETE'
+
+/**
+ * Permanent deletion of a user's Signal data. Export exists, but self-serve
+ * delete did not — it's required for app-store review and most privacy
+ * regimes, and it's the other half of "your data is yours".
+ *
+ * Deliberately high-friction: an explicit typed confirmation, because this
+ * cannot be undone.
+ */
+function DangerZone({ userId, entryCount }: { userId: string; entryCount: number }) {
+  const { signOut } = useSupabaseAuth()
+  const clearLocalSignalData = useSignalStore((state) => state.clearLocalSignalData)
+  const [open, setOpen] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION) return
+    setDeleting(true)
+    try {
+      await deleteAllSignalData(userId)
+      clearLocalSignalData()
+      toast.success('Your data has been deleted', {
+        description: 'Every check-in and preference has been removed.',
+      })
+      await signOut()
+    } catch (error) {
+      toast.error("Couldn't delete your data", {
+        description: error instanceof Error ? error.message : 'Please try again.',
+      })
+    } finally {
+      setDeleting(false)
+      setOpen(false)
+      setConfirmation('')
+    }
+  }
+
+  return (
+    <section className="space-y-3 rounded-[2rem] border border-destructive/35 bg-destructive/5 p-5">
+      <p className="font-black text-destructive">Delete your data</p>
+      <p className="text-sm text-muted-foreground">
+        Permanently removes {entryCount > 0 ? `all ${entryCount} check-in${entryCount === 1 ? '' : 's'}` : 'your check-ins'},
+        your profile, and your preferences. This cannot be undone — export first if you want a copy.
+      </p>
+
+      {!open ? (
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-2xl border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setOpen(true)}
+        >
+          Delete everything
+        </Button>
+      ) : (
+        <div className="space-y-3">
+          <label className="block text-sm font-bold" htmlFor="delete-confirm">
+            Type {DELETE_CONFIRMATION} to confirm
+          </label>
+          <input
+            id="delete-confirm"
+            type="text"
+            autoComplete="off"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            className="h-12 w-full rounded-2xl border border-destructive/50 bg-background px-4 text-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              className="h-12 flex-1 rounded-2xl"
+              onClick={() => {
+                setOpen(false)
+                setConfirmation('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="h-12 flex-1 rounded-2xl"
+              disabled={deleting || confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION}
+              onClick={() => void handleDelete()}
+            >
+              {deleting ? 'Deleting…' : 'Delete forever'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -568,6 +706,7 @@ function SettingsPage() {
           {exporting ? 'Preparing…' : 'Export as CSV'}
         </Button>
       </section>
+      <DangerZone userId={userId} entryCount={entries.length} />
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
         Sign out
       </Button>

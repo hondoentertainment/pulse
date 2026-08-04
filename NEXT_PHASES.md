@@ -1,5 +1,11 @@
 # Pulse — Codebase Review & Next Phases of Work
 
+> ⚠️ **Archived — venue product only.**
+> This document describes the pre-pivot venue app (`VITE_APP_MODE=venue`), not
+> the shipping product. Production runs **Pulse Signal**; see
+> [PRD_SIGNAL.md](PRD_SIGNAL.md) and [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md).
+> Kept for reference on the venue surface; much of it was never built.
+
 ## Current State Assessment
 
 ### Project Overview
