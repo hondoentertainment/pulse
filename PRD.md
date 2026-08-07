@@ -1,568 +1,477 @@
-# Pulse — Real-Time Venue Energy Tracker
+# Pulse — Product Requirements Document
 
-Pulse shows users where the energy is happening right now by letting them check into venues and share the vibe through quick posts with photos, videos, and energy ratings.
-
-## Pulse Core Loop
-
-The fundamental habit loop that drives engagement and retention:
-
-1. **User opens app** → sees nearby venues surging right now
-2. **User goes to venue** → checks in → posts a pulse with energy rating
-3. **Pulse increases venue score** → triggers friend notifications + surge alerts
-4. **Friends discover venue** → repeat cycle
-
-This loop creates a self-reinforcing network effect where each pulse contributes to discovery, driving more users to venues, generating more pulses, and amplifying the signal of where the energy is happening right now.
-
-**Experience Qualities**:
-1. **Immediate** - Every interaction should feel instant, with real-time updates showing what's happening now, not five minutes ago
-2. **Visceral** - Users should feel the energy of a place through bold visuals, pulsing animations, and high-energy design that mirrors the excitement they're tracking
-3. **Authentic** - Location-verified posts and time-decay mechanics ensure what you see reflects current reality, not stale content
-
-**Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
-- This app requires real-time scoring, geolocation verification, media uploads, social features, multiple views (map, feed, venue pages), and a sophisticated algorithm for calculating venue energy scores
-
-## Essential Features
-
-### Onboarding & Splash Screen
-- **Functionality**: First-launch experience with branded splash screen and location permission request
-- **Purpose**: Welcome new users, explain app value proposition, and request necessary permissions upfront
-- **Trigger**: User opens app for the first time (before main app loads)
-- **Progression**: Welcome screen with app logo and tagline → User taps "Get Started" → Location permission screen with benefits explanation → User grants or skips permission → Main app loads
-- **Success criteria**: Onboarding shown only once on first launch, permission state persists, users understand why location is needed, graceful handling of permission denial
-
-### Location-Based Check-In
-- **Functionality**: Detects nearby venues using real-time GPS tracking with continuous position updates and allows users to check in only when physically present
-- **Purpose**: Ensures authenticity and prevents fake posts from people not actually at the venue, while providing live tracking of user movement on the map
-- **Trigger**: User opens app, grants location permission, and taps a nearby venue
-- **Progression**: App loads → Real-time GPS tracking begins → Location continuously updates on map → Nearby venues displayed → User selects venue → Geo-fence verified with current position → Check-in confirmed
-- **Success criteria**: Users can only create pulses for venues within proximity to their current real-time location; attempts to post from wrong location are blocked; user position marker updates smoothly on map as they move; GPS accuracy indicator shows tracking status and precision level
-
-### Create Pulse
-- **Functionality**: Quick post creation with optional photos (up to 3), optional video (up to 30 seconds), required energy rating with haptic feedback, and optional caption
-- **Purpose**: Captures the current vibe of a venue through multimedia and energy level with tactile feedback that enhances the selection experience
-- **Trigger**: User checks into a venue
-- **Progression**: Check-in verified → Energy slider (Dead/Chill/Buzzing/Electric) selected with haptic feedback on each level change → Optional media uploaded (photos or video, mutually exclusive) → **Client-side video compression (max 10MB/30s) processed automatically** → **Contextual hashtags selected from AI-powered suggestions** → Optional caption added → Pulse posted → Appears in feeds
-- **Success criteria**: Pulses successfully save with all metadata, **video compression reduces file size while maintaining visibility**, duration validation enforces 30-second limit, display in venue feeds, contribute to energy score, and haptic feedback triggers appropriately on supported devices (light vibration for Dead/Chill, medium for Buzzing, heavy for Electric)
-
-### Real-Time Pulse Score
-- **Functionality**: Calculates live energy score based on recent pulse volume, energy ratings, engagement, and velocity with transparent explainability
-- **Purpose**: Shows which venues are hot right now, not yesterday, with trust-building transparency
-- **Trigger**: New pulse posted or engagement added
-- **Progression**: Pulse created → Score algorithm runs → Weighted calculation (recency + energy rating + engagement) → Score updated → UI reflects new score → Old pulses decay after 90 minutes → User taps "Why this score?" → Expandable panel shows breakdown
-- **Success criteria**: Scores update in real-time, reflect current activity accurately, auto-decay old pulses, and transparent breakdown builds trust without exposing gaming vulnerabilities
-
-### Score Transparency Panel
-- **Functionality**: Optional expandable panel on venue pages showing score calculation breakdown in simple, read-only format
-- **Purpose**: Build trust in the energy score without creating gamification or exposing the full algorithm
-- **Trigger**: User taps "Why this score?" link below the main energy score display
-- **Progression**: Venue page loaded → User sees energy score → Taps info icon or "Why?" text → Panel expands → Shows: pulse count in last 90 mins, average energy level, recent score change (+/- points in last 10 min), time of last pulse → User taps to collapse
-- **Success criteria**: Panel displays clear, non-technical explanations; doesn't show individual weights or formula details; updates in real-time as score changes; reinforces authenticity without enabling gaming
-
-### Venue Discovery
-- **Functionality**: Browse trending venues via interactive map view with energy heatmap, real-time GPS tracking with live position updates, voice-enabled search, and voice-activated filters or list view with "Just Popped" surges
-- **Purpose**: Help users find where the energy is happening right now through visual heat mapping, continuous location tracking, hands-free voice search, and voice-controlled filtering by energy level and category
-- **Trigger**: User opens Trending tab or Map view, activates voice search with microphone button, or activates voice filter in map filters panel
-- **Progression**: View loaded → Venues sorted by score → Real-time GPS tracking begins → User position continuously updates on map with accuracy indicator → Interactive map with draggable canvas and zoom controls shows real-time color-coded energy heatmap → User hovers over venue pins for quick preview → User clicks venue OR taps microphone icon → Speaks venue name → Voice transcript populates search → Results filter instantly → User selects venue → Venue page opens OR User opens filters panel → Taps voice filter button → Speaks filter command (e.g., "show electric venues" or "filter bars and clubs") → Voice command parsed → Filters applied automatically → Map updates to show filtered results → Re-center button with tracking indicator allows following user movement
-- **Success criteria**: **Trending list categorized into "Trending Now" (multi-user activity), "Just Popped Off" (rapid surge), and "Gaining Energy" (building momentum)**; Trending list updates in real-time, interactive map visualizes energy density with gradient heatmap overlays, users can pan/zoom/navigate to any venue, user position updates continuously with pulsing location marker and accuracy circle, GPS tracking indicator shows live tracking status with accuracy measurement, manual pan/zoom disables auto-follow mode, re-center button re-enables position tracking, tooltips show venue details on hover, voice recognition accurately transcribes venue names and filter commands, voice search works hands-free on supported browsers, voice filter understands natural language commands for energy levels (dead/chill/buzzing/electric) and categories, filters apply instantly after voice command completes, toast notifications confirm applied filters
-
-### Social Layer
-- **Functionality**: Follow friends and venues, see recent pulses from both, add emoji reactions
-- **Purpose**: Adds social proof through friends and allows solo users to follow venues they care about for sustained engagement
-- **Trigger**: User navigates to Friends feed, Followed Venues tab, or reacts to a pulse
-- **Progression**: Social feed opens → Toggle between "Friends" and "My Spots" → Recent pulses displayed from followed users or venues → User taps emoji → Reaction saved → Count increments
-- **Success criteria**: Friend and venue activity updates in real-time, reactions are instant, no comment threads, venue following creates sustained engagement even without active friend network
-
-### Venue Following
-- **Functionality**: Users can follow up to 10 favorite venues to create a personalized feed of activity at places they care about
-- **Purpose**: Keeps users engaged even without an active friend network; allows discovery without social pressure
-- **Trigger**: User stars a venue on venue page or from trending list
-- **Progression**: Venue page opened → User taps star icon → Venue added to followed list → New tab "My Spots" appears in navigation → Feed shows chronological pulses from all followed venues → User can unfollow to remove
-- **Success criteria**: Users can follow/unfollow venues easily, followed venue feed updates in real-time, limit of 10 venues prevents list bloat, provides engagement path for solo users
-
-### Settings & Preferences
-- **Functionality**: Configure app preferences including imperial/metric unit system toggle and notification preferences
-- **Purpose**: Personalize the app experience to match user's location and preferences
-- **Trigger**: User navigates to Profile tab in bottom navigation and scrolls to Settings section
-- **Progression**: Profile tab opened → User scrolls to Settings section at bottom → Unit preference toggle displayed → User switches between Imperial (mi, ft) and Metric (km, m) → Preference saved → All distance displays update throughout app
-- **Success criteria**: Unit preference persists across sessions, all distance displays (venue cards, map filters, venue details) update immediately to reflect chosen system, Settings section is accessible within Profile page
-
-### Pulse Credibility & Trust Badges
-- **Functionality**: Weighted credibility system that increases the influence of trusted users' pulses on venue scores. Users earn trust badges displayed on their pulse cards based on venue check-in history and engagement patterns. No public scores or ranks — just ambient trust signals.
-- **Purpose**: Prevent gaming, reduce spam impact, and reinforce authentic contributions without killing the vibe or creating social hierarchy
-- **Trigger**: New user creates account → starts with neutral credibility weight (0.5-0.7) → weight increases with genuine activity → badges appear automatically on pulse cards when thresholds met
-- **Progression**: New user posts pulse with reduced weight → User checks in frequently → Credibility increases (up to 2.0x max) → "Regular here" badge appears after 10+ check-ins at venue → "Frequent visitor" after 5+ → "Veteran" badge for 90+ day accounts with 20+ pulses → "3rd pulse tonight" badge shows recent activity → Trusted users' pulses contribute more to venue scores → No user-facing credibility number displayed
-- **Success criteria**: Credibility weight applies transparently to pulse score calculations, new users can't artificially inflate scores, regular users gain influence naturally, badges display on pulse cards only (not profiles), subtle visual design reinforces trust without creating status competition, tooltip shows badge meaning on hover, no gaming incentive created
-
-### In-App Notifications
-- **Functionality**: Real-time feed of friend activity including friend pulses, reactions to user's pulses, friends nearby at venues, trending venue surge alerts, and impact notifications when user's pulse moves venue score across energy thresholds. Multiple reactions on the same pulse are intelligently grouped together. Surge tracking monitors venues in real-time and generates notifications when nearby venues experience rapid score increases.
-- **Purpose**: Keep users connected to their friends' activity, discover trending venues through social proof, and create ownership/pride when user contributions move the needle. Surge notifications help users catch venues at peak energy moments. Grouped notifications reduce clutter.
-- **Trigger**: Friend posts a pulse, reacts to user's pulse, checks into nearby venue, venue surges in popularity (score reaches 60+ with 20+ point increase within alert window), or user's pulse causes venue to cross energy threshold (e.g., Chill → Buzzing, Buzzing → Electric)
-- **Progression**: Notification created → Badge appears on Notifications tab → User taps Notifications → Feed displays recent activity with unread indicators → Multiple reactions to same pulse grouped with combined user avatars and reaction icons → Trending venue notifications show "Hot Right Now" badge with animated glow → Impact notification shows "Your pulse pushed [Venue] into Electric ⚡" → User taps notification → Navigates to relevant venue or pulse → All grouped notifications marked as read
-
-### Social Pulse Correlation System (Admin Dashboard)
-- **Functionality**: Real-time backend system...
-- **Active Heatmap**: Real-time visualization of pulse density.
-- **Who's Here (Proximity & History)**: (NEW) Privacy-first presence sharing.
-  - **The Safety Buffer**: Counts only show if ≥2 friends/familiar faces are present.
-  - **Familiar Faces Logic**: Auto-detects people you've reacted to or spent time with.
-  - **Jittered Aggregation**: Counts are rounded (e.g., "5+") to prevent tracking.
-  - **Granular Controls**: Global toggle and venue-specific suppression.
-- **Success criteria**: Notifications appear in real-time...
-
-### Seeded Content Analytics (Admin Tool)
-- **Functionality**: Internal dashboard monitoring conversion of "Pre-Trending" venues and hashtag seeding health. Tracks time-to-first-activity and conversion rates for verified check-ins.
-- **Purpose**: Measure effectiveness of initial content seeding and identify venues struggling to gain real-world momentum.
-- **Trigger**: Admin accesses "Analytics Dashboard" from developer/admin settings.
-- **Success criteria**: Displays real-time conversion rates for seeded venues, average hours to first activity, and individual venue status (Pre-Trending vs. Converted).
-
-### Contextual Hashtag System
-- **Functionality**: Dynamic hashtag suggestions based on venue category, time of day (Morning/Afternoon/Evening/Late Night), day of week, and current vibe/energy rating.
-- **Purpose**: Reduce friction in pulse creation and standardize metadata for better discovery.
-- **Trigger**: User opens "Create Pulse" dialog.
-- **Success criteria**: Suggestions refresh as user changes energy slider; prioritized "Seeded" hashtags show first; automatic decay of hashtag scoring keeps trends fresh.
-
-### UX Enhancements
-
-#### Feed Experience
-- **Pull-to-Refresh**: Drag gesture to refresh feeds with animated indicator showing pull progress
-- **Skeleton Loading States**: Shimmer-effect placeholders matching card layouts during initial load
-- **Empty State Illustrations**: Engaging visual empty states with icons, descriptions, and CTAs for no-pulses, no-notifications, and no-favorites scenarios
-
-#### Engagement Features
-- **First Pulse Celebration**: Confetti animation and "Pioneer" badge when user posts the first pulse at a venue
-- **Streak Tracking**: Visual streak badge showing consecutive days of posting with fire emoji animation
-- **Quick Reactions**: Compact reaction bar for single-tap reactions directly from feed without expanding cards
-
-#### Mobile Polish
-- **Extended Haptic Feedback**: Tactile feedback on reactions, favorites, and navigation (light/medium/heavy/success/error patterns)
-- **Swipe Gestures**: Swipe left on pulse cards to reveal quick reactions; swipe right on notifications to dismiss
-
-#### Map Experience
-- **Near Me Filter**: One-tap button to filter venues within 0.5 mile walking distance
-- **Live Activity Indicators**: Pulsing ring animation on map pins for venues with activity in the last 10 minutes
-
-## Edge Case Handling
-
-- **First Launch**: Show splash screen with welcome message and location permission request; persist onboarding completion state
-- **Location Permission Denied on Onboarding**: Allow user to skip and still access app in browse-only mode
-- **Location Denied**: Show prominent permission prompt explaining why location is required; gracefully degrade to browse-only mode
-- **Cooldown Active**: Display countdown timer and last pulse when user tries to post too soon at same venue
-- **No Nearby Venues**: Prompt user to add venue or show map of closest options within expanded radius
-- **Media Upload Failure**: Save pulse without media and show retry option; don't block posting
-- **Video Too Long**: Reject videos over 30 seconds with clear error message and duration display
-- **Video Format Unsupported**: Handle unsupported formats gracefully with error message
-- **Haptic Feedback Unavailable**: Gracefully degrade on devices without vibration support; functionality remains unchanged
-- **Voice Search Not Supported**: Show disabled microphone icon with tooltip explaining browser compatibility; fall back to text-only search
-- **Voice Filter Not Supported**: Hide voice filter button in filters panel when browser doesn't support speech recognition; manual filter buttons remain functional
-- **Microphone Permission Denied**: Show error toast explaining permission needed; guide user to browser settings
-- **No Speech Detected**: Show "No speech detected" message after brief timeout; allow retry
-- **Voice Recognition Error**: Display error toast with retry option; search field remains functional for text input
-- **Ambiguous Voice Command**: If voice filter command is unclear or doesn't match any filters, show toast with suggested commands and examples
-- **Voice Command Success**: Show success toast with applied filter summary (e.g., "Filters applied: buzzing, electric • bars")
-- **Offline Mode**: Queue pulses locally and sync when connection restored; show offline indicator
-- **Stale Data**: Auto-refresh feeds every 30 seconds; show "New pulses available" banner
-- **Empty Venue**: Show empty state encouraging user to post first pulse
-- **Expired Pulses**: Visually fade older pulses and show "90 min ago" timestamp before removal
-- **Unit System Change**: All distance displays update instantly when user switches between imperial/metric in settings
-- **Empty Notifications**: Show friendly empty state explaining that notifications appear when friends are active
-- **Notification Settings Off**: Respect user preferences and don't generate notifications for disabled categories
-- **Grouped Notifications**: When multiple users react to the same pulse, combine into single notification showing up to 3 user avatars with overflow count
-- **Venue Surge Detection**: Continuously monitor venue scores; trigger trending notifications when score reaches threshold with significant increase
-- **Duplicate Surge Alerts**: Prevent spam by enforcing cooldown period between alerts for same venue; cap alerts per venue per session
-- **Out of Range Surge**: Only notify for surging venues within 5-mile radius of user location
-- **Surge Alert Disabled**: When trending venue notifications disabled in settings, venue surge tracker stops monitoring
-- **Impact Notification Trigger**: Only fire when user's pulse directly causes threshold cross (check score before/after)
-- **Followed Venue Limit**: Cap at 10 followed venues; show friendly error when limit reached with option to unfollow others
-- **Score Transparency Panel Offline**: Show cached breakdown with "Last updated X ago" indicator
-- **Pulse Pending State**: When offline or high latency, show pulse card immediately with "Sending..." badge and animated glow; update to confirmed state when successful
-- **Failed Pulse Upload**: Show retry button on pulse card with error indicator; keep in pending state until user retries or dismisses
-- **New User Credibility**: New accounts start with reduced credibility weight (0.5-0.7) to prevent fake account spam; weight increases naturally with genuine activity based on account age (1/7/30 days) and total verified pulses
-- **Credibility Calculation Failure**: If credibility can't be calculated, default to 1.0 weight to avoid blocking pulses
-- **Zero Check-In History**: Users without venue history don't get badges; functionality remains unchanged
-- **Badge Overflow**: Maximum 2 badges displayed per pulse to prevent visual clutter; prioritize most relevant badges (Regular, Frequent, Veteran, Active Tonight, Return Visit, Trusted Source)
-- **Pre-Trending Contextual Labels**: Venues in Pre-Trending state show smart labels like "Usually busy mornings" (Cafes), "Peak dining hours" (Food), or "Likely trending tonight" (Nightlife) based on category and time
-
-## Design Direction
-
-Pulse should feel like a nightclub visualizer meets a live dashboard — dark, electric, urgent. The design should pulse with energy, using motion and color to communicate intensity. Users should immediately feel the difference between a dead venue and an electric one through bold typography, animated gradients, and real-time score animations.
-
-## Color Selection
-
-Dark mode with high-energy accent colors that visualize venue intensity.
-
--   **Primary Color**: Electric Purple `oklch(0.65 0.25 300)` - Represents the app's energetic, nightlife vibe and serves as the main brand color for CTAs
--   **Secondary Colors**: 
-    -   Deep Black `oklch(0.15 0 0)` - Primary background creating dramatic contrast
-    -   Dark Gray `oklch(0.25 0 0)` - Card backgrounds and secondary surfaces
-    -   Mid Gray `oklch(0.45 0 0)` - Borders and dividers
--   **Accent Color**: Neon Cyan `oklch(0.75 0.18 195)` - High-energy highlight for active states, trending indicators, and "Just Popped" badges
--   **Energy Gradient Colors**:
-    -   Dead: `oklch(0.35 0.05 240)` (Dark Blue-Gray)
-    -   Chill: `oklch(0.60 0.15 150)` (Soft Green)
-    -   Buzzing: `oklch(0.70 0.22 60)` (Vibrant Yellow-Orange)
-    -   Electric: `oklch(0.65 0.28 340)` (Hot Magenta)
--   **Foreground/Background Pairings**:
-    -   Primary Purple on Deep Black - Ratio 5.2:1 ✓
-    -   White `oklch(0.98 0 0)` on Deep Black - Ratio 14.8:1 ✓
-    -   Light Gray `oklch(0.85 0 0)` on Dark Gray - Ratio 5.1:1 ✓
-    -   Neon Cyan on Deep Black - Ratio 7.9:1 ✓
-
-## Font Selection
-
-Typography should feel modern, technical, and slightly futuristic to match the real-time data dashboard aesthetic.
-
--   **Typographic Hierarchy**:
-    -   H1 (App Title/Venue Name): Space Grotesk Bold / 32px / tight letter-spacing (-0.02em)
-    -   H2 (Section Headers): Space Grotesk Bold / 24px / normal spacing
-    -   H3 (Venue Score): Space Grotesk Bold / 56px / tight spacing (large numerical display)
-    -   Body (Captions/Content): Inter Medium / 15px / relaxed line-height (1.6)
-    -   Label (Timestamps/Metadata): JetBrains Mono Regular / 12px / wide letter-spacing (0.05em) / uppercase
-    -   Button Text: Space Grotesk SemiBold / 16px / normal spacing
-
-## Animations
-
-Animations should emphasize real-time activity and energy - use pulsing effects for live scores, smooth transitions for feed updates, and energetic springs for interactions.
-
-Key animation moments:
--   Splash screen logo scales in with spring physics and glows
--   Welcome screen elements fade in sequentially with staggered delays
--   Location permission screen slides in from right with smooth transition
--   Permission icon has continuous pulsing rings expanding outward
--   Pulse score numbers count up/down with spring physics when updated
--   Energy slider glows and pulses as user drags with haptic feedback vibration at each energy level
--   Energy level indicator scales up when selected with color-coded glow
--   New pulses slide in from bottom with scale + fade
--   Trending badges pulse gently every 2 seconds
--   Map heatmap gradients animate smoothly when venue energy changes
--   Map pins pulse continuously for active venues with score > 0
--   User location indicator pulses on map to show current position
--   Venue tooltip cards fade in/out on hover with smooth slide up
--   Map zoom and pan transitions use smooth easing curves
--   Venue cards lift on hover with subtle shadow expansion
--   Loading states use expanding ripple effect, not spinners
--   Success states use quick scale + glow burst
--   Real-time indicators pulse continuously (heartbeat rhythm)
-
-## Component Selection
-
-
-- **Icon Selection**:
-  - MapPin (venue locations)
-  - TrendingUp (trending indicators)
-  - Camera, VideoCamera (media upload)
-  - Play (video playback indicators)
-  - Lightning (electric energy)
-  - Fire (hot/trending)
-  - Users (friends/social)
-  - Clock (recent activity)
-  - Prohibit (blocked/cooldown)
-  - Eye (views/engagement)
-  - Plus (create pulse FAB)
-  - Gear (settings navigation)
-  - Ruler (distance units setting)
-  - Info (informational messages)
-  - Bell (notifications icon with badge)
-  - CheckCircle (mark notifications as read)
-  - MagnifyingGlass (text search)
-  - Microphone (voice search and voice filter activation)
-  - MicrophoneSlash (voice listening active state)
-
-- **Spacing**:
-  - Section padding: `p-6` (24px)
-  - Card padding: `p-4` (16px)
-  - Card gaps in feed: `gap-4` (16px)
-  - Inline elements: `gap-2` (8px)
-  - Button padding: `px-6 py-3`
-  - Screen margins: `px-4` on mobile, `px-8` on desktop
-
-- **Mobile**:
-  - Single-column feed layout with full-width cards
-  - Bottom tab navigation (Trending, Map, Notifications, Profile) with unread badge on Notifications
-  - Full-screen create pulse flow as bottom sheet dialog
-  - Floating action button for quick pulse creation
-  - Touch-optimized 44px minimum tap targets
-  - Dedicated venue page with sticky header showing venue name, category, distance, score, and favorite toggle
-  - Venue page displays live energy score with score breakdown panel and chronological pulse feed
-  - Swipeable image carousels for multi-photo pulses
-  - Pull-to-refresh on feeds
-  - Settings section integrated within Profile page (no separate Settings tab)
-  - Profile page displays user info, favorite venues grid, user's pulses, and Settings section at bottom
-  - Notification feed with filter toggle (All/Unread) and quick "Mark all read" action
+**Status:** Living document · **Last revised:** 2026-08-07
+**Owner:** Hondo Entertainment
+**Related:** [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [RELEASE_CHECKS.md](RELEASE_CHECKS.md) · [NEXT_PHASES.md](NEXT_PHASES.md) · [docs/](docs/)
 
 ---
 
-## Current Status
+## 0. Read this first — Pulse is two products
 
-### Completed Features
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Onboarding & Splash Screen | Done | First-launch flow with location permission |
-| Location-Based Check-In | Done | GPS tracking with Haversine distance verification |
-| Create Pulse | Done | Photos, video (compressed), energy ratings, hashtags |
-| Real-Time Pulse Score | Done | Weighted algorithm with 90-min decay |
-| Score Transparency Panel | Done | "Why this score?" expandable breakdown |
-| Venue Discovery (Map + List) | Done | Interactive canvas map, heatmap, category icons, filters |
-| Social Layer | Done | Friend following, emoji reactions |
-| Venue Following | Partial | Backend logic done; UI (My Spots tab, follow button) not built |
-| Settings & Preferences | Done | Imperial/metric toggle, notification prefs |
-| Credibility & Trust Badges | Done | 6 badge types, weighted scoring |
-| In-App Notifications | Done | 5 notification types with intelligent grouping |
-| Social Pulse Correlation | Done | Admin dashboard with simulated Twitter/X ingestion |
-| Contextual Hashtags | Done | Dynamic suggestions by category, time, energy |
-| UX Enhancements | Done | Pull-to-refresh, skeletons, haptics, swipe gestures |
-| Who's Here (Presence) | Done | Privacy-first proximity with jittered aggregation |
-| Video Compression | Done | Client-side, 10MB/30s limits |
-| Voice Search | Done | Venue search + voice-activated filters |
-| Pending State Handling | Done | Optimistic UI with retry on failure |
-| Venue Search | Done | Text search + category filtering |
+The single most important fact about this repository, and the one most often
+missed: **it contains two distinct products behind one codebase**, selected at
+build time by `VITE_APP_MODE`.
 
-### Known Gaps
-- **Hybrid data layer**: Core app state still uses Spark `useKV` in many flows; Supabase/API paths exist but are not the single source of truth end-to-end
-- **Test coverage thin**: Some Vitest/component tests exist; core engines and E2E coverage remain incomplete relative to the PRD surface
-- **Large components**: `App.tsx` and `InteractiveMap.tsx` remain decomposition candidates as features move behind clearer routes/slices
-- **Mock / simulated integrations**: Twitter/X ingestion and portions of social/admin flows are simulated or feature-flagged; production keys and live pipelines not universal
-- **PRD extensions in flight**: `docs/prd/*` tracks video feed, AI concierge, reservations/ticketing, creator economy, native apps, and safety-kit—implementation depth varies by flag and wave
+| | **Pulse Signal** | **Pulse Venue** |
+|---|---|---|
+| Mode | `VITE_APP_MODE=signal` (**default**) | `VITE_APP_MODE=venue` |
+| Status | **Shipping product** | Staging / E2E surface |
+| Mounted by | `App.tsx` → `SignalApp` | `App.tsx` → `AppRoutes` (via `isVenueAppMode()`) |
+| What it is | Private daily self-tracking (energy, mood, stress, sleep) | Real-time nightlife venue energy network |
+| Audience | Individual, single-player | Social, multi-player, location-based |
+| Entry | `LoginScreen` → `SignalApp` | `OnboardingFlow` → `AppRoutes` |
+
+Everything that reaches real users today is **Signal**. Venue is a large,
+substantially-built product that is **not currently the shipped experience** —
+it is exercised by CI smoke tests and kept warm for a future entry switch.
+
+> **Requirement:** any change described in this PRD MUST state which product it
+> targets. Historically this document described only Venue, which caused the
+> shipped product to go effectively unspecified. That is corrected here.
 
 ---
 
-## Next 20 delivery waves
+## 1. Vision & positioning
 
-*Last revised: 2026-05-02.*
+**Pulse helps people read signal instead of noise — first in themselves, then in the world around them.**
 
-Sequential, review-sized slices. Each wave should close with **merged code**, **updated tests or manual QA notes**, and **docs/env flags** where behavior is gated.
+- **Signal (shipped)** answers *"how am I actually doing, and what's driving it?"*
+  A 30-second daily check-in that turns subjective states into a trend line
+  honest enough to act on.
+- **Venue (staged)** answers *"where is it actually good right now?"* — replacing
+  stale star ratings and paid placement with live, decaying, crowd-sourced energy.
 
-Satellite specs under `docs/prd/` ship **inside** the wave that owns the same user journey when the relevant `VITE_*` flag is on (see below); they do not consume extra wave numbers unless they slip.
+The through-line is the same primitive: **a score that decays**, so it reflects
+*now* rather than accumulated history.
+
+---
+
+## 2. Problem & opportunity
+
+### 2.1 Signal
+- Wellness apps optimize for streaks and volume of data, not insight.
+- Users abandon trackers when logging costs more than the insight returns.
+- Most tools show *what* you logged, never *what it means* or *what to do next*.
+
+**Opportunity:** ruthless brevity (one screen, ≤30s) plus an immediate,
+plain-language read on trend and recommendation.
+
+### 2.2 Venue
+- Review platforms are historical and gameable; they tell you a place was good
+  last year, not that it's dead tonight.
+- Social feeds are unstructured and unlocatable.
+
+**Opportunity:** a decaying, credibility-weighted, location-verified score that
+is only ever about *right now*.
+
+---
+
+## 3. Users
+
+| Persona | Product | Need | Success looks like |
+|---|---|---|---|
+| **The self-optimizer** | Signal | Understand energy/mood patterns without a research project | Logs most days; can name a driver of a bad week |
+| **The burnout-avoider** | Signal | Early warning before a crash | Notices a downward trend and acts on it |
+| **The night-planner** | Venue | Pick the right venue *tonight* | Chooses a venue and the vibe matches |
+| **The scene regular** | Venue | Signal status; be first to a surge | Posts pulses, builds credibility |
+| **The venue operator** | Venue | Visibility and live intel | Accurate live data, inbound traffic |
+
+---
+
+# PART A — Pulse Signal (shipped product)
+
+## 4. Signal: core loop
+
+```
+Open app → one check-in (4 sliders + tags) → score + insight
+        → trend line updates → streak increments → reminder tomorrow
+```
+
+Design constraint: **the entire loop must complete in under 30 seconds.**
+Onboarding explicitly promises "Under 30s".
+
+## 5. Signal: functional requirements
+
+### 5.1 Onboarding (`SignalOnboarding.tsx`) — 3 steps
+1. **Tracking focus** — exactly one of `energy | mood | focus | sleep`
+   ("Pick your daily signal.")
+2. **Goal** — one of `more_energy | less_stress | better_sleep | deeper_focus`
+3. **Reminder** — optional `reminderTime`
+
+Persisted as `SignalProfile { trackingFocus, goal, reminderTime? }`.
+
+| Req | Requirement |
+|---|---|
+| S-ON-1 | Progress indicator shows step N of 3 and the "Under 30s" promise |
+| S-ON-2 | Exactly one focus and one goal selectable; Continue disabled until chosen |
+| S-ON-3 | Reminder is skippable — never a hard gate |
+| S-ON-4 | Completing onboarding routes to `/home` and never re-prompts |
+
+### 5.2 Daily check-in (`SignalCheckIn.tsx`, `/home`)
+Four 1–10 metrics plus free tags:
+
+| Field | Range | Default |
+|---|---|---|
+| `energy` | 1–10 | 7 |
+| `mood` | 1–10 | 7 |
+| `stress` | 1–10 (higher = worse) | 4 |
+| `sleepQuality` | 1–10 | 7 |
+| `tags` | string[] | `['calm']` |
+
+| Req | Requirement |
+|---|---|
+| S-CI-1 | All values clamped to integer 1–10 (`clampScore`) |
+| S-CI-2 | Draft is live-scored *before* save (`computeDraftScore`) so the user sees the consequence of each adjustment |
+| S-CI-3 | One entry per calendar day; re-opening an already-logged day loads that entry (`getTodayEntry`) rather than creating a duplicate |
+| S-CI-4 | Save is optimistic — local state first, remote write async; never block the UI on network |
+| S-CI-5 | First-ever save triggers `FirstWinDialog` |
+
+### 5.3 Score model (`signal-score.ts`)
+- `computeDraftScore(draft) → number` — composite of the four metrics, with
+  `stress` inverted (high stress lowers the score).
+- `scoreBucket(score) → ScoreBucket`, with `scoreBucketLabel()` and
+  `scoreBucketColor()` for consistent presentation.
+
+| Req | Requirement |
+|---|---|
+| S-SC-1 | Score is deterministic and pure — same inputs, same output, no time/random dependence |
+| S-SC-2 | Bucket label/color are the single source of truth for score presentation everywhere |
+
+### 5.4 Insights (`signal-insights.ts`)
+| Function | Output |
+|---|---|
+| `getStreakCount` | Consecutive-day streak |
+| `getSevenDayAverage` | Rolling 7-day mean |
+| `getTrendDirection` | `up \| down \| flat` |
+| `generateInsight` | Plain-language read on recent entries |
+| `getRecommendation` | Next action, informed by the user's `goal` |
+| `calculateSignalMetrics` | Bundle: `{ sevenDayAverage, trendDirection, streakCount, recommendation }` |
+| `buildChartSeries` | Chart points, each flagged `seeded` |
+
+| Req | Requirement |
+|---|---|
+| S-IN-1 | All insight functions are pure and take an injectable `now` for testability |
+| S-IN-2 | Seeded/demo chart points MUST be visually distinguishable from real entries (`seeded` flag) — never present synthetic data as the user's own |
+| S-IN-3 | Copy is plain-language and non-clinical; Pulse makes **no medical claims** |
+
+### 5.5 Screens
+| Route | Screen | Contents |
+|---|---|---|
+| `/home` | Daily check-in | Sliders, tags, live score, save, streak |
+| `/trends` | Trend chart | `SignalChart`, 7-day average, direction, insight |
+| `/history` | History | Reverse-chronological entries |
+| `/settings` | Settings | Reminder toggle/time, profile, honest reminder copy |
+
+`/` and unknown paths redirect to `/home`.
+
+### 5.6 State & persistence
+- **Client:** `useSignalStore` (Zustand + `persist`) — offline-first, survives reload.
+- **Remote:** `signal_entries`, `signal_profiles` (Supabase), written via
+  `saveSignalEntry` / `saveSignalProfile`; `fetchSignalEntries` hydrates.
+- **Merge:** `mergeRemoteEntries` reconciles remote into local.
+
+| Req | Requirement |
+|---|---|
+| S-ST-1 | App is fully usable offline; remote writes are best-effort |
+| S-ST-2 | Merge must not duplicate same-day entries or clobber a newer local entry |
+| S-ST-3 | No Supabase credentials → app still works against local state |
+
+### 5.7 Signal edge cases
+- **No entries yet** — empty states invite the first check-in; trends degrade gracefully.
+- **Already logged today** — surface today's entry; editing updates, never appends.
+- **Gap in logging** — streak resets without shaming; averages ignore missing days.
+- **Reminder unsupported/denied** — feature hides or degrades; never blocks the app.
+- **Clock/timezone change** — day bucketing uses `toISOString().slice(0,10)`; must not double-count.
+- **Sync failure** — entry stays local and retries; user is never shown data loss.
+
+---
+
+# PART B — Pulse Venue (staged product)
+
+## 6. Venue: core loop
+
+```
+Detect location → verify at venue → post pulse (photo/video + energy)
+              → score updates live → nearby users see surge → they go
+```
+
+Every pulse **decays over 90 minutes**, so the score always describes *now*.
+
+## 7. Venue: functional requirements
+
+### 7.1 Feature inventory
+
+| Feature | Requirement summary |
+|---|---|
+| Onboarding & splash | First-launch welcome, location permission, persisted completion |
+| Location check-in | GPS + Haversine distance verification against venue coords |
+| Create pulse | Photos, video (≤30s, ≤10MB, client-compressed), energy rating, caption, hashtags |
+| Real-time pulse score | Weighted, credibility-adjusted, 90-minute decay |
+| Score transparency | "Why this score?" expandable breakdown |
+| Venue discovery | Canvas map + list, heatmap, clustering, category icons, filters |
+| Social layer | Friend following, emoji reactions (`fire`/`eyes`/`skull`/`lightning`) |
+| Venue following | Follow venues; **cap 10**; "My Spots" feed |
+| Credibility & badges | 6 badge types; new accounts weighted 0.5–0.7, rising with age/activity |
+| Notifications | 5 types with grouping (≤3 avatars + overflow) |
+| Presence ("Who's here") | Privacy-first proximity, jittered counts, minimum threshold |
+| Voice search | Venue search + voice-activated filters |
+| Contextual hashtags | Suggestions by category, time, energy |
+| Social pulse correlation | Admin dashboard (simulated ingestion) |
+
+### 7.2 Domain engines (`src/lib/`, React-free)
+`pulse-engine` · `venue-trending` · `social-pulse-engine` · `personalization-engine` ·
+`presence-engine` · `crew-mode` · `weather-boost` · `night-planner` · `interactive-map`
+
+| Req | Requirement |
+|---|---|
+| V-EN-1 | Engines contain **no React imports** — pure, testable, portable to Edge/Node |
+| V-EN-2 | Every new `src/lib/` module ships a matching `<module>.test.ts` |
+
+### 7.3 Privacy-critical: presence
+| Req | Requirement |
+|---|---|
+| V-PR-1 | Counts are **jittered** — never expose exact headcount |
+| V-PR-2 | A **minimum threshold** of people is required before any count renders |
+| V-PR-3 | Presence respects per-user visibility settings and sensitive-venue hiding |
+| V-PR-4 | Any change touching `presence-engine.ts` MUST preserve V-PR-1..3 |
+
+### 7.4 Venue routing
+- Tabs: `/` (trending), `/discover`, `/map`, `/notifications`, `/profile`, `/video` (flagged)
+- Sub-pages: `/events`, `/crews`, `/achievements`, `/insights`, `/neighborhoods`,
+  `/playlists`, `/settings`, `/integrations`, `/moderation`, `/challenges`,
+  `/my-tickets`, `/night-planner`
+- Entities: `/venue/:venueId`, `/admin/venues/:id/metadata`
+
+| Req | Requirement |
+|---|---|
+| V-RT-1 | URL is authoritative: a direct load/refresh of any route renders that route (URL → app-state sync) |
+| V-RT-2 | Venue card taps are real navigations to `/venue/:id`, not URL-less overlays |
+
+### 7.5 Venue edge cases (abridged; full list in git history)
+First launch · location denied (browse-only) · cooldown active · no nearby venues ·
+media upload failure · video too long/unsupported · haptics unavailable ·
+voice unsupported/denied/no-speech/ambiguous · offline queue · stale data ·
+empty venue · expired pulses · unit-system change · notification prefs off ·
+grouped notifications · surge detection + duplicate-alert cooldown · out-of-range surge ·
+impact notification · follow limit (10) · pending/failed pulse · new-user credibility ·
+badge overflow (max 2) · pre-trending contextual labels.
+
+---
+
+# PART C — Cross-cutting
+
+## 8. Architecture (summary)
+
+Three-tier, so the Supabase migration can proceed incrementally:
+
+| Tier | Path | Rule |
+|---|---|---|
+| UI | `src/components/` | Feature components + Shadcn/Radix primitives |
+| Bridge | `src/hooks/` | Binds domain logic to UI; owns providers/mutations |
+| Domain | `src/lib/` | Pure TS, **no React** |
+
+- **Data layer:** `src/lib/data/` is the canonical read/write surface. Import from
+  the `@/lib/data` barrel, never individual modules.
+- **Backend switch:** `resolveBackend()` / `USE_SUPABASE_BACKEND`. Real Supabase
+  credentials → Supabase; otherwise transparent fallback to mock fixtures.
+- **Server boundary:** `api/` (Vercel functions) + `api/_lib/`. All trusted work
+  (API keys, webhook signing, payments, geocoding) belongs here — never `src/lib/`.
+- **Native:** Capacitor (`com.hondoentertainment.pulse`). Platform code goes
+  through `src/lib/native-bridge.ts` / `src/lib/platform/`; components MUST NOT
+  import `@capacitor/*` directly.
+
+| Req | Requirement |
+|---|---|
+| X-AR-1 | New persisted entity → typed module in `src/lib/data/<entity>.ts` branching on `resolveBackend()`, with **both** Supabase and mock paths |
+| X-AR-2 | Supabase enforcement is incomplete — assume any new write still needs a server-side guard |
+
+## 9. Feature flags
+
+Read exclusively via `isFeatureEnabled(flag)` — never `import.meta.env` in feature code.
+
+`integrations` · `socialDashboard` · `smartMap` · `weatherBoost` · `waitTime` ·
+`accessibilityFilter` · `safetyKit` · `ticketing` · `aiConcierge` · `creatorEconomy`
+
+New flag → add to the `FeatureFlag` union, the defaults map, and the reader map.
+
+## 10. Non-functional requirements
+
+| Area | Requirement |
+|---|---|
+| **Performance** | Total JS ≤ **1.56 MB gzipped** (currently ~674 KB). Per-chunk budgets in `docs/bundle-budget.md`, enforced by `npm run bundle-size` |
+| **Lighthouse** | Perf assertions are warnings, not blockers. Known debt: perf ~0.70, LCP/TTI ~5.0s — improving these is an open workstream |
+| **Offline** | Writes queue via `offline-queue.ts`; Workbox `backgroundSync` for `POST /rest/v1/pulses`; PWA auto-update |
+| **Accessibility** | Semantic landmarks, labelled controls, ≥4.5:1 contrast (documented pairings all pass), reduced-motion respected |
+| **Privacy** | Presence jitter + threshold (V-PR-*); no medical claims in Signal |
+| **Security** | Trusted work server-side only; RLS policies in `supabase/migrations/`. **`src/lib/public-api.ts` is a known prototype pending server-side migration** (see `SECURITY.md`, `NOTES.md`) |
+| **Type safety** | `strictNullChecks: true`; `tsc -b` must report **0 errors** |
+| **Lint** | ESLint `--max-warnings=500` — a deliberate ceiling, not a target |
+
+## 11. Design system
+
+**Direction:** a nightclub visualizer meets a live dashboard — dark, electric, urgent.
+
+**Color** (dark-first)
+- Primary: Electric Purple `oklch(0.65 0.25 300)`
+- Accent: Neon Cyan `oklch(0.75 0.18 195)`
+- Surfaces: Deep Black `oklch(0.15 0 0)`, Dark Gray `oklch(0.25 0 0)`, Mid Gray `oklch(0.45 0 0)`
+- Energy ramp: Dead `oklch(0.35 0.05 240)` → Chill `oklch(0.60 0.15 150)` → Buzzing `oklch(0.70 0.22 60)` → Electric `oklch(0.65 0.28 340)`
+- Verified contrast: Purple/Black 5.2:1 · White/Black 14.8:1 · LightGray/DarkGray 5.1:1 · Cyan/Black 7.9:1
+
+**Type**
+- H1 Space Grotesk Bold 32px (-0.02em) · H2 24px · H3 (score) 56px
+- Body Inter Medium 15px / 1.6 · Label JetBrains Mono 12px, 0.05em, uppercase
+- Button Space Grotesk SemiBold 16px
+
+**Motion** — Framer Motion, not CSS transitions.
+
+**Tokens** — `src/index.css`, `src/main.css`, `src/styles/theme.css`.
+
+> **Hard-won constraint:** theme variables MUST be declared on `:root`.
+> They were historically scoped to `#spark-app`, a wrapper element this app does
+> not have, which silently killed **every spacing/sizing utility app-wide**
+> (`h-16`, `p-4`, `gap-2`, `inset-0`…) because Tailwind compiles them to
+> `var(--size-*)`. Never re-scope these to a selector that isn't guaranteed to
+> exist.
+
+## 12. Success metrics
+
+### Signal
+| Metric | Definition | Target |
+|---|---|---|
+| D1 / D7 / D30 retention | Return and log | D7 ≥ 40% |
+| Check-in completion | Started → saved | ≥ 90% |
+| Time to complete | Open → saved | ≤ 30s median |
+| Streak depth | Median longest streak | ≥ 7 days |
+| Insight engagement | Sessions viewing `/trends` | ≥ 50% |
+
+### Venue
+| Metric | Definition | Target |
+|---|---|---|
+| Pulses per active venue per night | Liveness | ≥ 5 |
+| Score freshness | Median age of contributing pulses | ≤ 45 min |
+| Surge → visit | Alert to check-in conversion | Directional |
+| Credibility health | Share of pulses from weight ≥ 1.0 | ≥ 70% |
+
+## 13. Quality gates & release
+
+CI (`.github/workflows/ci.yml`) on every push/PR:
+
+**Blocking:** `lint` · `test` (+coverage floors) · `build` · `typecheck-strict` ·
+`bundle-size` · `smoke-preview-signal` · `e2e-signal` · `smoke-preview` (aggregator
+republishing the required context from the split smoke jobs)
+
+**Advisory (`continue-on-error`):** `smoke-preview-venue` · `dependency-audit`
+
+**Separate:** `lighthouse.yml` (PRs; perf = warnings; enforces gzip bundle budget) ·
+`native-sync.yml` (Capacitor on `native-*` tags) · `deploy.yml`
+(manual `workflow_dispatch`, target `preview`/`production`, gated on build + smoke)
+
+Branch protection on `main` additionally requires **1 approving review**.
+See [`docs/branch-protection.md`](docs/branch-protection.md).
+
+## 14. Current status
+
+**Signal (shipped)** — onboarding, check-in, scoring, insights, trends, history,
+settings, reminders, offline-first store, Supabase sync. Smoke + E2E green.
+
+**Venue (staged)** — feature-complete against §7 with these caveats:
+mock/simulated integrations (Twitter/X ingestion, parts of social/admin),
+`useKV` still backing several flows, and depth varying by feature flag.
+
+**Health:** `tsc -b` 0 errors · lint 0 errors · **1159 unit tests passing** ·
+bundle ~674 KB gz vs 1.56 MB budget · all CI checks green.
+
+## 15. Known gaps & risks
+
+| # | Gap | Impact | Mitigation |
+|---|---|---|---|
+| 1 | **Hybrid data layer** — Spark `useKV` still backs core flows | Two sources of truth; migration drag | Continue per-entity migration into `src/lib/data/` |
+| 2 | **`public-api.ts` client-side prototype** | **Security** — trusted work in the browser | Migrate behind `api/`; tracked in `SECURITY.md` |
+| 3 | **Supabase RLS not universal on writes** | Unauthorized writes possible | Server-side guard on every new write |
+| 4 | **Lighthouse perf ~0.70, LCP ~5s** | User-perceived slowness | Dedicated perf workstream (not yet scheduled) |
+| 5 | **Venue is specified but unshipped** | Large surface accruing drift | Keep smoke green; decide ship-or-archive |
+| 6 | **Simulated integrations** | Demo ≠ production behavior | Flag-gate; label clearly; no synthetic data shown as real |
+| 7 | **Large components** (`InteractiveMap.tsx`) | Maintainability | Decompose behind routes/slices |
+| 8 | **Venue bottom nav on very tall pages** | Layout edge case | Root cause (theme scoping) fixed; re-verify if venue ships |
+
+## 16. Roadmap — delivery waves
+
+Sequential, review-sized slices. Each wave closes with **merged code**, **updated
+tests or manual QA notes**, and **docs/env flags** where behavior is gated.
+Satellite specs under `docs/prd/` ship **inside** the wave owning the same user
+journey when the relevant `VITE_*` flag is on; they do not consume wave numbers
+unless they slip.
+
+> **Caveat (important).** This plan was authored 2026-05-02, **before Signal
+> became the shipped product**. Every wave below targets **Venue**. It is
+> retained because it is the only sequenced delivery plan in the repo, but it
+> should not be read as the current roadmap for what users actually run. See
+> §0 and Open Question 1 — Venue's ship/archive decision gates this entire table.
+> For the engineering-health plan (tests, bundle, architecture, backend), see
+> [NEXT_PHASES.md](NEXT_PHASES.md), which is structured by phase rather than wave.
 
 | Wave | Theme | Primary deliverables | Phase / doc refs |
 |------|--------|----------------------|------------------|
 | **1** | My Spots & follow UX | Follow/unfollow on venue pages and cards; **My Spots** tab; chronological feed for starred venues; followed badge in lists | Phase 1.1 |
 | **2** | Auth & identity | OAuth or magic-link UX wired to production IdP; session persistence; profile bootstrap; logout/revoke paths | Phase 1.2 |
 | **3** | Server-backed venues | List/detail venue reads from API/Supabase; deprecate duplicate mock sources for those reads | Phase 1.2 |
-| **4** | Server-backed pulses | Pulse feed + detail from API; pagination; consistent timestamps and media URLs; optional vertical video feed surfaces per `docs/prd/video-feed.md` when `VITE_VIDEO_FEED_ENABLED` | Phase 1.2 |
+| **4** | Server-backed pulses | Pulse feed + detail from API; pagination; consistent timestamps and media URLs; optional vertical video feed per `docs/prd/video-feed.md` when `VITE_VIDEO_FEED_ENABLED` | Phase 1.2 |
 | **5** | Check-in & create on server | Location-verified check-in and pulse creation via API; `useKV` limited to cache/optimistic paths where justified | Phase 1.2 |
 | **6** | Sync & multi-device | User settings, follows, and notification state loaded/stored remotely; conflict strategy documented | Phase 1.2 |
-| **7** | Real-time feed v1 | SSE or WebSocket channel for new pulses and score updates on venue/feed views; fallback polling | Phase 1.3 |
-| **8** | Push notifications | FCM/APNs registration; notification preferences honored server-side; quiet hours | Phase 1.3 |
+| **7** | Real-time feed v1 | SSE or WebSocket channel for new pulses and score updates; fallback polling | Phase 1.3 |
+| **8** | Push notifications | FCM/APNs registration; preferences honored server-side; quiet hours | Phase 1.3 |
 | **9** | Quality gate | Vitest for `pulse-engine`, `credibility`, `venue-trending`; CI required on PR; flake policy | Phase 1.4 |
-| **10** | App shell split | Route-level ownership; slim `App.tsx`; clear boundary for `InteractiveMap`; optional MapLibre migration in a dedicated branch per `docs/maplibre-migration.md` | Phase 1.4 |
-| **11** | Time-contextual scoring | Category baselines; normalized scores; contextual labels (“Heating up early”, “Electric for a Tuesday afternoon”) | Phase 2.1 |
+| **10** | App shell split | Route-level ownership; slim `App.tsx`; clear boundary for `InteractiveMap`; optional MapLibre migration per `docs/maplibre-migration.md` | Phase 1.4 |
+| **11** | Time-contextual scoring | Category baselines; normalized scores; contextual labels ("Heating up early", "Electric for a Tuesday afternoon") | Phase 2.1 |
 | **12** | Map disclosure & density | Progressive disclosure, clustering, first-session map onboarding | Phase 2.2 |
-| **13** | Recommendations | “You might like,” time-aware suggestions, friend signals on cards; optional concierge entry points per `docs/prd/ai-concierge.md` when enabled | Phase 2.3 |
+| **13** | Recommendations | "You might like," time-aware suggestions, friend signals on cards; optional concierge entry points per `docs/prd/ai-concierge.md` | Phase 2.3 |
 | **14** | Trust & safety v1 | Report flow; block/mute; moderation queue MVP; hooks for media screening | Phase 2.4, `docs/prd/safety-kit.md` |
-| **15** | Social graph growth | Contact discovery stub or import; share link / QR add-friend; lightweight “people you may know” | Phase 3.1 |
-| **16** | Owner & venue ops | Claim flow stub; owner dashboard MVP (traffic, peaks); labeled promotion slot if used; creator payouts/tips per `docs/prd/creator-economy.md` when `VITE_CREATOR_ECONOMY_ENABLED` | Phase 3.2 |
-| **17** | Events & RSVPs | Event entity tied to venues; Going/Interested; venue + feed surfaces; reservation handoff per `docs/prd/reservations-ticketing.md` when ready | Phase 3.3 |
+| **15** | Social graph growth | Contact discovery stub or import; share link / QR add-friend; "people you may know" | Phase 3.1 |
+| **16** | Owner & venue ops | Claim flow stub; owner dashboard MVP (traffic, peaks); labeled promotion slot; creator payouts/tips per `docs/prd/creator-economy.md` | Phase 3.2 |
+| **17** | Events & RSVPs | Event entity tied to venues; Going/Interested; venue + feed surfaces; reservation handoff per `docs/prd/reservations-ticketing.md` | Phase 3.3 |
 | **18** | Sharing & deep links | Pulse/venue URLs; OG tags; story/share cards | Phase 3.4 |
-| **19** | Offline & performance | PWA install polish (`public/manifest.json`, service worker strategy); pulse queue + background sync; image/CDN checklist; bundle budget in CI | Phase 4.1, `docs/bundle-budget.md`, `docs/bundle-optimization.md` |
-| **20** | Observability & expansion | Product analytics funnel; error/perf (e.g. Sentry); **either** Capacitor/RN spike per `docs/prd/native-apps.md` **or** a11y+i18n foundation (Phase 4.4)—pick one capstone per quarter | Phases 4.2–4.4 |
+| **19** | Offline & performance | PWA install polish; pulse queue + background sync; image/CDN checklist; bundle budget in CI | Phase 4.1, `docs/bundle-budget.md` |
+| **20** | Observability & expansion | Product analytics funnel; error/perf (Sentry); **either** Capacitor/RN spike per `docs/prd/native-apps.md` **or** a11y+i18n foundation — one capstone per quarter | Phases 4.2–4.4 |
 
-**Follow-on backlog (post–wave 20):** Phases **5–7** (stories, crew mode, achievements, playlists, predictive surge, monetization, public API) continue as waves 21+ using the same table—one theme per wave, same ship criteria.
+**Follow-on backlog (post–wave 20):** Phases **5–7** (stories, crew mode,
+achievements, playlists, predictive surge, monetization, public API) continue as
+waves 21+ using the same table — one theme per wave, same ship criteria.
 
----
+**Partially landed out-of-band.** Several wave outcomes now exist because
+engineering work outpaced the table: CI quality gates and engine tests (Wave 9),
+the `AppRoutes`/`MainTabRouter`/`SubPageRouter` shell split (Wave 10), PWA +
+offline queue + bundle budget in CI (Wave 19), and Sentry/analytics wiring
+(Wave 20). Re-baseline this table before using it for planning.
 
-## Feature Roadmap
+## 17. Open questions
 
-### Phase 1 — Complete the Core Experience
-*Goal: Ship a fully functional MVP that a small group of users can actually use together.*
+1. **Does Venue ship?** It is the larger surface but not the live product. Ship, archive, or hold?
+2. **Does Signal monetize?** No pricing model is specified anywhere in the codebase.
+3. **Signal social?** Currently deliberately single-player. Is that permanent?
+4. **Native release?** Capacitor is wired and CI-synced, but no App Store / Play submission process is documented.
+5. **Data retention & export?** Neither a retention policy nor user data export exists for `signal_entries`.
 
-#### 1.1 My Spots Feed UI
-- Add follow/unfollow star button on venue pages and venue cards
-- Add "My Spots" toggle tab alongside "Friends" in social feed
-- Display chronological pulse feed filtered to followed venues
-- Show followed status badge on venue cards throughout the app
+## 18. Appendix
 
-#### 1.2 Backend & Authentication
-- Stand up a backend API (Node.js/Express or serverless functions)
-- User authentication (OAuth via Google/Apple or magic link)
-- PostgreSQL or Supabase database for persistent storage
-- Migrate from `useKV` to real API calls with React Query
-- Multi-device support with synced user state
+### Environment
+| Variable | Purpose |
+|---|---|
+| `VITE_APP_MODE` | `signal` (default) \| `venue` |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Real values → Supabase; else mock fixtures |
+| `VITE_USE_SUPABASE_BACKEND` | Force backend choice (cannot force on without credentials) |
+| `VITE_E2E_AUTH_BYPASS` | Bypass auth gate (Playwright) |
+| `VITE_VISUAL_PREVIEW` | Preview mode; also loads mock venue fixtures in a production build |
+| `VITE_FF_*` / `VITE_*_ENABLED` | Feature flags |
 
-#### 1.3 Real-Time Infrastructure
-- WebSocket or SSE connections for live pulse feed updates
-- Push notifications (Firebase Cloud Messaging / APNs)
-- Real-time venue score broadcast to all connected clients
-- Replace polling intervals with server-pushed events
+### Glossary
+**Pulse** — a time-boxed venue post that decays over 90 min ·
+**Signal entry** — one day's self-tracking record ·
+**Energy rating** — dead / chill / buzzing / electric ·
+**Credibility weight** — per-user multiplier on pulse influence ·
+**Presence** — jittered, thresholded "who's here" count ·
+**Focus** — the metric a Signal user opted to track
 
-#### 1.4 Code Quality Foundation
-- Configure ESLint v9 flat config
-- Add Vitest with unit tests for core engines (`pulse-engine`, `credibility`, `venue-trending`)
-- Component tests for critical flows (Create Pulse, Check-In)
-- Decompose `App.tsx` into route-level components with proper state management
-- Set up GitHub Actions CI pipeline (lint, type-check, test, build)
-
-### Phase 2 — Intelligence & Trust
-*Goal: Make the scoring smarter, the content more trustworthy, and the discovery more personalized.*
-
-#### 2.1 Time-Contextual Scoring
-- Define category-specific peak hours (e.g., cafes peak mornings, bars peak evenings)
-- Normalize scores relative to expected activity for time of day
-- Add contextual labels: "Electric for a Tuesday afternoon" or "Heating up early"
-- Prevent cafes from always losing to nightlife venues in raw score
-
-#### 2.2 Map Progressive Disclosure
-- Default map view shows top 5 nearby surging venues (not all venues)
-- "Show full heatmap" CTA reveals complete overlay
-- First-session guided discovery to prevent information overload
-- Cluster pins at lower zoom levels to reduce visual noise
-
-#### 2.3 Venue Recommendations
-- "You might like" suggestions based on venue categories user frequents
-- Time-aware recommendations (brunch spots in morning, bars at night)
-- Friend activity signals ("3 friends pulsed here tonight")
-- Personalized trending: weight trending list by user preferences
-
-#### 2.4 Content Moderation
-- Flag/report flow for inappropriate pulses
-- Automated content screening for uploaded photos/videos
-- Admin moderation queue for flagged content
-- User blocking and mute functionality
-
-### Phase 3 — Growth & Network Effects
-*Goal: Build features that make the app more valuable as more people use it.*
-
-#### 3.1 Real Social Graph
-- Contact book import for friend discovery
-- QR code / share link for adding friends at venues
-- "People you may know" based on co-located check-ins
-- Friend activity digest: daily summary of where friends went
-
-#### 3.2 Venue Owner Tools
-- Venue claim and verification flow
-- Venue owner dashboard: pulse analytics, peak hours, demographics
-- Promoted venue placement in trending list (clearly labeled)
-- Respond to pulses / post venue announcements
-
-#### 3.3 Events & Scheduling
-- Event creation tied to venues (DJ sets, happy hours, game nights)
-- "Going" / "Interested" RSVP to drive anticipatory engagement
-- Event-based surge predictions ("Expected to be Electric at 10pm")
-- Calendar integration for saved events
-
-#### 3.4 Sharing & Virality
-- Deep links to venue pages and individual pulses
-- Instagram/TikTok story sharing with branded Pulse energy card
-- "Share venue" with energy score preview card
-- Invite friends with referral tracking
-
-### Phase 4 — Scale & Polish
-*Goal: Production-grade reliability, performance, and platform expansion.*
-
-#### 4.1 Performance & Reliability
-- Code splitting and lazy loading for all routes
-- Service worker for offline-first pulse queue with background sync
-- Image/video CDN with optimized delivery
-- Database indexing and query optimization for venue lookups at scale
-- Rate limiting and abuse prevention on API endpoints
-
-#### 4.2 Analytics & Observability
-- Event tracking for core loop completion (open -> check-in -> pulse -> discovery)
-- Seeded content analytics dashboard (conversion rates, time-to-first-activity)
-- Funnel analysis: onboarding completion, first pulse, 7-day retention
-- Error tracking and performance monitoring (Sentry or similar)
-
-#### 4.3 Platform Expansion
-- Progressive Web App (PWA) with install prompt and home screen icon
-- Native mobile wrapper (Capacitor or React Native) for App Store / Play Store
-- Native push notifications and background location
-- Camera and media picker integration via native APIs
-
-#### 4.4 Accessibility & Internationalization
-- Full ARIA labeling and screen reader support
-- Keyboard navigation for all interactive elements
-- High contrast mode option
-- Internationalization (i18n) framework for multi-language support
-- Right-to-left (RTL) layout support
-
-### Phase 5 — Engagement & Retention
-*Goal: Deepen user engagement and build long-term retention loops.*
-
-#### 5.1 Pulse Stories & Highlights
-- Ephemeral 24-hour pulse stories at the top of trending feed
-- Venue highlights: curated best-of pulse collections by venue owners or top contributors
-- "Tonight's recap" auto-generated story from a user's evening activity
-- Story reactions with quick emoji responses
-
-#### 5.2 Crew Mode (Group Check-Ins)
-- Create a "crew" of 2-8 friends for a night out
-- Shared check-in: one person checks in, crew members confirm
-- Crew pulse: combined energy rating from all crew members (weighted average)
-- Crew activity feed showing where the group has been tonight
-- "Squad goals" badge when full crew checks in together
-
-#### 5.3 Venue Challenges & Achievements
-- Weekly venue challenges ("Check into 3 new coffee shops this week")
-- Achievement system: Explorer (10 unique venues), Night Owl (5 late-night pulses), Trendsetter (first pulse at 3 venues that later surged)
-- Seasonal achievements tied to local events or holidays
-- Achievement showcase on user profile (opt-in display)
-
-#### 5.4 Pulse Playlists & Mood Boards
-- Curated collections of pulses by mood or theme ("Best Rooftop Vibes", "Late Night Eats")
-- User-created mood boards from saved pulses
-- Venue-curated playlists highlighting their best moments
-- Shareable playlist cards for social media
-
-### Phase 6 — Data Intelligence & Monetization
-*Goal: Leverage data insights for user value and sustainable revenue.*
-
-#### 6.1 Predictive Surge Engine
-- Machine learning model trained on historical pulse data to predict venue surges
-- "Expected to peak at 10pm" predictions on venue pages
-- Smart notifications: "Based on patterns, Pike Brewing usually surges in 30 minutes"
-- Weather and event correlation for improved predictions
-
-#### 6.2 Personal Insights Dashboard
-- Weekly activity summary: venues visited, energy contributed, miles explored
-- "Your vibe type" analysis based on venue categories and energy ratings
-- Heatmap of user's own activity patterns (time of day, day of week)
-- Year-in-review: annual activity retrospective
-
-#### 6.3 Venue Analytics Pro (Revenue)
-- Premium analytics tier for venue owners (paid subscription)
-- Competitor benchmarking: compare energy scores with nearby venues
-- Customer flow analysis: where patrons go before/after visiting
-- Optimal event timing recommendations based on historical data
-- Integration with POS systems for revenue-to-energy correlation
-
-#### 6.4 Promoted Discoveries (Revenue)
-- Sponsored venue placements in "You Might Like" recommendations
-- Promoted events in the events feed (clearly labeled as sponsored)
-- Venue boost: pay to increase visibility during slow periods
-- Performance-based pricing: cost per check-in or cost per pulse
-
-#### 6.5 Neighborhood & City Scores
-- Aggregate energy scores for neighborhoods and districts
-- "Hottest neighborhood right now" leaderboard
-- City-wide energy index tracking overall nightlife activity
-- Multi-city expansion with city-level trending and comparisons
-
-### Phase 7 — Platform & Ecosystem
-*Goal: Build Pulse into a platform that others can build on.*
-
-#### 7.1 Public API & Developer Platform
-- RESTful API for venue energy data access
-- Webhook subscriptions for surge events
-- Developer portal with documentation and API keys
-- Rate-limited free tier, paid plans for commercial use
-- Use cases: ride-share surge pricing, event planning, restaurant apps
-
-#### 7.2 Integration Ecosystem
-- Uber/Lyft: "Get a ride to this venue" deep links with surge-aware timing
-- Spotify: "Now playing" at venues with collaborative playlists
-- OpenTable/Resy: reservation links on venue pages
-- Google Maps: Pulse energy layer as a Maps extension
-- Apple Shortcuts: "Where should I go tonight?" automation
-
-#### 7.3 White-Label Solution
-- Customizable Pulse-powered energy tracking for events and festivals
-- Branded venue discovery for hotel chains, entertainment districts
-- Campus edition for universities (dorm energy, library occupancy, dining halls)
-- Corporate edition for office campuses (cafeteria buzz, meeting room energy)
-
-### Future Considerations
-- **Real Twitter/X API integration**: Replace simulated social ingestion with live API
-- **Augmented reality**: AR venue energy overlay through phone camera
-- **Wearable integration**: Apple Watch / WearOS companion app for quick pulse creation
-- **Audio energy detection**: Ambient sound level analysis to auto-suggest energy ratings
-- **Multi-city expansion**: City selector, region-specific trending, city-level analytics
-- **API for third parties**: Public API for venue energy data (bars, event planners, ride-share)
+### Feature-level PRDs
+[`docs/prd/`](docs/prd/): `ai-concierge` · `creator-economy` · `native-apps` ·
+`reservations-ticketing` · `safety-kit` · `video-feed`
