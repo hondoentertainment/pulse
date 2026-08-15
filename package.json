@@ -146,7 +146,7 @@
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
         "jsdom": "^29.0.1",
-        "sharp": "^0.34.5",
+        "sharp": "^0.35.3",
         "svgo": "^4.0.1",
         "tailwindcss": "^4.1.11",
         "typescript": "~5.7.2",
