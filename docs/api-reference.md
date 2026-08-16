@@ -10,6 +10,16 @@ Pulse exposes serverless routes under `/api/*`, deployed as Vercel Functions. Th
 
 ---
 
+## Pulse Signal
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/signal/pilot` | optional JWT | Persist a Pro pilot email (`email`, `source`). Rate limited. |
+| `POST` | `/api/signal/push-subscribe` | JWT | Store a Web Push subscription for closed-app reminders |
+| `GET`/`POST` | `/api/signal/reminders/dispatch` | cron | Send daily reminders only when today is still unlogged |
+
+---
+
 ## Pulses
 
 | Method | Path | Auth | Description |
@@ -179,6 +189,7 @@ Defined in `vercel.json`:
 |------|----------|---------|
 | `/api/wait-time/recompute` | `*/10 * * * *` | Refresh wait-time estimates |
 | `/api/safety/cron/check-expired` | `*/1 * * * *` | Expire stale safety sessions |
+| `/api/signal/reminders/dispatch` | `*/15 * * * *` | Signal daily reminders (skip if today is logged) |
 
 ## Related docs
 

@@ -127,6 +127,7 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |
 | [Supabase Outage](runbooks/supabase-outage.md) | Database or Realtime down |
 | [Surge Traffic](runbooks/surge-traffic.md) | Traffic spike handling |
+| [Signal Launch](runbooks/signal-launch.md) | Apply Signal migrations, reminders, and pilot list |
 
 ---
 

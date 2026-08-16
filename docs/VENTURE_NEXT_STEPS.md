@@ -2,12 +2,12 @@
 
 This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`LoginScreen` → `SignalApp`). The venue / discovery shell is `src/AppRoutes.tsx` (not mounted from that entry). See comments in those files.
 
-For the current engineering queue (2026-08-16), see [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md). Do not start a large venue or Signal feature until [#56](https://github.com/hondoentertainment/pulse/issues/56) records which product is the default.
+**Decision (#56):** Pulse Signal is the default product. Venue discovery is dormant behind `VITE_APP_MODE=venue`. See [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) and [PRD_SIGNAL.md](../PRD_SIGNAL.md).
 
 ## Implemented in codebase
 
 - **Activation analytics** — `signal_*` events in `@/lib/analytics` (Vercel Analytics + in-memory log). Funnel helper: `analyzeSignalFunnel(getEvents())`.
-- **Research / pilot surface** — Settings: Pro pilot CTA + optional `VITE_RESEARCH_FEEDBACK_URL` link.
+- **Research / pilot surface** — Settings: Pro pilot email form persists to `signal_pilot_signups` via `/api/signal/pilot`, plus optional `VITE_RESEARCH_FEEDBACK_URL`.
 - **Timezone-stable retention helpers** — `generateNightRecap` / `generateDailyDrop` use explicit UTC in date windows where tests depended on local TZ.
 
 ## Your weekly habits (not automatable)

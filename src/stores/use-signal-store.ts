@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { saveSignalEntry, saveSignalProfile } from '@/lib/signal-data'
 import { computeDraftScore } from '@/lib/signal-score'
-import type { SignalEntry, SignalGoal, SignalProfile, TrackingFocus } from '@/lib/signal-insights'
+import { getOpenWindow, getTodayEntries, resolveEntryWindow, type SignalEntry, type SignalGoal, type SignalProfile, type TrackingFocus } from '@/lib/signal-insights'
+import { localDayKey, resolveCheckInWindow } from '@/lib/signal-windows'
 
 interface DraftSignal {
   energy: number
@@ -24,7 +25,7 @@ interface SignalStore {
   updateDraft: (patch: Partial<DraftSignal>) => void
   saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
   closeFirstWin: () => void
-  setReminder: (enabled: boolean, reminderTime?: string) => void
+  setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -78,10 +79,16 @@ export const useSignalStore = create<SignalStore>()(
       },
       saveEntry: (userId, focus) => {
         const state = get()
+        const now = new Date()
+        const window = getOpenWindow(state.entries, now) ?? resolveCheckInWindow(now)
+        const today = getTodayEntries(state.entries, now)
+        const existing = today.find((entry) => resolveEntryWindow(entry) === window)
+        if (existing) return existing
+
         const entry: SignalEntry = {
           id: createEntryId(),
           userId,
-          createdAt: new Date().toISOString(),
+          createdAt: now.toISOString(),
           focus: focus ?? state.profile?.trackingFocus ?? 'energy',
           score: scoreDraft(state.draft),
           energy: state.draft.energy,
@@ -89,25 +96,35 @@ export const useSignalStore = create<SignalStore>()(
           stress: state.draft.stress,
           sleepQuality: state.draft.sleepQuality,
           tags: state.draft.tags,
+          window,
+          dayKey: localDayKey(now),
         }
 
         set((current) => ({
-          entries: [entry, ...current.entries.filter((existing) => existing.id !== entry.id)],
-          savedAt: new Date().toISOString(),
+          entries: [entry, ...current.entries.filter((item) => item.id !== entry.id)],
+          savedAt: now.toISOString(),
           firstWinOpen: current.entries.length === 0,
         }))
         void saveSignalEntry(entry)
         return entry
       },
       closeFirstWin: () => set({ firstWinOpen: false }),
-      setReminder: (enabled, reminderTime) => {
-        const nextProfile = get().profile
-          ? { ...get().profile!, reminderTime: reminderTime ?? get().profile!.reminderTime }
+      setReminder: (enabled, reminderTime, userId) => {
+        const current = get().profile
+        const nextProfile = current
+          ? {
+              ...current,
+              reminderTime: reminderTime ?? current.reminderTime,
+              reminderEnabled: enabled,
+              reminderTimezone: current.reminderTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }
           : null
         set({
           reminderEnabled: enabled,
           profile: nextProfile,
         })
+        const persistUserId = userId ?? get().entries[0]?.userId
+        if (nextProfile && persistUserId) void saveSignalProfile(persistUserId, nextProfile)
       },
     }),
     {

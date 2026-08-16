@@ -86,6 +86,6 @@ test.describe('Signal shell', () => {
 
   test('Settings shows honest reminder copy', async ({ page }) => {
     await clickLink(page, /Settings — Preferences/i)
-    await expect(page.getByText(/push notifications coming soon/i)).toBeVisible()
+    await expect(page.getByText(/Daily reminder/i)).toBeVisible()
   })
 })

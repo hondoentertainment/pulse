@@ -69,12 +69,13 @@ export const createUserClient = (userJwt: string): SupabaseClient => {
  * (no user context) or workflow inserts that must happen *before* the user
  * is authorized to read the row (pending-ticket creation during checkout).
  *
- * Returns null when `SUPABASE_SERVICE_ROLE_KEY` is absent so callers can
- * surface a clean 500 instead of constructing an unauthenticated client.
+ * Returns null when `SUPABASE_SERVICE_ROLE_KEY` (or legacy
+ * `SUPABASE_SERVICE_ROLE`) is absent so callers can surface a clean 500
+ * instead of constructing an unauthenticated client.
  */
 export const createAdminClient = (): SupabaseClient | null => {
   const env = (globalThis as unknown as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE
   if (!serviceRoleKey) return null
   const { url } = getSupabaseConfig()
   return createClient(url, serviceRoleKey, {

@@ -17,7 +17,7 @@ Pulses decay after 90 minutes, so scores always reflect what's happening now —
 
 Pulse is an **advanced product prototype**. The feature surface is broad and functional, but production infrastructure (backend persistence, auth, observability) is not yet complete.
 
-**What to do next:** see [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md). The shipped default on `main` is Pulse Signal; venue discovery is behind `VITE_APP_MODE=venue`. Resolve that split ([#56](https://github.com/hondoentertainment/pulse/issues/56)) before starting a large feature.
+**What to do next:** see [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md). **Decision (#56):** Pulse Signal is the default product. Venue discovery stays behind `VITE_APP_MODE=venue`.
 
 **Working today:**
 

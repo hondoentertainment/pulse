@@ -1,11 +1,16 @@
+import { localDayKey, resolveCheckInWindow, type CheckInWindow } from '@/lib/signal-windows'
+
 export type TrackingFocus = 'energy' | 'mood' | 'focus' | 'sleep'
 export type SignalGoal = 'more_energy' | 'less_stress' | 'better_sleep' | 'deeper_focus'
 export type TrendDirection = 'up' | 'down' | 'flat'
+export type { CheckInWindow }
 
 export interface SignalProfile {
   trackingFocus: TrackingFocus
   goal: SignalGoal
   reminderTime?: string
+  reminderEnabled?: boolean
+  reminderTimezone?: string
 }
 
 export interface SignalEntry {
@@ -19,6 +24,8 @@ export interface SignalEntry {
   stress: number
   sleepQuality: number
   tags: string[]
+  window?: CheckInWindow
+  dayKey?: string
 }
 
 export interface SignalMetrics {
@@ -28,23 +35,51 @@ export interface SignalMetrics {
   recommendation: string
 }
 
-const dayKey = (date: Date) => date.toISOString().slice(0, 10)
+const entryDayKey = (entry: SignalEntry) => entry.dayKey ?? localDayKey(new Date(entry.createdAt))
 
 export function isSameDay(a: string, b: Date = new Date()): boolean {
-  return dayKey(new Date(a)) === dayKey(b)
+  return localDayKey(new Date(a)) === localDayKey(b)
+}
+
+export function getTodayEntries(entries: SignalEntry[], now: Date = new Date()): SignalEntry[] {
+  const today = localDayKey(now)
+  return entries.filter((entry) => entryDayKey(entry) === today)
 }
 
 export function getTodayEntry(entries: SignalEntry[], now: Date = new Date()): SignalEntry | null {
-  return entries.find((entry) => isSameDay(entry.createdAt, now)) ?? null
+  return getTodayEntries(entries, now)[0] ?? null
+}
+
+export function resolveEntryWindow(entry: SignalEntry): CheckInWindow {
+  return entry.window ?? resolveCheckInWindow(new Date(entry.createdAt))
+}
+
+export function getOpenWindow(entries: SignalEntry[], now: Date = new Date()): CheckInWindow | null {
+  const current = resolveCheckInWindow(now)
+  const taken = new Set(getTodayEntries(entries, now).map(resolveEntryWindow))
+  return taken.has(current) ? null : current
+}
+
+export function compareMorningEvening(entries: SignalEntry[]): { morning: number | null; evening: number | null; delta: number | null } {
+  const mornings = entries.filter((entry) => resolveEntryWindow(entry) === 'morning').map((entry) => entry.score)
+  const evenings = entries.filter((entry) => resolveEntryWindow(entry) === 'evening').map((entry) => entry.score)
+  const avg = (values: number[]) => (values.length === 0 ? null : Math.round(values.reduce((sum, value) => sum + value, 0) / values.length))
+  const morning = avg(mornings)
+  const evening = avg(evenings)
+  return {
+    morning,
+    evening,
+    delta: morning === null || evening === null ? null : evening - morning,
+  }
 }
 
 export function getStreakCount(entries: SignalEntry[], now: Date = new Date()): number {
-  const days = new Set(entries.map((entry) => dayKey(new Date(entry.createdAt))))
+  const days = new Set(entries.map(entryDayKey))
   let count = 0
   const cursor = new Date(now)
   cursor.setHours(12, 0, 0, 0)
 
-  while (days.has(dayKey(cursor))) {
+  while (days.has(localDayKey(cursor))) {
     count += 1
     cursor.setDate(cursor.getDate() - 1)
   }
@@ -98,7 +133,7 @@ export function generateInsight(entries: SignalEntry[], profile: SignalProfile |
   if (goal === 'less_stress') return 'Your state is steady. A short reset after high-stress moments can turn stability into momentum.'
   if (goal === 'better_sleep') return 'Your baseline is forming. Watch how sleep quality changes tomorrow morning.'
   if (goal === 'deeper_focus') return 'Your focus baseline is stable. Protect one 25-minute block today and compare the next signal.'
-  return 'Your baseline is forming. Keep checking in once a day to reveal your best patterns.'
+  return 'Your baseline is forming. Keep checking in morning and evening to reveal your best patterns.'
 }
 
 export function getRecommendation(entries: SignalEntry[], profile: SignalProfile | null): string {
@@ -121,13 +156,20 @@ export function calculateSignalMetrics(entries: SignalEntry[], profile: SignalPr
 }
 
 export function buildChartSeries(entries: SignalEntry[], now: Date = new Date()): Array<{ label: string; score: number; seeded: boolean }> {
-  const byDay = new Map(entries.map((entry) => [dayKey(new Date(entry.createdAt)), entry]))
+  const byDay = new Map<string, SignalEntry>()
+  for (const entry of entries) {
+    const key = entryDayKey(entry)
+    const existing = byDay.get(key)
+    if (!existing || new Date(entry.createdAt).getTime() > new Date(existing.createdAt).getTime()) {
+      byDay.set(key, entry)
+    }
+  }
   const latestScore = entries.length > 0 ? entries[entries.length - 1].score : 62
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now)
     date.setDate(date.getDate() - (6 - index))
-    const key = dayKey(date)
+    const key = localDayKey(date)
     const entry = byDay.get(key)
     return {
       label: date.toLocaleDateString(undefined, { weekday: 'short' }),
