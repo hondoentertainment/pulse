@@ -1,157 +1,152 @@
 # Pulse — Recommended Next Steps
 
-> Generated 2026-04-04 from a full codebase audit. Prioritized by impact and unblock potential.
+> Regenerated 2026-08-16 from `main` plus open GitHub work. The April 2026
+> revision described a broken test suite that is no longer the bottleneck.
+> The shipping default on `main` is **Pulse Signal** (`VITE_APP_MODE=signal`).
 
-## Current Health Snapshot
+## Intake Summary
 
-| Metric | Status |
-|--------|--------|
-| **Build** | Passes (chunk warning: `react-vendor` ~672 KB) |
-| **Lint** | Warnings present (unused vars/imports) |
-| **Unit tests (lib/)** | 519 passing, 1 failing (`interactive-map` clustering) |
-| **Component tests** | 6 of 7 suites failing (icon mock gap) |
-| **E2E** | Smoke suite passing |
-| **Backend** | Mock data only — Supabase schema exists but not wired |
+- Total items: 12 (4 new Signal tickets, 6 existing venue tickets, 2 merge/ops items)
+- Recommended next action: **[#56](https://github.com/hondoentertainment/pulse/issues/56) — decide Signal vs venue**, then land **[PR #55](https://github.com/hondoentertainment/pulse/pull/55)** so Signal history actually persists
 
----
+## Current health snapshot
 
-## Immediate Priority: Fix Test Suite (1-2 days)
+| Metric | Status on `main` (2026-08-16) |
+|--------|-------------------------------|
+| **Default product** | Pulse Signal (`LoginScreen` → `SignalApp`) |
+| **Venue product** | Present, gated by `VITE_APP_MODE=venue` |
+| **Signal backend** | Client writes `signal_entries` / `signal_profiles` — **no matching migrations on `main`** |
+| **Pilot CTA** | Analytics + toast only; no email stored |
+| **Reminders** | Preference toggle; no real delivery when the app is closed |
+| **Open PRs** | #42 (CI/docs), #44 (venue-default + commercial roadmap), #55 (Signal DB + PRD) |
+| **Open issues** | Venue P0/P1 #48–#53; new Signal tickets #56–#59 |
 
-### 1. Fix component test icon mock
+`#44` and `#55` disagree about which product is the default. Do not start a
+large feature on either track until that is resolved.
 
-**Root cause:** The Phosphor icon proxy mock in tests doesn't export all icons used by components (e.g., `Users`, `Crown`, `Heart` in `GuestCRM.tsx`). This breaks **6 of 7 component test suites** — not actual component bugs.
+## Prioritized Queue
 
-**Fix:** Update the icon mock (likely in `vitest.setup.ts` or a shared mock file) to use `importOriginal` so all Phosphor icons are available:
+### 1. [#56] Decide default product: Signal vs venue — Priority: P0 | Effort: S | Impact: High
 
-```ts
-vi.mock("@phosphor-icons/react", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual };
-});
-```
+- Why now: `main` and PR #55 treat Signal as the shipping product. PR #44
+  flips the default to venue and marks Signal legacy. Issues #48–#53 are
+  venue P0/P1. Split attention is the most expensive current risk.
+- Dependencies: none
+- Acceptance criteria:
+  - [ ] Written decision in README + this file
+  - [ ] Default `VITE_APP_MODE` matches the chosen product
+  - [ ] Losing track is archived, flagged, or scheduled — not left implicit
+  - [ ] Conflicting PRs/issues are closed or retargeted
+- Verification: default E2E suite and README both describe the same app
 
-Or add the missing icon exports (`Users`, `Crown`, `Heart`, `TrendUp`, `TrendDown`, etc.) to the existing mock.
+**Assumption:** until #56 is decided, execute the Signal path below because
+that is what `main` already ships.
 
-**Impact:** Fixes 28 of the 29 failing tests in one change.
+### 2. Land [PR #55](https://github.com/hondoentertainment/pulse/pull/55) + apply Signal migrations — Priority: P0 | Effort: S | Impact: High
 
-### 2. Fix interactive-map clustering test
+- Why now: Signal is localStorage-only on `main`. Clearing browser data
+  destroys streaks and history. PR #55 adds tables, real local reminders,
+  pilot capture, pattern insights, CSV export, and `PRD_SIGNAL.md`.
+- Dependencies: one approving review (mergeable_state is blocked)
+- Acceptance criteria:
+  - [ ] PR #55 merged (or equivalent tables + capture shipped)
+  - [ ] `20260725000000_signal_core.sql` applied to the production Supabase project
+  - [ ] Production has `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_APP_MODE=signal`
+- Verification: sign in on two devices; a check-in on A appears on B after refresh
 
-**Root cause:** `clusterVenueRenderPoints` clustering test has a flaky distance/grouping assertion.
+### 3. [#59] Persist Pro pilot waitlist emails — Priority: P1 | Effort: S | Impact: High
 
-**File:** `src/lib/__tests__/interactive-map.test.ts`
+- Why now: Settings → “Join the pilot list” stores nothing. You cannot
+  price Pulse Pro or run interviews from a toast.
+- Dependencies: prefer landing PR #55 instead of re-implementing
+- Acceptance criteria:
+  - [ ] Form stores a contactable email
+  - [ ] Duplicate submit is idempotent (“already registered”)
+  - [ ] Failed persist does not show a success-only toast
+- Verification: submit twice; one row; second response is already-registered
 
-**Action:** Review the test's coordinate inputs and clustering radius — likely needs a tolerance adjustment or the clustering algorithm changed without updating the test.
+### 4. [#57] Server-side daily reminder delivery — Priority: P1 | Effort: M | Impact: High
 
----
+- Why now: D7 retention is the Signal metric. Local scheduling (PR #55)
+  cannot fire when the PWA is fully closed. `pwa.ts` still has a placeholder
+  VAPID key.
+- Dependencies: #55 tables + `signal_profiles.reminder_*`
+- Acceptance criteria:
+  - [ ] Real VAPID key
+  - [ ] Scheduler sends only when today is unlogged
+  - [ ] Permission denied/unsupported is shown honestly
+- Verification: enable reminder, close the PWA, receive a notification; no
+  raw slider values in the payload
 
-## Short-Term: Code Health (1 week)
+### 5. [#58] Morning vs evening check-ins — Priority: P1 | Effort: M | Impact: High
 
-### 3. Lint cleanup
+- Why now: Home assumes one entry/day; the schema allows many. Morning vs
+  evening is the cheapest differentiated insight Signal can add.
+- Dependencies: none for the product rule; persistence (#55) before it
+  matters across devices
+- Acceptance criteria:
+  - [ ] Documented 1/day or 2/day rule
+  - [ ] UI and database agree
+  - [ ] If 2/day: Trends can compare AM vs PM; streaks stay correct
+- Verification: unit tests for window detection + write guard; manual AM
+  then PM flow
 
-- Fix unused imports/vars flagged by ESLint (or prefix with `_`)
-- Target: zero lint errors, warnings below 20
-- Prevents lint noise from hiding real issues
+### 6. Close or rebase stale merge debt — Priority: P1 | Effort: S | Impact: Medium
 
-### 4. Dead code audit
-
-Candidates with no component consumers:
-- `src/lib/white-label.ts` — white-label theming (unused)
-- `src/lib/public-api.ts` — API key generation (client-side, should be server-side or removed)
-- `src/lib/twitter-ingestion.ts` — Twitter data pipeline (prototype only)
-
-**Impact:** Reduces bundle size and maintenance surface.
-
-### 5. Bundle size optimization
-
-| Target | Action |
-|--------|--------|
-| Sentry (~257 KB) | Lazy-load after first render |
-| Three.js | Defer until 3D features accessed |
-| Index chunk (~202 KB) | Route-split sub-pages (settings, achievements, events) |
-| `react-vendor` (~672 KB) | Audit — may need React import optimization |
-
----
-
-## Medium-Term: Architecture (2-3 weeks)
-
-### 6. Split monolithic state provider
-
-`src/hooks/use-app-state.tsx` manages all app state in one provider. Split into:
-- **VenueContext** — venue data, selections, filters
-- **SocialContext** — crews, friends, follows, reactions
-- **UIContext** — tabs, modals, navigation state
-
-This reduces re-renders and makes the codebase easier to reason about.
-
-### 7. Replace mock data with API layer
-
-- `src/lib/mock-data.ts` (~280 KB) contains hardcoded venue/user data
-- `src/lib/global-venues.ts`, `src/lib/us-venues.ts` are static datasets
-- Wire TanStack Query (already configured via `query-client.ts`) to Supabase
-- Move mock data to test fixtures only
-
-### 8. Route-based code splitting
-
-Sub-pages that should be lazy-loaded:
-- Settings, Achievements, Events, Playlists, Night Planner
-- Venue Owner Dashboard, Creator Dashboard, Moderation Queue
-- Crew Page, Insights Page
-
----
-
-## Medium-Long Term: Backend & Production (4-6 weeks)
-
-### 9. Supabase backend wiring
-
-Supabase schema and migrations exist in `supabase/` but aren't connected to the app:
-
-- [ ] Wire auth enforcement on all protected routes
-- [ ] Implement CRUD for venues, pulses, reactions, stories via Edge Functions
-- [ ] Enable real-time subscriptions for live venue scores
-- [ ] Move geocoding, API key management, webhook signing server-side
-- [ ] Enforce RLS policies for multi-tenant data access
-
-### 10. Security hardening
-
-Critical items before any public launch:
-- [ ] Server-side content moderation (currently client-only)
-- [ ] Move API secrets out of client bundle (`public-api.ts`)
-- [ ] Server-side rate limiting
-- [ ] Input sanitization on all user content (captions, hashtags, media)
-- [ ] CSP headers and HTTPS-only enforcement
-- [ ] Auth token rotation and session management
-
-### 11. Integration tests for critical flows
-
-- Supabase auth flow (OAuth + magic link)
-- Offline queue sync (queue → Supabase when back online)
-- Real-time subscription lifecycle
-- Pulse creation end-to-end
+- Why now: three open PRs are blocking or conflicting.
+  - [#55](https://github.com/hondoentertainment/pulse/pull/55) — merge if Signal-first
+  - [#44](https://github.com/hondoentertainment/pulse/pull/44) — keep `COMMERCIAL_ROADMAP.md`
+    and launch-readiness pieces; **do not** take the default-mode flip unless
+    #56 chooses venue
+  - [#42](https://github.com/hondoentertainment/pulse/pull/42) — take CI/docs
+    fixes only if they still apply on current `main`
+- Dependencies: #56
+- Acceptance criteria:
+  - [ ] Each PR is merged, split, or closed with a reason
+- Verification: `main` has one default product and a green required CI suite
 
 ---
 
-## Suggested Execution Order
+## Venue track (only if #56 chooses venue)
 
-| # | Task | Effort | Unblocks |
-|---|------|--------|----------|
-| 1 | Fix icon mock (28 tests) | 30 min | Green CI |
-| 2 | Fix interactive-map test | 1 hr | Green CI |
-| 3 | Lint cleanup | 1 day | Clean CI output |
-| 4 | Dead code audit | 1 day | Smaller bundle |
-| 5 | Bundle optimization | 1-2 days | Performance |
-| 6 | State management split | 1-2 weeks | Scalability |
-| 7 | API layer + mock removal | 2-3 weeks | Real product |
-| 8 | Route code splitting | 1 week | Performance |
-| 9 | Supabase backend | 3-4 weeks | Launch readiness |
-| 10 | Security hardening | 1-2 weeks | Public launch |
-| 11 | Integration tests | 1-2 weeks | Confidence |
+These already exist. Do not start them while Signal is the default unless
+you are explicitly reviving venue mode.
+
+1. [#48](https://github.com/hondoentertainment/pulse/issues/48) P0-4 — Curate Seattle venue inventory (25–40) — P0 | L
+2. [#49](https://github.com/hondoentertainment/pulse/issues/49) P0-5 — Versioned venue signal engine — P0 | L
+3. [#50](https://github.com/hondoentertainment/pulse/issues/50) P0-7 — Venue detail “Worth going” summary — P0 | M
+4. [#51](https://github.com/hondoentertainment/pulse/issues/51) P0-9 — Arrival prompt and mismatch loop — P0 | M
+5. [#52](https://github.com/hondoentertainment/pulse/issues/52) P1-1 — Scout program MVP — P1 | L
+6. [#53](https://github.com/hondoentertainment/pulse/issues/53) P1-6 — WCAG 2.2 AA on Tonight and Map — P1 | M
+
+If venue is chosen, also take the fundable subset from PR #44’s
+`COMMERCIAL_ROADMAP.md`: one district, forecast-vs-live scores, auth + RLS,
+no mock data in the core loop.
 
 ---
 
-## Related Docs
+## Later ideas (do not start yet)
 
-- [NEXT_PHASES.md](NEXT_PHASES.md) — detailed phase plan
-- [ARCHITECTURE.md](ARCHITECTURE.md) — system design
-- [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) — rollout plan
-- [SECURITY.md](SECURITY.md) — security priorities
-- [RELEASE_CHECKS.md](RELEASE_CHECKS.md) — pre-deploy checklist
+Grounded in `PRD_SIGNAL.md` (PR #55) and existing feature PRDs. Not invented.
+
+| Idea | Why wait |
+|------|----------|
+| Correlation-driven advice + custom tags | Implemented on the #55 branch; land that first |
+| Define Pulse Pro pricing / entitlements | Needs a real waitlist (#59) and interview signal |
+| Apple Health / Google Fit import | Native + privacy surface; only after the daily loop retains |
+| Archive venue code | Decision (#56) first; deletion is reversible only via git |
+| AI concierge / ticketing / creator economy / video feed | Flagged Q-roadmap features; they do not help Signal D7 or a one-city venue launch |
+
+## Deliberately not doing
+
+- Social / friend comparison inside Signal (out of scope, PRD_SIGNAL §4.3)
+- Clinical or diagnostic scoring
+- New venue differentiators (wait-time ML, premium weather) while the
+  default app is Signal and venue data is still mock
+
+## Related
+
+- [docs/VENTURE_NEXT_STEPS.md](docs/VENTURE_NEXT_STEPS.md) — weekly habits for Signal
+- [PRD.md](PRD.md) — venue-mode product spec
+- [PR #55 `PRD_SIGNAL.md`](https://github.com/hondoentertainment/pulse/blob/claude/admiring-mendel-y01z7i/PRD_SIGNAL.md) — shipping Signal spec (not on `main` yet)
+- [PR #44 `COMMERCIAL_ROADMAP.md`](https://github.com/hondoentertainment/pulse/blob/claude/tender-babbage-jriomh/COMMERCIAL_ROADMAP.md) — venue fundability plan

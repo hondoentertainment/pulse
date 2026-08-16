@@ -2,6 +2,8 @@
 
 This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`LoginScreen` → `SignalApp`). The venue / discovery shell is `src/AppRoutes.tsx` (not mounted from that entry). See comments in those files.
 
+For the current engineering queue (2026-08-16), see [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md). Do not start a large venue or Signal feature until [#56](https://github.com/hondoentertainment/pulse/issues/56) records which product is the default.
+
 ## Implemented in codebase
 
 - **Activation analytics** — `signal_*` events in `@/lib/analytics` (Vercel Analytics + in-memory log). Funnel helper: `analyzeSignalFunnel(getEvents())`.

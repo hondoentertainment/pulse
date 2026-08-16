@@ -17,6 +17,8 @@ Pulses decay after 90 minutes, so scores always reflect what's happening now —
 
 Pulse is an **advanced product prototype**. The feature surface is broad and functional, but production infrastructure (backend persistence, auth, observability) is not yet complete.
 
+**What to do next:** see [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md). The shipped default on `main` is Pulse Signal; venue discovery is behind `VITE_APP_MODE=venue`. Resolve that split ([#56](https://github.com/hondoentertainment/pulse/issues/56)) before starting a large feature.
+
 **Working today:**
 
 - Multi-tab app shell — map, discover, trending, notifications, profile
@@ -224,6 +226,7 @@ Full documentation index: **[docs/README.md](docs/README.md)**
 | Document | Description |
 |----------|-------------|
 | [PRD.md](PRD.md) | Product requirements, feature specs, design direction |
+| [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md) | Current prioritized queue (Signal vs venue) |
 | [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
 | [RELEASE_CHECKS.md](RELEASE_CHECKS.md) | Pre-deployment automated and manual checks |
