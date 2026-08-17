@@ -8,7 +8,7 @@
     <meta name="description" content="Pulse Signal: a 10-second daily check-in for energy, mood, and focus—trends, streaks, and one clear next step." />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.github.com;"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.github.com;"
     />
     <meta name="theme-color" content="#6d28d9" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,9 +16,12 @@
     <meta name="apple-mobile-web-app-title" content="Pulse" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!--
+      Fonts are self-hosted (see src/styles/fonts.css + public/fonts/). The old
+      render-blocking fonts.googleapis.com <link> was the app's biggest perf
+      problem — it blocked first paint and, on restricted networks, hung for
+      ~12.8s before failing, leaving a blank page until it did.
+    -->
 </head>
 
 <body>
