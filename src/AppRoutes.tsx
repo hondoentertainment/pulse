@@ -17,7 +17,7 @@ import { VenueRoute } from '@/components/VenueRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
-// ── Lazy page imports ────────────────────────────────────────
+// ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
 // chunk so the initial bundle stays small.
 const OnboardingFlow = lazy(() =>
@@ -84,7 +84,7 @@ export function AppRoutes() {
     if (navigator.vibrate) navigator.vibrate([15])
   }
 
-  // ── Onboarding gate ──────────────────────────────────────
+  // ── Onboarding gate ──────────────────────
   if (hasCompletedOnboarding === false) {
     return (
       <Suspense fallback={<PageSkeleton />}>
@@ -111,12 +111,12 @@ export function AppRoutes() {
     )
   }
 
-  // ── Loading gate ─────────────────────────────────────────
+  // ── Loading gate ─────────────────────────
   if (!venues || !currentUser || !pulses) {
     return <PageSkeleton />
   }
 
-  // ── Admin dashboard ──────────────────────────────────────
+  // ── Admin dashboard ──────────────────────
   if (showAdminDashboard && socialDashboardEnabled) {
     return (
       <Suspense fallback={<PageSkeleton />}>
@@ -140,14 +140,15 @@ export function AppRoutes() {
     queuedPulseCount,
   }
 
-  const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
+  // MainTabRouter / SubPageRouter read activeTab / subPage from app state.
+  const wrapTab = () => (
     <>
       <AppHeader {...headerProps} />
-      <MainTabRouter tab={tab} />
+      <MainTabRouter />
     </>
   )
 
-  // ── Main shell with routes ───────────────────────────────
+  // ── Main shell with routes ───────────────────────
   return (
     <main className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
@@ -168,25 +169,25 @@ export function AppRoutes() {
         />
 
         {/* Sub-pages */}
-        <Route path="/events" element={<SubPageRouter page="events" />} />
-        <Route path="/crews" element={<SubPageRouter page="crews" />} />
-        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
-        <Route path="/insights" element={<SubPageRouter page="insights" />} />
-        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
-        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
-        <Route path="/settings" element={<SubPageRouter page="settings" />} />
-        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
-        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
-        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        <Route path="/events" element={<SubPageRouter />} />
+        <Route path="/crews" element={<SubPageRouter />} />
+        <Route path="/achievements" element={<SubPageRouter />} />
+        <Route path="/insights" element={<SubPageRouter />} />
+        <Route path="/neighborhoods" element={<SubPageRouter />} />
+        <Route path="/playlists" element={<SubPageRouter />} />
+        <Route path="/settings" element={<SubPageRouter />} />
+        <Route path="/integrations" element={<SubPageRouter />} />
+        <Route path="/moderation" element={<SubPageRouter />} />
+        <Route path="/challenges" element={<SubPageRouter />} />
+        <Route path="/my-tickets" element={<SubPageRouter />} />
+        <Route path="/night-planner" element={<SubPageRouter />} />
 
         {/* Main tabs */}
-        <Route path="/discover" element={wrapTab('discover')} />
-        <Route path="/map" element={wrapTab('map')} />
-        <Route path="/notifications" element={wrapTab('notifications')} />
-        <Route path="/profile" element={wrapTab('profile')} />
-        <Route path="/" element={wrapTab('trending')} />
+        <Route path="/discover" element={wrapTab()} />
+        <Route path="/map" element={wrapTab()} />
+        <Route path="/notifications" element={wrapTab()} />
+        <Route path="/profile" element={wrapTab()} />
+        <Route path="/" element={wrapTab()} />
 
         {/* Catch-all: redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
