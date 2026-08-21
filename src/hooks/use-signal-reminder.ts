@@ -16,7 +16,7 @@ export function useSignalReminder() {
 
   useEffect(() => {
     setPermission(resolveReminderPermission(typeof Notification === 'undefined' ? undefined : Notification))
-  }, [])
+  }, [reminderEnabled])
 
   useEffect(() => {
     if (!reminderEnabled) {
