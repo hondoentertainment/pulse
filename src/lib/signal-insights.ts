@@ -164,7 +164,7 @@ export function buildChartSeries(entries: SignalEntry[], now: Date = new Date())
       byDay.set(key, entry)
     }
   }
-  const latestScore = entries.length > 0 ? entries[entries.length - 1].score : 62
+  const latestScore = entries.length > 0 ? entries[0].score : 62
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now)
