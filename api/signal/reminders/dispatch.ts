@@ -13,8 +13,6 @@ const checkAuth = (req: RequestLike): boolean => {
   const header = req.headers?.authorization
   const token = Array.isArray(header) ? header[0] : header
   const querySecret = Array.isArray(req.query?.secret) ? req.query?.secret[0] : req.query?.secret
-  const cronHeader = req.headers?.['x-vercel-cron']
-  if (cronHeader) return true
   return token === `Bearer ${required}` || querySecret === required
 }
 
