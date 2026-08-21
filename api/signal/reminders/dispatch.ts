@@ -54,16 +54,17 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     now: new Date(),
   })
 
-  const results = []
-  for (const recipient of recipients) {
-    const result = await sendPushToUser({
-      userId: recipient.userId,
-      title: 'Pulse Signal',
-      body: 'Take 10 seconds to log today’s signal.',
-      data: { kind: 'signal_reminder', dayKey: recipient.dayKey },
-    })
-    results.push({ userId: recipient.userId, ...result })
-  }
+  const results = await Promise.all(
+    recipients.map(async (recipient) => {
+      const result = await sendPushToUser({
+        userId: recipient.userId,
+        title: 'Pulse Signal',
+        body: 'Take 10 seconds to log today’s signal.',
+        data: { kind: 'signal_reminder', dayKey: recipient.dayKey },
+      })
+      return { userId: recipient.userId, ...result }
+    }),
+  )
 
   ok(res, { candidates: recipients.length, results })
 }
