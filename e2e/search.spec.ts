@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { completeOnboarding, goToTab } from './fixtures/onboarding'
+import { completeOnboarding } from './fixtures/onboarding'
 
 test.describe('Search and filter', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,7 +14,10 @@ test.describe('Search and filter', () => {
     let count = await searchInputs.count()
 
     if (count === 0) {
-      await goToTab(page, /^map$/i)
+      // Prefer a URL navigation — the Map tab can sit behind the FAB /
+      // off-viewport on the seeded venue home feed.
+      await page.goto('/map')
+      await page.waitForLoadState('networkidle')
       count = await searchInputs.count()
     }
 
