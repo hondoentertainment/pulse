@@ -49,9 +49,8 @@ function buildPreviewPulses(venues: Venue[]): Pulse[] {
 }
 
 export async function loadPrototypeCatalog(launchedCities: string[] = []): Promise<PrototypeCatalog> {
-  const [{ MOCK_VENUES }] = await Promise.all([
-    import('./mock-data'),
-  ])
+  const { loadMockVenueFixtures } = await import('./mock-data')
+  const { MOCK_VENUES } = await loadMockVenueFixtures()
 
   const launchedCitySet = normalizeLaunchedCities(launchedCities)
   const filteredVenues = MOCK_VENUES.filter((venue) => {

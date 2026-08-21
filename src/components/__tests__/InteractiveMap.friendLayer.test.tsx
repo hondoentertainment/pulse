@@ -109,18 +109,19 @@ vi.mock('@phosphor-icons/react', () => {
 
 // ── Fixtures ─────────────────────────────────────────────────────────
 function makeUser(over: Partial<User> & { id: string }): User {
+  const { id, username, friends, createdAt, presenceSettings, profilePhoto, ...rest } = over
   return {
-    id: over.id,
-    username: over.username ?? over.id,
-    friends: over.friends ?? [],
-    createdAt: new Date().toISOString(),
-    presenceSettings: over.presenceSettings ?? {
+    id,
+    username: username ?? id,
+    friends: friends ?? [],
+    createdAt: createdAt ?? new Date().toISOString(),
+    presenceSettings: presenceSettings ?? {
       enabled: true,
       visibility: 'everyone',
       hideAtSensitiveVenues: false,
     },
-    profilePhoto: over.profilePhoto ?? 'https://img/x.png',
-    ...over,
+    profilePhoto: profilePhoto ?? 'https://img/x.png',
+    ...rest,
   }
 }
 
@@ -148,15 +149,17 @@ function nearbyLoc() {
 }
 
 // ── Import under test (after mocks) ──────────────────────────────────
-import { InteractiveMap, FRIEND_LAYER_STORAGE_KEY } from '@/components/InteractiveMap'
+import { InteractiveMap } from '@/components/InteractiveMap'
 
-function renderMap(overrides: Partial<React.ComponentProps<typeof InteractiveMap>> = {}) {
-  const props: React.ComponentProps<typeof InteractiveMap> = {
+const FRIEND_LAYER_STORAGE_KEY = 'pulse-friend-layer'
+
+function renderMap(overrides: Record<string, unknown> = {}) {
+  const props = {
     venues: [VENUE],
     userLocation: { lat: VENUE.location.lat, lng: VENUE.location.lng },
     onVenueClick: vi.fn(),
     ...overrides,
-  }
+  } as React.ComponentProps<typeof InteractiveMap>
   return render(<InteractiveMap {...props} />)
 }
 

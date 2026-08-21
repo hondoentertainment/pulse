@@ -10,7 +10,6 @@ const TAB_TO_PATH: Record<TabId, string> = {
   map: '/map',
   notifications: '/notifications',
   profile: '/profile',
-  video: '/video',
 }
 
 const SUBPAGE_TO_PATH: Record<NonNullable<SubPage>, string> = {
@@ -34,14 +33,31 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/map': 'map',
   '/notifications': 'notifications',
   '/profile': 'profile',
-  '/video': 'video',
 }
+
+// Inverse of SUBPAGE_TO_PATH, derived so the two never drift.
+const PATH_TO_SUBPAGE = Object.fromEntries(
+  Object.entries(SUBPAGE_TO_PATH).map(([page, path]) => [path, page as NonNullable<SubPage>]),
+) as Record<string, NonNullable<SubPage>>
 
 /** Derive the active tab ID from the current URL pathname */
 export function deriveActiveTab(pathname: string): TabId {
   if (PATH_TO_TAB[pathname]) return PATH_TO_TAB[pathname]
   // Default to trending for sub-pages and unknown paths
   return 'trending'
+}
+
+/**
+ * Derive the sub-page key from the current URL pathname, or null when the
+ * path isn't a sub-page route (a main tab, a venue page, etc.).
+ */
+export function deriveSubPage(pathname: string): NonNullable<SubPage> | null {
+  return PATH_TO_SUBPAGE[pathname] ?? null
+}
+
+/** True when the pathname maps to a main tab route. */
+export function isTabPath(pathname: string): boolean {
+  return pathname in PATH_TO_TAB
 }
 
 export function useRouteNavigation() {

@@ -1,11 +1,16 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAppState } from '@/hooks/use-app-state'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import {
+  useRouteNavigation,
+  deriveActiveTab,
+  deriveSubPage,
+  isTabPath,
+} from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -49,12 +54,17 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
- * This file remains the venue / discovery experience for reuse or future entry switches.
+ * **Mounting:** `src/App.tsx` mounts this router only in venue app mode
+ * (`isVenueAppMode()`); the default Signal mode mounts `SignalApp` instead.
+ *
+ * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
+ * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
+ * pathname so a direct load of `/discover`, `/events`, etc. renders the
+ * right surface instead of the default tab or a blank `SubPageRouter`.
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const { activeTab, navigateToTab, location } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -74,7 +84,22 @@ export function AppRoutes() {
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
+    setActiveTab, setSubPage,
   } = state
+
+  // URL → app-state sync. MainTabRouter/SubPageRouter render from useAppState,
+  // so without this a direct load / refresh of /discover, /events, etc. would
+  // show the default tab or a blank sub-page.
+  const pathname = location.pathname
+  useEffect(() => {
+    if (isTabPath(pathname)) {
+      setActiveTab(deriveActiveTab(pathname))
+      setSubPage(null)
+      return
+    }
+    const sub = deriveSubPage(pathname)
+    if (sub) setSubPage(sub)
+  }, [pathname, setActiveTab, setSubPage])
 
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
