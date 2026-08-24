@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { selectReminderRecipients } from '../signal-reminders'
+import { afterEach, describe, expect, it } from 'vitest'
+import { isCronAuthorized, selectReminderRecipients } from '../signal-reminders'
 
 describe('selectReminderRecipients', () => {
   it('selects enabled unlogged users inside the local window', () => {
@@ -27,5 +27,31 @@ describe('selectReminderRecipients', () => {
       logged: [],
     })
     expect(recipients).toEqual([])
+  })
+})
+
+describe('isCronAuthorized', () => {
+  const previous = process.env.CRON_SECRET
+
+  afterEach(() => {
+    if (previous === undefined) delete process.env.CRON_SECRET
+    else process.env.CRON_SECRET = previous
+  })
+
+  it('rejects a spoofed x-vercel-cron header when a secret is configured', () => {
+    process.env.CRON_SECRET = 'test-secret'
+    expect(isCronAuthorized({
+      headers: { 'x-vercel-cron': '1' },
+    })).toBe(false)
+  })
+
+  it('accepts the Bearer secret or ?secret=', () => {
+    process.env.CRON_SECRET = 'test-secret'
+    expect(isCronAuthorized({
+      headers: { authorization: 'Bearer test-secret' },
+    })).toBe(true)
+    expect(isCronAuthorized({
+      query: { secret: 'test-secret' },
+    })).toBe(true)
   })
 })

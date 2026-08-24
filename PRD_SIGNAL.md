@@ -25,7 +25,7 @@ Pulse Signal is the default product. Venue discovery remains in the repo as a do
 
 ## Reminders
 
-Local in-app nudge always. Closed-app Web Push requires `VITE_VAPID_PUBLIC_KEY` plus server `VAPID_*` / native push env. The cron at `/api/signal/reminders/dispatch` sends only when today is still unlogged.
+Local in-app nudge always. Closed-app Web Push requires `VITE_VAPID_PUBLIC_KEY` plus server `VAPID_*` / native push env. The cron at `/api/signal/reminders/dispatch` fans out to both native `push_tokens` and stored `signal_push_subscriptions`, and only when today is still unlogged.
 
 ## Out of scope
 

@@ -4,17 +4,9 @@
  */
 import { sendPushToUser } from '../../_lib/push'
 import { createAdminClient } from '../../_lib/supabase-server'
-import { selectReminderRecipients } from '../../_lib/signal-reminders'
+import { isCronAuthorized, selectReminderRecipients } from '../../_lib/signal-reminders'
+import { sendWebPushToUser } from '../../_lib/web-push'
 import { handlePreflight, methodNotAllowed, ok, unauthorized, type RequestLike, type ResponseLike } from '../../_lib/http'
-
-const checkAuth = (req: RequestLike): boolean => {
-  const required = process.env.CRON_SECRET
-  if (!required) return true
-  const header = req.headers?.authorization
-  const token = Array.isArray(header) ? header[0] : header
-  const querySecret = Array.isArray(req.query?.secret) ? req.query?.secret[0] : req.query?.secret
-  return token === `Bearer ${required}` || querySecret === required
-}
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
   if (handlePreflight(req, res)) return
@@ -22,7 +14,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     methodNotAllowed(res, ['GET', 'POST', 'OPTIONS'])
     return
   }
-  if (!checkAuth(req)) {
+  if (!isCronAuthorized(req)) {
     unauthorized(res, 'Invalid cron secret')
     return
   }
@@ -56,13 +48,25 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
 
   const results = await Promise.all(
     recipients.map(async (recipient) => {
-      const result = await sendPushToUser({
+      const message = {
         userId: recipient.userId,
         title: 'Pulse Signal',
         body: 'Take 10 seconds to log today’s signal.',
         data: { kind: 'signal_reminder', dayKey: recipient.dayKey },
-      })
-      return { userId: recipient.userId, ...result }
+      }
+      const [native, web] = await Promise.all([
+        sendPushToUser(message),
+        sendWebPushToUser(message),
+      ])
+      return {
+        userId: recipient.userId,
+        native,
+        web,
+        dispatched: native.dispatched + web.dispatched,
+        skipped: native.skipped + web.skipped,
+        logOnly: native.logOnly && web.logOnly,
+        errors: [...native.errors, ...web.errors],
+      }
     }),
   )
 

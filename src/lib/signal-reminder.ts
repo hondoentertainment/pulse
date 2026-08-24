@@ -47,7 +47,7 @@ export function reminderCopy(permission: ReminderPermission, hasVapid: boolean):
   if (permission === 'unsupported') return 'This browser cannot show notifications. We will nudge you in the app instead.'
   if (permission === 'denied') return 'Notifications are blocked. Enable them in the browser, or keep the in-app nudge.'
   if (!hasVapid) return 'In-app reminder is on. Closed-app push needs a production VAPID key.'
-  if (permission === 'granted') return 'We will remind you at the chosen time. Closed-app reminders require server push to be configured.'
+  if (permission === 'granted') return 'We will remind you at the chosen time, including when the app is closed.'
   return 'Turn on to request notification permission.'
 }
 

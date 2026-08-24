@@ -41,5 +41,6 @@ describe('signal-reminder', () => {
     expect(reminderCopy('denied', true)).toMatch(/blocked/i)
     expect(reminderCopy('granted', false)).toMatch(/VAPID/i)
     expect(reminderCopy('unsupported', false)).toMatch(/cannot show notifications/i)
+    expect(reminderCopy('granted', true)).toMatch(/closed/i)
   })
 })

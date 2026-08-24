@@ -40,6 +40,9 @@ Apply the Signal-first schema and turn on daily reminders after the #56–#59 im
 - [ ] Duplicate pilot email returns “already on the list”, not a false success
 - [ ] Reminder cron skips users whose `day_key` is already logged
 - [ ] Settings reminder copy stays honest when VAPID/permission is missing
+- [ ] `/api/signal/push-subscribe` rejects unverified JWTs
+- [ ] Reminder cron sends to `signal_push_subscriptions` when VAPID keys are set
+- [ ] Same-window saves from a second device reuse the existing `(user_id, day_key, check_in_window)` row
 
 ## Rollback / Escalation
 

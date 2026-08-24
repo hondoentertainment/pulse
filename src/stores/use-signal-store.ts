@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { saveSignalEntry, saveSignalProfile } from '@/lib/signal-data'
+import { mergeSignalEntryLists, saveSignalEntry, saveSignalProfile } from '@/lib/signal-data'
 import { computeDraftScore } from '@/lib/signal-score'
 import { getOpenWindow, getTodayEntries, resolveEntryWindow, type SignalEntry, type SignalGoal, type SignalProfile, type TrackingFocus } from '@/lib/signal-insights'
 import { localDayKey, resolveCheckInWindow } from '@/lib/signal-windows'
@@ -58,12 +58,9 @@ export const useSignalStore = create<SignalStore>()(
       },
       mergeRemoteEntries: (remoteEntries) => {
         if (remoteEntries.length === 0) return
-        set((state) => {
-          const byId = new Map([...state.entries, ...remoteEntries].map((entry) => [entry.id, entry]))
-          return {
-            entries: Array.from(byId.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-          }
-        })
+        set((state) => ({
+          entries: mergeSignalEntryLists(state.entries, remoteEntries),
+        }))
       },
       updateDraft: (patch) => {
         set((state) => ({
@@ -105,7 +102,12 @@ export const useSignalStore = create<SignalStore>()(
           savedAt: now.toISOString(),
           firstWinOpen: current.entries.length === 0,
         }))
-        void saveSignalEntry(entry)
+        void saveSignalEntry(entry).then((saved) => {
+          if (saved.id === entry.id) return
+          set((current) => ({
+            entries: mergeSignalEntryLists(current.entries.filter((item) => item.id !== entry.id), [saved]),
+          }))
+        })
         return entry
       },
       closeFirstWin: () => set({ firstWinOpen: false }),

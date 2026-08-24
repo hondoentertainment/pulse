@@ -55,6 +55,17 @@ describe('signal windows', () => {
     expect(series[series.length - 1]).toMatchObject({ score: 88, seeded: false })
   })
 
+  it('seeds empty days from the newest entry even when the array is oldest-first', () => {
+    const now = new Date(2026, 7, 16, 20, 0)
+    const series = buildChartSeries([
+      entry({ id: 'old', dayKey: '2026-08-14', score: 40, createdAt: '2026-08-14T08:00:00' }),
+      entry({ id: 'new', dayKey: '2026-08-16', score: 90, createdAt: '2026-08-16T19:00:00' }),
+    ], now)
+    const seeded = series.filter((point) => point.seeded)
+    expect(seeded.length).toBeGreaterThan(0)
+    expect(seeded.every((point) => point.score > 70)).toBe(true)
+  })
+
   it('compares morning and evening averages', () => {
     const comparison = compareMorningEvening([
       entry({ window: 'morning', score: 60 }),

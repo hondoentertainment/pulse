@@ -1,5 +1,5 @@
 import { hasSupabaseConfig, supabase } from '@/lib/supabase'
-import type { SignalEntry, SignalProfile, TrackingFocus } from '@/lib/signal-insights'
+import { resolveEntryWindow, type SignalEntry, type SignalProfile, type TrackingFocus } from '@/lib/signal-insights'
 import { localDayKey, resolveCheckInWindow, type CheckInWindow } from '@/lib/signal-windows'
 
 interface SignalEntryRow {
@@ -47,12 +47,28 @@ const toRow = (entry: SignalEntry): SignalEntryRow => ({
   day_key: entry.dayKey ?? localDayKey(new Date(entry.createdAt)),
 })
 
+const ENTRY_COLUMNS = 'id,user_id,created_at,focus,score,energy,mood,stress,sleep_quality,tags,check_in_window,day_key'
+
+export function signalEntryWindowKey(entry: SignalEntry): string {
+  const dayKey = entry.dayKey ?? localDayKey(new Date(entry.createdAt))
+  return `${entry.userId}:${dayKey}:${resolveEntryWindow(entry)}`
+}
+
+/** Collapse local + remote rows that share (user, day, window) onto one id. */
+export function mergeSignalEntryLists(local: SignalEntry[], remote: SignalEntry[]): SignalEntry[] {
+  const merged = new Map<string, SignalEntry>()
+  for (const entry of [...local, ...remote]) {
+    merged.set(signalEntryWindowKey(entry), entry)
+  }
+  return Array.from(merged.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+}
+
 export async function fetchSignalEntries(userId: string): Promise<SignalEntry[]> {
   if (!hasSupabaseConfig) return []
 
   const { data, error } = await supabase
     .from('signal_entries')
-    .select('id,user_id,created_at,focus,score,energy,mood,stress,sleep_quality,tags,check_in_window,day_key')
+    .select(ENTRY_COLUMNS)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(180)
@@ -65,16 +81,71 @@ export async function fetchSignalEntries(userId: string): Promise<SignalEntry[]>
   return ((data ?? []) as SignalEntryRow[]).map(fromRow)
 }
 
-export async function saveSignalEntry(entry: SignalEntry): Promise<void> {
-  if (!hasSupabaseConfig) return
-
-  const { error } = await supabase
+async function findEntryByWindow(row: SignalEntryRow): Promise<SignalEntryRow | null> {
+  const { data, error } = await supabase
     .from('signal_entries')
-    .upsert(toRow(entry), { onConflict: 'id' })
+    .select(ENTRY_COLUMNS)
+    .eq('user_id', row.user_id)
+    .eq('day_key', row.day_key)
+    .eq('check_in_window', row.check_in_window)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('Signal entry lookup failed', error.message)
+    return null
+  }
+  return (data as SignalEntryRow | null) ?? null
+}
+
+async function updateExistingEntry(id: string, row: SignalEntryRow): Promise<SignalEntry | null> {
+  const { data, error } = await supabase
+    .from('signal_entries')
+    .update({
+      focus: row.focus,
+      score: row.score,
+      energy: row.energy,
+      mood: row.mood,
+      stress: row.stress,
+      sleep_quality: row.sleep_quality,
+      tags: row.tags,
+    })
+    .eq('id', id)
+    .select(ENTRY_COLUMNS)
+    .single()
+
+  if (error || !data) {
+    console.warn('Signal entry saved locally but not synced', error?.message)
+    return null
+  }
+  return fromRow(data as SignalEntryRow)
+}
+
+export async function saveSignalEntry(entry: SignalEntry): Promise<SignalEntry> {
+  if (!hasSupabaseConfig) return entry
+
+  const row = toRow(entry)
+  const existing = await findEntryByWindow(row)
+  if (existing?.id) {
+    return (await updateExistingEntry(existing.id, row)) ?? fromRow(existing)
+  }
+
+  const { data, error } = await supabase
+    .from('signal_entries')
+    .insert(row)
+    .select(ENTRY_COLUMNS)
+    .single()
+
+  if (!error && data) return fromRow(data as SignalEntryRow)
+
+  if (error?.code === '23505') {
+    const raced = await findEntryByWindow(row)
+    if (raced?.id) return (await updateExistingEntry(raced.id, row)) ?? fromRow(raced)
+  }
 
   if (error) {
     console.warn('Signal entry saved locally but not synced', error.message)
   }
+  return entry
 }
 
 export async function saveSignalProfile(userId: string, profile: SignalProfile): Promise<void> {

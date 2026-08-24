@@ -40,6 +40,19 @@ function zonedParts(now: Date, timezone?: string | null): { dayKey: string; minu
   }
 }
 
+/** Cron auth: require CRON_SECRET via Bearer or ?secret=. Do not trust x-vercel-cron. */
+export function isCronAuthorized(req: {
+  headers?: Record<string, string | string[] | undefined>
+  query?: Record<string, string | string[] | undefined>
+}): boolean {
+  const required = process.env.CRON_SECRET
+  if (!required) return true
+  const header = req.headers?.authorization
+  const token = Array.isArray(header) ? header[0] : header
+  const querySecret = Array.isArray(req.query?.secret) ? req.query?.secret[0] : req.query?.secret
+  return token === `Bearer ${required}` || querySecret === required
+}
+
 export function selectReminderRecipients(input: {
   profiles: ReminderProfileRow[]
   logged: ReminderEntryRow[]
