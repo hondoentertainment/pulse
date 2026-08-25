@@ -40,7 +40,7 @@ interface PushTokenRow {
 
 async function loadTokens(userId: string): Promise<PushTokenRow[]> {
   const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE
   if (!url || !key) return []
 
   try {

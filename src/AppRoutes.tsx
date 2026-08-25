@@ -1,11 +1,16 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAppState } from '@/hooks/use-app-state'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import {
+  useRouteNavigation,
+  deriveActiveTab,
+  deriveSubPage,
+  isTabPath,
+} from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -17,7 +22,7 @@ import { VenueRoute } from '@/components/VenueRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
-// ── Lazy page imports ────────────────────────────────────────
+// ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
 // chunk so the initial bundle stays small.
 const OnboardingFlow = lazy(() =>
@@ -49,12 +54,17 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
- * This file remains the venue / discovery experience for reuse or future entry switches.
+ * **Mounting:** `src/App.tsx` mounts this router only in venue app mode
+ * (`isVenueAppMode()`); the default Signal mode mounts `SignalApp` instead.
+ *
+ * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
+ * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
+ * pathname so a direct load of `/discover`, `/events`, etc. renders the
+ * right surface instead of the default tab or a blank `SubPageRouter`.
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const { activeTab, navigateToTab, location } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -74,7 +84,22 @@ export function AppRoutes() {
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
+    setActiveTab, setSubPage,
   } = state
+
+  // URL → app-state sync. MainTabRouter/SubPageRouter render from useAppState,
+  // so without this a direct load / refresh of /discover, /events, etc. would
+  // show the default tab or a blank sub-page.
+  const pathname = location.pathname
+  useEffect(() => {
+    if (isTabPath(pathname)) {
+      setActiveTab(deriveActiveTab(pathname))
+      setSubPage(null)
+      return
+    }
+    const sub = deriveSubPage(pathname)
+    if (sub) setSubPage(sub)
+  }, [pathname, setActiveTab, setSubPage])
 
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
@@ -84,7 +109,7 @@ export function AppRoutes() {
     if (navigator.vibrate) navigator.vibrate([15])
   }
 
-  // ── Onboarding gate ──────────────────────────────────────
+  // ── Onboarding gate ──────────────────────
   if (hasCompletedOnboarding === false) {
     return (
       <Suspense fallback={<PageSkeleton />}>
@@ -111,12 +136,12 @@ export function AppRoutes() {
     )
   }
 
-  // ── Loading gate ─────────────────────────────────────────
+  // ── Loading gate ─────────────────────────
   if (!venues || !currentUser || !pulses) {
     return <PageSkeleton />
   }
 
-  // ── Admin dashboard ──────────────────────────────────────
+  // ── Admin dashboard ──────────────────────
   if (showAdminDashboard && socialDashboardEnabled) {
     return (
       <Suspense fallback={<PageSkeleton />}>
@@ -140,14 +165,15 @@ export function AppRoutes() {
     queuedPulseCount,
   }
 
-  const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
+  // MainTabRouter / SubPageRouter read activeTab / subPage from app state.
+  const wrapTab = () => (
     <>
       <AppHeader {...headerProps} />
-      <MainTabRouter tab={tab} />
+      <MainTabRouter />
     </>
   )
 
-  // ── Main shell with routes ───────────────────────────────
+  // ── Main shell with routes ───────────────────────
   return (
     <main className="min-h-screen bg-background pb-20">
       <Toaster position="top-center" theme="dark" />
@@ -168,25 +194,25 @@ export function AppRoutes() {
         />
 
         {/* Sub-pages */}
-        <Route path="/events" element={<SubPageRouter page="events" />} />
-        <Route path="/crews" element={<SubPageRouter page="crews" />} />
-        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
-        <Route path="/insights" element={<SubPageRouter page="insights" />} />
-        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
-        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
-        <Route path="/settings" element={<SubPageRouter page="settings" />} />
-        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
-        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
-        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        <Route path="/events" element={<SubPageRouter />} />
+        <Route path="/crews" element={<SubPageRouter />} />
+        <Route path="/achievements" element={<SubPageRouter />} />
+        <Route path="/insights" element={<SubPageRouter />} />
+        <Route path="/neighborhoods" element={<SubPageRouter />} />
+        <Route path="/playlists" element={<SubPageRouter />} />
+        <Route path="/settings" element={<SubPageRouter />} />
+        <Route path="/integrations" element={<SubPageRouter />} />
+        <Route path="/moderation" element={<SubPageRouter />} />
+        <Route path="/challenges" element={<SubPageRouter />} />
+        <Route path="/my-tickets" element={<SubPageRouter />} />
+        <Route path="/night-planner" element={<SubPageRouter />} />
 
         {/* Main tabs */}
-        <Route path="/discover" element={wrapTab('discover')} />
-        <Route path="/map" element={wrapTab('map')} />
-        <Route path="/notifications" element={wrapTab('notifications')} />
-        <Route path="/profile" element={wrapTab('profile')} />
-        <Route path="/" element={wrapTab('trending')} />
+        <Route path="/discover" element={wrapTab()} />
+        <Route path="/map" element={wrapTab()} />
+        <Route path="/notifications" element={wrapTab()} />
+        <Route path="/profile" element={wrapTab()} />
+        <Route path="/" element={wrapTab()} />
 
         {/* Catch-all: redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />

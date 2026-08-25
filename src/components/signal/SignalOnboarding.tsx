@@ -71,7 +71,13 @@ export function SignalOnboarding({ userId, onFinished }: SignalOnboardingProps) 
 
   const finish = () => {
     const wasFirst = useSignalStore.getState().entries.length === 0
-    setProfile(userId, { trackingFocus, goal, reminderTime: '09:00' })
+    setProfile(userId, {
+      trackingFocus,
+      goal,
+      reminderTime: '09:00',
+      reminderEnabled: false,
+      reminderTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
     saveEntry(userId, trackingFocus)
     trackEvent({
       type: 'signal_onboarding_complete',

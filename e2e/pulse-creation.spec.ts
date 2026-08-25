@@ -1,5 +1,18 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { completeOnboarding } from './fixtures/onboarding'
+
+/** Live-reel / venue-card buttons use `aria-label="Open {name}"`. */
+async function openFirstVenue(page: Page): Promise<boolean> {
+  const venueBtn = page.getByRole('button', { name: /^Open /i }).first()
+  const visible = await venueBtn
+    .waitFor({ state: 'visible', timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!visible) return false
+  await venueBtn.click()
+  await expect(page).toHaveURL(/\/venue\//, { timeout: 8_000 })
+  return true
+}
 
 test.describe('Pulse creation flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,21 +22,10 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('opens the create-pulse dialog from a venue', async ({ page }) => {
-    // Try clicking a trending venue card if visible
-    const venueCard = page
-      .locator('[class*="venue"], [class*="card"]')
-      .first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    if (!(await openFirstVenue(page))) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
-
-    await venueCard.click()
 
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
@@ -36,18 +38,11 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('can fill caption and select energy', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    if (!(await openFirstVenue(page))) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
 
-    await venueCard.click()
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
     await createBtn.click()
 
@@ -60,18 +55,11 @@ test.describe('Pulse creation flow', () => {
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
+    if (!(await openFirstVenue(page))) {
       test.skip(true, 'No venue cards available without seeded backend data')
       return
     }
 
-    await venueCard.click()
     const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
     await createBtn.click()
 

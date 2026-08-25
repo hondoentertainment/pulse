@@ -24,7 +24,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_SUPABASE_ANON_KEY` | client + server | prod | Public anon key |
 | `SUPABASE_URL` | server | optional | Override for Edge Functions |
 | `SUPABASE_ANON_KEY` | server | optional | Override for Edge Functions |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | prod | Privileged DB access — **never expose** |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | prod | Privileged DB access — **never expose**. Alias: `SUPABASE_SERVICE_ROLE` |
 | `SUPABASE_DB_URL` | local CLI | migrations | Direct Postgres connection string |
 | `SUPABASE_ADMIN_EMAILS` | server | admin routes | Comma-separated admin allowlist |
 | `VITE_USE_SUPABASE_BACKEND` | client | optional | Force mock (`false`) or Supabase (`true`) |
@@ -161,6 +161,10 @@ Full detail: [Feature Flags](feature-flags.md).
 | Variable | Scope | Description |
 |----------|-------|-------------|
 | `VITE_RESEARCH_FEEDBACK_URL` | client | Survey/Calendly link in Settings |
+| `VITE_VAPID_PUBLIC_KEY` | client | Web Push public key for Signal reminders |
+| `VAPID_PUBLIC_KEY` | server | Web Push public key |
+| `VAPID_PRIVATE_KEY` | server | Web Push private key — **never expose** |
+| `CRON_SECRET` | server | Protects Signal reminder dispatch and other crons |
 | `VITE_APP_VERSION` | client | App version for push registration |
 | `VITE_API_BASE_URL` | client | API base override (tests) |
 | `PROJECT_ROOT` | build | Vite project root override |

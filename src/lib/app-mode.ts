@@ -4,8 +4,8 @@
  *   signal (default) — Pulse Signal daily check-in (`SignalApp`)
  *   venue            — venue discovery PWA (`AppRoutes`)
  *
- * Set `VITE_APP_MODE=venue` for E2E / staging of the full venue product.
- * Production defaults to `signal` per the current launch surface.
+ * Set `VITE_APP_MODE=venue` for E2E / staging of the dormant venue product.
+ * Production defaults to `signal` (decision #56, 2026-08-16).
  */
 
 export type AppMode = 'signal' | 'venue'

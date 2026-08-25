@@ -28,6 +28,9 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260417000010_video_pulses.sql` | video metadata, reports, storage bucket |
 | `20260428000000_venue_feedback_leadership.sql` | live reports, aggregates, pulse_reactions |
 | `20260429000000_realtime_venue_intelligence.sql` | score functions, wait times, intelligence |
+| `20260816000000_signal_core.sql` | Signal entries + profiles, AM/PM unique window |
+| `20260816000001_signal_pilot_signups.sql` | Pulse Pro waitlist emails |
+| `20260816000002_signal_push_subscriptions.sql` | Web Push endpoints for Signal reminders |
 
 ---
 

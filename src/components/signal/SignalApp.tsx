@@ -9,10 +9,14 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { fetchSignalEntries } from '@/lib/signal-data'
 import { hasSupabaseConfig } from '@/lib/supabase'
-import { buildChartSeries, calculateSignalMetrics, generateInsight, getTodayEntry, type TrendDirection } from '@/lib/signal-insights'
+import { requestPushPermission } from '@/lib/pwa'
+import { buildChartSeries, calculateSignalMetrics, compareMorningEvening, generateInsight, getOpenWindow, getTodayEntries, resolveEntryWindow, type TrendDirection } from '@/lib/signal-insights'
+import { windowLabel } from '@/lib/signal-windows'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useHaptics } from '@/hooks/use-haptics'
+import { useSignalReminder } from '@/hooks/use-signal-reminder'
+import { PilotSignupCard } from '@/components/signal/PilotSignupCard'
 import { SignalCheckIn } from '@/components/signal/SignalCheckIn'
 import { SignalChart } from '@/components/signal/SignalChart'
 import { SignalOnboarding } from '@/components/signal/SignalOnboarding'
@@ -125,8 +129,12 @@ function HomePage({ userId }: { userId: string }) {
   const entries = useSignalStore((state) => state.entries)
   const saveEntry = useSignalStore((state) => state.saveEntry)
   const savedAt = useSignalStore((state) => state.savedAt)
+  const reminder = useSignalReminder()
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
-  const todayEntry = getTodayEntry(entries)
+  const todayEntries = getTodayEntries(entries)
+  const openWindow = getOpenWindow(entries)
+  const morning = todayEntries.find((entry) => resolveEntryWindow(entry) === 'morning')
+  const evening = todayEntries.find((entry) => resolveEntryWindow(entry) === 'evening')
 
   const focusLabel = profile ? TRACKING_OPTIONS.find((o) => o.id === profile.trackingFocus)?.label : null
   const goalShort = profile ? GOAL_OPTIONS.find((o) => o.id === profile.goal)?.label : null
@@ -136,12 +144,12 @@ function HomePage({ userId }: { userId: string }) {
   const handleSave = () => {
     setSaving(true)
     const wasFirst = entries.length === 0
-    saveEntry(userId)
-    const score = useSignalStore.getState().entries[0]?.score ?? 0
+    const saved = saveEntry(userId)
+    const score = saved.score
     const scoreBucket: 'low' | 'mid' | 'high' = score < 40 ? 'low' : score < 70 ? 'mid' : 'high'
     trackEvent({ type: 'signal_check_in_saved', timestamp: Date.now(), isFirstEntry: wasFirst, scoreBucket })
     triggerSuccess()
-    toast.success('Saved', { description: 'Your daily signal is now part of your trend.' })
+    toast.success('Saved', { description: `${windowLabel(resolveEntryWindow(saved))} signal is now part of your trend.` })
     setSaving(false)
   }
 
@@ -172,7 +180,26 @@ function HomePage({ userId }: { userId: string }) {
         </div>
       </section>
 
-      {todayEntry ? (
+      {reminder.nudge && openWindow && (
+        <section className="rounded-[1.75rem] border border-primary/30 bg-primary/10 p-4">
+          <p className="font-black">Time for today’s signal</p>
+          <p className="mt-1 text-sm text-muted-foreground">Your reminder window is open. Log this {windowLabel(openWindow).toLowerCase()} check-in.</p>
+          <Button variant="ghost" className="mt-2 h-10 px-0 text-primary" onClick={reminder.dismissNudge}>
+            Dismiss
+          </Button>
+        </section>
+      )}
+
+      {(morning || evening) && (
+        <section className="grid grid-cols-2 gap-3">
+          <MetricCard label="Morning" value={morning ? morning.score : '--'} detail={morning ? 'logged' : 'open until noon'} />
+          <MetricCard label="Evening" value={evening ? evening.score : '--'} detail={evening ? 'logged' : morning ? 'ready when you are' : 'after noon'} />
+        </section>
+      )}
+
+      {openWindow ? (
+        <SignalCheckIn onSave={handleSave} saving={saving} />
+      ) : (
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -182,15 +209,17 @@ function HomePage({ userId }: { userId: string }) {
             <CheckCircle size={28} weight="fill" className="text-emerald-400" />
             <div>
               <p className="font-black">Today is logged</p>
-              <p className="text-sm text-emerald-200/90">Score {todayEntry.score}. Come back tomorrow to keep the streak alive.</p>
+              <p className="text-sm text-emerald-200/90">
+                {morning && evening
+                  ? `Morning ${morning.score} · Evening ${evening.score}. Come back tomorrow.`
+                  : `Score ${todayEntries[0]?.score ?? '--'}. The next window opens later today.`}
+              </p>
             </div>
           </div>
           <Button variant="secondary" className="mt-4 w-full rounded-2xl" onClick={() => navigate('/trends')}>
             View trend
           </Button>
         </motion.section>
-      ) : (
-        <SignalCheckIn onSave={handleSave} saving={saving} />
       )}
 
       {savedAt && <p className="text-center text-xs text-muted-foreground">Last saved {new Date(savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>}
@@ -203,6 +232,7 @@ function TrendsPage() {
   const profile = useSignalStore((state) => state.profile)
   const entries = useSignalStore((state) => state.entries)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
+  const amPm = useMemo(() => compareMorningEvening(entries), [entries])
 
   return (
     <SignalPageTransition>
@@ -218,6 +248,21 @@ function TrendsPage() {
         <MetricCard label="Direction" value={formatTrendDirection(metrics.trendDirection)} detail="current pattern" />
         <MetricCard label="Streak" value={metrics.streakCount} detail="daily loop" />
       </div>
+      {amPm.morning !== null && amPm.evening !== null && (
+        <section className="rounded-[2rem] border border-border bg-card p-5">
+          <p className="text-sm font-bold text-primary">Morning vs evening</p>
+          <p className="mt-2 text-xl font-black leading-7">
+            Morning avg {amPm.morning} · Evening avg {amPm.evening}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {amPm.delta === 0
+              ? 'Your mornings and evenings land in the same range.'
+              : amPm.delta && amPm.delta > 0
+                ? `Evenings run ${amPm.delta} points higher than mornings.`
+                : `Mornings run ${Math.abs(amPm.delta ?? 0)} points higher than evenings.`}
+          </p>
+        </section>
+      )}
       <section className="rounded-[2rem] border border-border bg-card p-5">
         <p className="text-sm font-bold text-primary">Recommendation</p>
         <p className="mt-2 text-xl font-black leading-7">{metrics.recommendation}</p>
@@ -260,7 +305,9 @@ function HistoryPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-black">{new Date(entry.createdAt).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                <p className="text-sm text-muted-foreground">{entry.tags.join(', ') || 'daily signal'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {windowLabel(resolveEntryWindow(entry))} · {entry.tags.join(', ') || 'daily signal'}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-black">{entry.score}</p>
@@ -276,11 +323,40 @@ function HistoryPage() {
 }
 
 function SettingsPage() {
-  const { signOut } = useSupabaseAuth()
+  const { signOut, user, session } = useSupabaseAuth()
   const profile = useSignalStore((state) => state.profile)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
+  const reminder = useSignalReminder()
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
+  const reminderTime = profile?.reminderTime ?? '09:00'
+
+  const handleReminder = async (checked: boolean) => {
+    if (checked) {
+      const subscription = await requestPushPermission()
+      if (subscription && session?.access_token) {
+        await fetch('/api/signal/push-subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+            keys: subscription.toJSON().keys,
+            userAgent: navigator.userAgent,
+          }),
+        }).catch(() => undefined)
+      }
+    }
+    setReminder(checked, reminderTime, user?.id)
+    trackEvent({
+      type: 'signal_reminder_toggle',
+      timestamp: Date.now(),
+      enabled: checked,
+      permission: reminder.permission,
+    })
+  }
 
   return (
     <SignalPageTransition>
@@ -289,22 +365,7 @@ function SettingsPage() {
         <p className="text-sm font-bold text-primary">Settings</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Keep the loop simple.</h1>
       </div>
-      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
-        <p className="font-black">Pulse Pro pilot</p>
-        <p className="text-sm text-muted-foreground">
-          We are lining up pricing and premium insights. Raise your hand if you want early access.
-        </p>
-        <Button
-          variant="secondary"
-          className="h-12 w-full rounded-2xl"
-          onClick={() => {
-            trackEvent({ type: 'signal_research_cta_click', timestamp: Date.now(), target: 'pro_pilot' })
-            toast.message('Thanks!', { description: 'We will reach out when the pilot opens.' })
-          }}
-        >
-          Join the pilot list
-        </Button>
-      </section>
+      <PilotSignupCard />
       <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
         <p className="font-black">Research</p>
         <p className="text-sm text-muted-foreground">
@@ -334,16 +395,24 @@ function SettingsPage() {
             <div>
               <p className="font-black">Daily reminder</p>
               <p className="text-sm text-muted-foreground">
-                {profile?.reminderTime ?? '09:00'} local time · push notifications coming soon
+                {reminderTime} local time
               </p>
             </div>
           </div>
-          <Switch checked={reminderEnabled} onCheckedChange={(checked) => setReminder(checked, profile?.reminderTime ?? '09:00')} />
+          <Switch checked={reminderEnabled} onCheckedChange={(checked) => void handleReminder(checked)} />
         </div>
         {reminderEnabled && (
-          <p className="mt-4 rounded-2xl bg-primary/10 p-3 text-sm text-primary">
-            Reminder preference saved for {profile?.reminderTime ?? '09:00'}. We&apos;ll notify you here once browser push is enabled.
-          </p>
+          <div className="mt-4 space-y-3">
+            <label className="block text-sm font-semibold" htmlFor="reminder-time">Reminder time</label>
+            <input
+              id="reminder-time"
+              type="time"
+              value={reminderTime}
+              onChange={(event) => setReminder(true, event.target.value, user?.id)}
+              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base"
+            />
+            <p className="rounded-2xl bg-primary/10 p-3 text-sm text-primary">{reminder.copy}</p>
+          </div>
         )}
       </section>
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
