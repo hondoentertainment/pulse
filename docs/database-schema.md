@@ -31,6 +31,7 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260816000000_signal_core.sql` | Signal entries + profiles, AM/PM unique window |
 | `20260816000001_signal_pilot_signups.sql` | Pulse Pro waitlist emails |
 | `20260816000002_signal_push_subscriptions.sql` | Web Push endpoints for Signal reminders |
+| `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
 
 ---
 
@@ -70,6 +71,8 @@ Venue catalog with live intelligence fields.
 | `last_pulse_at`, `last_activity` | TIMESTAMPTZ | |
 | `pre_trending`, `pre_trending_label` | BOOL/TEXT | Surge labels |
 | `seeded` | BOOL | Seed vs real venue |
+| `neighborhood` | TEXT | Launch neighborhood (Capitol Hill, Belltown, …) |
+| `inventory_source` | TEXT | `curated-seed` for launch listings |
 | `dress_code` | ENUM | casual, smart_casual, upscale, formal, etc. |
 | `cover_charge_cents` | INT | |
 | `accessibility_features` | TEXT[] | GIN-indexed |
@@ -80,6 +83,26 @@ Venue catalog with live intelligence fields.
 **Indexes:** GIST on `geom`, score indexes, category/city, accessibility GIN.
 
 **Realtime:** Yes. Score refreshed by `pulses_refresh_venue_intelligence` trigger.
+
+### `venue_signals`
+
+Versioned VenueSignal snapshot (`venue-signal.v1`). Client engine is source of truth; `refresh_venue_signal(venue_id)` writes a row for fan-out.
+
+| Column | Notes |
+|--------|-------|
+| `venue_id` | PK, FK → venues |
+| `model_configuration` | JSONB version + decay + 30s SLA |
+| `energy_score`, `confidence`, `trend` | Unified live score |
+| `freshness_minutes`, `source_mix`, `friction` | Worth-going inputs |
+| `computed_at` | TIMESTAMPTZ |
+
+### `scout_applications` / `scout_profiles`
+
+Scout MVP. Reputation is corroboration quality, not report volume.
+
+### `arrival_watches`
+
+Post-Go arrival window + mismatch correction.
 
 ### `venue_wait_times`
 

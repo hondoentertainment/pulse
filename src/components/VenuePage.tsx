@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,17 @@ import { useCurrentTime } from '@/hooks/use-current-time'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
 import { queryClient } from '@/lib/query-client'
+import { computeVenueSignal } from '@/lib/venue-signal'
+import { buildWorthGoingSummary } from '@/lib/worth-going'
+import { WorthGoingSummary } from '@/components/WorthGoingSummary'
+import { ArrivalPrompt } from '@/components/ArrivalPrompt'
+import {
+  confirmArrival,
+  getArrivalWatchStatus,
+  reportArrivalMismatch,
+  startArrivalWatch,
+  type ArrivalWatch,
+} from '@/lib/arrival-prompt'
 
 interface VenuePageProps {
   venue: Venue
@@ -108,6 +119,8 @@ export function VenuePage({
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
+  const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
+  const [arrivalTick, setArrivalTick] = useState(0)
   const currentTime = useCurrentTime()
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
   const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
@@ -140,6 +153,33 @@ export function VenuePage({
   useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
   }, [venue.id])
+
+  useEffect(() => {
+    if (!arrivalWatch) return
+    const timer = window.setInterval(() => setArrivalTick((tick) => tick + 1), 15_000)
+    return () => window.clearInterval(timer)
+  }, [arrivalWatch])
+
+  const venueSignal = useMemo(
+    () => computeVenueSignal({
+      venue,
+      pulses: venuePulses,
+      liveReports: Array.isArray(serverLiveReports) ? serverLiveReports : [],
+      liveData,
+    }),
+    [liveData, serverLiveReports, venue, venuePulses],
+  )
+  const worthGoing = useMemo(() => buildWorthGoingSummary(venueSignal, venue), [venue, venueSignal])
+  const showArrivalPrompt = Boolean(
+    arrivalWatch &&
+    arrivalTick >= 0 &&
+    getArrivalWatchStatus(arrivalWatch) === 'ready',
+  )
+
+  useEffect(() => {
+    if (!showArrivalPrompt || !arrivalWatch) return
+    trackEvent({ type: 'arrival_prompt_shown', timestamp: Date.now(), venueId: arrivalWatch.venueId })
+  }, [arrivalWatch, showArrivalPrompt])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
@@ -368,6 +408,31 @@ export function VenuePage({
         transition={{ duration: 0.3 }}
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
+        <WorthGoingSummary summary={worthGoing} />
+
+        {showArrivalPrompt && arrivalWatch && (
+          <ArrivalPrompt
+            watch={arrivalWatch}
+            onConfirm={() => {
+              const next = confirmArrival(arrivalWatch.id)
+              setArrivalWatch(next)
+              trackEvent({ type: 'arrival_confirmed', timestamp: Date.now(), venueId: venue.id })
+              toast.success('Thanks — signal confirmed')
+            }}
+            onMismatch={(correction) => {
+              const next = reportArrivalMismatch(arrivalWatch.id, correction)
+              setArrivalWatch(next)
+              trackEvent({
+                type: 'mismatch_reported',
+                timestamp: Date.now(),
+                venueId: venue.id,
+                correction,
+              })
+              toast.success('Mismatch recorded')
+            }}
+          />
+        )}
+
         {(venue.location.address || venue.phone || venue.website || venue.hours) && (
           <>
             <Card className="p-4 space-y-4 bg-card border-border">
@@ -533,7 +598,11 @@ export function VenuePage({
         <VenueQuickActions
           onCheckIn={onCreatePulse}
           onShare={handleShare}
-          onDirections={() => directionsAction && launchVenueAction(directionsAction)}
+          onDirections={() => {
+            const watch = startArrivalWatch(venue.id, venue.name)
+            setArrivalWatch(watch)
+            if (directionsAction) launchVenueAction(directionsAction)
+          }}
           onRide={() => rideAction && launchVenueAction(rideAction)}
           onReserve={() => {
             if (reserveAction) {

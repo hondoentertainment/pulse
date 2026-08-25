@@ -70,3 +70,51 @@ VALUES
    '{"friday": "6:00 PM - 11:00 PM", "saturday": "6:00 PM - 11:00 PM", "sunday": "6:00 PM - 11:00 PM"}', now() - interval '40 minutes', now())
 
 ON CONFLICT (id) DO NOTHING;
+
+-- Curated Seattle launch inventory (P0-4). pulse_score stays 0 — no invented live reports.
+UPDATE venues
+SET pulse_score = 0,
+    score_velocity = 0,
+    last_activity = NULL,
+    inventory_source = 'curated-seed',
+    neighborhood = CASE name
+      WHEN 'Neumos' THEN 'Capitol Hill'
+      WHEN 'Q Nightclub' THEN 'Capitol Hill'
+      ELSE neighborhood
+    END
+WHERE city = 'Seattle' AND state = 'WA';
+
+INSERT INTO venues (id, name, location_lat, location_lng, location_address, city, state, neighborhood, category, pulse_score, score_velocity, seeded, inventory_source, hours, last_activity, created_at)
+VALUES
+  ('c0000000-0000-4000-8000-000000000001', 'Barboza', 47.6145, -122.3207, '925 E Pike St, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Lounge', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000002', 'The Unicorn', 47.6142, -122.3196, '1118 E Pike St, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000003', 'Chop Suey', 47.6145, -122.3194, '1325 E Madison St, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000004', 'The Comet Tavern', 47.6142, -122.3181, '922 E Pike St, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000005', 'Linda''s Tavern', 47.6140, -122.3209, '707 E Pine St, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000006', 'Neighbours', 47.6141, -122.3202, '1509 Broadway, Seattle, WA', 'Seattle', 'WA', 'Capitol Hill', 'Nightclub', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000007', 'The Crocodile', 47.6134, -122.3443, '2505 1st Ave, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000008', 'The 5 Point Cafe', 47.6182, -122.3476, '415 Cedar St, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000009', 'Rendezvous', 47.6148, -122.3456, '2322 2nd Ave, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000010', 'Shorty''s', 47.6149, -122.3452, '2222 2nd Ave, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000011', 'Rob Roy', 47.6156, -122.3471, '2332 2nd Ave, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000012', 'The Whisky Bar', 47.6131, -122.3458, '2122 2nd Ave, Seattle, WA', 'Seattle', 'WA', 'Belltown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000013', 'Nectar Lounge', 47.6516, -122.3542, '412 N 36th St, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000014', 'Fremont Brewing', 47.6491, -122.3446, '1050 N 34th St, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Brewery', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000015', 'The George & Dragon Pub', 47.6514, -122.3558, '206 N 36th St, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000016', 'Norm''s Eatery & Ale House', 47.6515, -122.3518, '460 N 36th St, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000017', 'Fremont Abbey Arts Center', 47.6612, -122.3499, '4272 Fremont Ave N, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000018', 'Westward', 47.6478, -122.3476, '2501 N Northlake Way, Seattle, WA', 'Seattle', 'WA', 'Fremont', 'Restaurant', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000019', 'Tractor Tavern', 47.6658, -122.3828, '5213 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000020', 'The Sunset Tavern', 47.6684, -122.3853, '5433 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000021', 'Conor Byrne Pub', 47.6667, -122.3836, '5140 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000022', 'Hattie''s Hat', 47.6681, -122.3847, '5231 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000023', 'The Noble Fir', 47.6649, -122.3814, '5316 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000024', 'King''s Hardware', 47.6686, -122.3872, '5225 Ballard Ave NW, Seattle, WA', 'Seattle', 'WA', 'Ballard', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000025', 'The Showbox', 47.6084, -122.3395, '1426 1st Ave, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000026', 'The Triple Door', 47.6082, -122.3368, '216 Union St, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000027', 'The Paramount Theatre', 47.6133, -122.3314, '911 Pine St, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000028', 'The Moore Theatre', 47.6118, -122.3415, '1932 2nd Ave, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000029', 'Dimitriou''s Jazz Alley', 47.6164, -122.3378, '2033 6th Ave, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Music Venue', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000030', 'Foundation Nightclub', 47.6018, -122.3341, '2218 Western Ave, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Nightclub', 0, 0, true, 'curated-seed', NULL, NULL, now()),
+  ('c0000000-0000-4000-8000-000000000031', 'The Central Saloon', 47.6005, -122.3342, '207 1st Ave S, Seattle, WA', 'Seattle', 'WA', 'Downtown', 'Bar', 0, 0, true, 'curated-seed', NULL, NULL, now())
+ON CONFLICT (id) DO NOTHING;

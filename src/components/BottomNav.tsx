@@ -11,7 +11,7 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: BottomNavProps) {
   const tabs = [
-    { id: 'trending' as const, icon: TrendUp, label: 'Trending' },
+    { id: 'trending' as const, icon: TrendUp, label: 'Tonight' },
     { id: 'discover' as const, icon: Compass, label: 'Discover' },
     { id: 'map' as const, icon: MapTrifold, label: 'Map' },
     { id: 'notifications' as const, icon: Bell, label: 'Notifications', badge: unreadNotifications },
@@ -28,6 +28,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
           return (
             <button
               key={tab.id}
+              type="button"
               data-testid={`tab-${tab.label}`}
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge} unread` : tab.label}

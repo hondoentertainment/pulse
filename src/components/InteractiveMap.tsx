@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
+import { getEnergyAriaLabel } from '@/lib/accessibility'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
 import {
@@ -892,10 +894,27 @@ export function InteractiveMap({
   return (
     <div
       ref={containerRef}
+      role="application"
+      aria-label="Venue map. Use arrow keys to pan, plus and minus to zoom."
       className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
+      <nav aria-label="Venues on this map" className="sr-only">
+        <ul>
+          {venues.map((venue) => (
+            <li key={`map-list-${venue.id}`}>
+              <button
+                type="button"
+                onClick={() => onVenueClick(venue)}
+              >
+                {getEnergyAriaLabel(venue.pulseScore, getEnergyLabel(venue.pulseScore), venue.name)}
+                {venue.neighborhood ? `, ${venue.neighborhood}` : ''}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
       <canvas
         ref={canvasRef}
         className={cn(
@@ -1021,6 +1040,19 @@ export function InteractiveMap({
                 filter={venue.pulseScore >= 30 ? `drop-shadow(0 0 ${venue.pulseScore >= 80 ? '8px' : '4px'} ${venue.pulseScore >= 80 ? 'rgba(217, 70, 239, 0.6)' : venue.pulseScore >= 60 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(14, 165, 233, 0.4)'})` : undefined}
               />
 
+              <text
+                x={x + markerSize * 0.85}
+                y={y - markerSize * 0.7}
+                textAnchor="middle"
+                fill="white"
+                fontSize={Math.max(9, markerSize * 0.55)}
+                fontWeight="700"
+                stroke="oklch(0.15 0 0)"
+                strokeWidth={2}
+                paintOrder="stroke"
+              >
+                {getEnergyLabel(venue.pulseScore).charAt(0)}
+              </text>
               <foreignObject
                 x={x - iconSize / 2}
                 y={y - iconSize / 2}
@@ -1217,7 +1249,9 @@ export function InteractiveMap({
             }}
           >
             <button
+              type="button"
               className="pointer-events-auto relative z-20 cursor-pointer hover:scale-110 transition-transform"
+              aria-label={getEnergyAriaLabel(venue.pulseScore, getEnergyLabel(venue.pulseScore), venue.name)}
               onMouseEnter={() => setHoveredVenue(venue)}
               onMouseLeave={() => setHoveredVenue(null)}
               onClick={() => {
@@ -1249,6 +1283,9 @@ export function InteractiveMap({
                     venue.pulseScore >= 70 && "border-accent/50"
                   )}>
                     <p className="text-xs font-bold">{venue.name}</p>
+                    <p className="text-[10px] font-semibold text-foreground">
+                      {getEnergyLabel(venue.pulseScore)} · {venue.pulseScore}
+                    </p>
                     <div className="flex items-center gap-2">
                       {venue.category && (
                         <p className="text-[10px] text-muted-foreground uppercase font-mono">
@@ -1556,6 +1593,8 @@ export function InteractiveMap({
           size="sm"
           variant={accessibilityMode ? "default" : "secondary"}
           className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
+          aria-pressed={accessibilityMode}
+          aria-label={accessibilityMode ? 'Disable high-contrast map markers' : 'Enable high-contrast map markers'}
           onClick={() => {
             triggerHapticFeedback('light')
             setAccessibilityMode((prev) => !prev)
@@ -1817,8 +1856,11 @@ export function InteractiveMap({
         {/* Collapsible Legend */}
         <Card className="bg-card/95 backdrop-blur-sm border-border overflow-hidden">
           <button
+            type="button"
+            aria-expanded={showLegend}
+            aria-controls="map-energy-legend"
             onClick={() => setShowLegend(!showLegend)}
-            className="w-full px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+            className="w-full min-h-11 px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
           >
             <span className="text-xs font-bold text-foreground">Energy Levels</span>
             {showLegend ? (
@@ -1836,7 +1878,7 @@ export function InteractiveMap({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+                <div id="map-energy-legend" className="px-3 pb-3 grid grid-cols-2 gap-2">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
                     <span className="text-xs text-muted-foreground">Dead</span>

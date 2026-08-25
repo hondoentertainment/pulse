@@ -144,7 +144,8 @@ export function MainTabRouter() {
 
         {activeTab === 'map' && (
           <motion.div key="map" {...tabMotion} className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]">
-            <div className="h-full">
+            <div className="h-full" role="region" aria-labelledby="map-heading">
+              <h1 id="map-heading" className="sr-only">Map</h1>
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}

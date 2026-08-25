@@ -89,6 +89,8 @@ function mapVenueRow(row: {
     },
     city: row.city ?? undefined,
     state: row.state ?? undefined,
+    neighborhood: (row as { neighborhood?: string | null }).neighborhood ?? undefined,
+    inventorySource: (row as { inventory_source?: Venue['inventorySource'] | null }).inventory_source ?? undefined,
     category: row.category ?? undefined,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,

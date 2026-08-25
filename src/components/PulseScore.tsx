@@ -100,7 +100,7 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
         </motion.div>
       </div>
       
-      {showLabel && (
+      {showLabel ? (
         <motion.div
           key={label}
           initial={{ opacity: 0, y: -5 }}
@@ -109,6 +109,8 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
         >
           {label}
         </motion.div>
+      ) : (
+        <span className="sr-only">{label}, score {score} out of 100</span>
       )}
     </div>
   )

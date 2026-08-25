@@ -37,6 +37,7 @@ import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 import { loadPrototypeCatalog, loadSimulatedLocation } from '@/lib/prototype-catalog'
+import { filterVenuesByLaunchedMarkets, parseLaunchedCities } from '@/lib/geo-launch'
 import {
   ALL_US_MARKETS_KEY,
   getMarketByKey,
@@ -241,12 +242,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setCurrentUser(getCurrentUserFromProfile(supabaseProfile))
   }, [supabaseProfile])
 
+  const launchedCitiesRaw = import.meta.env.VITE_LAUNCHED_CITIES ?? ''
   const launchedCities = useMemo(
-    () => (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
-      .split(',')
-      .map((city: string) => city.trim())
-      .filter(Boolean),
-    []
+    () => launchedCitiesRaw.split(/[;|]/).map((city: string) => city.trim()).filter(Boolean),
+    [launchedCitiesRaw]
   )
 
   const [pulses, setPulses] = useState<Pulse[] | undefined>(hasSupabaseConfig ? undefined : [])
@@ -360,7 +359,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (Array.isArray(serverVenues) && serverVenues.length > 0) {
-      setVenues(serverVenues)
+      const markets = parseLaunchedCities(launchedCitiesRaw)
+      setVenues(filterVenuesByLaunchedMarkets(serverVenues, markets))
       return
     }
 
@@ -376,7 +376,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         })
       }
     }
-  }, [hasFetchedServerVenues, prototypeVenues, serverVenues, setVenues, venues])
+  }, [hasFetchedServerVenues, launchedCitiesRaw, prototypeVenues, serverVenues, setVenues, venues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)
