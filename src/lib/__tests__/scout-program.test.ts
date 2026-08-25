@@ -6,6 +6,7 @@ import {
   deriveScoutTier,
   recordScoutCorroboration,
   submitScoutApplication,
+  type ScoutProfile,
 } from '../scout-program'
 
 describe('scout program', () => {
@@ -37,7 +38,7 @@ describe('scout program', () => {
     const approved = decideScoutApplication(application.id, 'approved')
     expect(approved?.status).toBe('approved')
 
-    let profile = null
+    let profile: ScoutProfile | null = null
     for (let i = 0; i < 6; i += 1) {
       profile = recordScoutCorroboration('user-1', 'corroborated')
     }
