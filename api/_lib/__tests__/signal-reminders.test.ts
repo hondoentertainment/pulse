@@ -32,10 +32,13 @@ describe('selectReminderRecipients', () => {
 
 describe('isCronAuthorized', () => {
   const previous = process.env.CRON_SECRET
+  const previousNodeEnv = process.env.NODE_ENV
 
   afterEach(() => {
     if (previous === undefined) delete process.env.CRON_SECRET
     else process.env.CRON_SECRET = previous
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = previousNodeEnv
   })
 
   it('rejects a spoofed x-vercel-cron header when a secret is configured', () => {
@@ -53,5 +56,17 @@ describe('isCronAuthorized', () => {
     expect(isCronAuthorized({
       query: { secret: 'test-secret' },
     })).toBe(true)
+  })
+
+  it('fails closed in production when CRON_SECRET is missing', () => {
+    delete process.env.CRON_SECRET
+    process.env.NODE_ENV = 'production'
+    expect(isCronAuthorized({})).toBe(false)
+  })
+
+  it('allows local/dev execution when CRON_SECRET is missing outside production', () => {
+    delete process.env.CRON_SECRET
+    process.env.NODE_ENV = 'development'
+    expect(isCronAuthorized({})).toBe(true)
   })
 })

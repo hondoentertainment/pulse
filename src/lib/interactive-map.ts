@@ -237,10 +237,12 @@ export function clusterVenueRenderPoints(
     if (props && 'cluster' in props && props.cluster) {
       // It's a cluster
       const leaves = clusterIndex!.getLeaves(props.cluster_id, Infinity)
-      const venues = leaves.map(l => {
-        const leafProps = l.properties
-        return ('point' in leafProps ? leafProps.point : undefined) as VenueRenderPoint
+      const venues = leaves.flatMap((leaf) => {
+        const leafProps = leaf.properties
+        if (!leafProps || !('point' in leafProps) || !leafProps.point) return []
+        return [leafProps.point as VenueRenderPoint]
       })
+      if (venues.length === 0) return
       
       const x = venues.reduce((sum, v) => sum + v.x, 0) / venues.length
       const y = venues.reduce((sum, v) => sum + v.y, 0) / venues.length

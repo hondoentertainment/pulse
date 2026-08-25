@@ -46,7 +46,7 @@ export function isCronAuthorized(req: {
   query?: Record<string, string | string[] | undefined>
 }): boolean {
   const required = process.env.CRON_SECRET
-  if (!required) return true
+  if (!required) return process.env.NODE_ENV !== 'production'
   const header = req.headers?.authorization
   const token = Array.isArray(header) ? header[0] : header
   const querySecret = Array.isArray(req.query?.secret) ? req.query?.secret[0] : req.query?.secret

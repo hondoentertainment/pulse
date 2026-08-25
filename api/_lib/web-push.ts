@@ -95,18 +95,14 @@ export async function sendWebPushToUser(
     }
   }
 
-  let dispatched = 0
-  let skipped = 0
-  const errors: string[] = []
-
-  await Promise.all(subscriptions.map(async (subscription) => {
+  const deliveries = await Promise.all(subscriptions.map(async (subscription) => {
     const result = await sender(subscription, payload)
-    if (result.ok) dispatched += 1
-    else {
-      skipped += 1
-      if (result.error) errors.push(result.error)
-    }
+    return result
   }))
+
+  const dispatched = deliveries.filter((result) => result.ok).length
+  const skipped = deliveries.length - dispatched
+  const errors = deliveries.flatMap((result) => (result.ok || !result.error ? [] : [result.error]))
 
   return { userId: msg.userId, dispatched, skipped, logOnly: false, errors }
 }
