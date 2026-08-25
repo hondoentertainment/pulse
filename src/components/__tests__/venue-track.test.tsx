@@ -49,9 +49,9 @@ describe('WorthGoingSummary', () => {
     render(<WorthGoingSummary summary={summary} />)
 
     expect(screen.getByTestId('worth-going-summary')).toBeDefined()
-    expect(screen.getByText('Worth going')).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Worth going' })).toBeDefined()
     expect(screen.getByText('high')).toBeDefined()
-    expect(screen.getByText(/Fresh/)).toBeDefined()
+    expect(screen.getByText(/Fresh · 6m ago/)).toBeDefined()
     expect(screen.getByText(/5 min door/)).toBeDefined()
     expect(screen.getByText(/3 pulses/)).toBeDefined()
   })

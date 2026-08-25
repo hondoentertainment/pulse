@@ -134,13 +134,24 @@ function computeTrend(venue: Venue, pulses: Pulse[], nowMs: number): VenueSignal
   return 'steady'
 }
 
-function frictionLabel(liveData: VenueLiveData | null): VenueSignal['friction'] {
-  if (!liveData || (liveData.waitTime === null && liveData.coverCharge === null)) {
+function inferLineStatus(waitMinutes: number | null): VenueSignal['friction']['lineStatus'] {
+  if (waitMinutes === null) return null
+  if (waitMinutes <= 5) return 'walk-right-in'
+  if (waitMinutes <= 15) return 'moving'
+  if (waitMinutes <= 30) return 'slow'
+  return 'door-risk'
+}
+
+function frictionLabel(
+  liveData: VenueLiveData | null,
+  summary?: Venue['liveSummary'],
+): VenueSignal['friction'] {
+  const wait = liveData?.waitTime ?? summary?.waitTime ?? null
+  const cover = liveData?.coverCharge ?? summary?.coverCharge ?? null
+  if (wait === null && cover === null) {
     return { waitMinutes: null, lineStatus: null, coverCharge: null, label: 'Door friction unknown' }
   }
 
-  const wait = liveData.waitTime
-  const cover = liveData.coverCharge
   const parts: string[] = []
   if (wait === 0) parts.push('No wait')
   else if (wait !== null) parts.push(`~${wait} min door`)
@@ -149,7 +160,7 @@ function frictionLabel(liveData: VenueLiveData | null): VenueSignal['friction'] 
 
   return {
     waitMinutes: wait,
-    lineStatus: liveData.doorMode.lineStatus,
+    lineStatus: liveData?.doorMode.lineStatus ?? inferLineStatus(wait),
     coverCharge: cover,
     label: parts.join(' · ') || 'Door friction unknown',
   }
@@ -212,7 +223,7 @@ export function computeVenueSignal(input: ComputeVenueSignalInput): VenueSignal 
       curatedSeed,
       sources,
     },
-    friction: frictionLabel(liveData),
+    friction: frictionLabel(liveData, input.venue.liveSummary),
     computedAt,
     withinPropagationSla: nowMs - ingestedAt <= model.propagationSlaMs,
   }
