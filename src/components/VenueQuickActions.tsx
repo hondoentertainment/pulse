@@ -34,8 +34,10 @@ function ActionButton({ icon, label, onClick, isPrimary, isActive, disabled }: A
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={disabled}
+      aria-label={label}
       className={cn(
         'flex flex-col items-center gap-1 rounded-2xl px-3 py-2 transition-all active:scale-95',
         isPrimary

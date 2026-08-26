@@ -35,6 +35,8 @@ interface VenueRow {
   phone: string | null
   website: string | null
   integrations: Venue['integrations'] | null
+  neighborhood: string | null
+  inventory_source: Venue['inventorySource'] | null
   deleted_at: string | null
 }
 
@@ -49,6 +51,8 @@ function rowToVenue(row: VenueRow): Venue {
     },
     city: row.city ?? undefined,
     state: row.state ?? undefined,
+    neighborhood: row.neighborhood ?? undefined,
+    inventorySource: row.inventory_source ?? undefined,
     category: row.category ?? undefined,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,
@@ -68,7 +72,7 @@ function rowToVenue(row: VenueRow): Venue {
 
 const SELECT_COLUMNS = `
   id, name, location_lat, location_lng, location_address,
-  city, state, category, pulse_score, score_velocity,
+  city, state, neighborhood, inventory_source, category, pulse_score, score_velocity,
   last_pulse_at, last_activity, pre_trending, pre_trending_label,
   seeded, verified_check_in_count, first_real_check_in_at,
   hours, phone, website, integrations, deleted_at

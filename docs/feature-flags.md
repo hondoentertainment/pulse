@@ -55,7 +55,7 @@ See [Data Layer](data-layer.md).
 | Env variable | Default | Notes |
 |--------------|---------|-------|
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disables writes client-side during outages |
-| `VITE_LAUNCHED_CITIES` | empty | Comma-separated city allowlist for geo launch |
+| `VITE_LAUNCHED_CITIES` | empty | City+state allowlist for venue geo-gate. Use `Seattle,WA` (one market). Multiple markets: `Seattle,WA;Portland,OR`. Empty = no gate. Default product stays Signal. |
 
 ## Observability
 

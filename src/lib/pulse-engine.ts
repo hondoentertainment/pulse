@@ -31,9 +31,14 @@ export function isWithinRadius(
   return distance <= radiusMiles
 }
 
-export function calculatePulseScore(pulses: Pulse[], useCredibilityWeighting: boolean = true): number {
-  const now = new Date().getTime()
-  const decayMs = PULSE_DECAY_MINUTES * 60 * 1000
+export function calculatePulseScore(
+  pulses: Pulse[],
+  useCredibilityWeighting: boolean = true,
+  nowMs: number = Date.now(),
+  decayMinutes: number = PULSE_DECAY_MINUTES,
+): number {
+  const now = nowMs
+  const decayMs = decayMinutes * 60 * 1000
 
   let totalScore = 0
   let validPulses = 0

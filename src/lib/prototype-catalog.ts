@@ -1,16 +1,10 @@
 import type { Pulse, Venue } from './types'
+import { filterVenuesByLaunchedMarkets, parseLaunchedCities } from './geo-launch'
+import { getSeattleLaunchVenues } from './seattle-launch-venues'
 
 export interface PrototypeCatalog {
   venues: Venue[]
   pulses: Pulse[]
-}
-
-function normalizeLaunchedCities(launchedCities: string[]): Set<string> {
-  return new Set(
-    launchedCities
-      .map((city) => city.trim().toLowerCase())
-      .filter(Boolean)
-  )
 }
 
 function buildPreviewPulses(venues: Venue[]): Pulse[] {
@@ -49,15 +43,21 @@ function buildPreviewPulses(venues: Venue[]): Pulse[] {
 }
 
 export async function loadPrototypeCatalog(launchedCities: string[] = []): Promise<PrototypeCatalog> {
-  const { loadMockVenueFixtures } = await import('./mock-data')
-  const { MOCK_VENUES } = await loadMockVenueFixtures()
+  const rawAllowlist = launchedCities.join(';')
+  const markets = parseLaunchedCities(rawAllowlist)
+  const seattleOnly = markets.length > 0 && markets.every((market) =>
+    market.city.toLowerCase() === 'seattle' && (!market.state || market.state === 'WA')
+  )
 
-  const launchedCitySet = normalizeLaunchedCities(launchedCities)
-  const filteredVenues = MOCK_VENUES.filter((venue) => {
-    if (launchedCitySet.size === 0) return true
-    return launchedCitySet.has((venue.city ?? '').toLowerCase())
-  })
-  const venues = filteredVenues.length > 0 ? filteredVenues : MOCK_VENUES
+  let venues: Venue[]
+  if (seattleOnly) {
+    venues = getSeattleLaunchVenues()
+  } else {
+    const { loadMockVenueFixtures } = await import('./mock-data')
+    const { MOCK_VENUES } = await loadMockVenueFixtures()
+    const filteredVenues = filterVenuesByLaunchedMarkets(MOCK_VENUES, markets)
+    venues = markets.length > 0 ? filteredVenues : MOCK_VENUES
+  }
 
   return {
     venues,

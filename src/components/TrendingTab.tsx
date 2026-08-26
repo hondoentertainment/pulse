@@ -17,6 +17,8 @@ import type { Pulse } from '@/lib/types'
 import type { ContentReport } from '@/lib/content-moderation'
 import { useLivePulsesInfinite } from '@/hooks/api/use-pulses'
 import { hasSupabaseEnv } from '@/lib/data'
+import { getLaunchedMarketsFromEnv, isGeoGateEnabled } from '@/lib/geo-launch'
+import { GeoLaunchGate } from '@/components/GeoLaunchGate'
 
 interface TrendingTabProps {
   venues: Venue[]
@@ -119,25 +121,72 @@ export function TrendingTab({
     }
   }, [activePromotions, onPromotionImpression])
 
+  const launchedMarkets = getLaunchedMarketsFromEnv()
+
   return (
-    <>
-      <div className="max-w-2xl mx-auto px-4 pt-4">
-        <div className="flex gap-1 p-1 bg-card/50 rounded-lg border border-border/50">
+    <main id="tonight-feed" aria-labelledby="tonight-heading">
+      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
+        <div>
+          <h1 id="tonight-heading" className="text-2xl font-bold">Tonight</h1>
+          <p className="text-sm text-muted-foreground">Live rooms, saved spots, and curated Seattle listings.</p>
+        </div>
+        {isGeoGateEnabled(launchedMarkets) && (
+          <GeoLaunchGate markets={launchedMarkets} venueCount={venues.length} />
+        )}
+        <div
+          role="tablist"
+          aria-label="Tonight views"
+          className="flex gap-1 p-1 bg-card/50 rounded-lg border border-border/50"
+          onKeyDown={(event) => {
+            const tabs = ['trending', 'my-spots'] as const
+            const index = tabs.indexOf(trendingSubTab)
+            let next = trendingSubTab
+            if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+              event.preventDefault()
+              next = event.key === 'ArrowRight'
+                ? tabs[(index + 1) % tabs.length]
+                : tabs[(index - 1 + tabs.length) % tabs.length]
+            } else if (event.key === 'Home') {
+              event.preventDefault()
+              next = 'trending'
+            } else if (event.key === 'End') {
+              event.preventDefault()
+              next = 'my-spots'
+            } else {
+              return
+            }
+            onSubTabChange(next)
+            const nextId = next === 'trending' ? 'tonight-tab' : 'my-spots-tab'
+            requestAnimationFrame(() => document.getElementById(nextId)?.focus())
+          }}
+        >
           <button
+            type="button"
+            role="tab"
+            id="tonight-tab"
+            aria-selected={trendingSubTab === 'trending'}
+            aria-controls="tonight-panel"
+            tabIndex={trendingSubTab === 'trending' ? 0 : -1}
             onClick={() => onSubTabChange('trending')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all",
+              "flex-1 min-h-11 py-2 px-4 rounded-md text-sm font-medium transition-all",
               trendingSubTab === 'trending'
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Trending
+            Tonight
           </button>
           <button
+            type="button"
+            role="tab"
+            id="my-spots-tab"
+            aria-selected={trendingSubTab === 'my-spots'}
+            aria-controls="my-spots-panel"
+            tabIndex={trendingSubTab === 'my-spots' ? 0 : -1}
             onClick={() => onSubTabChange('my-spots')}
             className={cn(
-              "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all relative",
+              "flex-1 min-h-11 py-2 px-4 rounded-md text-sm font-medium transition-all relative",
               trendingSubTab === 'my-spots'
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -145,8 +194,8 @@ export function TrendingTab({
           >
             My Spots
             {followedVenues.length > 0 && trendingSubTab !== 'my-spots' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold">
-                {followedVenues.length}
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold">
+                {followedVenues.length} followed
               </span>
             )}
           </button>
@@ -154,31 +203,28 @@ export function TrendingTab({
       </div>
 
       {trendingSubTab === 'trending' && (
-        <VenueReel venues={venues} pulses={pulses} onVenueClick={onVenueClick} />
-      )}
+        <div id="tonight-panel" role="tabpanel" aria-labelledby="tonight-tab" tabIndex={0}>
+          <VenueReel venues={venues} pulses={pulses} onVenueClick={onVenueClick} />
 
-      {/* Compare button */}
-      {onCompareVenues && trendingSubTab === 'trending' && (
-        <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full border-primary/20 text-primary hover:bg-primary/10"
-            onClick={() => {
-              onCompareVenues(topVenueIdsForCompare)
-            }}
-          >
-            <Scales size={16} className="mr-2" />
-            Compare Top Venues
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Side-by-side pulse, line, and live-intel context before you head out.
-          </p>
-        </div>
-      )}
+          {onCompareVenues && (
+            <div className="max-w-2xl mx-auto px-4 pt-4 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-primary/20 text-primary hover:bg-primary/10"
+                onClick={() => {
+                  onCompareVenues(topVenueIdsForCompare)
+                }}
+              >
+                <Scales size={16} className="mr-2" />
+                Compare Top Venues
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Side-by-side pulse, line, and live-intel context before you head out.
+              </p>
+            </div>
+          )}
 
-      {trendingSubTab === 'trending' && (
-        <>
           {venues.length === 0 && (
             <div className="max-w-2xl mx-auto px-4 pt-4">
               <div className="rounded-2xl border border-border bg-card/70 p-6 text-center">
@@ -212,7 +258,6 @@ export function TrendingTab({
             <Separator className="mt-6" />
           </div>
 
-          {/* Peak categories hint */}
           {(() => {
             const peakCats = getPeakCategories()
             if (peakCats.length === 0) return null
@@ -245,22 +290,24 @@ export function TrendingTab({
             isFollowed={isFollowed}
             onToggleFollow={onToggleFollow}
           />
-        </>
+        </div>
       )}
 
       {trendingSubTab === 'my-spots' && (
-        <MySpotsFeed
-          followedVenues={followedVenues}
-          pulses={pulsesWithUsers}
-          userLocation={userLocation}
-          unitSystem={unitSystem}
-          currentUserId={currentUser.id}
-          onVenueClick={onVenueClick}
-          onToggleFollow={onToggleFollow}
-          onReaction={onReaction}
-          onReport={onReportPulse}
-        />
+        <div id="my-spots-panel" role="tabpanel" aria-labelledby="my-spots-tab" tabIndex={0}>
+          <MySpotsFeed
+            followedVenues={followedVenues}
+            pulses={pulsesWithUsers}
+            userLocation={userLocation}
+            unitSystem={unitSystem}
+            currentUserId={currentUser.id}
+            onVenueClick={onVenueClick}
+            onToggleFollow={onToggleFollow}
+            onReaction={onReaction}
+            onReport={onReportPulse}
+          />
+        </div>
       )}
-    </>
+    </main>
   )
 }
