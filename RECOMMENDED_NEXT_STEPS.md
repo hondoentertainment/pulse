@@ -20,9 +20,9 @@
 
 ## Still required in production (human ops)
 
-These cannot be completed from this agent (no Supabase admin, no Vercel token, no GitHub admin on `main`).
+These cannot be completed from this agent (no Supabase admin, no Vercel token, no GitHub admin on `main`). Tracked as #64, #65, #66.
 
-1. **OPS-1** Apply migrations in the production Supabase project:
+1. **OPS-1 / OPS-2** (#64) Apply migrations in the production Supabase project:
    - `20260816000000_signal_core.sql`
    - `20260816000001_signal_pilot_signups.sql`
    - `20260816000002_signal_push_subscriptions.sql`
@@ -34,10 +34,10 @@ These cannot be completed from this agent (no Supabase admin, no Vercel token, n
    - `CRON_SECRET`
    - Optional closed-app push: `VITE_VAPID_PUBLIC_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
 3. **OPS-2** Prove the live loop on https://pulse-chi-nine.vercel.app/ using [docs/runbooks/signal-launch.md](docs/runbooks/signal-launch.md)
-4. **HOUSE-1 remainder** GitHub → Settings → Branches → `main`:
+4. **HOUSE-1 remainder** (#65) GitHub → Settings → Branches → `main`:
    - Required check `smoke-preview` now has a job again (alias). Keep it, or switch the required name to `smoke-preview-signal`
    - Solo maintainer: allow admin bypass **or** set required reviews to 0 — the owner cannot approve their own PR
-5. **#57 remainder** Closed-app Web Push on a real device: [docs/runbooks/signal-web-push.md](docs/runbooks/signal-web-push.md)
+5. **#57 remainder** (#66) Closed-app Web Push on a real device: [docs/runbooks/signal-web-push.md](docs/runbooks/signal-web-push.md)
 
 ```bash
 SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod
