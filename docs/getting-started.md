@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you from a fresh clone to a running Pulse dev environment.
+This guide walks you from a fresh clone to a running **Pulse Signal** dev environment. Signal is the default shell. The venue PWA only mounts when `VITE_APP_MODE=venue`.
 
 ## Prerequisites
 
@@ -28,9 +28,17 @@ Copy the example env file and fill in values as needed:
 cp .env.example .env
 ```
 
-### Minimum for local dev (mock data)
+### App shell
 
-No env vars are required. Without Supabase credentials the app boots against seeded mock fixtures in `src/lib/mock-data.ts`. You will see a console note:
+```env
+# VITE_APP_MODE=signal              # default — Pulse Signal
+# VITE_APP_MODE=venue               # nightlife PWA (staging / E2E only)
+# VITE_LAUNCHED_CITIES=Seattle,WA   # venue geo-gate
+```
+
+### Minimum for local Signal (no backend)
+
+No env vars are required. Signal stores check-ins in `localStorage`. Venue mode without Supabase still uses seeded mock fixtures in `src/lib/mock-data.ts`. You may see a console note:
 
 ```
 [pulse] USE_SUPABASE_BACKEND is OFF — reads/writes use local mock fixtures.

@@ -158,6 +158,18 @@ jobs:
             test-results
           if-no-files-found: ignore
 
+  # Alias for GitHub branch protection that still requires `smoke-preview`.
+  # Signal is the shipping product; venue smoke stays advisory.
+  smoke-preview:
+    needs: [smoke-preview-signal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Alias required check to Signal smoke
+        run: echo "smoke-preview satisfied by smoke-preview-signal"
+
   e2e-signal:
     runs-on: ubuntu-latest
     timeout-minutes: 20

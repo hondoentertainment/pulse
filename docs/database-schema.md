@@ -33,6 +33,41 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260816000002_signal_push_subscriptions.sql` | Web Push endpoints for Signal reminders |
 | `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
 
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql).
+
+---
+
+## Pulse Signal
+
+Shipping product tables. Owner-only RLS. `ON DELETE CASCADE` from `auth.users`.
+
+### `signal_entries`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `auth.users` |
+| `day_key` | TEXT | Local `YYYY-MM-DD` |
+| `check_in_window` | TEXT | `morning` \| `evening` |
+| `score` | INT | 0–100 |
+| `energy`, `mood`, `stress`, `sleep_quality` | INT | 1–10 |
+| `tags` | TEXT[] | Up to 3 in the UI |
+| `focus` | TEXT | energy / mood / focus / sleep |
+
+**Unique:** `(user_id, day_key, check_in_window)` — two check-ins per day max.
+
+### `signal_profiles`
+
+Reminder time/timezone/enabled plus tracking focus and goal. PK `user_id`.
+
+### `signal_pilot_signups`
+
+Idempotent Pulse Pro waitlist. Unique `(email, source)`.
+
+### `signal_push_subscriptions`
+
+Web Push endpoints (`endpoint`, `p256dh`, `auth`). Unique `endpoint`.
+
 ---
 
 ## Core

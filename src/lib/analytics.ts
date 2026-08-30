@@ -43,6 +43,8 @@ export type AnalyticsEvent =
   | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
   | { type: 'signal_pilot_signup'; timestamp: number; status: 'created' | 'already_registered' | 'failed' }
   | { type: 'signal_reminder_toggle'; timestamp: number; enabled: boolean; permission: string }
+  | { type: 'signal_csv_export'; timestamp: number; count: number }
+  | { type: 'signal_account_deleted'; timestamp: number }
   | { type: 'arrival_prompt_shown'; timestamp: number; venueId: string }
   | { type: 'arrival_confirmed'; timestamp: number; venueId: string }
   | { type: 'mismatch_reported'; timestamp: number; venueId: string; correction: string }

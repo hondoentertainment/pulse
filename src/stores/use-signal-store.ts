@@ -26,6 +26,7 @@ interface SignalStore {
   saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
   closeFirstWin: () => void
   setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
+  clearLocalAccount: () => void
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -127,6 +128,22 @@ export const useSignalStore = create<SignalStore>()(
         })
         const persistUserId = userId ?? get().entries[0]?.userId
         if (nextProfile && persistUserId) void saveSignalProfile(persistUserId, nextProfile)
+      },
+      clearLocalAccount: () => {
+        set({
+          profile: null,
+          entries: [],
+          savedAt: null,
+          firstWinOpen: false,
+          reminderEnabled: false,
+          draft: {
+            energy: 7,
+            mood: 7,
+            stress: 4,
+            sleepQuality: 7,
+            tags: ['calm'],
+          },
+        })
       },
     }),
     {

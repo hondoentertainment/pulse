@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { sendWebPushToUser } from '../web-push'
+import { buildWebPushPayload, notificationOpenUrl, sanitizeSignalPushData, sendWebPushToUser } from '../web-push'
 
 describe('sendWebPushToUser', () => {
   afterEach(() => {
@@ -41,5 +41,23 @@ describe('sendWebPushToUser', () => {
 
     expect(result.logOnly).toBe(true)
     expect(result.dispatched).toBe(0)
+  })
+
+  it('strips slider values from the Web Push payload', () => {
+    const payload = JSON.parse(buildWebPushPayload({
+      userId: 'user-1',
+      title: 'Pulse Signal',
+      body: 'Take 10 seconds to log today’s signal.',
+      data: {
+        kind: 'signal_reminder',
+        dayKey: '2026-08-30',
+        energy: '9',
+        mood: '8',
+        score: '88',
+      },
+    }))
+    expect(payload.data).toEqual({ kind: 'signal_reminder', dayKey: '2026-08-30' })
+    expect(sanitizeSignalPushData({ stress: 3, url: '/home' })).toEqual({ url: '/home' })
+    expect(notificationOpenUrl({ kind: 'signal_reminder' })).toBe('/home')
   })
 })

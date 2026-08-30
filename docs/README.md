@@ -1,11 +1,12 @@
 # Pulse Documentation
 
-Central index for all Pulse project documentation. Start with [Getting Started](getting-started.md) if you are new to the repo.
+The shipping product is **Pulse Signal**. Venue discovery docs below are for the flag-gated PWA (`VITE_APP_MODE=venue`). Start with [Getting Started](getting-started.md) or [PRD_SIGNAL.md](../PRD_SIGNAL.md).
 
 ## Quick Links
 
 | I want to… | Start here |
 |------------|------------|
+| Understand Pulse Signal | [PRD_SIGNAL.md](../PRD_SIGNAL.md) + [signal-launch runbook](runbooks/signal-launch.md) |
 | Run the app locally | [Getting Started](getting-started.md) |
 | Understand the architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | Find a React component | [Component Catalog](component-catalog.md) |
@@ -61,8 +62,10 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Differentiators](differentiators.md) | Weather boost, wait time, accessibility filter pack |
 | [PRODUCTION_ROLLOUT.md](../PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](../NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
-| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Prioritized follow-up work |
+| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Current ops queue (Signal-first) |
 | [VENTURE_NEXT_STEPS.md](VENTURE_NEXT_STEPS.md) | Venture-scale roadmap notes |
+| [Pulse Pro interview brief](pulse-pro-offer-research.md) | Offer research — no invented price |
+| [PRD_SIGNAL.md](../PRD_SIGNAL.md) | Shipping Signal requirements |
 
 ### Feature PRDs (`docs/prd/`)
 
@@ -127,7 +130,9 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |
 | [Supabase Outage](runbooks/supabase-outage.md) | Database or Realtime down |
 | [Surge Traffic](runbooks/surge-traffic.md) | Traffic spike handling |
-| [Signal Launch](runbooks/signal-launch.md) | Apply Signal migrations, reminders, and pilot list |
+| [Signal Launch](runbooks/signal-launch.md) | Apply Signal migrations, prove the live loop |
+| [Signal Web Push](runbooks/signal-web-push.md) | Closed-app reminder proof |
+| [Venue Staging](runbooks/venue-staging.md) | Flag-gated venue preview — never flip production default |
 
 ---
 
