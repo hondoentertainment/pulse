@@ -57,6 +57,7 @@ export default defineConfig({
       injectRegister: 'auto',
       manifest: false, // Utilizing existing public/manifest.json
       workbox: {
+        importScripts: ['/signal-push-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {

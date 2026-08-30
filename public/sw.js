@@ -104,7 +104,8 @@ function syncOfflinePulses() {
   })
 }
 
-// Push notification handler
+// Legacy SW. Production uses VitePWA generateSW + /signal-push-sw.js.
+// Keep these handlers for local/public fallback.
 self.addEventListener('push', function (event) {
   var payload = event.data ? event.data.json() : {}
   var title = payload.title || 'Pulse Signal'

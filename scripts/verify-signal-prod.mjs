@@ -29,10 +29,14 @@ assert(/Pulse Signal/i.test(html.text), 'Production HTML title/copy is not Pulse
 assert(!/Real-time venue energy discovery/i.test(html.text), 'Production HTML still leads with venue discovery copy')
 
 const unauth = await fetchText('/api/signal/reminders/dispatch')
-assert(
-  unauth.response.status === 401 || unauth.response.status === 403,
-  `Dispatch without CRON_SECRET returned ${unauth.response.status}, expected 401/403`,
-)
+if (unauth.response.status === 500) {
+  failures.push('Dispatch without CRON_SECRET returned 500 (FUNCTION_INVOCATION_FAILED). The handler is crashing before auth — usually a src/ import or missing server env.')
+} else {
+  assert(
+    unauth.response.status === 401 || unauth.response.status === 403,
+    `Dispatch without CRON_SECRET returned ${unauth.response.status}, expected 401/403`,
+  )
+}
 
 if (cronSecret) {
   const dispatch = await fetchText('/api/signal/reminders/dispatch', {
