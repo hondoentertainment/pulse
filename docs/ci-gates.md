@@ -15,9 +15,11 @@ merge, without over-fitting to the current state of the app.
 | Coverage       | `Unit Tests ...`       | Coverage on `src/lib/**` falls below per-metric floors (stmts 35%, branches 33%, funcs 42%, lines 34%). | `vite.config.ts` → `test.coverage` |
 | Build          | `Build`                | `bun run build` exits non-zero.                           | —                                  |
 | Bundle size    | `Bundle-size budget`   | Any JS chunk (or the total) exceeds its gzip budget.      | `scripts/check-bundle-size.mjs`, `docs/bundle-budget.md` |
-| Smoke tests    | `Smoke Tests`          | Playwright smoke scenarios fail.                          | `playwright.config.ts`             |
+| Smoke tests    | `smoke-preview-signal` | Playwright Signal smoke fails. Venue smoke is advisory.   | `playwright.config.ts`             |
+| Smoke alias    | `smoke-preview`        | Fails if `smoke-preview-signal` failed. Exists so stale branch protection stays green. | `.github/workflows/ci.yml` |
 
-All gates are hard-fail: no `continue-on-error: true`.
+Hard-fail gates: lint, test, build, bundle-size, `smoke-preview-signal`, `smoke-preview`, `e2e-signal`.
+Advisory (`continue-on-error`): `smoke-preview-venue`, `typecheck-strict`, `dependency-audit`.
 
 ## Coverage thresholds
 

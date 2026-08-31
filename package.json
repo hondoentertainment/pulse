@@ -19,6 +19,7 @@
         "test:e2e": "playwright test",
         "audit": "npm audit --audit-level=high",
         "bundle-size": "node scripts/check-bundle-size.mjs",
+        "verify:signal-prod": "node scripts/verify-signal-prod.mjs",
         "release-check": "npm run lint && npm run test && npm run build && npm run audit",
         "optimize": "vite optimize",
         "preview": "vite preview",

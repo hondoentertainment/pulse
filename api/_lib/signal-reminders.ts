@@ -1,5 +1,3 @@
-import { parseReminderTime } from '../../src/lib/signal-reminder'
-
 export interface ReminderCandidate {
   userId: string
   reminderTime: string
@@ -17,6 +15,12 @@ export interface ReminderProfileRow {
 export interface ReminderEntryRow {
   user_id: string
   day_key: string
+}
+
+function parseReminderTime(value: string | undefined): { hours: number; minutes: number } {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value ?? '')
+  if (!match) return { hours: 9, minutes: 0 }
+  return { hours: Number(match[1]), minutes: Number(match[2]) }
 }
 
 function zonedParts(now: Date, timezone?: string | null): { dayKey: string; minutes: number } | null {

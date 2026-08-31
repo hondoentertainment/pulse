@@ -1,15 +1,15 @@
-# Runbook: Pulse Signal launch (migrations, reminders, pilot list)
+# Runbook: Pulse Signal launch (migrations, reminders, live loop)
 
 ## Purpose
 
-Apply the Signal-first schema and turn on daily reminders after the #56–#59 implementation lands.
+Apply the Signal schema (and the Seattle venue launch tables, if that project is shared) and prove the signed-in loop after #61 / #62.
 
 ## Preconditions
 
 - Supabase project admin access
 - Vercel project admin access
 - `supabase` CLI or Dashboard SQL editor
-- Production default remains `VITE_APP_MODE=signal`
+- Production default remains `VITE_APP_MODE=signal` (unset is fine)
 
 ## Procedure
 
@@ -17,32 +17,42 @@ Apply the Signal-first schema and turn on daily reminders after the #56–#59 im
    - `supabase/migrations/20260816000000_signal_core.sql`
    - `supabase/migrations/20260816000001_signal_pilot_signups.sql`
    - `supabase/migrations/20260816000002_signal_push_subscriptions.sql`
-2. Confirm tables exist: `signal_entries`, `signal_profiles`, `signal_pilot_signups`, `signal_push_subscriptions`.
+   - `supabase/migrations/20260825000000_venue_signal_seattle_launch.sql`
+2. Run [supabase/verify/signal_launch.sql](../../supabase/verify/signal_launch.sql). All four `signal_*` `to_regclass` values must be non-null.
 3. Set production env:
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (legacy alias: `SUPABASE_SERVICE_ROLE`)
    - `CRON_SECRET`
    - Optional closed-app push: `VITE_VAPID_PUBLIC_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, plus existing FCM/APNs vars
 4. Redeploy so client `VITE_*` values are baked in.
-5. Trigger a dry reminder dispatch:
+5. Public checks:
+   ```bash
+   SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod
+   ```
+6. Trigger a dry reminder dispatch (also used by `verify:signal-prod` when `CRON_SECRET` is set):
    ```bash
    curl -sS -H "Authorization: Bearer $CRON_SECRET" \
      "$PROD_URL/api/signal/reminders/dispatch"
    ```
    Expect `{ "data": { "candidates": <n>, "results": [...] } }`.
-6. Submit one Settings → Pulse Pro pilot email and confirm a row in `signal_pilot_signups`.
+7. Submit one Settings → Pulse Pro pilot email and confirm a row in `signal_pilot_signups`. A second submit must return already registered.
 
 ## Verification
 
 - [ ] Authenticated check-in writes `check_in_window` + `day_key`
 - [ ] Second save in the same window is refused (Home shows “Today is logged”)
 - [ ] Evening window opens after noon when morning is already logged
+- [ ] Device A save appears on Device B after refresh
 - [ ] Duplicate pilot email returns “already on the list”, not a false success
 - [ ] Reminder cron skips users whose `day_key` is already logged
 - [ ] Settings reminder copy stays honest when VAPID/permission is missing
 - [ ] `/api/signal/push-subscribe` rejects unverified JWTs
 - [ ] Reminder cron sends to `signal_push_subscriptions` when VAPID keys are set
-- [ ] Same-window saves from a second device reuse the existing `(user_id, day_key, check_in_window)` row
+- [ ] CSV export downloads this account’s rows
+- [ ] Delete my data + `DELETE` clears local store and remote Signal rows
+- [ ] Production HTML title is Pulse Signal (`npm run verify:signal-prod`)
+
+Closed-app push device proof: [signal-web-push.md](signal-web-push.md).
 
 ## Rollback / Escalation
 
@@ -54,4 +64,4 @@ Apply the Signal-first schema and turn on daily reminders after the #56–#59 im
 ## Ownership
 
 - Owner: Signal product engineer
-- Last reviewed: 2026-08-16
+- Last reviewed: 2026-08-30

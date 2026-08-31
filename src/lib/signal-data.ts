@@ -167,3 +167,31 @@ export async function saveSignalProfile(userId: string, profile: SignalProfile):
     console.warn('Signal profile saved locally but not synced', error.message)
   }
 }
+
+export interface SignalDeleteResult {
+  entries: boolean
+  profile: boolean
+  push: boolean
+}
+
+export async function deleteSignalUserData(userId: string): Promise<SignalDeleteResult> {
+  if (!hasSupabaseConfig || !userId || userId === 'local-user') {
+    return { entries: true, profile: true, push: true }
+  }
+
+  const [entries, profile, push] = await Promise.all([
+    supabase.from('signal_entries').delete().eq('user_id', userId),
+    supabase.from('signal_profiles').delete().eq('user_id', userId),
+    supabase.from('signal_push_subscriptions').delete().eq('user_id', userId),
+  ])
+
+  if (entries.error) console.warn('Signal entries delete failed', entries.error.message)
+  if (profile.error) console.warn('Signal profile delete failed', profile.error.message)
+  if (push.error) console.warn('Signal push subscriptions delete failed', push.error.message)
+
+  return {
+    entries: !entries.error,
+    profile: !profile.error,
+    push: !push.error,
+  }
+}

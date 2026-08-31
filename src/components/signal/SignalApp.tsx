@@ -7,7 +7,20 @@ import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, Tr
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { fetchSignalEntries } from '@/lib/signal-data'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { deleteSignalUserData, fetchSignalEntries } from '@/lib/signal-data'
+import { downloadTextFile, entriesToCsv, signalExportFilename } from '@/lib/signal-export'
+import { analyzeTagPatterns, buildWeeklySummary, tagPatternCopy } from '@/lib/signal-patterns'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { requestPushPermission } from '@/lib/pwa'
 import { buildChartSeries, calculateSignalMetrics, compareMorningEvening, generateInsight, getOpenWindow, getTodayEntries, resolveEntryWindow, type TrendDirection } from '@/lib/signal-insights'
@@ -233,6 +246,8 @@ function TrendsPage() {
   const entries = useSignalStore((state) => state.entries)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
   const amPm = useMemo(() => compareMorningEvening(entries), [entries])
+  const weekly = useMemo(() => buildWeeklySummary(entries), [entries])
+  const tagPatterns = useMemo(() => analyzeTagPatterns(entries).slice(0, 4), [entries])
 
   return (
     <SignalPageTransition>
@@ -248,6 +263,31 @@ function TrendsPage() {
         <MetricCard label="Direction" value={formatTrendDirection(metrics.trendDirection)} detail="current pattern" />
         <MetricCard label="Streak" value={metrics.streakCount} detail="daily loop" />
       </div>
+      <section className="rounded-[2rem] border border-border bg-card p-5">
+        <p className="text-sm font-bold text-primary">Weekly summary</p>
+        <p className="mt-2 text-xl font-black leading-7">
+          {weekly.checkInCount === 0
+            ? 'No check-ins this week yet'
+            : `${weekly.checkInCount} check-ins · avg ${weekly.averageScore ?? '--'}`}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{weekly.highlight}</p>
+        {weekly.topTags.length > 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">Top tags: {weekly.topTags.join(', ')}</p>
+        )}
+      </section>
+      {tagPatterns.length > 0 && (
+        <section className="rounded-[2rem] border border-border bg-card p-5">
+          <p className="text-sm font-bold text-primary">Tag patterns</p>
+          <ul className="mt-3 space-y-3">
+            {tagPatterns.map((pattern) => (
+              <li key={pattern.tag}>
+                <p className="font-black">{pattern.tag}</p>
+                <p className="text-sm text-muted-foreground">{tagPatternCopy(pattern)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {amPm.morning !== null && amPm.evening !== null && (
         <section className="rounded-[2rem] border border-border bg-card p-5">
           <p className="text-sm font-bold text-primary">Morning vs evening</p>
@@ -325,11 +365,15 @@ function HistoryPage() {
 function SettingsPage() {
   const { signOut, user, session } = useSupabaseAuth()
   const profile = useSignalStore((state) => state.profile)
+  const entries = useSignalStore((state) => state.entries)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
+  const clearLocalAccount = useSignalStore((state) => state.clearLocalAccount)
   const reminder = useSignalReminder()
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
   const reminderTime = profile?.reminderTime ?? '09:00'
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const handleReminder = async (checked: boolean) => {
     if (checked) {
@@ -414,6 +458,78 @@ function SettingsPage() {
             <p className="rounded-2xl bg-primary/10 p-3 text-sm text-primary">{reminder.copy}</p>
           </div>
         )}
+      </section>
+      <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
+        <p className="font-black">Your data</p>
+        <p className="text-sm text-muted-foreground">
+          Export a CSV of your check-ins, or delete Signal data from this device
+          {hasSupabaseConfig ? ' and your signed-in account' : ''}.
+        </p>
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-2xl"
+          onClick={() => {
+            downloadTextFile(signalExportFilename(), entriesToCsv(entries))
+            trackEvent({ type: 'signal_csv_export', timestamp: Date.now(), count: entries.length })
+            toast.success('Export ready', { description: `${entries.length} check-in${entries.length === 1 ? '' : 's'} downloaded.` })
+          }}
+        >
+          Export CSV
+        </Button>
+        <AlertDialog onOpenChange={(open) => { if (!open) setDeleteConfirm('') }}>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="h-12 w-full rounded-2xl text-destructive">
+              Delete my data
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Signal data?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes check-ins, reminder settings, and push subscriptions for this account.
+                Type DELETE to confirm.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <input
+              aria-label="Type DELETE to confirm"
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base"
+              placeholder="DELETE"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deleteConfirm !== 'DELETE' || deleting}
+                onClick={(event) => {
+                  event.preventDefault()
+                  void (async () => {
+                    setDeleting(true)
+                    const userId = user?.id ?? 'local-user'
+                    await deleteSignalUserData(userId)
+                    if (session?.access_token) {
+                      await fetch('/api/signal/account-delete', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
+                        body: JSON.stringify({ confirm: 'DELETE' }),
+                      }).catch(() => undefined)
+                    }
+                    clearLocalAccount()
+                    trackEvent({ type: 'signal_account_deleted', timestamp: Date.now() })
+                    toast.success('Signal data deleted')
+                    setDeleting(false)
+                    await signOut()
+                  })()
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Delete data'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </section>
       <Button variant="outline" className="h-12 w-full touch-manipulation rounded-2xl" onClick={() => void signOut()}>
         Sign out

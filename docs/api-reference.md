@@ -17,6 +17,7 @@ Pulse exposes serverless routes under `/api/*`, deployed as Vercel Functions. Th
 | `POST` | `/api/signal/pilot` | optional JWT | Persist a Pro pilot email (`email`, `source`). Rate limited. |
 | `POST` | `/api/signal/push-subscribe` | verified JWT | Store a Web Push subscription (user-scoped client; admin bypass is not used) |
 | `GET`/`POST` | `/api/signal/reminders/dispatch` | `CRON_SECRET` | Fan out reminders to native tokens and Web Push subscriptions when today is still unlogged |
+| `POST` | `/api/signal/account-delete` | verified JWT | Delete the caller’s Signal rows; auth user delete is best-effort with the service role. Body: `{ "confirm": "DELETE" }` |
 
 ---
 

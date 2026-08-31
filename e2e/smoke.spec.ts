@@ -67,6 +67,7 @@ test.describe('Signal shell', () => {
     await clickLink(page, /Trends — Chart and pattern/i)
     await expect(page.getByRole('heading', { name: /Your state over time/i })).toBeVisible()
     await expect(page.getByText(/Chart and pattern — see how your signal moves/i)).toBeVisible()
+    await expect(page.getByText('Weekly summary', { exact: true })).toBeVisible()
 
     await clickLink(page, /History — Daily log/i)
     await expect(page.getByRole('heading', { name: /Past signals/i })).toBeVisible()
@@ -87,5 +88,7 @@ test.describe('Signal shell', () => {
   test('Settings shows honest reminder copy', async ({ page }) => {
     await clickLink(page, /Settings — Preferences/i)
     await expect(page.getByText(/Daily reminder/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /Export CSV/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Delete my data/i })).toBeVisible()
   })
 })

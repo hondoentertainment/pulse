@@ -47,6 +47,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab |
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Video pulse feed |
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disable writes during outage |
+| `VITE_APP_MODE` | `signal` | `signal` (default shipping shell) or `venue` (staging only) |
 | `VITE_LAUNCHED_CITIES` | empty | Venue geo-gate. `Seattle,WA` is one market, not two tokens. |
 
 Full detail: [Feature Flags](feature-flags.md).

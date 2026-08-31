@@ -68,17 +68,47 @@ export function createWebPushDeliverer(): WebPushDeliverer | null {
   }
 }
 
+const BLOCKED_PUSH_KEYS = new Set([
+  'energy',
+  'mood',
+  'stress',
+  'sleep',
+  'sleepQuality',
+  'sleep_quality',
+  'score',
+  'tags',
+  'focus',
+])
+
+export function sanitizeSignalPushData(data: Record<string, unknown> | undefined): Record<string, unknown> {
+  const clean: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(data ?? {})) {
+    if (!BLOCKED_PUSH_KEYS.has(key)) clean[key] = value
+  }
+  return clean
+}
+
+export function buildWebPushPayload(msg: PushMessage): string {
+  return JSON.stringify({
+    title: msg.title,
+    body: msg.body,
+    data: sanitizeSignalPushData(msg.data as Record<string, unknown> | undefined),
+  })
+}
+
+export function notificationOpenUrl(data: Record<string, unknown> | undefined): string {
+  if (typeof data?.url === 'string' && data.url.startsWith('/')) return data.url
+  if (data?.kind === 'signal_reminder') return '/home'
+  return '/'
+}
+
 export async function sendWebPushToUser(
   msg: PushMessage,
   deliver: WebPushDeliverer | null | undefined = undefined,
 ): Promise<PushSendResult> {
   const subscriptions = await loadWebPushSubscriptions(msg.userId)
   const sender = deliver === undefined ? createWebPushDeliverer() : deliver
-  const payload = JSON.stringify({
-    title: msg.title,
-    body: msg.body,
-    data: msg.data ?? {},
-  })
+  const payload = buildWebPushPayload(msg)
 
   if (!sender) {
     console.info('[web-push] log-only (VAPID env missing)', {
