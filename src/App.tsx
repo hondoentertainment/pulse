@@ -9,15 +9,13 @@ import { Toaster } from 'sonner'
  * See ARCHITECTURE.md — App entry and routing.
  */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { AppProviders } from '@/AppProviders'
-import { AppBootstrap } from '@/AppBootstrap'
-import { AppRoutes } from '@/AppRoutes'
 import { isVenueAppMode } from '@/lib/app-mode'
 import { trackEvent } from '@/lib/analytics'
 import { Lightning } from '@phosphor-icons/react'
 
 const LoginScreen = lazy(() => import('@/components/LoginScreen').then((m) => ({ default: m.LoginScreen })))
 const SignalApp = lazy(() => import('@/components/signal/SignalApp').then((m) => ({ default: m.SignalApp })))
+const VenueApp = lazy(() => import('@/VenueApp'))
 
 function AppLoadingFallback({ label }: { label: string }) {
   return (
@@ -74,12 +72,9 @@ function AppContent() {
 function App() {
   if (isVenueAppMode()) {
     return (
-      <AppProviders>
-        <Toaster position="top-center" theme="dark" richColors />
-        <AppBootstrap>
-          <AppRoutes />
-        </AppBootstrap>
-      </AppProviders>
+      <Suspense fallback={pageFallback}>
+        <VenueApp />
+      </Suspense>
     )
   }
 

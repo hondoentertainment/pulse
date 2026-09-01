@@ -1,53 +1,57 @@
 # Production Rollout Plan
 
-This document turns the current prototype gaps into a practical rollout plan for getting Pulse to a launch-ready state.
+This document turns remaining production gaps into a practical rollout plan. **Pulse Signal is the default / shipping product** (`VITE_APP_MODE=signal`). Venue discovery is parked behind `VITE_APP_MODE=venue` — do not treat venue map, onboarding, or pulse-creation work as the live product.
+
+> Last verified 2026-09-01. Checklists below match `npm test` / `npm run lint` / `npm run build` / `npm run test:smoke:signal` on current `main`, not older review notes.
 
 ## Rollout Phases at a Glance
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| **Phase 0** | Stabilize the prototype | In progress |
-| **Phase 1** | Build production foundations | Not started |
+| **Phase 0** | Stabilize the prototype | **Gates green** — lint warnings + human ops remain |
+| **Phase 1** | Build production foundations | In progress (Signal schema/auth in code; prod migrate is #64) |
 | **Phase 2** | Harden for beta | Not started |
 | **Phase 3** | Launch readiness | Not started |
 
 ## Current Starting Point
 
-The app has a strong feature surface and a healthy test baseline, but several core production needs are still missing:
+Signal is the live loop (check-in → score → streak → trends). Remaining production work is mostly **human ops**, not missing unit tests:
 
-- Venue data is seeded from mock datasets and client state bootstrapping
-- User and app state are managed in client-side Spark KV hooks
-- Reverse geocoding is called directly from the browser
-- Public API and webhook support exist as library logic rather than deployed services
-- End-to-end coverage, CI policy, auth, and observability are still incomplete
+- Production Supabase migrations + env (#64) — out of scope for agents
+- GitHub branch protection / required checks (#65)
+- Real-device Web Push proof (#66)
+- Venue mock data and Spark KV still exist for the **flag-gated** venue shell only
 
 ## Phase 0: Stabilize The Prototype
 
-**Goal:** Make the existing app consistent, testable, and easier to evolve without changing the product scope.
+**Goal:** Keep the shipping Signal app consistent, testable, and easy to evolve. Venue smoke stays advisory.
 
 ### Work Items
 
-- [ ] Remove remaining low-value lint warnings and dead code
-- [ ] Add Playwright smoke coverage for onboarding, map, pulse creation, venue page, and notifications
-- [ ] Set up CI to block merges on `npm run lint`, `npm run test`, and `npm run build`
-- [ ] Document local setup, release checks, and repository conventions
-- [ ] Add bundle-size tracking and performance budgets
-- [ ] Fix remaining test failures (analytics, interactive map)
+- [x] Fix the previously cited test failures (`analytics.test.ts`, `interactive-map.test.ts`) — both already green; do not reopen
+- [x] Zero lint **errors** (`npm run lint`; ~194 warnings remain — do not raise `--max-warnings`)
+- [x] CI jobs exist for `lint`, `test`, `build`, `smoke-preview-signal` (+ `smoke-preview` alias)
+- [x] Document local setup, release checks, and conventions ([RELEASE_CHECKS.md](RELEASE_CHECKS.md), [CONTRIBUTING.md](CONTRIBUTING.md))
+- [x] Signal Playwright smoke (`e2e/smoke.spec.ts` / `npm run test:smoke:signal`) — onboarding, Today, Trends, History, check-in
+- [x] Bundle-size script + CI `bundle-size` job; Signal first-paint: Sentry on its own async chunk, Phosphor out of `react-vendor`, Spark `proxy.js` serve-only, venue shell lazy
+- [ ] Remaining lint warnings / unused exports (trend down; not a merge blocker)
+- [ ] Make `lint` / `test` / `build` / `smoke-preview` **required** on `main` — human GitHub admin (#65)
+- [ ] Venue Playwright (map, pulse creation, venue page) — **parked**; do not expand unless a Signal smoke is missing
 
 ### Current Progress
 
-- CI release gates are being tightened and documented
+- Unit tests: 1216 passing (2026-09-01)
 - Release check documentation completed ([RELEASE_CHECKS.md](RELEASE_CHECKS.md))
 - Contributing guide added ([CONTRIBUTING.md](CONTRIBUTING.md))
 - Architecture documentation added ([ARCHITECTURE.md](ARCHITECTURE.md))
-- Unit test coverage expanded (470+ tests across library and components)
+- CI includes Signal smoke as the required-check alias; venue smoke is `continue-on-error`
 
 ### Exit Criteria
 
-- CI is required for merges and all checks pass green
-- Core user flows have browser smoke coverage
-- Build, test, and lint baselines are stable and documented
-- Bundle size is tracked with regression alerts
+- [x] Build, test, and lint-error baselines are stable and documented
+- [x] Signal critical path has browser smoke coverage
+- [ ] CI is required for merges on GitHub (workflow exists; branch protection is #65)
+- [x] Bundle size is tracked (`npm run bundle-size` after `build`)
 
 ## Phase 1: Build Production Foundations
 
@@ -160,13 +164,15 @@ The app has a strong feature surface and a healthy test baseline, but several co
 
 ## Recommended Order Of Execution
 
-1. Fix remaining test failures and lint errors (Phase 0 completion)
-2. Browser smoke tests for critical flows
-3. Database schema design and Supabase table setup
-4. Real auth integration and RLS policies
-5. Server-side API boundaries and persistence migration
+1. ~~Fix remaining test failures and lint errors~~ — tests green, lint **errors** at zero (warnings remain)
+2. ~~Browser smoke for Signal critical flows~~ — `test:smoke:signal` exists; do not expand venue E2E
+3. **Human ops:** apply production Signal migrations + env (#64), prove live loop
+4. **Human ops:** branch protection / required checks (#65), real-device Web Push (#66)
+5. Further Signal-only bundle / dead-export cleanup (keep venue code flag-gated)
 6. Monitoring, moderation, and staging environment
 7. Launch policy and operational readiness
+
+Do **not** schedule venue-default flip, Apple Health, AI concierge, ticketing, or Stripe/Pro pricing as the next slice.
 
 ## References
 
