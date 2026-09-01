@@ -13,8 +13,8 @@ import {
   requireAuth,
   rateLimit,
   jsonError,
-} from './_shared'
-import { getStore, VerificationRequestRow } from './_store'
+} from './_shared.js'
+import { getStore, VerificationRequestRow } from './_store.js'
 
 type ApplyBody = {
   handle?: string

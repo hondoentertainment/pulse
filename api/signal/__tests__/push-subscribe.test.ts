@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestLike, ResponseLike } from '../../_lib/http'
 
@@ -6,11 +9,22 @@ const createUserClient = vi.fn(() => ({
   from: () => ({ upsert }),
 }))
 
+vi.mock('../../_lib/supabase-server.js', () => ({
+  createUserClient: (...args: unknown[]) => createUserClient(...args),
+}))
+vi.mock('../../_lib/supabase-server.ts', () => ({
+  createUserClient: (...args: unknown[]) => createUserClient(...args),
+}))
 vi.mock('../../_lib/supabase-server', () => ({
   createUserClient: (...args: unknown[]) => createUserClient(...args),
 }))
 
 import handler from '../push-subscribe'
+
+const pushSubscribeSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../push-subscribe.ts'),
+  'utf8',
+)
 
 function makeResponse() {
   const state: { status: number; body: unknown } = { status: 0, body: undefined }
@@ -60,6 +74,14 @@ describe('POST /api/signal/push-subscribe', () => {
     if (previousAnon === undefined) delete process.env.SUPABASE_ANON_KEY
     else process.env.SUPABASE_ANON_KEY = previousAnon
     vi.unstubAllGlobals()
+  })
+
+  it('uses explicit .js/.ts relative specifiers (Vercel ESM)', () => {
+    const withoutComments = pushSubscribeSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    const relativeSpecifiers = [...withoutComments.matchAll(/from\s+['"](\.[^'"]+)['"]|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g)]
+      .map((match) => match[1] ?? match[2])
+    expect(relativeSpecifiers.length).toBeGreaterThan(0)
+    expect(relativeSpecifiers.every((specifier) => specifier.endsWith('.js') || specifier.endsWith('.ts'))).toBe(true)
   })
 
   it('rejects a forged JWT before writing', async () => {

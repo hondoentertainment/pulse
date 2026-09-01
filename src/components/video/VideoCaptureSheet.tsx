@@ -126,7 +126,7 @@ export function VideoCaptureSheet({
   clientOptions,
 }: VideoCaptureSheetProps) {
   const [step, setStep] = useState<Step>('pick')
-  const [file, setFile] = useState<File | null>(null)
+  const [_file, setFile] = useState<File | null>(null)
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [durationMs, setDurationMs] = useState<number>(0)

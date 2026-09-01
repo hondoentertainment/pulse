@@ -10,7 +10,7 @@
  * shared/prompt-caching.md — render order is `tools` → `system` →
  * `messages`, so both breakpoints are on stable prefix bytes.
  */
-import type { AnthropicTextBlock, AnthropicToolDef } from './anthropic'
+import type { AnthropicTextBlock, AnthropicToolDef } from './anthropic.js'
 
 /**
  * Build the system prompt blocks. The `context` arg is intentionally

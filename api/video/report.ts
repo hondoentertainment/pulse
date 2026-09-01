@@ -17,9 +17,9 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { checkRateLimit } from '../_lib/rate-limit'
-import { insertVideoReport, type VideoReportRow } from '../_lib/store'
+} from '../_lib/http.js'
+import { checkRateLimit } from '../_lib/rate-limit.js'
+import { insertVideoReport, type VideoReportRow } from '../_lib/store.js'
 
 const VALID_REASONS: VideoReportRow['reason'][] = [
   'copyrighted_audio',

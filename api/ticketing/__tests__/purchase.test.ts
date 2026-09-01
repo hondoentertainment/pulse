@@ -17,6 +17,20 @@ const { createCheckoutSessionMock, createAdminClientMock } = vi.hoisted(() => ({
   createAdminClientMock: vi.fn(),
 }))
 
+vi.mock('../../_lib/stripe.js', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/stripe')>('../../_lib/stripe')
+  return {
+    ...actual,
+    createCheckoutSession: createCheckoutSessionMock,
+  }
+})
+vi.mock('../../_lib/stripe.ts', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/stripe')>('../../_lib/stripe')
+  return {
+    ...actual,
+    createCheckoutSession: createCheckoutSessionMock,
+  }
+})
 vi.mock('../../_lib/stripe', async () => {
   const actual = await vi.importActual<typeof import('../../_lib/stripe')>('../../_lib/stripe')
   return {
@@ -24,7 +38,20 @@ vi.mock('../../_lib/stripe', async () => {
     createCheckoutSession: createCheckoutSessionMock,
   }
 })
-
+vi.mock('../../_lib/supabase-server.js', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>('../../_lib/supabase-server')
+  return {
+    ...actual,
+    createAdminClient: () => createAdminClientMock(),
+  }
+})
+vi.mock('../../_lib/supabase-server.ts', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>('../../_lib/supabase-server')
+  return {
+    ...actual,
+    createAdminClient: () => createAdminClientMock(),
+  }
+})
 vi.mock('../../_lib/supabase-server', async () => {
   const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>('../../_lib/supabase-server')
   return {

@@ -1,6 +1,6 @@
-import type { Pulse, Venue, EnergyRating } from './types'
-import type { VenueEvent } from './events'
-import { getRSVPCounts, predictEventSurge } from './events'
+import type { Pulse, Venue, EnergyRating } from './types.js'
+import type { VenueEvent } from './events.js'
+import { getRSVPCounts, predictEventSurge } from './events.js'
 
 /**
  * Predictive Surge Engine (Phase 6.1)

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Pulse, Venue, EnergyRating } from '@/lib/types'
 import { canPostPulse, calculatePulseScore } from '@/lib/pulse-engine'
 import { uploadPulseToSupabase } from '@/lib/supabase-api'
-import { enqueuePulse, getQueue, clearQueue, type QueuedPulse } from '@/lib/offline-queue'
+import { enqueuePulse, getQueue, clearQueue } from '@/lib/offline-queue'
 
 // ---------------------------------------------------------------------------
 // Mock Supabase so no real API calls are made

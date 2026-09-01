@@ -20,8 +20,8 @@
  *   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_ADMIN_EMAILS (optional).
  */
 
-import { getHeader, readHeader, type RequestLike } from './http'
-import { createAdminClient } from './supabase-server'
+import { getHeader, readHeader, type RequestLike } from './http.js'
+import { createAdminClient } from './supabase-server.js'
 
 // ─── Authoritative verification via Supabase ───
 

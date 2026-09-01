@@ -18,8 +18,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
-import { asEnum, asString, isPlainObject } from '../../_lib/validate'
+} from '../../_lib/safety-server.js'
+import { asEnum, asString, isPlainObject } from '../../_lib/validate.js'
 
 const REASONS = ['user_completed', 'cancelled'] as const
 type Reason = (typeof REASONS)[number]

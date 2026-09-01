@@ -27,10 +27,10 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { asEnum, asString, isPlainObject } from '../_lib/validate'
-import { clientKey, rateLimit } from '../_lib/rate-limit'
-import { verifySupabaseJwt } from '../_lib/auth'
+} from '../_lib/http.js'
+import { asEnum, asString, isPlainObject } from '../_lib/validate.js'
+import { clientKey, rateLimit } from '../_lib/rate-limit.js'
+import { verifySupabaseJwt } from '../_lib/auth.js'
 
 type Tier = 'free' | 'starter' | 'business' | 'enterprise'
 

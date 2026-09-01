@@ -22,19 +22,19 @@ import {
   setCors,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { rateLimit } from '../_lib/rate-limit'
-import { createUserClient } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { rateLimit } from '../_lib/rate-limit.js'
+import { createUserClient } from '../_lib/supabase-server.js'
 import {
   callClaude,
   estimateCostCents,
   type AnthropicMessage,
   type ToolCallContext,
   type ToolCallResult,
-} from '../_lib/anthropic'
-import { CONCIERGE_TOOLS, buildSystemBlocks } from '../_lib/concierge-prompts'
-import { executeToolCall, type ConciergeToolContext } from '../_lib/concierge-tools'
+} from '../_lib/anthropic.js'
+import { CONCIERGE_TOOLS, buildSystemBlocks } from '../_lib/concierge-prompts.js'
+import { executeToolCall, type ConciergeToolContext } from '../_lib/concierge-tools.js'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 const DEFAULT_CAP_CENTS = 20

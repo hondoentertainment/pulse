@@ -14,8 +14,8 @@ import {
   setCors,
   requireAdmin,
   jsonError,
-} from '../creators/_shared'
-import { getStore } from '../creators/_store'
+} from '../creators/_shared.js'
+import { getStore } from '../creators/_store.js'
 
 type AdminBody = {
   request_id?: string

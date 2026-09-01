@@ -1,8 +1,8 @@
-import { getAuthenticatedUserId } from '../_lib/auth'
-import { createAdminClient } from '../_lib/supabase-server'
-import { clientKey, rateLimit } from '../_lib/rate-limit'
-import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, tooManyRequests, type RequestLike, type ResponseLike } from '../_lib/http'
-import { classifyPilotPersistError, isValidPilotEmail, normalizePilotEmail } from '../../src/lib/signal-pilot'
+import { getAuthenticatedUserId } from '../_lib/auth.js'
+import { createAdminClient } from '../_lib/supabase-server.js'
+import { clientKey, rateLimit } from '../_lib/rate-limit.js'
+import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, tooManyRequests, type RequestLike, type ResponseLike } from '../_lib/http.js'
+import { classifyPilotPersistError, isValidPilotEmail, normalizePilotEmail } from '../../src/lib/signal-pilot.js'
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
   if (handlePreflight(req, res)) return

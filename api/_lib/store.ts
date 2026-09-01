@@ -9,7 +9,7 @@
  * Functions be exercised without a live Supabase project.
  */
 
-import type { VideoFeedCandidate } from './video-feed-scoring'
+import type { VideoFeedCandidate } from './video-feed-scoring.js'
 
 export interface VideoPulseRow extends VideoFeedCandidate {
   userId: string

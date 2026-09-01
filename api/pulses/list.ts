@@ -17,10 +17,10 @@ import {
   parseQueryInt,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { createUserClient } from '../_lib/supabase-server'
-import { asString } from '../_lib/validate'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { createUserClient } from '../_lib/supabase-server.js'
+import { asString } from '../_lib/validate.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 

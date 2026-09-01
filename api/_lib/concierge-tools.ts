@@ -23,23 +23,23 @@
  * `console.error`. We never let a logger throw leak into the tool
  * result.
  */
-import type { ToolCallResult } from './anthropic'
-import { createUserClient } from './supabase-server'
-import { checkContent, type ContentKind, type ModerationResult } from './moderation'
-import uberHandler from '../integrations/uber'
-import lyftHandler from '../integrations/lyft'
-import type { RequestLike, ResponseLike } from './http'
+import type { ToolCallResult } from './anthropic.js'
+import { createUserClient } from './supabase-server.js'
+import { checkContent, type ContentKind, type ModerationResult } from './moderation.js'
+import uberHandler from '../integrations/uber.js'
+import lyftHandler from '../integrations/lyft.js'
+import type { RequestLike, ResponseLike } from './http.js'
 import {
   generateNightPlan,
   type NightPlan,
   type PlanPreferences,
-} from '../../src/lib/night-planner'
+} from '../../src/lib/night-planner.js'
 import {
   analyzeVenuePatterns,
   predictSurge,
   type SurgePrediction,
-} from '../../src/lib/predictive-surge'
-import type { Pulse, User, Venue, EnergyRating } from '../../src/lib/types'
+} from '../../src/lib/predictive-surge.js'
+import type { Pulse, User, Venue, EnergyRating } from '../../src/lib/types.js'
 
 /* -------------------------------------------------------------------------- */
 /* Shared context + error helpers                                             */

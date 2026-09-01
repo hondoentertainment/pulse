@@ -5,7 +5,7 @@
  * `web-push` library when VAPID keys are configured. Missing keys stay
  * log-only so local/CI runs do not throw.
  */
-import type { PushMessage, PushSendResult } from './push'
+import type { PushMessage, PushSendResult } from './push.js'
 
 export interface WebPushSubscriptionRow {
   endpoint: string

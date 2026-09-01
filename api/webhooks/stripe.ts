@@ -32,14 +32,14 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
+} from '../_lib/http.js'
 import {
   parseWebhookEvent,
   verifyWebhookSignature,
   type StripeCheckoutSession,
   type StripeWebhookEvent,
-} from '../_lib/stripe'
-import { createAdminClient } from '../_lib/supabase-server'
+} from '../_lib/stripe.js'
+import { createAdminClient } from '../_lib/supabase-server.js'
 
 function rawBodyOf(req: RequestLike): string | null {
   const body = req.body

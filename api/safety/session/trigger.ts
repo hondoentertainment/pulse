@@ -12,7 +12,7 @@
  *   message?: string                               (optional extra note from user)
  */
 
-import { sendPush, sendSms } from '../../_lib/notify'
+import { sendPush, sendSms } from '../../_lib/notify.js'
 import {
   authenticate,
   badRequest,
@@ -25,8 +25,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
-import { asEnum, asLatLng, asString, isPlainObject } from '../../_lib/validate'
+} from '../../_lib/safety-server.js'
+import { asEnum, asLatLng, asString, isPlainObject } from '../../_lib/validate.js'
 
 const KINDS = ['safe_walk', 'share_night', 'panic'] as const
 type Kind = (typeof KINDS)[number]

@@ -8,7 +8,7 @@
  *   contactId: string
  */
 
-import { generateOtpCode, hashOtpCode, sendSms } from '../../_lib/notify'
+import { generateOtpCode, hashOtpCode, sendSms } from '../../_lib/notify.js'
 import {
   authenticate,
   badRequest,
@@ -21,8 +21,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
-import { asString, isPlainObject } from '../../_lib/validate'
+} from '../../_lib/safety-server.js'
+import { asString, isPlainObject } from '../../_lib/validate.js'
 
 interface VerifyBody {
   contactId: string

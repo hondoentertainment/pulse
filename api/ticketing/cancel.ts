@@ -16,9 +16,9 @@ import {
   methodNotAllowed,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { extractBearer } from '../_lib/auth'
-import { rateLimit } from '../_lib/rate-limit'
+} from '../_lib/http.js'
+import { extractBearer } from '../_lib/auth.js'
+import { rateLimit } from '../_lib/rate-limit.js'
 
 interface TicketRow {
   id: string

@@ -30,6 +30,18 @@ let mockDbResponse: { data: unknown; error: { message: string } | null } = {
   error: null,
 }
 
+vi.mock('../../_lib/supabase-server.js', () => {
+  return {
+    createUserClient: () => buildStubClient(),
+    getSupabaseConfig: () => ({ url: 'http://localhost', anonKey: 'anon' }),
+  }
+})
+vi.mock('../../_lib/supabase-server.ts', () => {
+  return {
+    createUserClient: () => buildStubClient(),
+    getSupabaseConfig: () => ({ url: 'http://localhost', anonKey: 'anon' }),
+  }
+})
 vi.mock('../../_lib/supabase-server', () => {
   return {
     createUserClient: () => buildStubClient(),

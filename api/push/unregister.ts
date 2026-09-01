@@ -3,7 +3,7 @@
  * Remove a push token for the authenticated user.
  * Body: { token: string }
  */
-import { getAuthenticatedUserId } from '../_lib/auth'
+import { getAuthenticatedUserId } from '../_lib/auth.js'
 
 type RequestLike = {
   method?: string

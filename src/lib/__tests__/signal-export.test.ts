@@ -27,6 +27,18 @@ describe('entriesToCsv', () => {
     expect(csv).toContain('"need rest, coffee|quoted ""day"""')
   })
 
+  it('exports only the rows passed in for this account', () => {
+    const csv = entriesToCsv([
+      entry({ id: 'mine-1', userId: 'user-1', dayKey: '2026-08-30', score: 72 }),
+      entry({ id: 'mine-2', userId: 'user-1', dayKey: '2026-08-29', score: 61, window: 'evening', createdAt: '2026-08-29T20:00:00.000Z' }),
+    ])
+    const lines = csv.split('\n')
+    expect(lines).toHaveLength(3)
+    expect(csv).not.toContain('user-2')
+    expect(csv).toContain('2026-08-29,evening,61')
+    expect(csv).toContain('2026-08-30,morning,72')
+  })
+
   it('sorts oldest first and includes window + day_key', () => {
     const csv = entriesToCsv([
       entry({ id: 'e', createdAt: '2026-08-30T20:00:00.000Z', window: 'evening', dayKey: '2026-08-30', score: 80 }),

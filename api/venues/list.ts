@@ -15,9 +15,9 @@ import {
   parseQueryInt,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { createUserClient } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { createUserClient } from '../_lib/supabase-server.js'
 
 const VENUE_COLUMNS = `
   id, name, location_lat, location_lng, location_address,
