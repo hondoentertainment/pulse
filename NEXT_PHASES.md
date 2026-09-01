@@ -48,18 +48,23 @@ For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### 1.3 Bundle Size Optimization
 
-| Chunk | Notes |
-|-------|--------|
-| `react-vendor` | Path-anchored to `react` / `react-dom` / `scheduler` only |
-| `phosphor` | Own chunk — do not merge back into `react-vendor` |
-| `sentry` | Own async chunk; `AppBootstrap` idle-inits. Never share a `manualChunks` name with `@vercel/*` |
-| Venue shell | `VenueApp` is `React.lazy` from `App.tsx` — not on Signal first paint |
-| PWA precache | Ignores `proxy.js`, Mapbox/MapLibre, source maps |
+Measured 2026-09-01 after this slice (`vite build` / Signal default):
+
+| Chunk | Raw | First paint? |
+|-------|-----|----------------|
+| `react-vendor` | ~193 kB | yes |
+| `index` | ~120 kB | yes |
+| `supabase` | ~174 kB | yes (auth) |
+| `observability` (`@vercel/*` only) | ~7.5 kB | yes |
+| `phosphor` | ~349 kB | **no** — loaded with Login/Signal/Venue |
+| `sentry` | ~448 kB | **no** — idle / error path |
+| `VenueApp` | ~111 kB | **no** — `VITE_APP_MODE=venue` only |
+| PWA precache | **~2.57 MB** (was ~4.1 MB) | under 3 MB |
 
 - [x] Lazy-load Sentry (idle init + separate chunk; do not bucket with Vercel analytics)
 - [x] Keep venue routes off the Signal entry graph (`VenueApp` lazy)
 - [x] PWA precache ignores Spark `proxy.js` and map vendor chunks
-- [ ] Drive total precache under 3 MB if venue-only lazy chunks still inflate the SW list
+- [x] Precache under 3 MB (~2.57 MB)
 
 ---
 

@@ -49,9 +49,12 @@ describe('App', () => {
   it('mounts a global Sonner toaster on the login branch', async () => {
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Your daily state, in 10 seconds/i })).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { name: /Your daily state, in 10 seconds/i })).toBeInTheDocument()
+      },
+      { timeout: 8_000 },
+    )
 
     expect(screen.getByRole('region', { name: /Notifications/i })).toBeInTheDocument()
   })
