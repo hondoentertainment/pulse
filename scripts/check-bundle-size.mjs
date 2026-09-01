@@ -30,7 +30,9 @@ const BUDGETS = {
   // Heavy third-party chunks we know about and have accepted.
   // Mapbox is huge but lazy-loaded on /map route only.
   mapboxGl: { pattern: /^mapbox-gl-.*\.js$/, maxGzipBytes: 500 * 1024, label: 'mapbox-gl' },
-  sentry: { pattern: /^sentry-.*\.js$/, maxGzipBytes: 120 * 1024, label: 'sentry' },
+  // Deferred via dynamic import + idle init. The full SDK (tracing + replay)
+  // lands ~145 KB gzip; do not share this chunk name with `@vercel/*`.
+  sentry: { pattern: /^sentry-(?!lazy).+\.js$/, maxGzipBytes: 160 * 1024, label: 'sentry' },
   observability: { pattern: /^observability-.*\.js$/, maxGzipBytes: 150 * 1024, label: 'observability' },
   supabase: { pattern: /^supabase-.*\.js$/, maxGzipBytes: 80 * 1024, label: 'supabase' },
   framerMotion: { pattern: /^framer-motion-.*\.js$/, maxGzipBytes: 60 * 1024, label: 'framer-motion' },

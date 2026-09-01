@@ -9,15 +9,20 @@ import { Toaster } from 'sonner'
  * See ARCHITECTURE.md — App entry and routing.
  */
 import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { AppProviders } from '@/AppProviders'
-import { AppBootstrap } from '@/AppBootstrap'
-import { AppRoutes } from '@/AppRoutes'
 import { isVenueAppMode } from '@/lib/app-mode'
 import { trackEvent } from '@/lib/analytics'
-import { Lightning } from '@phosphor-icons/react'
 
 const LoginScreen = lazy(() => import('@/components/LoginScreen').then((m) => ({ default: m.LoginScreen })))
 const SignalApp = lazy(() => import('@/components/signal/SignalApp').then((m) => ({ default: m.SignalApp })))
+const VenueApp = lazy(() => import('@/VenueApp'))
+
+function PulseMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="28" height="28" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
+      <path d="M213.85 125.46l-112 120a8 8 0 0 1-13.69-7l14.66-73.33-57.63-21.64a8 8 0 0 1-3-12.93l112-120a8 8 0 0 1 13.69 7L152.48 91.2l57.63 21.64a8 8 0 0 1 3.74 12.62Z" />
+    </svg>
+  )
+}
 
 function AppLoadingFallback({ label }: { label: string }) {
   return (
@@ -29,7 +34,7 @@ function AppLoadingFallback({ label }: { label: string }) {
     >
       <div className="flex flex-col items-center gap-3">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary animate-pulse">
-          <Lightning size={28} weight="fill" aria-hidden />
+          <PulseMark />
         </div>
         <p className="text-sm font-semibold text-muted-foreground">{label}</p>
       </div>
@@ -74,12 +79,9 @@ function AppContent() {
 function App() {
   if (isVenueAppMode()) {
     return (
-      <AppProviders>
-        <Toaster position="top-center" theme="dark" richColors />
-        <AppBootstrap>
-          <AppRoutes />
-        </AppBootstrap>
-      </AppProviders>
+      <Suspense fallback={pageFallback}>
+        <VenueApp />
+      </Suspense>
     )
   }
 
