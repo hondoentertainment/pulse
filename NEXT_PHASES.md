@@ -12,8 +12,8 @@
 
 | Metric | Count |
 |--------|-------|
-| Unit / component test files | 108 passing + 2 skipped (Vitest) |
-| Total unit tests | 1216 passing + 20 skipped |
+| Unit / component test files | 115 passing + 2 skipped (Vitest) |
+| Total unit tests | 1246 passing + 20 skipped |
 | Signal smoke | `npm run test:smoke:signal` (`e2e/smoke.spec.ts`) |
 | Venue smoke | advisory (`test:smoke:venue`, CI `continue-on-error`) |
 | CI/CD workflows | 4 |
@@ -21,7 +21,7 @@
 ### Build Status (2026-09-01)
 
 - **Tests:** Green — including `analytics.test.ts` and `interactive-map.test.ts` (the old “failing tests” bullets were stale).
-- **Lint:** **0 errors**, ~194 warnings. Do not raise `--max-warnings`.
+- **Lint:** **0 errors**, ~184 warnings (unused import/var warnings cleared this cycle). Do not raise `--max-warnings`.
 - **Build:** Passes. First-paint work in this cycle: keep Sentry off the Signal critical path, stop Phosphor leaking into `react-vendor`, gate Spark `proxy.js` to `vite serve`, lazy-load the venue shell.
 - **Bundle:** `react-vendor` no longer includes `@phosphor-icons/react`; Sentry is its own async chunk (not shared with `@vercel/analytics`). PWA precache ignores `proxy.js` / Mapbox.
 
@@ -38,7 +38,7 @@ For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 - [x] `src/lib/__tests__/analytics.test.ts` — passing (11 tests). The failure note was stale.
 - [x] `src/lib/__tests__/interactive-map.test.ts` — passing (7 tests). The failure note was stale.
-- [x] `npm test` — 108 files / 1216 tests passing on current `main` (2026-09-01)
+- [x] `npm test` — 115 files / 1246 tests passing (2026-09-01, this cycle)
 
 ### 1.2 Resolve Lint Errors
 
@@ -53,7 +53,7 @@ Measured 2026-09-01 after this slice (`vite build` / Signal default):
 | Chunk | Raw | First paint? |
 |-------|-----|----------------|
 | `react-vendor` | ~193 kB | yes |
-| `index` | ~120 kB | yes |
+| `index` | ~85 kB | yes |
 | `supabase` | ~174 kB | yes (auth) |
 | `observability` (`@vercel/*` only) | ~7.5 kB | yes |
 | `phosphor` | ~349 kB | **no** — loaded with Login/Signal/Venue |
