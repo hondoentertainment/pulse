@@ -10,8 +10,8 @@ import {
   setCors,
   requireAuth,
   jsonError,
-} from './_shared'
-import { getStore } from './_store'
+} from './_shared.js'
+import { getStore } from './_store.js'
 
 export default function handler(req: RequestLike, res: ResponseLike) {
   setCors(res)

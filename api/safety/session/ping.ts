@@ -23,8 +23,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
-import { asNumber, asString, isPlainObject } from '../../_lib/validate'
+} from '../../_lib/safety-server.js'
+import { asNumber, asString, isPlainObject } from '../../_lib/validate.js'
 
 interface PingBody {
   sessionId: string

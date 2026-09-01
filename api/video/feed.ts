@@ -16,9 +16,9 @@ import {
   type RequestLike,
   type ResponseLike,
   setCors,
-} from '../_lib/http'
-import { listActiveVideoPulses } from '../_lib/store'
-import { rankCandidates } from '../_lib/video-feed-scoring'
+} from '../_lib/http.js'
+import { listActiveVideoPulses } from '../_lib/store.js'
+import { rankCandidates } from '../_lib/video-feed-scoring.js'
 
 const MAX_LIMIT = 20
 const DEFAULT_LIMIT = 10

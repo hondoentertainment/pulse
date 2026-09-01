@@ -17,9 +17,9 @@ import {
   requireAuth,
   rateLimit,
   jsonError,
-} from './_shared'
-import { getStore, ReferralAttributionRow } from './_store'
-import { isSelfReferral } from '../_lib/referral-attribution'
+} from './_shared.js'
+import { getStore, ReferralAttributionRow } from './_store.js'
+import { isSelfReferral } from '../_lib/referral-attribution.js'
 
 type ApplyBody = { code?: string }
 

@@ -9,7 +9,7 @@
  * Body: { venue_id: uuid, refresh_url: string, return_url: string }
  */
 
-import { authenticate } from '../_lib/auth'
+import { authenticate } from '../_lib/auth.js'
 import {
   badRequest,
   forbidden,
@@ -19,14 +19,14 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
+} from '../_lib/http.js'
 import {
   createAccountLink,
   createConnectedAccount,
   retrieveConnectedAccount,
-} from '../_lib/stripe'
-import { getServiceSupabase } from '../_lib/supabase-server'
-import { isString, isUuid, requireFields } from '../_lib/validate'
+} from '../_lib/stripe.js'
+import { getServiceSupabase } from '../_lib/supabase-server.js'
+import { isString, isUuid, requireFields } from '../_lib/validate.js'
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return

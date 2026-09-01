@@ -1,6 +1,6 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-08-30 after implementing the post-#61 / post-#62 ops queue.
+> Updated 2026-09-01 after the ESM + Signal-test cycle (post-#67 / post-#68).
 
 ## Decision
 
@@ -10,11 +10,13 @@
 
 | Item | Status |
 |------|--------|
-| DOCS-1 README matches shipping Signal | Done |
-| HOUSE-1 `smoke-preview` CI alias | Done — wraps `smoke-preview-signal` |
-| OPS-1/2 verification + launch runbook | Done in-repo — live migrate still human |
-| #57 payload sanitize + SW open `/home` | Done in-repo — live VAPID proof still human |
-| OPTIONAL-A CSV, weekly summary, tag patterns, delete | Done |
+| ESM relative specifiers across `api/` | Done — `.js` on handlers + `_lib` (do not regress `reminders/dispatch`) |
+| Signal flow tests (check-in windows, Today is logged, trends, CSV, delete, pilot) | Done |
+| Signal first-paint: persist + Spark off the default entry | Done — `QueryClientProvider` only; Spark is `import.meta.env.DEV`; venue persist stays in `AppProviders` |
+| Lint unused imports/vars trimmed | Done — errors still 0; do not raise `--max-warnings` |
+| DOCS-1 README matches shipping Signal | Done (prior cycle) |
+| HOUSE-1 `smoke-preview` CI alias | Done (prior cycle) |
+| OPTIONAL-A CSV, weekly summary, tag patterns, delete | Done (prior cycle + tests this cycle) |
 | OPTIONAL-B Pro interview brief | Done — [docs/pulse-pro-offer-research.md](docs/pulse-pro-offer-research.md) |
 | OPTIONAL-C Venue staging runbook | Done — [docs/runbooks/venue-staging.md](docs/runbooks/venue-staging.md) |
 

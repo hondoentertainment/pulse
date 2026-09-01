@@ -1,6 +1,6 @@
-import { extractBearer, verifySupabaseJwt } from '../_lib/auth'
-import { createUserClient } from '../_lib/supabase-server'
-import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, unauthorized, type RequestLike, type ResponseLike } from '../_lib/http'
+import { extractBearer, verifySupabaseJwt } from '../_lib/auth.js'
+import { createUserClient } from '../_lib/supabase-server.js'
+import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, unauthorized, type RequestLike, type ResponseLike } from '../_lib/http.js'
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
   if (handlePreflight(req, res)) return

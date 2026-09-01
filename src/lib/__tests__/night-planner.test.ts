@@ -12,7 +12,6 @@ import {
   VENUE_TYPES,
   type NightPlan,
   type PlanStop,
-  type PlanPreferences,
 } from '../night-planner'
 import type { Venue, Pulse, User } from '../types'
 

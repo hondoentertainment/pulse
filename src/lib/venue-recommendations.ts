@@ -1,6 +1,6 @@
-import type { Venue, Pulse, User } from './types'
-import { getTimeOfDay, getPeakConfig, normalizeCategoryKeyPublic } from './time-contextual-scoring'
-import { calculateDistance } from './pulse-engine'
+import type { Venue, Pulse, User } from './types.js'
+import { getTimeOfDay, getPeakConfig, normalizeCategoryKeyPublic } from './time-contextual-scoring.js'
+import { calculateDistance } from './pulse-engine.js'
 
 /**
  * Venue Recommendation Engine

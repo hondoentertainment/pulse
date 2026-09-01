@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { verifySupabaseJwt } from '../_lib/auth'
+import { verifySupabaseJwt } from '../_lib/auth.js'
 import {
   badRequest,
   forbidden,
@@ -22,8 +22,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { generateQrSecret, retrievePaymentIntent } from '../_lib/stripe'
+} from '../_lib/http.js'
+import { generateQrSecret, retrievePaymentIntent } from '../_lib/stripe.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

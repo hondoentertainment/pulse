@@ -4,6 +4,7 @@ import type { SignalEntry } from '@/lib/signal-insights'
 const maybeSingle = vi.fn()
 const updateSingle = vi.fn()
 const insertSingle = vi.fn()
+const insertRow = vi.fn()
 
 vi.mock('@/lib/supabase', () => ({
   hasSupabaseConfig: true,
@@ -25,11 +26,14 @@ vi.mock('@/lib/supabase', () => ({
           }),
         }),
       }),
-      insert: () => ({
-        select: () => ({
-          single: insertSingle,
-        }),
-      }),
+      insert: (row: unknown) => {
+        insertRow(row)
+        return {
+          select: () => ({
+            single: insertSingle,
+          }),
+        }
+      },
     }),
   },
 }))
@@ -67,6 +71,37 @@ describe('saveSignalEntry', () => {
     maybeSingle.mockReset()
     updateSingle.mockReset()
     insertSingle.mockReset()
+    insertRow.mockReset()
+  })
+
+  it('inserts day_key and check_in_window on a new AM/PM check-in', async () => {
+    maybeSingle.mockResolvedValue({ data: null, error: null })
+    insertSingle.mockResolvedValue({
+      data: {
+        id: 'server-new',
+        user_id: 'user-1',
+        created_at: '2026-08-16T08:00:00.000Z',
+        focus: 'energy',
+        score: 70,
+        energy: 7,
+        mood: 7,
+        stress: 4,
+        sleep_quality: 7,
+        tags: [],
+        check_in_window: 'morning',
+        day_key: '2026-08-16',
+      },
+      error: null,
+    })
+
+    const saved = await saveSignalEntry(entry({}))
+    expect(saved.id).toBe('server-new')
+    expect(insertRow).toHaveBeenCalledWith(expect.objectContaining({
+      day_key: '2026-08-16',
+      check_in_window: 'morning',
+      user_id: 'user-1',
+    }))
+    expect(insertSingle).toHaveBeenCalled()
   })
 
   it('updates the existing server row when the window is already taken', async () => {

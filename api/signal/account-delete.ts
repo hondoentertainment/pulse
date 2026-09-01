@@ -3,9 +3,9 @@
  * Deletes the caller's Signal rows. Auth user deletion is best-effort when
  * the service role is configured.
  */
-import { extractBearer, verifySupabaseJwt } from '../_lib/auth'
-import { createAdminClient, createUserClient } from '../_lib/supabase-server'
-import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, unauthorized, type RequestLike, type ResponseLike } from '../_lib/http'
+import { extractBearer, verifySupabaseJwt } from '../_lib/auth.js'
+import { createAdminClient, createUserClient } from '../_lib/supabase-server.js'
+import { badRequest, handlePreflight, methodNotAllowed, ok, serverError, unauthorized, type RequestLike, type ResponseLike } from '../_lib/http.js'
 
 const CONFIRM = 'DELETE'
 

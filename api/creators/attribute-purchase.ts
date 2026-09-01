@@ -31,14 +31,14 @@ import {
   ResponseLike,
   setCors,
   jsonError,
-} from './_shared'
-import { getStore } from './_store'
+} from './_shared.js'
+import { getStore } from './_store.js'
 import {
   DEFAULT_COMMISSION_RATE,
   computeCommissionCents,
   isSelfReferral,
   isWithinAttributionWindow,
-} from '../_lib/referral-attribution'
+} from '../_lib/referral-attribution.js'
 
 type AttributeBody = {
   buyer_user_id?: string

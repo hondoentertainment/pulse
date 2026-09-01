@@ -9,7 +9,7 @@
  *   - OPEN_METEO_BASE_URL — override upstream base url (testing).
  */
 
-import type { WeatherCondition, WeatherPayload } from '../../src/lib/types'
+import type { WeatherCondition, WeatherPayload } from '../../src/lib/types.js'
 
 export type { WeatherCondition, WeatherPayload }
 

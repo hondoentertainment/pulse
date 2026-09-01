@@ -26,14 +26,14 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
+} from '../../_lib/safety-server.js'
 import {
   asEnum,
   asInteger,
   asNumber,
   asString,
   isPlainObject,
-} from '../../_lib/validate'
+} from '../../_lib/validate.js'
 
 const KINDS = ['safe_walk', 'share_night', 'panic'] as const
 type Kind = (typeof KINDS)[number]

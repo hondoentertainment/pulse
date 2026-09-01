@@ -20,9 +20,9 @@ import {
   tooManyRequests,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { asEnum, asNumber } from '../_lib/validate'
-import { clientKey, rateLimit } from '../_lib/rate-limit'
+} from '../_lib/http.js'
+import { asEnum, asNumber } from '../_lib/validate.js'
+import { clientKey, rateLimit } from '../_lib/rate-limit.js'
 
 interface ReverseGeocodeResult {
   address: string | null

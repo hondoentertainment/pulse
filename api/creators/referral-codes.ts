@@ -15,9 +15,9 @@ import {
   requireAuth,
   rateLimit,
   jsonError,
-} from './_shared'
-import { getStore, ReferralCodeRow } from './_store'
-import { generateUniqueCode } from '../_lib/referral-code-gen'
+} from './_shared.js'
+import { getStore, ReferralCodeRow } from './_store.js'
+import { generateUniqueCode } from '../_lib/referral-code-gen.js'
 
 type CreateBody = {
   venue_id?: string | null

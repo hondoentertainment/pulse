@@ -1,4 +1,4 @@
-import { Pulse, Venue, ENERGY_CONFIG, PULSE_DECAY_MINUTES } from './types'
+import { Pulse, Venue, ENERGY_CONFIG, PULSE_DECAY_MINUTES } from './types.js'
 
 export function calculateDistance(
   lat1: number,

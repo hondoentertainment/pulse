@@ -1,8 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
-import localforage from 'localforage'
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
-// 24 hours in milliseconds — shared between gcTime and persister maxAge
+// 24 hours in milliseconds — shared between gcTime and venue persister maxAge
 export const CACHE_MAX_AGE = 1000 * 60 * 60 * 24
 
 // Configure robust offline-first garbage collection
@@ -16,10 +14,4 @@ export const queryClient = new QueryClient({
       retry: 3, // Retry failed queries
     },
   },
-})
-
-// Bind the QueryClient cache exclusively to IndexedDB via LocalForage
-export const queryPersister = createAsyncStoragePersister({
-  storage: localforage,
-  key: 'PULSE_OFFLINE_CACHE_V1',
 })

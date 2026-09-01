@@ -1,7 +1,7 @@
-import type { Venue, Pulse, User, EnergyRating } from './types'
-import { getRecommendations } from './venue-recommendations'
-import { analyzeVenuePatterns, predictSurge } from './predictive-surge'
-import { generateRideshareLink } from './integrations'
+import type { Venue, Pulse, User, EnergyRating } from './types.js'
+import { getRecommendations } from './venue-recommendations.js'
+import { analyzeVenuePatterns, predictSurge } from './predictive-surge.js'
+import { generateRideshareLink } from './integrations.js'
 
 /**
  * AI Night Planner — Multi-stop itinerary engine

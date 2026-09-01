@@ -16,12 +16,12 @@ import {
   fail,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { consume } from '../_lib/rate-limit'
-import { asString, asEnum, isPlainObject } from '../_lib/validate'
-import { checkContent } from '../_lib/moderation'
-import { createUserClient } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { consume } from '../_lib/rate-limit.js'
+import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
+import { checkContent } from '../_lib/moderation.js'
+import { createUserClient } from '../_lib/supabase-server.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
