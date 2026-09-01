@@ -1,27 +1,78 @@
 /**
- * GET /api/signal/reminders/dispatch
+ * GET|POST /api/signal/reminders/dispatch
  * Vercel cron: send daily Signal reminders only when today is still unlogged.
+ *
+ * Production (2026-09-01) crashed at boot with:
+ *   ERR_MODULE_NOT_FOUND: Cannot find module '/var/task/api/_lib/push'
+ *   imported from /var/task/api/signal/reminders/dispatch.js
+ *
+ * Root package.json is `"type": "module"`. Node ESM does not resolve
+ * extensionless relative specifiers, so a static `from '../../_lib/push'`
+ * exits the process during module link — before `isCronAuthorized` can
+ * return 401. This file has no static runtime relative imports. Auth and
+ * 401 are inlined. Shared helpers load after auth via explicit `.js`
+ * specifiers (with a `.ts` fallback for lambdas that ship sources).
  */
-import { sendPushToUser } from '../../_lib/push'
-import { createAdminClient } from '../../_lib/supabase-server'
-import { isCronAuthorized, selectReminderRecipients } from '../../_lib/signal-reminders'
-import { sendWebPushToUser } from '../../_lib/web-push'
-import { handlePreflight, methodNotAllowed, ok, unauthorized, type RequestLike, type ResponseLike } from '../../_lib/http'
+import type { RequestLike, ResponseLike } from '../../_lib/http.js'
+
+function setCors(res: ResponseLike): void {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+}
+
+/** Keep in sync with `isCronAuthorized` in api/_lib/signal-reminders.ts. */
+function isCronAuthorized(req: RequestLike): boolean {
+  const required = process.env.CRON_SECRET
+  if (!required) return process.env.NODE_ENV !== 'production'
+  const header = req.headers?.authorization
+  const token = Array.isArray(header) ? header[0] : header
+  const querySecret = Array.isArray(req.query?.secret) ? req.query?.secret[0] : req.query?.secret
+  return token === `Bearer ${required}` || querySecret === required
+}
+
+function isModuleNotFound(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'ERR_MODULE_NOT_FOUND')
+}
+
+async function importAfterAuth<T>(jsSpecifier: Promise<T>, tsFallback: () => Promise<T>): Promise<T> {
+  try {
+    return await jsSpecifier
+  } catch (error) {
+    if (!isModuleNotFound(error)) throw error
+    return await tsFallback()
+  }
+}
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
-  if (handlePreflight(req, res)) return
+  setCors(res)
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
   if (req.method !== 'GET' && req.method !== 'POST') {
-    methodNotAllowed(res, ['GET', 'POST', 'OPTIONS'])
+    res.setHeader('Allow', 'GET, POST, OPTIONS')
+    res.status(405).json({ error: 'Method not allowed' })
     return
   }
   if (!isCronAuthorized(req)) {
-    unauthorized(res, 'Invalid cron secret')
+    res.status(401).json({ error: 'Invalid cron secret' })
     return
   }
 
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE
+  if (!serviceRoleKey) {
+    res.status(200).json({ data: { dispatched: 0, logOnly: true, reason: 'supabase_unconfigured' } })
+    return
+  }
+
+  const { createAdminClient } = await importAfterAuth(
+    import('../../_lib/supabase-server.js'),
+    () => import('../../_lib/supabase-server.ts'),
+  )
   const admin = createAdminClient()
   if (!admin) {
-    ok(res, { dispatched: 0, logOnly: true, reason: 'supabase_unconfigured' })
+    res.status(200).json({ data: { dispatched: 0, logOnly: true, reason: 'supabase_unconfigured' } })
     return
   }
 
@@ -40,11 +91,25 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
       .in('user_id', userIds)
       .gte('day_key', oldestKey)
 
+  const { selectReminderRecipients } = await importAfterAuth(
+    import('../../_lib/signal-reminders.js'),
+    () => import('../../_lib/signal-reminders.ts'),
+  )
   const recipients = selectReminderRecipients({
     profiles: profiles ?? [],
     logged: logged ?? [],
     now: new Date(),
   })
+
+  if (recipients.length === 0) {
+    res.status(200).json({ data: { candidates: 0, results: [] } })
+    return
+  }
+
+  const [{ sendPushToUser }, { sendWebPushToUser }] = await Promise.all([
+    importAfterAuth(import('../../_lib/push.js'), () => import('../../_lib/push.ts')),
+    importAfterAuth(import('../../_lib/web-push.js'), () => import('../../_lib/web-push.ts')),
+  ])
 
   const results = await Promise.all(
     recipients.map(async (recipient) => {
@@ -70,5 +135,5 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     }),
   )
 
-  ok(res, { candidates: recipients.length, results })
+  res.status(200).json({ data: { candidates: recipients.length, results } })
 }
