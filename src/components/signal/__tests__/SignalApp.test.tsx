@@ -66,6 +66,7 @@ function resetStore(entries: SignalEntry[]) {
     savedAt: null,
     firstWinOpen: false,
     reminderEnabled: false,
+    lastCelebratedMilestone: null,
   })
 }
 
@@ -85,6 +86,9 @@ describe('SignalApp shipping flows', () => {
     localStorage.clear()
     downloadTextFile.mockReset()
     vi.stubGlobal('fetch', vi.fn())
+    // jsdom keeps window.location across tests; BrowserRouter reads it, so a
+    // test that navigated to /settings would otherwise leak into the next one.
+    window.history.replaceState({}, '', '/')
   })
 
   afterEach(() => {
@@ -139,6 +143,62 @@ describe('SignalApp shipping flows', () => {
     expect(csv).toContain('day_key,window,score')
     expect(csv).toContain('2026-08-16,morning,74')
     expect(csv.split('\n')).toHaveLength(2)
+  })
+
+  it('celebrates a 3-day streak once and remembers the dismissal', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 7, 16, 9, 30))
+    resetStore([
+      entry({ id: 'd1', dayKey: '2026-08-14', createdAt: '2026-08-14T09:00:00.000Z' }),
+      entry({ id: 'd2', dayKey: '2026-08-15', createdAt: '2026-08-15T09:00:00.000Z' }),
+      entry({ id: 'd3', dayKey: '2026-08-16', createdAt: '2026-08-16T09:00:00.000Z' }),
+    ])
+    renderSignal()
+    expect(await screen.findByTestId('milestone-banner')).toBeInTheDocument()
+    expect(screen.getByText(/^3-day streak$/i)).toBeInTheDocument()
+    expect(screen.getByText(/4 more days to a 7-day streak/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Keep going/i }))
+    expect(screen.queryByTestId('milestone-banner')).not.toBeInTheDocument()
+    expect(useSignalStore.getState().lastCelebratedMilestone).toBe(3)
+  })
+
+  it('shows records, the sleep link, and the monthly read on Trends with enough data', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 7, 16, 21))
+    resetStore(
+      Array.from({ length: 7 }, (_, index) =>
+        entry({
+          id: `d${index}`,
+          dayKey: `2026-08-1${index}`,
+          createdAt: `2026-08-1${index}T09:00:00.000Z`,
+          score: 60 + index,
+        }),
+      ),
+    )
+    renderSignal()
+    fireEvent.click(screen.getByRole('link', { name: /Trends/i }))
+    expect(await screen.findByTestId('records-card')).toBeInTheDocument()
+    expect(screen.getByText(/Personal records/i)).toBeInTheDocument()
+    expect(screen.getByTestId('sleep-link-card')).toBeInTheDocument()
+    expect(screen.getByText(/Sleep and the next day/i)).toBeInTheDocument()
+    expect(screen.getByTestId('monthly-card')).toBeInTheDocument()
+    expect(screen.getByText(/August 2026/i)).toBeInTheDocument()
+  })
+
+  it('filters History by window and tag, and clears the filter', async () => {
+    resetStore([
+      entry({ id: 'am', dayKey: '2026-08-16', window: 'morning', tags: ['calm'], createdAt: '2026-08-16T09:00:00.000Z' }),
+      entry({ id: 'pm', dayKey: '2026-08-16', window: 'evening', tags: ['tired'], createdAt: '2026-08-16T20:00:00.000Z' }),
+    ])
+    renderSignal()
+    fireEvent.click(screen.getByRole('link', { name: /History/i }))
+    expect(await screen.findByRole('status')).toHaveTextContent(/^2 check-ins$/)
+    fireEvent.click(screen.getByRole('button', { name: /^Evening$/i }))
+    expect(screen.getByRole('status')).toHaveTextContent(/^1 of 2 check-ins$/)
+    fireEvent.click(screen.getByRole('button', { name: /calm/i }))
+    expect(screen.getByRole('status')).toHaveTextContent(/No check-ins match/i)
+    fireEvent.click(screen.getByRole('button', { name: /Clear filters/i }))
+    expect(screen.getByRole('status')).toHaveTextContent(/^2 check-ins$/)
   })
 
   it('posts Delete my data to the account-delete handler', async () => {

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Bell, CalendarBlank, ChartLine, CheckCircle, Gear, House, Lightning, TrendDown, TrendUp } from '@phosphor-icons/react'
+import { Bell, CalendarBlank, ChartLine, CheckCircle, Fire, Gear, House, Lightning, TrendDown, TrendUp } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -20,11 +20,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import { deleteSignalUserData, fetchSignalEntries } from '@/lib/signal-data'
 import { downloadTextFile, entriesToCsv, signalExportFilename } from '@/lib/signal-export'
-import { analyzeTagPatterns, buildWeeklySummary, tagPatternCopy } from '@/lib/signal-patterns'
+import { analyzeTagPatterns, buildMonthlySummary, buildWeeklySummary, tagPatternCopy } from '@/lib/signal-patterns'
+import { analyzeSleepLink } from '@/lib/signal-sleep-link'
+import { MIN_ENTRIES_FOR_RECORDS, personalRecords, recordsCopy } from '@/lib/signal-records'
+import { availableTags, filterEntries, filterSummary, isFilterActive, toggleTag, type EntryFilter } from '@/lib/signal-filter'
+import { milestoneCopy, milestoneNudge, shouldCelebrate, type StreakMilestone } from '@/lib/signal-milestones'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { requestPushPermission } from '@/lib/pwa'
 import { buildChartSeries, calculateSignalMetrics, compareMorningEvening, generateInsight, getOpenWindow, getTodayEntries, resolveEntryWindow, type TrendDirection } from '@/lib/signal-insights'
-import { windowLabel } from '@/lib/signal-windows'
+import { parseDayKey, windowLabel } from '@/lib/signal-windows'
 import { GOAL_OPTIONS, TRACKING_OPTIONS, useSignalStore } from '@/stores/use-signal-store'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useHaptics } from '@/hooks/use-haptics'
@@ -111,6 +115,48 @@ function formatTrendDirection(direction: TrendDirection): string {
   return 'Steady'
 }
 
+function formatDayKey(key: string): string {
+  return parseDayKey(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+const chipClass =
+  'inline-flex min-h-10 items-center gap-1 rounded-full border px-4 text-sm font-bold transition-colors touch-manipulation tap-highlight-none active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+const chipSelected = 'border-primary bg-primary text-primary-foreground'
+const chipIdle = 'border-border bg-card text-foreground hover:bg-secondary'
+
+function MilestoneBanner({ milestone, streak, onDismiss }: { milestone: StreakMilestone; streak: number; onDismiss: () => void }) {
+  const copy = milestoneCopy(milestone)
+
+  useEffect(() => {
+    trackEvent({ type: 'signal_milestone_reached', timestamp: Date.now(), milestone, streak })
+  }, [milestone, streak])
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-[2rem] border border-primary/40 bg-primary/10 p-5"
+      role="status"
+      aria-live="polite"
+      data-testid="milestone-banner"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Fire size={22} weight="fill" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-primary">Milestone</p>
+          <p className="mt-1 text-xl font-black leading-6">{copy.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{copy.body}</p>
+        </div>
+      </div>
+      <Button variant="secondary" className="mt-4 h-11 w-full rounded-2xl" onClick={onDismiss}>
+        Keep going
+      </Button>
+    </motion.section>
+  )
+}
+
 function TrendIcon({ direction }: { direction: TrendDirection }) {
   if (direction === 'up') return <TrendUp size={22} weight="bold" className="text-emerald-400" />
   if (direction === 'down') return <TrendDown size={22} weight="bold" className="text-amber-300" />
@@ -142,8 +188,11 @@ function HomePage({ userId }: { userId: string }) {
   const entries = useSignalStore((state) => state.entries)
   const saveEntry = useSignalStore((state) => state.saveEntry)
   const savedAt = useSignalStore((state) => state.savedAt)
+  const lastCelebrated = useSignalStore((state) => state.lastCelebratedMilestone)
+  const celebrateMilestone = useSignalStore((state) => state.celebrateMilestone)
   const reminder = useSignalReminder()
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
+  const celebration = shouldCelebrate(metrics.streakCount, lastCelebrated)
   const todayEntries = getTodayEntries(entries)
   const openWindow = getOpenWindow(entries)
   const morning = todayEntries.find((entry) => resolveEntryWindow(entry) === 'morning')
@@ -176,7 +225,7 @@ function HomePage({ userId }: { userId: string }) {
       </section>
 
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard label="Streak" value={metrics.streakCount} detail={metrics.streakCount === 1 ? 'day active' : 'days active'} />
+        <MetricCard label="Streak" value={metrics.streakCount} detail={milestoneNudge(metrics.streakCount)} />
         <MetricCard label="7-day avg" value={metrics.sevenDayAverage || '--'} detail="signal score" />
       </div>
 
@@ -192,6 +241,17 @@ function HomePage({ userId }: { userId: string }) {
           </div>
         </div>
       </section>
+
+      {celebration !== null && (
+        <MilestoneBanner
+          milestone={celebration}
+          streak={metrics.streakCount}
+          onDismiss={() => {
+            trackEvent({ type: 'signal_milestone_dismissed', timestamp: Date.now(), milestone: celebration })
+            celebrateMilestone(celebration)
+          }}
+        />
+      )}
 
       {reminder.nudge && openWindow && (
         <section className="rounded-[1.75rem] border border-primary/30 bg-primary/10 p-4">
@@ -248,6 +308,34 @@ function TrendsPage() {
   const amPm = useMemo(() => compareMorningEvening(entries), [entries])
   const weekly = useMemo(() => buildWeeklySummary(entries), [entries])
   const tagPatterns = useMemo(() => analyzeTagPatterns(entries).slice(0, 4), [entries])
+  const sleepLink = useMemo(() => analyzeSleepLink(entries), [entries])
+  const records = useMemo(() => personalRecords(entries), [entries])
+  const monthly = useMemo(() => buildMonthlySummary(entries), [entries])
+  const showSleepLink = sleepLink.pairs >= 1
+  const showRecords = entries.length >= MIN_ENTRIES_FOR_RECORDS
+  const showMonthly = monthly.daysLogged >= 2
+
+  useEffect(() => {
+    if (showSleepLink) {
+      trackEvent({ type: 'signal_sleep_link_view', timestamp: Date.now(), pairs: sleepLink.pairs, ready: sleepLink.ready })
+    }
+    if (showRecords) {
+      trackEvent({ type: 'signal_records_view', timestamp: Date.now(), totalCheckIns: records.totalCheckIns, longestStreak: records.longestStreak })
+    }
+    if (showMonthly) {
+      trackEvent({ type: 'signal_monthly_summary_view', timestamp: Date.now(), daysLogged: monthly.daysLogged, ready: monthly.ready })
+    }
+  }, [
+    showSleepLink,
+    showRecords,
+    showMonthly,
+    sleepLink.pairs,
+    sleepLink.ready,
+    records.totalCheckIns,
+    records.longestStreak,
+    monthly.daysLogged,
+    monthly.ready,
+  ])
 
   return (
     <SignalPageTransition>
@@ -288,6 +376,53 @@ function TrendsPage() {
           </ul>
         </section>
       )}
+      {showSleepLink && (
+        <section className="rounded-[2rem] border border-border bg-card p-5" data-testid="sleep-link-card">
+          <p className="text-sm font-bold text-primary">Sleep and the next day</p>
+          <p className="mt-2 text-xl font-black leading-7">
+            {sleepLink.ready && sleepLink.afterGoodSleep !== null && sleepLink.afterPoorSleep !== null
+              ? `After good sleep ${sleepLink.afterGoodSleep} · after rough sleep ${sleepLink.afterPoorSleep}`
+              : `${sleepLink.pairs} linked ${sleepLink.pairs === 1 ? 'day' : 'days'} so far`}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{sleepLink.copy}</p>
+        </section>
+      )}
+      {showRecords && (
+        <section className="rounded-[2rem] border border-border bg-card p-5" data-testid="records-card">
+          <p className="text-sm font-bold text-primary">Personal records</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <MetricCard
+              label="Best signal"
+              value={records.bestScore?.score ?? '--'}
+              detail={records.bestScore ? formatDayKey(records.bestScore.dayKey) : 'not yet'}
+            />
+            <MetricCard
+              label="Longest streak"
+              value={records.longestStreak}
+              detail={records.longestStreak === 1 ? 'day' : 'days'}
+            />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">{recordsCopy(records)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {records.totalCheckIns} check-ins across {records.daysLogged} {records.daysLogged === 1 ? 'day' : 'days'}
+          </p>
+        </section>
+      )}
+      {showMonthly && (
+        <section className="rounded-[2rem] border border-border bg-card p-5" data-testid="monthly-card">
+          <p className="text-sm font-bold text-primary">{monthly.label}</p>
+          <p className="mt-2 text-xl font-black leading-7">
+            {monthly.daysLogged} {monthly.daysLogged === 1 ? 'day' : 'days'} · avg {monthly.averageScore ?? '--'}
+            {monthly.vsPreviousMonth !== null &&
+              ` · ${monthly.vsPreviousMonth >= 0 ? '+' : ''}${monthly.vsPreviousMonth} vs last month`}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{monthly.highlight}</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {monthly.morningCount} morning · {monthly.eveningCount} evening
+            {monthly.bestDay && ` · best ${monthly.bestDay.score} on ${formatDayKey(monthly.bestDay.dayKey)}`}
+          </p>
+        </section>
+      )}
       {amPm.morning !== null && amPm.evening !== null && (
         <section className="rounded-[2rem] border border-border bg-card p-5">
           <p className="text-sm font-bold text-primary">Morning vs evening</p>
@@ -315,6 +450,21 @@ function TrendsPage() {
 function HistoryPage() {
   const navigate = useNavigate()
   const entries = useSignalStore((state) => state.entries)
+  const [filter, setFilter] = useState<EntryFilter>({ tags: [], window: null })
+  const tags = useMemo(() => availableTags(entries), [entries])
+  const visible = useMemo(() => filterEntries(entries, filter), [entries, filter])
+  const active = isFilterActive(filter)
+
+  const applyFilter = (next: EntryFilter) => {
+    setFilter(next)
+    trackEvent({
+      type: 'signal_history_filter',
+      timestamp: Date.now(),
+      tagCount: next.tags?.length ?? 0,
+      window: next.window ?? 'all',
+      shown: filterEntries(entries, next).length,
+    })
+  }
 
   return (
     <SignalPageTransition>
@@ -324,6 +474,52 @@ function HistoryPage() {
         <h1 className="mt-2 text-4xl font-black tracking-tight">Past signals.</h1>
         <p className="mt-2 text-sm text-muted-foreground">Daily log — every check-in you&apos;ve saved, newest first.</p>
       </div>
+      {entries.length > 0 && (
+        <section className="space-y-3" aria-label="Filter history">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Window">
+            {([['all', 'All'], ['morning', 'Morning'], ['evening', 'Evening']] as const).map(([value, label]) => {
+              const selected = (filter.window ?? 'all') === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => applyFilter({ ...filter, window: value === 'all' ? null : value })}
+                  className={cn(chipClass, selected ? chipSelected : chipIdle)}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Tags">
+              {tags.map(({ tag, count }) => {
+                const selected = filter.tags?.includes(tag) ?? false
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => applyFilter({ ...filter, tags: toggleTag(filter.tags ?? [], tag) })}
+                    className={cn(chipClass, selected ? chipSelected : chipIdle)}
+                  >
+                    {tag} <span className="opacity-70">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <p role="status">{filterSummary(visible.length, entries.length, filter)}</p>
+            {active && (
+              <Button variant="ghost" size="sm" className="h-9 rounded-xl px-3 text-primary" onClick={() => applyFilter({ tags: [], window: null })}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
       <div className="space-y-3">
         {entries.length === 0 && (
           <div className="rounded-[2rem] border border-dashed border-border bg-card p-8 text-center">
@@ -334,7 +530,7 @@ function HistoryPage() {
             </Button>
           </div>
         )}
-        {entries.map((entry, index) => (
+        {visible.map((entry, index) => (
           <motion.article
             key={entry.id}
             initial={{ opacity: 0, y: 10 }}
