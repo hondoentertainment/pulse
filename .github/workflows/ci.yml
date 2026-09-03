@@ -86,12 +86,12 @@ jobs:
       - name: Build
         run: npm run build
 
+  # Blocking: strict `tsc -b` is at 0 errors on main. Keep it there.
   typecheck-strict:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -191,12 +191,14 @@ jobs:
           VITE_APP_MODE: signal
         run: npm run test:e2e:signal
 
+  # Blocking: a new high-severity advisory should show red, not hide behind
+  # a green run. When this fails on an unchanged branch, `npm audit fix`
+  # (non-breaking) is the usual remedy.
   dependency-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
