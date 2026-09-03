@@ -20,3 +20,16 @@ export function windowLabel(window: CheckInWindow): string {
 export function isValidDayKey(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
+
+/** Parse a `YYYY-MM-DD` day key into a local-time Date at noon (DST-safe). */
+export function parseDayKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day, 12, 0, 0, 0)
+}
+
+/** Shift a day key by whole local days, e.g. `shiftDayKey('2026-08-31', 1) === '2026-09-01'`. */
+export function shiftDayKey(key: string, days: number): string {
+  const date = parseDayKey(key)
+  date.setDate(date.getDate() + days)
+  return localDayKey(date)
+}
