@@ -136,3 +136,138 @@ export function windowCounts(entries: SignalEntry[]): { morning: number; evening
     { morning: 0, evening: 0 },
   )
 }
+
+// ── Monthly summary ─────────────────────────────────────────────────────────
+
+/** Show the month card once this many distinct days are logged in the month. */
+export const MIN_DAYS_FOR_MONTHLY = 5
+
+export interface MonthlySummary {
+  /** First day of the calendar month, `YYYY-MM-DD`. */
+  monthStart: string
+  /** Last day counted (today when the month is in progress), `YYYY-MM-DD`. */
+  monthEnd: string
+  /** e.g. "August 2026" */
+  label: string
+  checkInCount: number
+  daysLogged: number
+  averageScore: number | null
+  morningCount: number
+  eveningCount: number
+  morningAvg: number | null
+  eveningAvg: number | null
+  topTags: string[]
+  bestDay: { dayKey: string; score: number } | null
+  /** This month's average minus last month's, or null if last month is empty. */
+  vsPreviousMonth: number | null
+  ready: boolean
+  highlight: string
+}
+
+const MONTH_LABELS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const
+
+const entryDayKey = (entry: SignalEntry): string => entry.dayKey ?? localDayKey(new Date(entry.createdAt))
+
+const monthPrefix = (year: number, monthIndex: number): string => `${year}-${String(monthIndex + 1).padStart(2, '0')}`
+
+export function entriesInMonth(entries: SignalEntry[], year: number, monthIndex: number): SignalEntry[] {
+  const prefix = monthPrefix(year, monthIndex)
+  return entries.filter((entry) => entryDayKey(entry).startsWith(prefix))
+}
+
+function averageOf(entries: SignalEntry[]): number | null {
+  if (entries.length === 0) return null
+  return Math.round(entries.reduce((sum, entry) => sum + entry.score, 0) / entries.length)
+}
+
+function topTagsOf(entries: SignalEntry[], limit = 3): string[] {
+  const counts = new Map<string, number>()
+  for (const entry of entries) {
+    for (const tag of new Set(entry.tags.map((item) => item.trim()).filter(Boolean))) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([tag]) => tag)
+}
+
+export function buildMonthlySummary(entries: SignalEntry[], now: Date = new Date()): MonthlySummary {
+  const year = now.getFullYear()
+  const monthIndex = now.getMonth()
+  const month = entriesInMonth(entries, year, monthIndex)
+
+  const previousDate = new Date(year, monthIndex - 1, 1)
+  const previous = entriesInMonth(entries, previousDate.getFullYear(), previousDate.getMonth())
+
+  const averageScore = averageOf(month)
+  const previousAverage = averageOf(previous)
+  const amPm = compareMorningEvening(month)
+  const counts = windowCounts(month)
+  const daysLogged = new Set(month.map(entryDayKey)).size
+
+  let bestDay: MonthlySummary['bestDay'] = null
+  for (const entry of month) {
+    const key = entryDayKey(entry)
+    if (bestDay === null || entry.score > bestDay.score || (entry.score === bestDay.score && key > bestDay.dayKey)) {
+      bestDay = { dayKey: key, score: entry.score }
+    }
+  }
+
+  const vsPreviousMonth = averageScore === null || previousAverage === null ? null : averageScore - previousAverage
+  const ready = daysLogged >= MIN_DAYS_FOR_MONTHLY
+
+  return {
+    monthStart: `${monthPrefix(year, monthIndex)}-01`,
+    monthEnd: localDayKey(now),
+    label: `${MONTH_LABELS[monthIndex]} ${year}`,
+    checkInCount: month.length,
+    daysLogged,
+    averageScore,
+    morningCount: counts.morning,
+    eveningCount: counts.evening,
+    morningAvg: amPm.morning,
+    eveningAvg: amPm.evening,
+    topTags: topTagsOf(month),
+    bestDay,
+    vsPreviousMonth,
+    ready,
+    highlight: monthlyHighlight({ daysLogged, averageScore, vsPreviousMonth, ready, counts }),
+  }
+}
+
+function monthlyHighlight(input: {
+  daysLogged: number
+  averageScore: number | null
+  vsPreviousMonth: number | null
+  ready: boolean
+  counts: { morning: number; evening: number }
+}): string {
+  if (!input.ready) {
+    const remaining = MIN_DAYS_FOR_MONTHLY - input.daysLogged
+    return `Log ${remaining} more ${remaining === 1 ? 'day' : 'days'} this month to unlock the monthly read.`
+  }
+  if (input.vsPreviousMonth !== null && Math.abs(input.vsPreviousMonth) >= 5) {
+    return input.vsPreviousMonth > 0
+      ? `Up ${input.vsPreviousMonth} on last month. Whatever changed, it is working.`
+      : `Down ${Math.abs(input.vsPreviousMonth)} on last month. Compare the tags that dropped off.`
+  }
+  const total = input.counts.morning + input.counts.evening
+  if (total > 0 && input.counts.evening === 0) {
+    return 'All mornings this month. An evening window would show how your days end.'
+  }
+  if (total > 0 && input.counts.morning === 0) {
+    return 'All evenings this month. A morning window would show where your days start.'
+  }
+  if (input.averageScore !== null && input.averageScore >= 75) {
+    return 'A strong month across both windows. Keep the conditions that held.'
+  }
+  if (input.averageScore !== null && input.averageScore <= 45) {
+    return 'A low month. Pick one recovery habit and watch the next two weeks.'
+  }
+  return 'A steady month. Tag patterns will show what moved the needle.'
+}
