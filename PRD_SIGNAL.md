@@ -13,8 +13,9 @@ Pulse Signal is the default product. Venue discovery remains in the repo as a do
 
 1. Check in morning and/or evening (energy, mood, stress, sleep, up to 3 tags)
 2. Get a 0–100 signal, an insight, and one recommendation
-3. Keep a daily streak (a day counts if either window is logged)
+3. Keep a daily streak (a day counts if either window is logged); milestones at 3, 7, 14, 30, and 100 days are celebrated once
 4. Compare morning vs evening once both exist
+5. Read the patterns as data accumulates: tag lifts and drains, sleep against the following day, personal records, and a month against the one before
 
 ## Data
 
