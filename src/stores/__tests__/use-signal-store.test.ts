@@ -15,6 +15,7 @@ function resetStore(entries: SignalEntry[] = []) {
     savedAt: null,
     firstWinOpen: false,
     reminderEnabled: false,
+    lastCelebratedMilestone: null,
   })
 }
 
@@ -60,5 +61,23 @@ describe('useSignalStore check-in windows', () => {
     expect(evening.dayKey).toBe('2026-08-16')
     expect(evening.id).not.toBe(morning.id)
     expect(useSignalStore.getState().entries).toHaveLength(2)
+  })
+})
+
+describe('useSignalStore streak milestones', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    resetStore()
+  })
+
+  it('keeps the highest celebrated milestone and clears it with the account', () => {
+    expect(useSignalStore.getState().lastCelebratedMilestone).toBeNull()
+    useSignalStore.getState().celebrateMilestone(3)
+    expect(useSignalStore.getState().lastCelebratedMilestone).toBe(3)
+    useSignalStore.getState().celebrateMilestone(7)
+    useSignalStore.getState().celebrateMilestone(3)
+    expect(useSignalStore.getState().lastCelebratedMilestone).toBe(7)
+    useSignalStore.getState().clearLocalAccount()
+    expect(useSignalStore.getState().lastCelebratedMilestone).toBeNull()
   })
 })

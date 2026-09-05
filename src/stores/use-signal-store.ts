@@ -20,11 +20,14 @@ interface SignalStore {
   savedAt: string | null
   firstWinOpen: boolean
   reminderEnabled: boolean
+  /** Highest streak milestone already celebrated, so each fires once. */
+  lastCelebratedMilestone: number | null
   setProfile: (userId: string, profile: SignalProfile) => void
   mergeRemoteEntries: (entries: SignalEntry[]) => void
   updateDraft: (patch: Partial<DraftSignal>) => void
   saveEntry: (userId: string, focus?: TrackingFocus) => SignalEntry
   closeFirstWin: () => void
+  celebrateMilestone: (milestone: number) => void
   setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
   clearLocalAccount: () => void
 }
@@ -53,6 +56,7 @@ export const useSignalStore = create<SignalStore>()(
       savedAt: null,
       firstWinOpen: false,
       reminderEnabled: false,
+      lastCelebratedMilestone: null,
       setProfile: (userId, profile) => {
         set({ profile })
         void saveSignalProfile(userId, profile)
@@ -112,6 +116,8 @@ export const useSignalStore = create<SignalStore>()(
         return entry
       },
       closeFirstWin: () => set({ firstWinOpen: false }),
+      celebrateMilestone: (milestone) =>
+        set((state) => ({ lastCelebratedMilestone: Math.max(state.lastCelebratedMilestone ?? 0, milestone) })),
       setReminder: (enabled, reminderTime, userId) => {
         const current = get().profile
         const nextProfile = current
@@ -136,6 +142,7 @@ export const useSignalStore = create<SignalStore>()(
           savedAt: null,
           firstWinOpen: false,
           reminderEnabled: false,
+          lastCelebratedMilestone: null,
           draft: {
             energy: 7,
             mood: 7,
@@ -153,6 +160,7 @@ export const useSignalStore = create<SignalStore>()(
         entries: state.entries,
         savedAt: state.savedAt,
         reminderEnabled: state.reminderEnabled,
+        lastCelebratedMilestone: state.lastCelebratedMilestone,
       }),
     },
   ),

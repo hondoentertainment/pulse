@@ -45,6 +45,12 @@ export type AnalyticsEvent =
   | { type: 'signal_reminder_toggle'; timestamp: number; enabled: boolean; permission: string }
   | { type: 'signal_csv_export'; timestamp: number; count: number }
   | { type: 'signal_account_deleted'; timestamp: number }
+  | { type: 'signal_milestone_reached'; timestamp: number; milestone: number; streak: number }
+  | { type: 'signal_milestone_dismissed'; timestamp: number; milestone: number }
+  | { type: 'signal_sleep_link_view'; timestamp: number; pairs: number; ready: boolean }
+  | { type: 'signal_records_view'; timestamp: number; totalCheckIns: number; longestStreak: number }
+  | { type: 'signal_monthly_summary_view'; timestamp: number; daysLogged: number; ready: boolean }
+  | { type: 'signal_history_filter'; timestamp: number; tagCount: number; window: 'morning' | 'evening' | 'all'; shown: number }
   | { type: 'arrival_prompt_shown'; timestamp: number; venueId: string }
   | { type: 'arrival_confirmed'; timestamp: number; venueId: string }
   | { type: 'mismatch_reported'; timestamp: number; venueId: string; correction: string }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { localDayKey, resolveCheckInWindow, windowLabel } from '@/lib/signal-windows'
+import { localDayKey, parseDayKey, resolveCheckInWindow, shiftDayKey, windowLabel } from '@/lib/signal-windows'
 import { buildChartSeries, compareMorningEvening, getOpenWindow, getStreakCount, getTodayEntries } from '@/lib/signal-insights'
 import type { SignalEntry } from '@/lib/signal-insights'
 
@@ -21,6 +21,14 @@ const entry = (overrides: Partial<SignalEntry>): SignalEntry => ({
 describe('signal windows', () => {
   it('uses local calendar day keys', () => {
     expect(localDayKey(new Date(2026, 7, 16, 23, 30))).toBe('2026-08-16')
+  })
+
+  it('parses and shifts day keys in local time across month, year, and DST edges', () => {
+    expect(localDayKey(parseDayKey('2026-08-16'))).toBe('2026-08-16')
+    expect(shiftDayKey('2026-08-31', 1)).toBe('2026-09-01')
+    expect(shiftDayKey('2026-01-01', -1)).toBe('2025-12-31')
+    expect(shiftDayKey('2026-03-08', 1)).toBe('2026-03-09')
+    expect(shiftDayKey('2026-11-01', 1)).toBe('2026-11-02')
   })
 
   it('splits morning and evening at noon', () => {

@@ -1,12 +1,40 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-01 after the ESM + Signal-test cycle (post-#67 / post-#68).
+> Updated 2026-09-03 after the Signal insight cycle (post-#70). The 2026-09-01 cycle notes are kept below.
 
 ## Decision
 
 **Pulse Signal is the default product** (`VITE_APP_MODE=signal`). Venue discovery remains in-repo behind `VITE_APP_MODE=venue` and optional `VITE_LAUNCHED_CITIES=Seattle,WA`. See [PRD_SIGNAL.md](PRD_SIGNAL.md). Do not merge another default-mode flip.
 
-## Implemented in this cycle (in-repo)
+## Feature roadmap
+
+### Implemented — 2026-09-03 insight cycle
+
+Five additive Signal features. Each is pure `src/lib/signal-*.ts` logic with unit tests, one card or control in `SignalApp.tsx`, and an analytics event. No new dependencies, no migrations, no server changes.
+
+| Feature | Module | Surface | Gate |
+|---|---|---|---|
+| Sleep → next-day link | `signal-sleep-link.ts` | Trends card | ≥1 consecutive-day pair; full read at 5 |
+| Streak milestones 3 / 7 / 14 / 30 / 100 | `signal-milestones.ts` | Home banner + streak-tile nudge | fires once per milestone (`lastCelebratedMilestone` in the local store) |
+| Personal records + best weekday | `signal-records.ts` | Trends card | ≥7 check-ins; a weekday needs ≥2 |
+| History filter by window and tag | `signal-filter.ts` | History chips | any entries |
+| Monthly summary vs last month | `signal-patterns.ts` (`buildMonthlySummary`) | Trends card | ≥2 days; full read at 5 |
+
+Why these five: each closes a loop the PRD already promises (keep the streak, patterns you can act on, own your data) without inventing product surface. Sleep is paired with the *following* day on purpose: the score already weights sleep quality, so a same-day comparison would be circular.
+
+### Proposed next (not started)
+
+Ordered by fit with the core loop. None needs a migration unless noted.
+
+1. **CSV import** — invert `entriesToCsv`; needs a new store action plus one `saveSignalEntry` per row (the 23505 conflict path already exists). Completes the own-your-data story.
+2. **JSON export** — ~30 lines on `signal-export.ts`; ship together with import.
+3. **Unusual-week flag** — trailing 7 days against the prior 21-day baseline. Only honest after ~4 weeks of data; ship gated with a keep-logging fallback.
+4. **Month calendar view** — CSS grid coloured by `scoreBucketColor`. Presentation rather than insight, so it sits below the three above.
+5. **Local reminder snooze** — client-side `snoozedUntil`. Closed-app quiet hours would need a `signal_profiles` column (migration) and cron changes; call that out before starting.
+
+Rejected this cycle: per-entry notes (needs a DB column and contradicts the "no typing" promise), and everything under Parked.
+
+## Implemented — 2026-09-01 cycle (in-repo)
 
 | Item | Status |
 |------|--------|
@@ -53,5 +81,6 @@ SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod
 - Social comparison inside Signal
 - Invented Pulse Pro pricing or Stripe
 - Reopening #44 venue default flip
+- Per-entry notes (needs a `signal_entries` column; contradicts "no typing")
 
 #42 / #44 / #55 / #60 stay superseded. #48–#53 shipped flag-gated in #62 and stay off the default path.

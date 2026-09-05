@@ -25,9 +25,9 @@ The nightlife venue PWA stays in-repo behind `VITE_APP_MODE=venue` (optional geo
 
 ## Working today
 
-- Home AM/PM check-in, insight, streak, and 7-day average
-- Trends chart, morning vs evening, weekly summary, tag patterns
-- History log and CSV export
+- Home AM/PM check-in, insight, streak with milestone celebrations (3/7/14/30/100), and 7-day average
+- Trends chart, morning vs evening, weekly and monthly summaries, tag patterns, sleep → next-day link, personal records
+- History log with window and tag filters, and CSV export
 - Settings: daily reminder (honest permission copy), Pulse Pro pilot email, account data delete
 - Server reminder cron (`/api/signal/reminders/dispatch`) plus Web Push subscribe
 - Auth + persistence via Supabase when `VITE_SUPABASE_*` is set; otherwise local-only
