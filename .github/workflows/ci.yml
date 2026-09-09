@@ -146,7 +146,7 @@ jobs:
           VITE_VISUAL_PREVIEW: 'true'
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
-        run: npx playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts
+        run: npx playwright test e2e/venue-shell.spec.ts e2e/pulse-creation.spec.ts e2e/search.spec.ts
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
