@@ -21,6 +21,7 @@ Accepted falsy values: `0`, `false`, `no`, `off`
 | `ticketing` | `VITE_TICKETING_ENABLED` | `false` | Ticket purchase, QR codes, staff scanner |
 | `aiConcierge` | `VITE_AI_CONCIERGE_ENABLED` | `false` | AI night-planning chat sheet |
 | `creatorEconomy` | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab, referrals, payouts |
+| `venueInbox` | `VITE_FF_VENUE_INBOX` | `true` | Read-only venue live-review inbox (`/venue/:id/inbox`) |
 
 \* Safety Kit defaults to on in dev (`.env.example`) but should stay **off in production** until Twilio and server env are configured. See [Safety Kit](safety-kit.md).
 

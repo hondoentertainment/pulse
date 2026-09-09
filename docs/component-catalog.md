@@ -74,6 +74,7 @@ AppRoutes (React Router)
 | `/` | Redirect to active tab |
 | `/discover`, `/map`, `/trending`, `/notifications`, `/profile` | Tab views |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
 | Sub-page paths | `SubPageRouter` |
 

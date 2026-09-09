@@ -177,11 +177,30 @@ Geo-anchored posts at venues. Expire after 90 minutes.
 | `photos` | TEXT[] | Up to 3 |
 | `video_url`, `video_*` | various | Video metadata (max 50 MB) |
 | `energy_rating` | ENUM | dead, chill, buzzing, electric |
-| `caption`, `hashtags` | TEXT/TEXT[] | |
+| `caption`, `hashtags` | TEXT/TEXT[] | Live reviews require caption (1–280) at the API/app layer |
+| `kind` | TEXT | `pulse` (legacy energy-only) or `review` (live review). Default `pulse`. |
+| `location_verified` | BOOLEAN | True when GPS was inside check-in radius. Default false. |
+| `has_body` | BOOLEAN | Generated: caption present after trim |
 | `views`, `credibility_weight` | INT/FLOAT | |
 | `reactions` | JSONB | Legacy; synced from `pulse_reactions` |
 | `created_at`, `expires_at` | TIMESTAMPTZ | Default expiry: +90 min |
 | `deleted_at` | TIMESTAMPTZ | Soft-delete |
+
+**Migration:** `supabase/migrations/20260909000000_live_reviews.sql`
+
+### `pulse_reports`
+
+Persisted hide/report rows for pulses (MVP). Reporter can insert/select their own rows. Admins via `is_admin()`.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `reporter_id` | UUID | FK → profiles |
+| `pulse_id` | UUID | FK → pulses |
+| `reason` | TEXT | spam / inappropriate / harassment / misinformation / fake_location / other |
+| `details` | TEXT | Optional |
+| `created_at` | TIMESTAMPTZ | |
+| UNIQUE | `(reporter_id, pulse_id)` | One report per user per pulse |
 
 **Storage:** `pulse-videos` bucket (public read, owner-folder write).
 

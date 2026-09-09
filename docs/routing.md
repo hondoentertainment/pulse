@@ -48,6 +48,7 @@ How users move through Pulse. The app is venue + map only.
 | Path | Component |
 |------|-----------|
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` (read-only tonight’s live reviews) |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
 
 ### Deep links (native)

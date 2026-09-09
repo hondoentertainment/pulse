@@ -26,8 +26,10 @@ import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/
 import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
-import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
+import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
+import { track } from '@/lib/observability/analytics'
 
 function milesBetween(
   a: { lat: number; lng: number },
@@ -85,13 +87,27 @@ export function useAppHandlers() {
     setCreateDialogOpen(true)
   }, [currentUser, pulses, setCreateDialogOpen, setVenueForPulse, venues])
 
-  const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
+  const handleSubmitPulse = useCallback(async (data: {
+    energyRating: EnergyRating
+    caption: string
+    photos: string[]
+    video?: string
+    hashtags?: string[]
+    kind?: 'pulse' | 'review'
+    locationVerified?: boolean
+  }) => {
     if (!venueForPulse || !currentUser || !venues) return
+
+    const captionCheck = validateLiveReviewCaption(data.caption)
+    if (!captionCheck.ok) {
+      toast.error(captionCheck.error ?? 'Caption is required for a live review')
+      return
+    }
 
     if (USE_SUPABASE_BACKEND) {
       const userId = await getUserIdOrNull()
       if (!userId) {
-        toast.error('Sign in required', { description: 'Sign in to post a pulse to the live feed.' })
+        toast.error('Sign in required', { description: 'Sign in to post a live review.' })
         return
       }
     }
@@ -119,6 +135,9 @@ export function useAppHandlers() {
     const venuePulsesToday = (pulses || []).filter(p => p.venueId === venueForPulse.id && new Date(p.createdAt).toISOString().split('T')[0] === today)
     const isPioneer = venuePulsesToday.length === 0
 
+    const locationProof = evaluateLocationProof(userLocation, venueForPulse.location)
+    const locationVerified = data.locationVerified ?? locationProof.locationVerified
+
     const newPulse = {
       id: `pulse-${Date.now()}`,
       userId: currentUser.id,
@@ -127,7 +146,7 @@ export function useAppHandlers() {
       photos: data.photos,
       video: data.video,
       energyRating: data.energyRating,
-      caption: data.caption,
+      caption: captionCheck.caption,
       hashtags: data.hashtags || [],
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
@@ -136,6 +155,9 @@ export function useAppHandlers() {
       isPending: true,
       credibilityWeight: userCredibility,
       isPioneer,
+      kind: data.kind ?? 'review' as const,
+      locationVerified,
+      hasBody: true,
     }
 
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
@@ -172,11 +194,28 @@ export function useAppHandlers() {
       lastPostDate: today,
     })
 
-    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
-    toast.success('Pulse posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
-    announce(`Pulse posted at ${venueForPulse.name}`)
+    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first live review here today.' })
+    if (!locationVerified) {
+      toast.message('Posted as unverified', {
+        description: locationProof.reason === 'outside_radius'
+          ? 'You were outside the check-in radius.'
+          : 'Location was unavailable, so this review is unmarked.',
+      })
+    }
+    toast.success('Live review posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
+    announce(`Live review posted at ${venueForPulse.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
-    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
+    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: true, hashtagCount: data.hashtags?.length || 0 })
+    track('pulse_created', {
+      pulseId: newPulse.id,
+      venueId: venueForPulse.id,
+      hasPhoto: data.photos.length > 0,
+      hasCaption: true,
+      hashtagCount: data.hashtags?.length || 0,
+      energyRating: data.energyRating,
+      kind: newPulse.kind,
+      locationVerified,
+    })
 
     const syncOnline = await uploadPulseToSupabase(newPulse)
     if (!syncOnline) {
@@ -321,6 +360,15 @@ export function useAppHandlers() {
   const handlePulseReport = useCallback((report: ContentReport) => {
     setContentReports(current => [report, ...(current || [])])
     toast.success('Report submitted. Thanks for keeping Pulse safe.')
+    if (USE_SUPABASE_BACKEND && report.targetType === 'pulse') {
+      void PulseData.createPulseReport({
+        pulseId: report.targetId,
+        reason: report.reason,
+        details: report.description,
+      }).catch((err) => {
+        console.warn('[live-review] persist report failed', err)
+      })
+    }
   }, [setContentReports])
 
   const handlePromotionImpression = useCallback((promotionId: string) => {

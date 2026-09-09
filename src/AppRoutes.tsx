@@ -19,6 +19,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
+import { VenueInboxRoute } from '@/components/VenueInboxRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 
@@ -74,7 +75,7 @@ export function AppRoutes() {
     socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
     venueForPulse,
-    locationName, isTracking, realtimeLocation,
+    locationName, isTracking, realtimeLocation, userLocation,
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
     selectedMarketKey: _selectedMarketKey, setSelectedMarketKey: _setSelectedMarketKey,
@@ -180,6 +181,7 @@ export function AppRoutes() {
       <Routes>
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
+        <Route path="/venue/:venueId/inbox" element={<VenueInboxRoute />} />
 
         {/* Admin-only: structured venue metadata editor. Non-admins get a 403
             rendered by VenueMetadataRoute itself. */}
@@ -242,6 +244,7 @@ export function AppRoutes() {
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
           venue={venueForPulse}
+          userLocation={userLocation ?? realtimeLocation ?? null}
           onSubmit={handleSubmitPulse}
         />
       </Suspense>

@@ -152,6 +152,8 @@ export interface VenueLiveSummary {
   updatedAt: string
 }
 
+export type PulseKind = 'pulse' | 'review'
+
 export interface Pulse {
   id: string
   userId: string
@@ -175,6 +177,12 @@ export interface Pulse {
   credibilityWeight?: number
   crewId?: string
   isPioneer?: boolean
+  /** Discriminator: venue create writes `review`; legacy energy-only rows are `pulse`. */
+  kind?: PulseKind
+  /** True when GPS placed the author inside the venue check-in radius. */
+  locationVerified?: boolean
+  /** Derived from caption — true when the review has body text. */
+  hasBody?: boolean
 }
 
 export interface PulseWithUser extends Pulse {
@@ -240,6 +248,8 @@ export const ENERGY_CONFIG = {
 export const COOLDOWN_MINUTES = 120
 export const PULSE_DECAY_MINUTES = 90
 export const CHECK_IN_RADIUS_MILES = 0.062
+export const LIVE_NOW_WINDOW_MINUTES = 90
+export const LIVE_REVIEW_CAPTION_MAX = 280
 
 export type HashtagCategory = 'nightlife' | 'sports' | 'music' | 'food' | 'cafes' | 'general'
 export type HashtagVibeType = 'energetic' | 'chill' | 'social' | 'foodie' | 'cultural'

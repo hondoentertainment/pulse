@@ -3,6 +3,7 @@ import { EnergyBadge } from '@/components/EnergyBadge'
 import { formatDistance } from '@/lib/units'
 import { calculateDistance, getEnergyLabel } from '@/lib/pulse-engine'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
+import { countLiveReviewsInWindow, LIVE_NOW_WINDOW_MINUTES } from '@/lib/live-reviews'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -49,11 +50,13 @@ export function SurgingNearbyList({
               )
             : undefined
           const recentCount = pulsesInWindow(pulses, venue.id, PULSE_DECAY_MINUTES)
+          const liveReviewCount = countLiveReviewsInWindow(pulses, venue.id, LIVE_NOW_WINDOW_MINUTES)
           const neighborhood = venue.neighborhood || venue.city
           const meta = [
             distance !== undefined ? formatDistance(distance, unitSystem) : null,
             neighborhood,
-            recentCount > 0 ? `${recentCount} pulses / ${PULSE_DECAY_MINUTES}m` : null,
+            liveReviewCount > 0 ? `${liveReviewCount} live reviews / ${LIVE_NOW_WINDOW_MINUTES}m` : null,
+            recentCount > 0 && liveReviewCount === 0 ? `${recentCount} pulses / ${PULSE_DECAY_MINUTES}m` : null,
           ]
             .filter(Boolean)
             .join(' · ')

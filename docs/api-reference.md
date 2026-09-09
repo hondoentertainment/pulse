@@ -14,8 +14,9 @@ Pulse exposes serverless routes under `/api/*`, deployed as Vercel Functions. Th
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/api/pulses/create` | JWT | Create pulse with server moderation + rate limit (10/hr) |
+| `POST` | `/api/pulses/create` | JWT | Create pulse/live review with server moderation, 10/hr global + 120m/venue cooldown. Reviews require caption (1–280) and accept `kind`, `locationVerified`. |
 | `GET` | `/api/pulses/list` | JWT | Paginated pulse feed |
+| `POST` | `/api/pulses/report` | JWT | Persist a pulse report (3/hr). Hide is applied client-side for the reporter. |
 | `POST` | `/api/pulses` | — | Legacy in-memory store (offline replay prototype) |
 
 ## Venues

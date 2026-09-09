@@ -41,15 +41,21 @@ interface PulseRow {
   created_at: string
   expires_at: string
   deleted_at: string | null
+  kind?: string | null
+  location_verified?: boolean | null
+  has_body?: boolean | null
 }
 
 const PULSE_COLUMNS = `
   id, user_id, venue_id, crew_id, photos, video_url,
   energy_rating, caption, hashtags, views, is_pioneer,
-  credibility_weight, reactions, created_at, expires_at, deleted_at
+  credibility_weight, reactions, created_at, expires_at, deleted_at,
+  kind, location_verified, has_body
 `.trim()
 
 function toAppPulse(row: PulseRow) {
+  const kind = row.kind === 'review' || row.kind === 'pulse' ? row.kind : undefined
+  const caption = row.caption ?? undefined
   return {
     id: row.id,
     userId: row.user_id,
@@ -58,7 +64,7 @@ function toAppPulse(row: PulseRow) {
     photos: row.photos ?? [],
     video: row.video_url ?? undefined,
     energyRating: row.energy_rating,
-    caption: row.caption ?? undefined,
+    caption,
     hashtags: row.hashtags ?? [],
     views: row.views ?? 0,
     isPioneer: row.is_pioneer ?? false,
@@ -68,6 +74,9 @@ function toAppPulse(row: PulseRow) {
     expiresAt: row.expires_at,
     isPending: false,
     uploadError: false,
+    kind,
+    locationVerified: typeof row.location_verified === 'boolean' ? row.location_verified : undefined,
+    hasBody: typeof row.has_body === 'boolean' ? row.has_body : Boolean(caption && caption.trim()),
   }
 }
 

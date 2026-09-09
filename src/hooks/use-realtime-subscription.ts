@@ -156,6 +156,9 @@ export function useRealtimeSubscription(enabled = true) {
               expiresAt: row.expires_at,
               isPending: false,
               uploadError: false,
+              kind: row.kind === 'review' || row.kind === 'pulse' ? row.kind : undefined,
+              locationVerified: typeof row.location_verified === 'boolean' ? row.location_verified : undefined,
+              hasBody: Boolean(typeof row.caption === 'string' && row.caption.trim()),
             },
             timestamp: Date.now(),
           })

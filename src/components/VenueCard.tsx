@@ -24,13 +24,16 @@ interface VenueCardProps {
   onToggleFollow?: (venueId: string) => void
   showPreTrendingLabel?: boolean
   mediaUrl?: string
+  liveReviewCount?: number
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel, mediaUrl }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel, mediaUrl, liveReviewCount = 0 }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
   const liveReportCount = venue.liveSummary?.reportCount ?? 0
+  const reviewOrReportCount = liveReviewCount > 0 ? liveReviewCount : liveReportCount
+  const reviewLabel = liveReviewCount > 0 ? 'Reviews' : 'Reports'
   
   return (
     <motion.div
@@ -73,7 +76,7 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                     Following
                   </Badge>
                 )}
-                {liveReportCount > 0 && (
+                {reviewOrReportCount > 0 && (
                   <Badge variant="outline" className="border-white/25 bg-black/35 text-xs text-white backdrop-blur">
                     <Broadcast size={11} weight="fill" className="mr-1" />
                     Live
@@ -168,8 +171,8 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
             />
             <MetricPill
               icon={<Broadcast size={13} weight="fill" />}
-              label="Reports"
-              value={liveReportCount > 0 ? String(liveReportCount) : 'None'}
+              label={reviewLabel}
+              value={reviewOrReportCount > 0 ? String(reviewOrReportCount) : 'None'}
             />
           </div>
         </div>

@@ -27,12 +27,11 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
-    // Dialog title
-    await expect(page.locator('text=/Create pulse/i').first()).toBeVisible({
+    await expect(page.locator('text=/Live review/i').first()).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -43,15 +42,14 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
     await createBtn.click()
 
     const caption = page.getByPlaceholder(/What's the vibe/i)
     await expect(caption).toBeVisible({ timeout: 5_000 })
     await caption.fill('Testing the vibe')
 
-    // The Post Pulse button should exist
-    await expect(page.getByRole('button', { name: /Post Pulse/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Post live review/i }).last()).toBeVisible()
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
@@ -60,14 +58,14 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
+    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
     await createBtn.click()
 
     const cancel = page.getByRole('button', { name: /^Cancel$/i })
     await expect(cancel).toBeVisible({ timeout: 5_000 })
     await cancel.click()
 
-    await expect(page.getByRole('heading', { name: /Create pulse/i })).not.toBeVisible({
+    await expect(page.getByRole('heading', { name: /Live review/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

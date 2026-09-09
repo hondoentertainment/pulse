@@ -9,8 +9,9 @@
 import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
-import type { EnergyRating, Pulse } from '@/lib/types'
+import type { EnergyRating, Pulse, PulseKind } from '@/lib/types'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
+import { mapLiveReviewFields, validateLiveReviewCaption } from '@/lib/live-reviews'
 
 // ── Row <-> Domain mapping ───────────────────────────────────────────────
 
@@ -31,6 +32,9 @@ interface PulseRow {
   created_at: string
   expires_at: string
   deleted_at: string | null
+  kind?: string | null
+  location_verified?: boolean | null
+  has_body?: boolean | null
 }
 
 function rowToPulse(row: PulseRow): Pulse {
@@ -52,13 +56,15 @@ function rowToPulse(row: PulseRow): Pulse {
     expiresAt: row.expires_at,
     isPending: false,
     uploadError: false,
+    ...mapLiveReviewFields(row),
   }
 }
 
 const SELECT_COLUMNS = `
   id, user_id, venue_id, crew_id, photos, video_url,
   energy_rating, caption, hashtags, views, is_pioneer,
-  credibility_weight, reactions, created_at, expires_at, deleted_at
+  credibility_weight, reactions, created_at, expires_at, deleted_at,
+  kind, location_verified, has_body
 `.trim()
 
 // ── Read queries ─────────────────────────────────────────────────────────
@@ -169,10 +175,20 @@ export interface CreatePulseInput {
   crewId?: string
   credibilityWeight?: number
   isPioneer?: boolean
+  kind?: PulseKind
+  locationVerified?: boolean
 }
 
 export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
-  const userId = await requireUserId({ action: 'post a pulse' })
+  const kind: PulseKind = input.kind ?? 'review'
+  if (kind === 'review') {
+    const captionCheck = validateLiveReviewCaption(input.caption)
+    if (!captionCheck.ok) {
+      throw new Error(captionCheck.error)
+    }
+  }
+
+  const userId = await requireUserId({ action: 'post a live review' })
   const createdAt = new Date()
   const expiresAt = new Date(createdAt.getTime() + PULSE_DECAY_MINUTES * 60 * 1000)
 
@@ -193,6 +209,8 @@ export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
       reactions: { fire: [], eyes: [], skull: [], lightning: [] },
       created_at: createdAt.toISOString(),
       expires_at: expiresAt.toISOString(),
+      kind,
+      location_verified: input.locationVerified ?? false,
     })
     .select(SELECT_COLUMNS)
     .single()
@@ -211,6 +229,27 @@ export async function softDeletePulse(pulseId: string): Promise<void> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', pulseId)
     .eq('user_id', userId)
+  if (result.error) {
+    throw Object.assign(new Error(result.error.message), { cause: result.error })
+  }
+}
+
+export interface CreatePulseReportInput {
+  pulseId: string
+  reason: string
+  details?: string
+}
+
+export async function createPulseReport(input: CreatePulseReportInput): Promise<void> {
+  const userId = await requireUserId({ action: 'report this review' })
+  const result = await supabase
+    .from('pulse_reports')
+    .insert({
+      reporter_id: userId,
+      pulse_id: input.pulseId,
+      reason: input.reason,
+      details: input.details ?? null,
+    })
   if (result.error) {
     throw Object.assign(new Error(result.error.message), { cause: result.error })
   }
