@@ -1,97 +1,6 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-09 after intake triage (post-#71 on `main`). Open GitHub work: #64, #65, #66 only.
-
-## Intake Summary
-
-- Total active items: **8** (3 human-ops blockers + 5 agent-executable Signal features)
-- Recommended next action: **OPS-1 / #64** — apply production Supabase migrations + env, then prove the live loop
-- Why: Feature code on `main` cannot retain check-ins, run reminders, or sync across devices until prod schema/env are real. Code work without that is polish on a prototype persistence path.
-
-## Prioritized Queue
-
-### Track A — Human ops (do first; agents cannot finish these)
-
-1. **[OPS-1] Apply Signal migrations + env in production** — Priority: P0 | Effort: S–M | Impact: Stability / data
-   - Issue: #64
-   - Why now: Blocks signed-in persistence, reminder cron, pilot signups, and multi-device sync
-   - Dependencies: Supabase admin + Vercel env access
-   - Acceptance criteria:
-     - [ ] Migrations applied in order (`signal_core` → `pilot_signups` → `push_subscriptions` → `venue_signal_seattle_launch`)
-     - [ ] `supabase/verify/signal_launch.sql` shows all `signal_*` tables present
-     - [ ] Prod env set: `VITE_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (+ optional VAPID)
-     - [ ] Redeploy so client `VITE_*` values are baked in
-   - Verification: [docs/runbooks/signal-launch.md](docs/runbooks/signal-launch.md) + `SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod`
-
-2. **[OPS-2] Prove the live Signal loop on production** — Priority: P0 | Effort: S | Impact: User-facing
-   - Issue: #64 (remainder)
-   - Why now: Confirms migrations/env actually work end-to-end
-   - Dependencies: OPS-1 complete
-   - Acceptance criteria:
-     - [ ] Auth check-in writes `day_key` + `check_in_window`
-     - [ ] Same-window double save refused; evening after noon when morning logged
-     - [ ] Device A save visible on Device B after refresh
-     - [ ] Reminder dispatch returns candidates/results with valid `CRON_SECRET`
-     - [ ] Pilot email idempotent; CSV export + delete-my-data work for the signed-in account
-   - Verification: Checklist in [docs/runbooks/signal-launch.md](docs/runbooks/signal-launch.md)
-
-3. **[HOUSE-1] Branch protection for solo maintainer** — Priority: P1 | Effort: S | Impact: Developer velocity
-   - Issue: #65
-   - Why now: Required checks exist; owner cannot merge own PRs without bypass or zero required reviews
-   - Dependencies: None (can run in parallel with OPS-1)
-   - Acceptance criteria:
-     - [ ] `main` requires `smoke-preview` (or rename required check to `smoke-preview-signal`)
-     - [ ] Solo maintainer can merge (admin bypass **or** required reviews = 0)
-   - Verification: Open a no-op PR and confirm checks + merge path work
-
-4. **[OPS-3] Closed-app Web Push on a real device** — Priority: P1 | Effort: M | Impact: Retention
-   - Issue: #66
-   - Why now: Completes the reminder loop the PRD promises; only honest after VAPID + migrations
-   - Dependencies: OPS-1 env includes VAPID keys; OPS-2 live loop green
-   - Acceptance criteria:
-     - [ ] Subscribe succeeds on a real phone/desktop with permission granted
-     - [ ] Cron delivers a closed-app push when today is unlogged
-     - [ ] Settings copy stays honest when permission/VAPID missing
-   - Verification: [docs/runbooks/signal-web-push.md](docs/runbooks/signal-web-push.md)
-
-### Track B — Agent-executable product (after or between ops waits)
-
-5. **[FEAT-1] CSV import + JSON export** — Priority: P2 | Effort: M | Impact: Trust / own-your-data
-   - Why now: Export already ships (`entriesToCsv`); import inverts it and completes the data story. JSON export is ~30 lines on `signal-export.ts` — ship together.
-   - Dependencies: None for local/store path; prod import needs OPS-1 for remote `saveSignalEntry` (23505 conflict path already exists)
-   - Scope in: parse CSV → store action → one `saveSignalEntry` per row; download JSON mirror of export
-   - Scope out: Apple Health / Google Fit; schema changes; per-entry free-text notes
-   - Acceptance criteria:
-     - [ ] Valid Signal CSV re-imports without duplicating same `(day_key, window)` rows
-     - [ ] Malformed rows are skipped with a clear count
-     - [ ] JSON export downloads and round-trips fields used by CSV
-     - [ ] Unit tests for parse + conflict behavior; Signal smoke still green
-   - Verification: `npm test` + `npm run test:smoke:signal`
-
-6. **[FEAT-2] Unusual-week flag** — Priority: P2 | Effort: S | Impact: Insight loop
-   - Why now: Closes the “patterns you can act on” promise once users have ~4 weeks of data
-   - Dependencies: Prefer ≥28 days of entries; gate UI with keep-logging fallback when baseline is thin
-   - Acceptance criteria:
-     - [ ] Trailing 7 days compared to prior 21-day baseline
-     - [ ] Card hidden or shows keep-logging copy below threshold
-     - [ ] Pure `src/lib/signal-*.ts` + unit tests + one Trends surface + analytics event
-   - Verification: Unit tests for gated / ungated paths
-
-7. **[FEAT-3] Month calendar view** — Priority: P3 | Effort: S | Impact: Presentation
-   - Why now: Useful after insights; lower value than import/unusual-week
-   - Dependencies: None
-   - Acceptance criteria:
-     - [ ] CSS grid coloured by `scoreBucketColor`
-     - [ ] No new dependencies; History or Trends host only
-   - Verification: Component/unit coverage for empty vs filled months
-
-8. **[FEAT-4] Local reminder snooze** — Priority: P3 | Effort: S (client) / M (closed-app)
-   - Why now: Nice retention polish; closed-app quiet hours need a migration — call that out before starting
-   - Dependencies: Client-only `snoozedUntil` needs no migration; server quiet hours need `signal_profiles` column + cron changes
-   - Acceptance criteria (client-only slice):
-     - [ ] Local nudge respects `snoozedUntil`
-     - [ ] Settings control to clear snooze
-   - Verification: Unit tests for schedule math; no false closed-app claims in copy
+> Updated 2026-09-09 after shipping CSV import, JSON export, unusual-week, month calendar, and local reminder snooze. Human ops remain: #64, #65, #66.
 
 ## Decision
 
@@ -99,7 +8,7 @@
 
 ## Feature roadmap
 
-### Implemented — 2026-09-03 insight cycle (#71)
+### Implemented — 2026-09-03 insight cycle
 
 Five additive Signal features. Each is pure `src/lib/signal-*.ts` logic with unit tests, one card or control in `SignalApp.tsx`, and an analytics event. No new dependencies, no migrations, no server changes.
 
@@ -113,15 +22,17 @@ Five additive Signal features. Each is pure `src/lib/signal-*.ts` logic with uni
 
 Why these five: each closes a loop the PRD already promises (keep the streak, patterns you can act on, own your data) without inventing product surface. Sleep is paired with the *following* day on purpose: the score already weights sleep quality, so a same-day comparison would be circular.
 
-### Proposed next (not started)
+### Implemented — 2026-09-09 next-steps cycle
 
-Matches Track B above. Ordered by fit with the core loop. None needs a migration unless noted.
+| Feature | Module | Surface | Notes |
+|---|---|---|---|
+| CSV import | `signal-export.ts` (`entriesFromCsv`) + store `importEntries` | Settings → Import CSV | Skips invalid rows and existing `(dayKey, window)` conflicts |
+| JSON export | `signal-export.ts` (`entriesToJson`) | Settings → Export JSON | Ships with import |
+| Unusual-week flag | `signal-unusual-week.ts` | Trends card | Trailing 7 vs prior 21; gated until baseline is honest |
+| Month calendar | `signal-month-calendar.ts` | History grid | Coloured by score bucket |
+| Local reminder snooze | `signal-reminder.ts` + store `snoozedUntil` | Home nudge + Settings clear | Client-only; no migration |
 
-1. **CSV import** — invert `entriesToCsv`; needs a new store action plus one `saveSignalEntry` per row (the 23505 conflict path already exists). Completes the own-your-data story.
-2. **JSON export** — ~30 lines on `signal-export.ts`; ship together with import.
-3. **Unusual-week flag** — trailing 7 days against the prior 21-day baseline. Only honest after ~4 weeks of data; ship gated with a keep-logging fallback.
-4. **Month calendar view** — CSS grid coloured by `scoreBucketColor`. Presentation rather than insight, so it sits below the three above.
-5. **Local reminder snooze** — client-side `snoozedUntil`. Closed-app quiet hours would need a `signal_profiles` column (migration) and cron changes; call that out before starting.
+**Still human ops (cannot be done from this agent):** #64 prod migrations/env + live loop, #65 branch protection, #66 real-device Web Push.
 
 Rejected this cycle: per-entry notes (needs a DB column and contradicts the "no typing" promise), and everything under Parked.
 
@@ -173,12 +84,5 @@ SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod
 - Invented Pulse Pro pricing or Stripe
 - Reopening #44 venue default flip
 - Per-entry notes (needs a `signal_entries` column; contradicts "no typing")
-- Venue Phase 2–6 polish from [NEXT_PHASES.md](NEXT_PHASES.md) (map/onboarding/pulse-creation E2E, mock-data decoupling) — stay behind `VITE_APP_MODE=venue`
-
-## Assumptions
-
-- No open production incident; reliability work is ops setup, not hotfix.
-- Solo maintainer still owns Supabase / Vercel / GitHub admin.
-- Signal remains the only shipping surface; venue work stays parked.
 
 #42 / #44 / #55 / #60 stay superseded. #48–#53 shipped flag-gated in #62 and stay off the default path.

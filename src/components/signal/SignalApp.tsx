@@ -19,9 +19,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { deleteSignalUserData, fetchSignalEntries } from '@/lib/signal-data'
-import { downloadTextFile, entriesToCsv, signalExportFilename } from '@/lib/signal-export'
+import { downloadTextFile, entriesFromCsv, entriesToCsv, entriesToJson, signalExportFilename, signalJsonExportFilename } from '@/lib/signal-export'
 import { analyzeTagPatterns, buildMonthlySummary, buildWeeklySummary, tagPatternCopy } from '@/lib/signal-patterns'
 import { analyzeSleepLink } from '@/lib/signal-sleep-link'
+import { analyzeUnusualWeek } from '@/lib/signal-unusual-week'
+import { buildMonthCalendar } from '@/lib/signal-month-calendar'
 import { MIN_ENTRIES_FOR_RECORDS, personalRecords, recordsCopy } from '@/lib/signal-records'
 import { availableTags, filterEntries, filterSummary, isFilterActive, toggleTag, type EntryFilter } from '@/lib/signal-filter'
 import { milestoneCopy, milestoneNudge, shouldCelebrate, type StreakMilestone } from '@/lib/signal-milestones'
@@ -42,6 +44,7 @@ import { SignalPageTransition } from '@/components/signal/SignalPageTransition'
 import { SignalSyncSkeleton } from '@/components/signal/SignalSyncSkeleton'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics'
+import { snoozeReminderUntilTomorrow } from '@/lib/signal-reminder'
 
 const navItems = [
   { to: '/home', label: 'Home', icon: House, description: 'Today\'s check-in' },
@@ -191,6 +194,7 @@ function HomePage({ userId }: { userId: string }) {
   const lastCelebrated = useSignalStore((state) => state.lastCelebratedMilestone)
   const celebrateMilestone = useSignalStore((state) => state.celebrateMilestone)
   const reminder = useSignalReminder()
+  const setSnoozedUntil = useSignalStore((state) => state.setSnoozedUntil)
   const metrics = useMemo(() => calculateSignalMetrics(entries, profile), [entries, profile])
   const celebration = shouldCelebrate(metrics.streakCount, lastCelebrated)
   const todayEntries = getTodayEntries(entries)
@@ -253,13 +257,28 @@ function HomePage({ userId }: { userId: string }) {
         />
       )}
 
-      {reminder.nudge && openWindow && (
+            {reminder.nudge && openWindow && (
         <section className="rounded-[1.75rem] border border-primary/30 bg-primary/10 p-4">
           <p className="font-black">Time for today’s signal</p>
           <p className="mt-1 text-sm text-muted-foreground">Your reminder window is open. Log this {windowLabel(openWindow).toLowerCase()} check-in.</p>
-          <Button variant="ghost" className="mt-2 h-10 px-0 text-primary" onClick={reminder.dismissNudge}>
-            Dismiss
-          </Button>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <Button variant="ghost" className="h-10 px-0 text-primary" onClick={reminder.dismissNudge}>
+              Dismiss
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-10 px-0 text-primary"
+              onClick={() => {
+                const until = snoozeReminderUntilTomorrow()
+                setSnoozedUntil(until)
+                reminder.dismissNudge()
+                trackEvent({ type: 'signal_reminder_snooze', timestamp: Date.now(), until })
+                toast.success('Reminder snoozed', { description: 'We will stay quiet until tomorrow.' })
+              }}
+            >
+              Snooze until tomorrow
+            </Button>
+          </div>
         </section>
       )}
 
@@ -311,9 +330,11 @@ function TrendsPage() {
   const sleepLink = useMemo(() => analyzeSleepLink(entries), [entries])
   const records = useMemo(() => personalRecords(entries), [entries])
   const monthly = useMemo(() => buildMonthlySummary(entries), [entries])
+  const unusualWeek = useMemo(() => analyzeUnusualWeek(entries), [entries])
   const showSleepLink = sleepLink.pairs >= 1
   const showRecords = entries.length >= MIN_ENTRIES_FOR_RECORDS
   const showMonthly = monthly.daysLogged >= 2
+  const showUnusualWeek = unusualWeek.recentDays >= 1
 
   useEffect(() => {
     if (showSleepLink) {
@@ -325,16 +346,22 @@ function TrendsPage() {
     if (showMonthly) {
       trackEvent({ type: 'signal_monthly_summary_view', timestamp: Date.now(), daysLogged: monthly.daysLogged, ready: monthly.ready })
     }
+    if (showUnusualWeek) {
+      trackEvent({ type: 'signal_unusual_week_view', timestamp: Date.now(), ready: unusualWeek.ready, delta: unusualWeek.delta })
+    }
   }, [
     showSleepLink,
     showRecords,
     showMonthly,
+    showUnusualWeek,
     sleepLink.pairs,
     sleepLink.ready,
     records.totalCheckIns,
     records.longestStreak,
     monthly.daysLogged,
     monthly.ready,
+    unusualWeek.ready,
+    unusualWeek.delta,
   ])
 
   return (
@@ -423,6 +450,17 @@ function TrendsPage() {
           </p>
         </section>
       )}
+      {showUnusualWeek && (
+        <section className="rounded-[2rem] border border-border bg-card p-5" data-testid="unusual-week-card">
+          <p className="text-sm font-bold text-primary">Unusual week</p>
+          <p className="mt-2 text-xl font-black leading-7">
+            {unusualWeek.ready && unusualWeek.delta !== null
+              ? `This week ${unusualWeek.delta >= 0 ? '+' : ''}${unusualWeek.delta} vs baseline`
+              : `${unusualWeek.baselineDays} baseline ${unusualWeek.baselineDays === 1 ? 'day' : 'days'} so far`}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{unusualWeek.highlight}</p>
+        </section>
+      )}
       {amPm.morning !== null && amPm.evening !== null && (
         <section className="rounded-[2rem] border border-border bg-card p-5">
           <p className="text-sm font-bold text-primary">Morning vs evening</p>
@@ -454,6 +492,17 @@ function HistoryPage() {
   const tags = useMemo(() => availableTags(entries), [entries])
   const visible = useMemo(() => filterEntries(entries, filter), [entries, filter])
   const active = isFilterActive(filter)
+  const now = useMemo(() => new Date(), [])
+  const monthCalendar = useMemo(
+    () => buildMonthCalendar(entries, now.getFullYear(), now.getMonth()),
+    [entries, now],
+  )
+
+  useEffect(() => {
+    if (entries.length === 0) return
+    const daysWithScores = monthCalendar.cells.filter((cell) => cell.inMonth && cell.score !== null).length
+    trackEvent({ type: 'signal_month_calendar_view', timestamp: Date.now(), daysWithScores })
+  }, [entries.length, monthCalendar])
 
   const applyFilter = (next: EntryFilter) => {
     setFilter(next)
@@ -474,6 +523,34 @@ function HistoryPage() {
         <h1 className="mt-2 text-4xl font-black tracking-tight">Past signals.</h1>
         <p className="mt-2 text-sm text-muted-foreground">Daily log — every check-in you&apos;ve saved, newest first.</p>
       </div>
+      {entries.length > 0 && (
+        <section className="rounded-[2rem] border border-border bg-card p-5" data-testid="month-calendar" aria-label={monthCalendar.label}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-bold text-primary">{monthCalendar.label}</p>
+            <p className="text-xs text-muted-foreground">Colored by score</p>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-muted-foreground">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
+              <span key={day}>{day}</span>
+            ))}
+          </div>
+          <div className="mt-1 grid grid-cols-7 gap-1">
+            {monthCalendar.cells.map((cell) => (
+              <div
+                key={cell.dayKey}
+                title={cell.score === null ? cell.dayKey : `${cell.dayKey}: ${cell.score}`}
+                className={cn(
+                  'flex aspect-square items-center justify-center rounded-lg text-xs font-bold',
+                  cell.inMonth ? 'text-foreground' : 'text-muted-foreground/40',
+                )}
+                style={cell.color ? { backgroundColor: cell.color, color: '#0b1220' } : undefined}
+              >
+                {cell.dayOfMonth}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       {entries.length > 0 && (
         <section className="space-y-3" aria-label="Filter history">
           <div className="flex flex-wrap gap-2" role="group" aria-label="Window">
@@ -565,6 +642,9 @@ function SettingsPage() {
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const setReminder = useSignalStore((state) => state.setReminder)
   const clearLocalAccount = useSignalStore((state) => state.clearLocalAccount)
+  const importEntries = useSignalStore((state) => state.importEntries)
+  const snoozedUntil = useSignalStore((state) => state.snoozedUntil)
+  const setSnoozedUntil = useSignalStore((state) => state.setSnoozedUntil)
   const reminder = useSignalReminder()
   const researchUrl = import.meta.env.VITE_RESEARCH_FEEDBACK_URL as string | undefined
   const reminderTime = profile?.reminderTime ?? '09:00'
@@ -652,13 +732,28 @@ function SettingsPage() {
               className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base"
             />
             <p className="rounded-2xl bg-primary/10 p-3 text-sm text-primary">{reminder.copy}</p>
+            {snoozedUntil && new Date(snoozedUntil).getTime() > Date.now() && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
+                <p className="text-sm text-muted-foreground">Snoozed until tomorrow morning.</p>
+                <Button
+                  variant="ghost"
+                  className="h-9 px-2 text-primary"
+                  onClick={() => {
+                    setSnoozedUntil(null)
+                    trackEvent({ type: 'signal_reminder_snooze', timestamp: Date.now(), until: null })
+                  }}
+                >
+                  Clear snooze
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </section>
       <section className="space-y-3 rounded-[2rem] border border-border bg-card p-5">
         <p className="font-black">Your data</p>
         <p className="text-sm text-muted-foreground">
-          Export a CSV of your check-ins, or delete Signal data from this device
+          Export or import your check-ins, or delete Signal data from this device
           {hasSupabaseConfig ? ' and your signed-in account' : ''}.
         </p>
         <Button
@@ -672,6 +767,61 @@ function SettingsPage() {
         >
           Export CSV
         </Button>
+        <Button
+          variant="outline"
+          className="h-12 w-full rounded-2xl"
+          onClick={() => {
+            downloadTextFile(signalJsonExportFilename(), entriesToJson(entries), 'application/json;charset=utf-8')
+            trackEvent({ type: 'signal_json_export', timestamp: Date.now(), count: entries.length })
+            toast.success('JSON export ready', { description: `${entries.length} check-in${entries.length === 1 ? '' : 's'} downloaded.` })
+          }}
+        >
+          Export JSON
+        </Button>
+        <div>
+          <input
+            id="signal-csv-import"
+            type="file"
+            accept=".csv,text/csv"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (!file) return
+              void file.text().then((csv) => {
+                const parsed = entriesFromCsv(csv, {
+                  userId: user?.id ?? 'local-user',
+                  focus: profile?.trackingFocus ?? 'energy',
+                })
+                const result = importEntries(user?.id ?? 'local-user', parsed.entries)
+                trackEvent({
+                  type: 'signal_csv_import',
+                  timestamp: Date.now(),
+                  imported: result.imported,
+                  skipped: result.skipped + parsed.skipped,
+                })
+                if (result.imported === 0) {
+                  toast.message('No new rows imported', {
+                    description: parsed.skipped > 0
+                      ? `${parsed.skipped} row${parsed.skipped === 1 ? '' : 's'} looked invalid.`
+                      : 'Those check-ins are already on this account.',
+                  })
+                  return
+                }
+                toast.success('Import complete', {
+                  description: `${result.imported} added${result.skipped + parsed.skipped > 0 ? `, ${result.skipped + parsed.skipped} skipped` : ''}.`,
+                })
+              })
+            }}
+          />
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-2xl"
+            onClick={() => document.getElementById('signal-csv-import')?.click()}
+          >
+            Import CSV
+          </Button>
+        </div>
         <AlertDialog onOpenChange={(open) => { if (!open) setDeleteConfirm('') }}>
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="h-12 w-full rounded-2xl text-destructive">

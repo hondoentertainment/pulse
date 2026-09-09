@@ -220,4 +220,40 @@ describe('SignalApp shipping flows', () => {
       )
     })
   })
+
+  it('exports JSON from Settings', async () => {
+    resetStore([entry({ id: 'mine', score: 74, dayKey: '2026-08-16', window: 'morning' })])
+    renderSignal()
+    fireEvent.click(screen.getByRole('link', { name: /Settings/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Export JSON/i }))
+    expect(downloadTextFile).toHaveBeenCalled()
+    const call = downloadTextFile.mock.calls.find(([filename]) => String(filename).endsWith('.json'))
+    expect(call).toBeTruthy()
+    const [, json] = call as [string, string]
+    expect(json).toContain('"day_key": "2026-08-16"')
+    expect(json).toContain('"score": 74')
+  })
+
+  it('shows the unusual-week card and month calendar', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 28, 12))
+    const rows = Array.from({ length: 28 }, (_, index) => {
+      const date = new Date(2026, 8, 28)
+      date.setDate(date.getDate() - index)
+      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      return entry({
+        id: `d${index}`,
+        dayKey,
+        createdAt: `${dayKey}T09:00:00.000Z`,
+        score: index < 7 ? 82 : 60,
+      })
+    })
+    resetStore(rows)
+    renderSignal()
+    fireEvent.click(screen.getByRole('link', { name: /Trends/i }))
+    expect(await screen.findByTestId('unusual-week-card')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: /History/i }))
+    expect(await screen.findByTestId('month-calendar')).toBeInTheDocument()
+    expect(screen.getByText(/September 2026/i)).toBeInTheDocument()
+  })
 })

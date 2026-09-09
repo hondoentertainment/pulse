@@ -22,6 +22,8 @@ interface SignalStore {
   reminderEnabled: boolean
   /** Highest streak milestone already celebrated, so each fires once. */
   lastCelebratedMilestone: number | null
+  /** ISO timestamp; local reminder nudge stays quiet until then. */
+  snoozedUntil: string | null
   setProfile: (userId: string, profile: SignalProfile) => void
   mergeRemoteEntries: (entries: SignalEntry[]) => void
   updateDraft: (patch: Partial<DraftSignal>) => void
@@ -30,6 +32,8 @@ interface SignalStore {
   celebrateMilestone: (milestone: number) => void
   setReminder: (enabled: boolean, reminderTime?: string, userId?: string) => void
   clearLocalAccount: () => void
+  setSnoozedUntil: (snoozedUntil: string | null) => void
+  importEntries: (userId: string, incoming: SignalEntry[]) => { imported: number; skipped: number }
 }
 
 const clampScore = (value: number) => Math.max(1, Math.min(10, Math.round(value)))
@@ -57,6 +61,7 @@ export const useSignalStore = create<SignalStore>()(
       firstWinOpen: false,
       reminderEnabled: false,
       lastCelebratedMilestone: null,
+      snoozedUntil: null,
       setProfile: (userId, profile) => {
         set({ profile })
         void saveSignalProfile(userId, profile)
@@ -135,6 +140,41 @@ export const useSignalStore = create<SignalStore>()(
         const persistUserId = userId ?? get().entries[0]?.userId
         if (nextProfile && persistUserId) void saveSignalProfile(persistUserId, nextProfile)
       },
+      setSnoozedUntil: (snoozedUntil) => set({ snoozedUntil }),
+      importEntries: (userId, incoming) => {
+        if (incoming.length === 0) return { imported: 0, skipped: 0 }
+        const state = get()
+        const existingKeys = new Set(
+          state.entries.map((entry) => `${entry.dayKey ?? ''}:${resolveEntryWindow(entry)}`),
+        )
+        const accepted: SignalEntry[] = []
+        let skipped = 0
+        for (const row of incoming) {
+          const window = resolveEntryWindow(row)
+          const dayKey = row.dayKey ?? localDayKey(new Date(row.createdAt))
+          const key = `${dayKey}:${window}`
+          if (existingKeys.has(key)) {
+            skipped += 1
+            continue
+          }
+          existingKeys.add(key)
+          const entry: SignalEntry = {
+            ...row,
+            id: row.id || createEntryId(),
+            userId,
+            dayKey,
+            window,
+          }
+          accepted.push(entry)
+          void saveSignalEntry(entry)
+        }
+        if (accepted.length > 0) {
+          set((current) => ({
+            entries: mergeSignalEntryLists(current.entries, accepted),
+          }))
+        }
+        return { imported: accepted.length, skipped }
+      },
       clearLocalAccount: () => {
         set({
           profile: null,
@@ -143,6 +183,7 @@ export const useSignalStore = create<SignalStore>()(
           firstWinOpen: false,
           reminderEnabled: false,
           lastCelebratedMilestone: null,
+          snoozedUntil: null,
           draft: {
             energy: 7,
             mood: 7,
@@ -161,6 +202,7 @@ export const useSignalStore = create<SignalStore>()(
         savedAt: state.savedAt,
         reminderEnabled: state.reminderEnabled,
         lastCelebratedMilestone: state.lastCelebratedMilestone,
+        snoozedUntil: state.snoozedUntil,
       }),
     },
   ),

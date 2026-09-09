@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { msUntilReminder, reminderCopy, shouldSendReminder } from '@/lib/signal-reminder'
+import { isReminderSnoozed, msUntilReminder, reminderCopy, shouldSendReminder, snoozeReminderUntilTomorrow } from '@/lib/signal-reminder'
 
 describe('signal-reminder', () => {
   it('skips when today is already logged', () => {
@@ -42,5 +42,32 @@ describe('signal-reminder', () => {
     expect(reminderCopy('granted', false)).toMatch(/VAPID/i)
     expect(reminderCopy('unsupported', false)).toMatch(/cannot show notifications/i)
     expect(reminderCopy('granted', true)).toMatch(/closed/i)
+  })
+})
+
+
+describe('reminder snooze', () => {
+  it('suppresses sending while snoozed and clears after the stamp', () => {
+    const now = new Date(2026, 7, 16, 9, 5)
+    const until = snoozeReminderUntilTomorrow(now)
+    expect(isReminderSnoozed(until, now)).toBe(true)
+    expect(shouldSendReminder({
+      enabled: true,
+      reminderTime: '09:00',
+      entries: [],
+      now,
+      snoozedUntil: until,
+    })).toBe(false)
+
+    const later = new Date(until)
+    later.setMinutes(later.getMinutes() + 1)
+    expect(isReminderSnoozed(until, later)).toBe(false)
+    expect(shouldSendReminder({
+      enabled: true,
+      reminderTime: '09:00',
+      entries: [],
+      now: new Date(2026, 7, 17, 9, 5),
+      snoozedUntil: until,
+    })).toBe(true)
   })
 })
