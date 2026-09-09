@@ -134,6 +134,7 @@ export function TrendingSections({
                   <button
                     key={venue.id}
                     type="button"
+                    aria-label={`Open ${venue.name}`}
                     onClick={() => onVenueClick(venue)}
                     className="flex w-full items-start justify-between gap-3 rounded-[18px] border border-white/10 bg-card/80 px-4 py-3.5 text-left transition-colors hover:border-white/20"
                   >

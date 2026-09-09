@@ -9,25 +9,8 @@ test.describe('Search and filter', () => {
   })
 
   test('search input becomes focusable and accepts text', async ({ page }) => {
-    // The app may surface search on Home or Map tab — probe both
-    const searchInputs = page.locator('input[placeholder*="search" i], input[type="search"]')
-    let count = await searchInputs.count()
-
-    if (count === 0) {
-      // Prefer a URL navigation — the Map tab can sit behind the FAB /
-      // off-viewport on the seeded venue home feed.
-      await page.goto('/map')
-      await page.waitForLoadState('networkidle')
-      count = await searchInputs.count()
-    }
-
-    if (count === 0) {
-      test.skip(true, 'Search input not surfaced in current build')
-      return
-    }
-
-    const input = searchInputs.first()
-    await input.click()
+    const input = page.getByPlaceholder(/Search venues/i)
+    await expect(input).toBeVisible({ timeout: 15_000 })
     await input.fill('bar')
     await expect(input).toHaveValue('bar')
   })
