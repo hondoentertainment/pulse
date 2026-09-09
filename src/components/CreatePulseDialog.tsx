@@ -318,7 +318,7 @@ export function CreatePulseDialog({
         <div className="space-y-3.5 py-1">
           <div>
             <EnergyPills value={energyRating} onChange={setEnergyRating} />
-            <div className="sr-only">
+            <div className="hidden">
               <EnergySlider
                 value={energyRating}
                 onChange={setEnergyRating}

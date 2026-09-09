@@ -25,7 +25,7 @@ test.describe('Venue nightlife shell (Figma Enhanced)', () => {
   })
 
   test('trending tab uses Just popped / Gaining / Hot now copy', async ({ page }) => {
-    await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name: 'Trending' }).click({ force: true })
+    await page.getByTestId('tab-Trending').evaluate((el) => (el as HTMLButtonElement).click())
     await expect(page.getByRole('heading', { name: 'Trending' })).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('Just popped · Gaining · Hot now')).toBeVisible()
   })

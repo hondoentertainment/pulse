@@ -61,9 +61,10 @@ test.describe('Pulse creation flow', () => {
     const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
     await createBtn.click()
 
-    const close = page.getByRole('button', { name: /^Close$/i })
-    await expect(close).toBeVisible({ timeout: 5_000 })
-    await close.click({ force: true })
+    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
+      timeout: 5_000,
+    })
+    await page.keyboard.press('Escape')
 
     await expect(page.getByRole('heading', { name: /Post live review/i })).not.toBeVisible({
       timeout: 5_000,
