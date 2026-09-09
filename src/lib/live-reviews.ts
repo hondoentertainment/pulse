@@ -13,6 +13,7 @@ import type { VenueClaim } from './venue-owner'
 export const LIVE_REVIEW_CAPTION_MIN = 1
 export const LIVE_REVIEW_CAPTION_MAX = 280
 export const LIVE_NOW_WINDOW_MINUTES = 90
+export const LIVE_HOUR_WINDOW_MINUTES = 60
 export const LIVE_REVIEW_COOLDOWN_MINUTES = COOLDOWN_MINUTES
 
 export interface LocationProof {
@@ -135,6 +136,12 @@ export function snippetCaption(caption: string | undefined, max = 80): string {
   const text = (caption ?? '').trim()
   if (text.length <= max) return text
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`
+}
+
+/** Figma map / Surging copy: "8 live reviews · last hour". Empty when none. */
+export function formatLiveReviewsLastHour(count: number): string {
+  if (count <= 0) return ''
+  return `${count} live review${count === 1 ? '' : 's'} · last hour`
 }
 
 export function relativeReviewTime(createdAt: string): string {

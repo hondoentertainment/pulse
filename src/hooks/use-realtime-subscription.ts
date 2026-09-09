@@ -23,6 +23,8 @@ import type { Pulse, Venue } from '@/lib/types'
 import { trackPerformance } from '@/lib/analytics'
 import { mapVenueLiveAggregate, mapVenueLiveReport } from '@/lib/supabase-api'
 import type { LiveReport } from '@/lib/live-intelligence'
+import { isLiveReview } from '@/lib/live-reviews'
+import { stampVenuesFromLiveReviews } from '@/lib/map-live-reviews'
 
 /**
  * Flush handler for pulse inserts — merges new pulses into React Query cache.
@@ -38,6 +40,13 @@ function handlePulseBatchFlush(batch: BatchFlush) {
       .map(e => e.payload as Pulse)
 
     if (newPulses.length === 0) return old
+    const reviews = newPulses.filter((pulse) => isLiveReview(pulse))
+    if (reviews.length > 0) {
+      queryClient.setQueryData<Venue[]>(['venues'], (venues = []) =>
+        stampVenuesFromLiveReviews(venues, reviews),
+      )
+      trackPerformance('realtime_live_review_insert', reviews.length)
+    }
     return [...newPulses, ...old]
   })
 
@@ -162,6 +171,11 @@ export function useRealtimeSubscription(enabled = true) {
             },
             timestamp: Date.now(),
           })
+          const isReview = row.kind === 'review'
+            || (row.kind !== 'pulse' && typeof row.caption === 'string' && row.caption.trim().length > 0)
+          if (isReview) {
+            pulseBatcher.flush()
+          }
         }
       )
       .on(
