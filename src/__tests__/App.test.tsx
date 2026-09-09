@@ -37,8 +37,6 @@ vi.mock('@/lib/analytics', () => ({
   trackError: vi.fn(),
 }))
 
-import App from '@/App'
-
 describe('App', () => {
   beforeEach(() => {
     authState.session = null
@@ -46,7 +44,26 @@ describe('App', () => {
     localStorage.clear()
   })
 
-  it('mounts a global Sonner toaster on the login branch', async () => {
+  it('mounts the venue shell by default', async () => {
+    vi.stubEnv('VITE_APP_MODE', '')
+    vi.resetModules()
+    const { default: App } = await import('@/App')
+    render(<App />)
+
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/Loading Pulse|Where the energy is|Get Started|Pulse/i),
+        ).toBeInTheDocument()
+      },
+      { timeout: 8_000 },
+    )
+  })
+
+  it('mounts a global Sonner toaster on the Signal login branch', async () => {
+    vi.stubEnv('VITE_APP_MODE', 'signal')
+    vi.resetModules()
+    const { default: App } = await import('@/App')
     render(<App />)
 
     await waitFor(
