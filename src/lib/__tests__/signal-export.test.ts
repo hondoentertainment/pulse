@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entriesToCsv, signalExportFilename } from '@/lib/signal-export'
+import { entriesFromCsv, entriesToCsv, entriesToJson, signalExportFilename, signalJsonExportFilename } from '@/lib/signal-export'
 import type { SignalEntry } from '@/lib/signal-insights'
 
 const entry = (overrides: Partial<SignalEntry> = {}): SignalEntry => ({
@@ -53,5 +53,35 @@ describe('entriesToCsv', () => {
 describe('signalExportFilename', () => {
   it('uses the local day key', () => {
     expect(signalExportFilename(new Date(2026, 7, 30, 9))).toBe('pulse-signal-2026-08-30.csv')
+  })
+})
+
+
+describe('entriesFromCsv', () => {
+  it('round-trips a valid export and skips bad rows', () => {
+    const csv = entriesToCsv([
+      entry({ id: 'a', dayKey: '2026-08-29', window: 'morning', score: 61, createdAt: '2026-08-29T08:00:00.000Z' }),
+      entry({ id: 'b', dayKey: '2026-08-30', window: 'evening', score: 80, createdAt: '2026-08-30T20:00:00.000Z' }),
+    ])
+    const broken = `${csv}\nnot-a-day,morning,50,5,5,5,5,tag,2026-08-31T08:00:00.000Z`
+    const result = entriesFromCsv(broken, { userId: 'user-1', focus: 'energy' })
+    expect(result.imported).toBe(2)
+    expect(result.skipped).toBe(1)
+    expect(result.entries.map((item) => item.dayKey)).toEqual(['2026-08-29', '2026-08-30'])
+  })
+})
+
+describe('entriesToJson', () => {
+  it('writes a JSON array mirror of the CSV fields', () => {
+    const json = entriesToJson([entry({ dayKey: '2026-08-30', score: 72 })])
+    const parsed = JSON.parse(json) as Array<Record<string, unknown>>
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0]).toMatchObject({
+      day_key: '2026-08-30',
+      window: 'morning',
+      score: 72,
+      sleep_quality: 8,
+    })
+    expect(signalJsonExportFilename(new Date(2026, 7, 30, 9))).toBe('pulse-signal-2026-08-30.json')
   })
 })

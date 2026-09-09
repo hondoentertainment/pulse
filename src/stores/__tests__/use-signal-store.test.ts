@@ -16,6 +16,7 @@ function resetStore(entries: SignalEntry[] = []) {
     firstWinOpen: false,
     reminderEnabled: false,
     lastCelebratedMilestone: null,
+    snoozedUntil: null,
   })
 }
 
@@ -79,5 +80,45 @@ describe('useSignalStore streak milestones', () => {
     expect(useSignalStore.getState().lastCelebratedMilestone).toBe(7)
     useSignalStore.getState().clearLocalAccount()
     expect(useSignalStore.getState().lastCelebratedMilestone).toBeNull()
+  })
+})
+
+
+describe('useSignalStore import and snooze', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    resetStore()
+  })
+
+  it('imports new day/window rows and skips conflicts', () => {
+    const existing = useSignalStore.getState().saveEntry('user-1')
+    const incoming = [
+      { ...existing, id: 'dup' },
+      {
+        id: 'new-evening',
+        userId: 'user-1',
+        createdAt: '2026-08-16T18:00:00.000Z',
+        focus: 'energy' as const,
+        score: 70,
+        energy: 7,
+        mood: 7,
+        stress: 4,
+        sleepQuality: 7,
+        tags: ['focus'],
+        window: 'evening' as const,
+        dayKey: existing.dayKey,
+      },
+    ]
+    const result = useSignalStore.getState().importEntries('user-1', incoming)
+    expect(result.imported).toBe(1)
+    expect(result.skipped).toBe(1)
+    expect(useSignalStore.getState().entries).toHaveLength(2)
+  })
+
+  it('persists snooze until cleared with the account', () => {
+    useSignalStore.getState().setSnoozedUntil('2026-08-17T00:00:00.000Z')
+    expect(useSignalStore.getState().snoozedUntil).toBe('2026-08-17T00:00:00.000Z')
+    useSignalStore.getState().clearLocalAccount()
+    expect(useSignalStore.getState().snoozedUntil).toBeNull()
   })
 })

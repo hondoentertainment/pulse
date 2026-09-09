@@ -44,6 +44,11 @@ export type AnalyticsEvent =
   | { type: 'signal_pilot_signup'; timestamp: number; status: 'created' | 'already_registered' | 'failed' }
   | { type: 'signal_reminder_toggle'; timestamp: number; enabled: boolean; permission: string }
   | { type: 'signal_csv_export'; timestamp: number; count: number }
+  | { type: 'signal_csv_import'; timestamp: number; imported: number; skipped: number }
+  | { type: 'signal_json_export'; timestamp: number; count: number }
+  | { type: 'signal_unusual_week_view'; timestamp: number; ready: boolean; delta: number | null }
+  | { type: 'signal_month_calendar_view'; timestamp: number; daysWithScores: number }
+  | { type: 'signal_reminder_snooze'; timestamp: number; until: string | null }
   | { type: 'signal_account_deleted'; timestamp: number }
   | { type: 'signal_milestone_reached'; timestamp: number; milestone: number; streak: number }
   | { type: 'signal_milestone_dismissed'; timestamp: number; milestone: number }
