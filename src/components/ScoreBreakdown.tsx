@@ -52,7 +52,7 @@ export function ScoreBreakdown({ venue, pulses, inline = false }: ScoreBreakdown
       >
         {!inline && <Info size={16} className="group-hover:text-accent transition-colors" />}
         <span className={inline ? 'font-normal' : 'font-medium tracking-wide'}>Why this score?</span>
-        {isExpanded ? <CaretUp size={inline ? 12 : 16} /> : <CaretDown size={inline ? 12 : 16} />}
+        {!inline && (isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />)}
       </button>
 
       <AnimatePresence>

@@ -302,9 +302,9 @@ export function CreatePulseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-[18px] border-white/10 bg-[#0B0B0E] sm:max-w-lg">
+      <DialogContent className="inset-0 top-0 left-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-5 overflow-y-auto rounded-none border-0 bg-[#0B0B0E] p-5 pt-14 shadow-none sm:max-w-none">
         <DialogHeader className="gap-1.5 text-left">
-          <DialogTitle className="text-2xl font-bold">
+          <DialogTitle className="text-[22px] font-bold text-white">
             Post live review
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
@@ -456,59 +456,64 @@ export function CreatePulseDialog({
           </div>
 
           {suggestedGroups.length > 0 && (
-            <div className="space-y-3">
-              {suggestedGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Hash size={14} weight="bold" className="text-muted-foreground" />
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {group.label}
-                    </label>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.hashtags.map((hashtag) => {
-                      const isSelected = selectedHashtags.includes(hashtag.name)
-                      const isSeeded = hashtag.seeded
-                      
-                      return (
-                        <motion.button
-                          key={hashtag.id}
-                          type="button"
-                          onClick={() => toggleHashtag(hashtag.name)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Badge
-                            variant={isSelected ? "default" : "outline"}
-                            className={`cursor-pointer transition-all ${
-                              isSelected 
-                                ? 'bg-primary text-primary-foreground border-primary' 
-                                : 'hover:border-primary/50'
-                            } ${
-                              isSeeded && !isSelected ? 'border-dashed' : ''
-                            }`}
+            <details className="rounded-[18px] bg-[#17171C] p-3.5">
+              <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+                Hashtags (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                {suggestedGroups.map((group, groupIndex) => (
+                  <div key={groupIndex} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Hash size={14} weight="bold" className="text-muted-foreground" />
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {group.label}
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.hashtags.map((hashtag) => {
+                        const isSelected = selectedHashtags.includes(hashtag.name)
+                        const isSeeded = hashtag.seeded
+
+                        return (
+                          <motion.button
+                            key={hashtag.id}
+                            type="button"
+                            onClick={() => toggleHashtag(hashtag.name)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                           >
-                            <span className="mr-1">{hashtag.emoji}</span>
-                            #{hashtag.name}
-                          </Badge>
-                        </motion.button>
-                      )
-                    })}
+                            <Badge
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'hover:border-primary/50'
+                              } ${
+                                isSeeded && !isSelected ? 'border-dashed' : ''
+                              }`}
+                            >
+                              <span className="mr-1">{hashtag.emoji}</span>
+                              #{hashtag.name}
+                            </Badge>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {selectedHashtags.length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedHashtags.length}/5 hashtags selected
-                  </p>
-                </div>
-              )}
-            </div>
+                ))}
+                {selectedHashtags.length > 0 && (
+                  <div className="border-t border-border pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {selectedHashtags.length}/5 hashtags selected
+                    </p>
+                  </div>
+                )}
+              </div>
+            </details>
           )}
 
           <Button
-            className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90"
+            className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90 disabled:bg-primary disabled:opacity-60"
             onClick={handleSubmit}
             disabled={isSubmitting || isCompressing || caption.trim().length === 0}
           >

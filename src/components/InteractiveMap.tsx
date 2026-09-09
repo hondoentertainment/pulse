@@ -46,6 +46,12 @@ interface InteractiveMapProps {
   locationAccuracy?: number
   locationHeading?: number | null
   pulses?: Pulse[]
+  /** `heatmap` hides search/smart-route chrome so the map tab can match Figma. */
+  chrome?: 'full' | 'heatmap'
+  energyLevels?: EnergyFilter[]
+  onEnergyLevelsChange?: (levels: EnergyFilter[]) => void
+  nearMe?: boolean
+  onNearMeChange?: (active: boolean) => void
 }
 
 const ZOOM_STEP = 1.35
@@ -59,6 +65,11 @@ export function InteractiveMap({
   locationAccuracy,
   locationHeading,
   pulses = [],
+  chrome = 'full',
+  energyLevels,
+  onEnergyLevelsChange,
+  nearMe,
+  onNearMeChange,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -76,6 +87,28 @@ export function InteractiveMap({
     maxDistance: Infinity
   })
   const [nearMeActive, setNearMeActive] = useState(false)
+
+  useEffect(() => {
+    if (energyLevels) {
+      setFilters((current) => ({ ...current, energyLevels }))
+    }
+  }, [energyLevels])
+
+  useEffect(() => {
+    if (nearMe !== undefined) {
+      setNearMeActive(nearMe)
+    }
+  }, [nearMe])
+
+  const applyEnergyLevels = (levels: EnergyFilter[]) => {
+    setFilters((current) => ({ ...current, energyLevels: levels }))
+    onEnergyLevelsChange?.(levels)
+  }
+
+  const applyNearMe = (active: boolean) => {
+    setNearMeActive(active)
+    onNearMeChange?.(active)
+  }
   const [showLegend, setShowLegend] = useState(false)
   const [showFullHeatmap, setShowFullHeatmap] = useState(false)
   const [comparedVenueIds, setComparedVenueIds] = useState<string[]>([])
@@ -1212,7 +1245,7 @@ export function InteractiveMap({
           >
             <div className="w-14 h-14" />
           </button>
-          {!isCameraMoving && (
+          {chrome === 'full' && !isCameraMoving && (
             <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10">
               <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1 shadow-lg">
                 <p className="text-[10px] font-semibold text-foreground">
@@ -1277,7 +1310,7 @@ export function InteractiveMap({
               <div className="w-10 h-10" />
             </button>
             <AnimatePresence>
-              {showLabel && (
+              {chrome === 'full' && showLabel && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8, y: 5 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1346,7 +1379,7 @@ export function InteractiveMap({
       })}
 
       <AnimatePresence>
-        {hoveredVenue && !isDragging && !isCameraMoving && (() => {
+        {chrome === 'full' && hoveredVenue && !isDragging && !isCameraMoving && (() => {
           const pos = getVenuePixelPosition(hoveredVenue)
           if (!pos) return null
 
@@ -1465,7 +1498,7 @@ export function InteractiveMap({
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+      {chrome === 'full' && <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
         <div className="max-w-xl pointer-events-auto">
           <Card className="bg-card/92 backdrop-blur-xl border-border/80 shadow-2xl overflow-hidden">
             <div className="p-2.5">
@@ -1510,9 +1543,9 @@ export function InteractiveMap({
             onClick={() => {
               triggerHapticFeedback('light')
               if (filters.energyLevels.includes('electric')) {
-                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric') }))
+                applyEnergyLevels(filters.energyLevels.filter(e => e !== 'electric'))
               } else {
-                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric'] }))
+                applyEnergyLevels([...filters.energyLevels, 'electric'])
               }
             }}
             className={cn(
@@ -1528,9 +1561,9 @@ export function InteractiveMap({
             onClick={() => {
               triggerHapticFeedback('light')
               if (filters.energyLevels.includes('buzzing')) {
-                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'buzzing') }))
+                applyEnergyLevels(filters.energyLevels.filter(e => e !== 'buzzing'))
               } else {
-                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'buzzing'] }))
+                applyEnergyLevels([...filters.energyLevels, 'buzzing'])
               }
             }}
             className={cn(
@@ -1545,7 +1578,7 @@ export function InteractiveMap({
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              setNearMeActive(!nearMeActive)
+              applyNearMe(!nearMeActive)
             }}
             className={cn(
               "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
@@ -1557,14 +1590,6 @@ export function InteractiveMap({
             Near me
           </button>
         </div>
-
-        <AnimatePresence>
-          <MapLiveReviewToast
-            toast={liveToast}
-            onDismiss={handleDismissLiveToast}
-            onOpen={handleOpenLiveToast}
-          />
-        </AnimatePresence>
 
         {showOnboardingTips && (
           <Card className="mt-2 max-w-xl bg-card/95 backdrop-blur-sm border border-border shadow-lg p-3 pointer-events-auto">
@@ -1599,10 +1624,22 @@ export function InteractiveMap({
             </div>
           </Card>
         )}
+      </div>}
+
+      <div className="pointer-events-none absolute top-3 left-3 right-3 z-40">
+        <div className="pointer-events-auto max-w-xl">
+          <AnimatePresence>
+            <MapLiveReviewToast
+              toast={liveToast}
+              onDismiss={handleDismissLiveToast}
+              onOpen={handleOpenLiveToast}
+            />
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Consolidated Map Controls */}
-      <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
+      {chrome === 'full' && <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
         <Button
           size="sm"
           variant={accessibilityMode ? "default" : "secondary"}
@@ -1691,7 +1728,7 @@ export function InteractiveMap({
                 )}
                 onClick={() => {
                   triggerHapticFeedback('light')
-                  setNearMeActive(!nearMeActive)
+                  applyNearMe(!nearMeActive)
                 }}
                 title="Near me (0.5 mi)"
                 aria-label="Toggle near me venues"
@@ -1706,9 +1743,9 @@ export function InteractiveMap({
         <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1 shadow-sm">
           {zoom.toFixed(1)}x
         </div>
-      </div>
+      </div>}
 
-      {previewVenues.length > 0 && (
+      {chrome === 'full' && previewVenues.length > 0 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[min(94%,720px)] pointer-events-none">
           {bestNextVenue && (
             <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
@@ -1858,7 +1895,7 @@ export function InteractiveMap({
       )}
 
       {/* Bottom Left Controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+      {chrome === 'full' && <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
         <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
 
         {(filters.energyLevels.length > 0 ||
@@ -1919,7 +1956,7 @@ export function InteractiveMap({
             )}
           </AnimatePresence>
         </Card>
-      </div>
+      </div>}
 
     </div>
   )

@@ -56,20 +56,21 @@ export function VenueInboxPage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-start gap-3 px-5 pb-2 pt-6">
-          <button type="button" onClick={onBack} className="mt-0.5 rounded-lg p-2 hover:bg-muted" aria-label="Back">
-            <CaretLeft size={24} />
+    <div className="min-h-screen bg-[#0B0B0E] pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+      <div className="mx-auto max-w-2xl space-y-3.5 px-5 pb-6 pt-8">
+        <div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-3 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+            aria-label="Back"
+          >
+            <CaretLeft size={18} />
+            Venue
           </button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold">Tonight’s reviews</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">{venue.name} · owner inbox</p>
-          </div>
+          <h1 className="text-[22px] font-bold text-white">Tonight’s reviews</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">{venue.name} · owner inbox</p>
         </div>
-      </div>
-
-      <div className="mx-auto max-w-2xl space-y-3.5 px-5 py-4">
         <div className="grid grid-cols-2 gap-2.5">
           <div className="rounded-[18px] bg-[#17171C] p-3.5">
             <p className="text-[22px] font-bold leading-none text-primary">{visibleTonight.length}</p>

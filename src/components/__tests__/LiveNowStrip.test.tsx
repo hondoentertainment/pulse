@@ -51,11 +51,12 @@ function makePulse(overrides: Partial<PulseWithUser> = {}): PulseWithUser {
 }
 
 describe('LiveNowStrip', () => {
-  it('renders nothing when there are no live reviews', () => {
-    const { container } = render(
+  it('shows an honest empty state when there are no live reviews', () => {
+    render(
       <LiveNowStrip venueId="venue-1" pulses={[]} onSelect={vi.fn()} />,
     )
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Live now')).toBeInTheDocument()
+    expect(screen.getByText(/No live reviews in the last 90 minutes/)).toBeInTheDocument()
   })
 
   it('shows energy, snippet, and opens the full review on tap', () => {
