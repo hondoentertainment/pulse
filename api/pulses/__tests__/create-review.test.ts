@@ -58,7 +58,7 @@ function mockRes() {
       return this
     },
     headers,
-  })
+  }
 }
 
 describe('POST /api/pulses/create live reviews', () => {
