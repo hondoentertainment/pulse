@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
   buildMapLiveToast,
+  buildVenueActivityMap,
   compareVenueMapActivity,
-  getVenueMapActivity,
+  getVenueMapActivityFromLive,
   type MapLiveToast,
+  type VenueMapActivity,
 } from '@/lib/map-live-reviews'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
@@ -56,15 +58,16 @@ interface InteractiveMapProps {
 
 const ZOOM_STEP = 1.35
 const MAP_SCALE = 500000
+const EMPTY_PULSES: Pulse[] = []
 
-export function InteractiveMap({
+export const InteractiveMap = memo(function InteractiveMap({
   venues,
   userLocation,
   onVenueClick,
   isTracking = false,
   locationAccuracy,
   locationHeading,
-  pulses = [],
+  pulses = EMPTY_PULSES,
   chrome = 'full',
   energyLevels,
   onEnergyLevelsChange,
@@ -121,6 +124,13 @@ export function InteractiveMap({
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
   const { toast: incomingLiveToast, dismissToast } = useMapLiveReviews(pulses, venues)
+  const activityByVenueId = useMemo(
+    () => buildVenueActivityMap(venues, pulses),
+    [venues, pulses],
+  )
+  const activityFor = useCallback((venue: Venue): VenueMapActivity => {
+    return activityByVenueId.get(venue.id) ?? getVenueMapActivityFromLive(venue, undefined)
+  }, [activityByVenueId])
   const [pinnedLiveToast, setPinnedLiveToast] = useState<MapLiveToast | null>(null)
   const liveToast = pinnedLiveToast ?? incomingLiveToast
   const handleDismissLiveToast = useCallback(() => {
@@ -272,7 +282,7 @@ export function InteractiveMap({
   }
 
   const getLiveIntelLabel = (venue: Venue) => {
-    const activity = getVenueMapActivity(venue, pulses)
+    const activity = activityFor(venue)
     if (activity.countLabel) return activity.countLabel
     const live = venue.liveSummary
     if (!live || live.reportCount === 0) return null
@@ -332,17 +342,20 @@ export function InteractiveMap({
       const nearby = userLocation
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
-          .sort((a, b) => compareVenueMapActivity(getVenueMapActivity(a, pulses), getVenueMapActivity(b, pulses)))
-        : filtered.sort((a, b) => compareVenueMapActivity(getVenueMapActivity(a, pulses), getVenueMapActivity(b, pulses)))
+          .sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
+        : filtered.sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
       return nearby.slice(0, 5)
     }
 
     return filtered
-  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, pulses])
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, activityFor])
 
-  const availableCategories = Array.from(
-    new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
-  ).sort()
+  const availableCategories = useMemo(
+    () => Array.from(
+      new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
+    ).sort(),
+    [venues],
+  )
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -360,17 +373,21 @@ export function InteractiveMap({
   useEffect(() => {
     if (!canvasRef.current || !center) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const frame = window.requestAnimationFrame(() => {
+      const canvas = canvasRef.current
+      if (!canvas || !center) return
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
 
-    canvas.width = dimensions.width * window.devicePixelRatio
-    canvas.height = dimensions.height * window.devicePixelRatio
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+      canvas.width = dimensions.width * window.devicePixelRatio
+      canvas.height = dimensions.height * window.devicePixelRatio
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
 
-    drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+      drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+    })
+    return () => window.cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredVenues, center, zoom, dimensions, pulses])
+  }, [filteredVenues, center, zoom, dimensions, activityByVenueId])
 
   const latLngToPixel = (
     lat: number,
@@ -514,7 +531,7 @@ export function InteractiveMap({
     if (!heatmapCtx) return
 
     venueList.forEach((venue) => {
-      const activity = getVenueMapActivity(venue, pulses)
+      const activity = activityFor(venue)
       if (activity.heatScore <= 0) return
 
       const pos = latLngToPixel(venue.location.lat, venue.location.lng, mapCenter, mapZoom, dims)
@@ -1038,7 +1055,7 @@ export function InteractiveMap({
         ))}
 
         {clusteredMapData.singles.map(({ venue, x, y }) => {
-          const activity = getVenueMapActivity(venue, pulses)
+          const activity = activityFor(venue)
           const baseSize = accessibilityMode ? 24 : 18
           const scale = activity.heatScore > 0 ? 1 + (activity.heatScore / 100) : 1
           const markerSize = baseSize * zoom * scale * 0.6
@@ -1282,7 +1299,7 @@ export function InteractiveMap({
       ))}
 
       {clusteredMapData.singles.map(({ venue, x, y, distance }) => {
-        const activity = getVenueMapActivity(venue, pulses)
+        const activity = activityFor(venue)
         const showLabel = labelVenueIds.has(venue.id) || activity.heatScore >= 75 || activity.liveReviewCount > 0
         const isHovered = hoveredVenue?.id === venue.id
 
@@ -1818,6 +1835,7 @@ export function InteractiveMap({
           </AnimatePresence>
           <div className="flex gap-2 overflow-x-auto pb-1 px-1">
             {previewVenues.map((point) => {
+              const previewActivity = activityFor(point.venue)
               const isCompared = comparedVenueIds.includes(point.venue.id)
               const headingDelta = (locationHeading !== null && locationHeading !== undefined && userLocation)
                 ? getHeadingDelta(calculateBearing(
@@ -1858,13 +1876,13 @@ export function InteractiveMap({
                               {formatDistance(point.distance, unitSystem)}
                             </p>
                           )}
-                          {getVenueMapActivity(point.venue, pulses).countLabel && (
+                          {previewActivity.countLabel && (
                             <p className="mt-1 text-[10px] font-semibold text-[#FF2D78]">
-                              {getVenueMapActivity(point.venue, pulses).countLabel}
+                              {previewActivity.countLabel}
                             </p>
                           )}
                         </div>
-                        <PulseScore score={getVenueMapActivity(point.venue, pulses).heatScore} size="xs" showLabel={false} />
+                        <PulseScore score={previewActivity.heatScore} size="xs" showLabel={false} />
                       </div>
                     </button>
                     <Button
@@ -1960,4 +1978,4 @@ export function InteractiveMap({
 
     </div>
   )
-}
+})

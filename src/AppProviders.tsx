@@ -2,8 +2,6 @@ import type { ReactNode } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { BrowserRouter } from 'react-router-dom'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/react'
 
 import { queryClient, CACHE_MAX_AGE } from '@/lib/query-client'
 import { queryPersister } from '@/lib/query-persister'
@@ -14,16 +12,8 @@ import { AppStateProvider } from '@/hooks/use-app-state'
 /**
  * AppProviders — wraps the tree with all cross-cutting providers.
  *
- * Composition order (outside → inside):
- *   ErrorBoundary          (captures render errors everywhere below)
- *   PersistQueryClientProvider (TanStack Query + IndexedDB persistence)
- *   BrowserRouter          (react-router)
- *   SupabaseAuthProvider   (session/profile)
- *   AppStateProvider       (derived app state)
- *   + Analytics / SpeedInsights (side-effect components)
- *
- * This file contains no lifecycle or data-loading logic — that lives in
- * `AppBootstrap.tsx`.
+ * Analytics / Speed Insights live in `main.tsx` (lazy, skipped on localhost)
+ * so this file stays off the first-paint vendor graph.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -36,8 +26,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <SupabaseAuthProvider>
             <AppStateProvider>
               {children}
-              <Analytics />
-              <SpeedInsights />
             </AppStateProvider>
           </SupabaseAuthProvider>
         </BrowserRouter>

@@ -33,22 +33,28 @@ function handlePulseBatchFlush(batch: BatchFlush) {
   if (batch.events.length === 0) return
   const oldestTimestamp = Math.min(...batch.events.map(event => event.timestamp))
 
-  queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
-    const existing = new Set(old.map(p => p.id))
-    const newPulses = batch.events
-      .filter(e => !existing.has(e.key))
-      .map(e => e.payload as Pulse)
+  const currentPulses = queryClient.getQueryData<Pulse[]>(['pulses']) ?? []
+  const existingIds = new Set(currentPulses.map(pulse => pulse.id))
+  const newPulses = batch.events
+    .filter(event => !existingIds.has(event.key))
+    .map(event => event.payload as Pulse)
 
-    if (newPulses.length === 0) return old
-    const reviews = newPulses.filter((pulse) => isLiveReview(pulse))
-    if (reviews.length > 0) {
-      queryClient.setQueryData<Venue[]>(['venues'], (venues = []) =>
-        stampVenuesFromLiveReviews(venues, reviews),
-      )
-      trackPerformance('realtime_live_review_insert', reviews.length)
-    }
-    return [...newPulses, ...old]
-  })
+  if (newPulses.length > 0) {
+    queryClient.setQueryData<Pulse[]>(['pulses'], (old = []) => {
+      const seen = new Set(old.map(pulse => pulse.id))
+      const fresh = newPulses.filter(pulse => !seen.has(pulse.id))
+      if (fresh.length === 0) return old
+      return [...fresh, ...old]
+    })
+  }
+
+  const reviews = newPulses.filter((pulse) => isLiveReview(pulse))
+  if (reviews.length > 0) {
+    queryClient.setQueryData<Venue[]>(['venues'], (venues = []) =>
+      stampVenuesFromLiveReviews(venues, reviews),
+    )
+    trackPerformance('realtime_live_review_insert', reviews.length)
+  }
 
   trackPerformance('realtime_pulse_batch_size', batch.events.length)
   trackPerformance('realtime_pulse_batch_lag_ms', Date.now() - oldestTimestamp)
@@ -98,6 +104,7 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
 
   queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
     const updates = new Map(batch.events.map(event => [event.key, event.payload as Partial<Venue>]))
+    if (!old.some(venue => updates.has(venue.id))) return old
     return old.map(venue => {
       const update = updates.get(venue.id)
       if (!update) return venue
@@ -218,7 +225,6 @@ export function useRealtimeSubscription(enabled = true) {
         (payload) => {
           const report = mapVenueLiveReport(payload.new as Parameters<typeof mapVenueLiveReport>[0])
           mergeLiveReport(report)
-          void queryClient.invalidateQueries({ queryKey: ['venues'] })
           trackPerformance('realtime_venue_live_report', 1)
         }
       )
@@ -232,8 +238,10 @@ export function useRealtimeSubscription(enabled = true) {
           const summary = mapVenueLiveAggregate(row as Parameters<typeof mapVenueLiveAggregate>[0])
           const venueId = row.venue_id
           queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
-          queryClient.setQueryData<Venue[]>(['venues'], (old = []) =>
-            old.map(venue => {
+          queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
+            const match = old.find(venue => venue.id === venueId)
+            if (!match) return old
+            return old.map(venue => {
               if (venue.id !== venueId) return venue
               const liveAdjustedScore = summary.crowdLevel > 0
                 ? Math.max(venue.pulseScore, Math.round(venue.pulseScore * 0.7 + summary.crowdLevel * 0.3))
@@ -245,8 +253,7 @@ export function useRealtimeSubscription(enabled = true) {
                 liveSummary: summary,
               }
             })
-          )
-          void queryClient.invalidateQueries({ queryKey: ['venues'] })
+          })
           trackPerformance('realtime_venue_live_aggregate', 1)
           trackPerformance('realtime_venue_live_aggregate_lag_ms', Date.now() - new Date(summary.updatedAt).getTime())
         }

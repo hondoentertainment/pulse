@@ -1,6 +1,7 @@
+import { memo, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
 import { EnergyBadge } from '@/components/EnergyBadge'
-import { getSurgingNearbyVenues, getVenueMapActivity } from '@/lib/map-live-reviews'
+import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap } from '@/lib/map-live-reviews'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -10,14 +11,21 @@ interface SurgingNearbyListProps {
   onVenueClick: (venue: Venue) => void
 }
 
-export function SurgingNearbyList({
+export const SurgingNearbyList = memo(function SurgingNearbyList({
   venues,
   pulses,
   userLocation,
   unitSystem: _unitSystem,
   onVenueClick,
 }: SurgingNearbyListProps) {
-  const nearby = getSurgingNearbyVenues(venues, pulses, { userLocation })
+  const activityByVenueId = useMemo(
+    () => buildVenueActivityMap(venues, pulses),
+    [venues, pulses],
+  )
+  const nearby = useMemo(
+    () => getSurgingNearbyVenues(venues, pulses, { userLocation, activityByVenue: activityByVenueId }),
+    [venues, pulses, userLocation, activityByVenueId],
+  )
 
   return (
     <section aria-labelledby="surging-nearby-heading" className="space-y-3.5">
@@ -31,7 +39,8 @@ export function SurgingNearbyList({
       ) : (
         <div className="space-y-3">
           {nearby.map((venue) => {
-            const activity = getVenueMapActivity(venue, pulses)
+            const activity = activityByVenueId.get(venue.id)
+              ?? getVenueMapActivityFromLive(venue, undefined)
             const energy = activity.latest?.energyRating
             return (
               <button
@@ -59,4 +68,4 @@ export function SurgingNearbyList({
       )}
     </section>
   )
-}
+})

@@ -118,10 +118,14 @@ export function getLiveNowReviews<T extends Pulse>(
   nowMs: number = Date.now(),
   windowMinutes: number = LIVE_NOW_WINDOW_MINUTES,
 ): T[] {
-  return pulses
-    .filter((pulse) => (venueId ? pulse.venueId === venueId : true))
-    .filter((pulse) => isLiveReview(pulse) && isWithinLiveNowWindow(pulse.createdAt, nowMs, windowMinutes))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const matches: T[] = []
+  for (const pulse of pulses) {
+    if (venueId && pulse.venueId !== venueId) continue
+    if (!isLiveReview(pulse) || !isWithinLiveNowWindow(pulse.createdAt, nowMs, windowMinutes)) continue
+    matches.push(pulse)
+  }
+  matches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  return matches
 }
 
 export function countLiveReviewsInWindow(
