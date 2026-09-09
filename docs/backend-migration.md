@@ -56,13 +56,18 @@ historical migrations once they're in staging/prod.
 
 ## 3. Seeding data
 
-`supabase/seed.sql` inserts ~20 representative venues with deterministic
-UUIDs. `supabase db reset` runs seed automatically on local.
+`supabase/seed.sql` inserts ~20 representative US venues plus the Seattle
+launch safety-net rows. `supabase db reset` applies migrations first, including
+`20260909120000_seattle_launch_venue_catalog.sql` (33 curated Seattle venues).
 
-For staging, run once after first migration:
+For production project `xeldqwhztcnnvazmshzh`, paste that migration into the
+SQL editor (migration history versions there do not match repo filenames).
+Then run `supabase/verify/seattle_launch_venues.sql`.
+
+For a CLI-linked project whose history matches the repo:
 
 ```bash
-psql "$SUPABASE_DB_URL" -f supabase/seed.sql
+psql "$SUPABASE_DB_URL" -f supabase/migrations/20260909120000_seattle_launch_venue_catalog.sql
 ```
 
 **Profiles** are not seeded — they are auto-created on first sign-in by
