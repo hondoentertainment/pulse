@@ -32,8 +32,10 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260816000001_signal_pilot_signups.sql` | Leftover unused Pulse Pro waitlist emails (not dropped) |
 | `20260816000002_signal_push_subscriptions.sql` | Leftover unused Web Push endpoints (not dropped) |
 | `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
+| `20260909000000_live_reviews.sql` | Live reviews + heatmap |
+| `20260909120000_seattle_launch_venue_catalog.sql` | Idempotent 33-venue Seattle catalog upsert |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (includes leftover Signal tables plus Seattle venue launch).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables) and [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (33 Seattle venues).
 
 ---
 

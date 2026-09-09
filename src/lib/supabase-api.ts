@@ -50,6 +50,8 @@ type LiveVenueIntelligenceRow = {
   integrations: Venue['integrations'] | null
   live_summary: VenueLiveAggregateRow | null
   latest_activity_at: string | null
+  neighborhood?: string | null
+  inventory_source?: Venue['inventorySource'] | null
 }
 
 function getJoinedLiveAggregate(value: unknown): VenueLiveAggregateRow | null {
@@ -79,6 +81,8 @@ function mapVenueRow(row: {
   website?: string | null
   integrations?: Venue['integrations'] | null
   latest_activity_at?: string | null
+  neighborhood?: string | null
+  inventory_source?: Venue['inventorySource'] | null
 }, liveAggregate: VenueLiveAggregateRow | null): Venue {
   return {
     id: row.id,
@@ -90,8 +94,8 @@ function mapVenueRow(row: {
     },
     city: row.city ?? undefined,
     state: row.state ?? undefined,
-    neighborhood: (row as { neighborhood?: string | null }).neighborhood ?? undefined,
-    inventorySource: (row as { inventory_source?: Venue['inventorySource'] | null }).inventory_source ?? undefined,
+    neighborhood: row.neighborhood ?? undefined,
+    inventorySource: row.inventory_source ?? undefined,
     category: row.category ?? undefined,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,

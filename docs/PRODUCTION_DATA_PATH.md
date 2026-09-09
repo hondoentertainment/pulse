@@ -5,16 +5,22 @@ and live-intelligence data.
 
 ## Venue Coverage
 
+- **Seattle launch (shipping market):** 33 curated nightlife venues in
+  `src/lib/seattle-launch-venues.ts` (Capitol Hill, Belltown, Fremont, Ballard,
+  Downtown). That list is the product catalog when `VITE_LAUNCHED_CITIES=Seattle,WA`.
+  Apply it to Supabase with
+  `supabase/migrations/20260909120000_seattle_launch_venue_catalog.sql`.
+  Verify with `supabase/verify/seattle_launch_venues.sql`.
 - The national venue catalog in `src/lib/us-venues.ts` is prototype coverage for
-  local development, preview builds, and visual tests.
-- Production should serve nationwide venues from the Supabase `venues` table and
+  local development, preview builds, and visual tests. It is not the Seattle
+  launch source of truth.
+- Production should serve venues from the Supabase `venues` table and
   the `get_live_venue_intelligence` RPC.
 - The app's U.S. market selector works with both data sources as long as venues
   include `city`, `state`, `location_lat`, and `location_lng`.
 - If Supabase returns zero venues or cannot return venue data, the app
-  temporarily falls back to the national prototype catalog and emits a
-  `venue_data_fallback` analytics event. This keeps discovery usable while
-  production venue seeding or RPC access is completed.
+  temporarily falls back to the Seattle launch catalog (when geo-gated) or the
+  national prototype catalog and emits a `venue_data_fallback` analytics event.
 
 ## Required Migration
 
@@ -34,10 +40,10 @@ supabase/migrations/20260429000000_realtime_venue_intelligence.sql
 
 ## Production Verification
 
-After migration and deploy:
+After the Seattle catalog migration and deploy:
 
 1. Open the production Vercel URL.
-2. Switch the market selector from Seattle to Miami.
-3. Confirm Miami venues appear and venue detail opens.
-4. Open the Map tab and confirm the canvas renders for the selected market.
+2. Confirm the Map tab shows the 33 Seattle launch venues (not an empty canvas and not only the fixture fallback).
+3. Spot-check Neumos, The Crocodile, Tractor Tavern, and The Showbox — pins and venue detail should open.
+4. If `VITE_LAUNCHED_CITIES=Seattle,WA`, other markets must not appear.
 5. Submit or inspect a live venue report to verify Supabase aggregates refresh.

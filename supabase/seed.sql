@@ -1,5 +1,10 @@
 -- Seed data: 20 representative venues across diverse US cities and categories
 -- Uses deterministic UUIDs so foreign-key references are stable across resets.
+--
+-- Seattle launch catalog (33 venues): the idempotent production apply path is
+-- supabase/migrations/20260909120000_seattle_launch_venue_catalog.sql
+-- (`db reset` runs that migration before this file). The Seattle INSERT below
+-- is a safety net for older reset workflows and stays ON CONFLICT DO NOTHING.
 
 INSERT INTO venues (id, name, location_lat, location_lng, location_address, city, state, category, pulse_score, score_velocity, seeded, hours, last_activity, created_at)
 VALUES
