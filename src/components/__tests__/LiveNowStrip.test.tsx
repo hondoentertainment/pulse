@@ -76,6 +76,6 @@ describe('LiveNowStrip', () => {
         onSelect={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Unverified/i)).toBeInTheDocument()
+    expect(screen.getByText('Unverified')).toBeInTheDocument()
   })
 })

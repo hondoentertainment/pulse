@@ -1516,11 +1516,10 @@ export function InteractiveMap({
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               filters.energyLevels.includes('electric')
-                ? "bg-[#FF2D78] text-white border-[#FF2D78]"
-                : "bg-card/90 text-[#FF2D78] border-[#FF2D78]/70 hover:bg-[#FF2D78]/10"
+                ? "bg-primary text-primary-foreground"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
             Electric
@@ -1535,11 +1534,10 @@ export function InteractiveMap({
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               filters.energyLevels.includes('buzzing')
-                ? "bg-[#FF8A00] text-white border-[#FF8A00]"
-                : "bg-card/90 text-[#FF8A00] border-[#FF8A00]/70 hover:bg-[#FF8A00]/10"
+                ? "bg-[var(--energy-buzzing)] text-white"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
             Buzzing
@@ -1550,11 +1548,10 @@ export function InteractiveMap({
               setNearMeActive(!nearMeActive)
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               nearMeActive
-                ? "bg-[#00D1FF] text-[#041018] border-[#00D1FF]"
-                : "bg-card/90 text-[#00D1FF] border-[#00D1FF]/70 hover:bg-[#00D1FF]/10"
+                ? "bg-accent text-accent-foreground"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
             Near me

@@ -23,7 +23,7 @@ Also adds `pulse_reports` for persisted hide/report.
 - **Venue detail** — Live now strip (last 90 min) above history. Tap opens the full review. New rows arrive on the existing `pulse-realtime` channel.
 - **Map / Surging / Trending** — Live review counts from real pulses. Trending secondary-sorts by fresh review volume in the existing 15-minute window. No fabricated data.
 - **Map realtime** — `useRealtimeSubscription` (`pulse-realtime`) already listens for `pulses` INSERT. `kind=review` flushes the pulse batch immediately, merges into the `['pulses']` query cache, and stamps `lastActivity` / `lastPulseAt` on the matching `['venues']` row. `InteractiveMap` and `SurgingNearbyList` read that cache (via `visiblePulses` / `visibleVenues`), so heatmap intensity, marker live counts, Surging cards, and a brief `Live · {venue} · {snippet}` toast update without a reload. Reviews for venues outside launch/geo `visibleVenues` are ignored. Quiet nearby = honest empty state, not invented cards.
-- **Venue inbox** — `/venue/:venueId/inbox`, gated by `venueInbox` flag plus a verified claim (`venue-claims` KV) or `venue_staff` row. Honest claim-needed empty state if neither exists.
+- **Venue inbox** — `/venue/:venueId/inbox`, gated by `venueInbox` flag plus a verified claim (`venue-claims` KV) or `venue_staff` row. Shows “Tonight’s reviews” stats and an empty-state note until claim / venue_staff is verified.
 
 ## Trust
 

@@ -61,8 +61,10 @@ describe('SurgingNearbyList', () => {
         onVenueClick={onVenueClick}
       />,
     )
+    expect(screen.getByText('Surging nearby')).toBeInTheDocument()
+    expect(screen.getByText('Neon Lounge')).toBeInTheDocument()
     expect(screen.getByText('2 live reviews · last hour')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Neon Lounge/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Open Neon Lounge/i }))
     expect(onVenueClick).toHaveBeenCalledWith(venue)
   })
 })

@@ -11,10 +11,9 @@ import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
+import { MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
-import { EnergyBadge } from '@/components/EnergyBadge'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -35,7 +34,7 @@ import { trackEvent } from '@/lib/analytics'
 import { track } from '@/lib/observability/analytics'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getLiveNowReviews } from '@/lib/live-reviews'
+import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate } from 'react-router-dom'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
@@ -348,6 +347,9 @@ export function VenuePage({
             </button>
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{venue.name}</h1>
+              {venueStatusLine(venue) && (
+                <p className="mt-1 text-[13px] text-muted-foreground">{venueStatusLine(venue)}</p>
+              )}
               {venue.pulseScore >= 25 && getContextualLabel(venue) && (
                 <p className="text-sm text-accent font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
               )}
@@ -431,37 +433,44 @@ export function VenuePage({
         transition={{ duration: 0.3 }}
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
-        <WorthGoingSummary summary={worthGoing} />
-
-        <Card className="rounded-[20px] border-white/10 bg-card/90 p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p
-                className="text-6xl font-bold tabular-nums leading-none"
-                style={{ color: venue.pulseScore >= 75 ? '#FF2D78' : venue.pulseScore >= 50 ? '#FF8A00' : '#00D1FF' }}
-              >
-                {venue.pulseScore}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <EnergyBadge score={venue.pulseScore} filled={false} />
-                <span>{getEnergyLabel(venue.pulseScore)}</span>
+        {(() => {
+          const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
+          const delta = recent10m * 8
+          return (
+            <Card className="rounded-[18px] border-0 bg-[#17171C] p-3.5">
+              <div className="flex items-center gap-3">
+                <p
+                  className="text-5xl font-bold tabular-nums leading-none"
+                  style={{ color: energyScoreColor(venue.pulseScore) }}
+                >
+                  {venue.pulseScore}
+                </p>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-foreground">{getEnergyLabel(venue.pulseScore)}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                    {delta > 0 && <span>+{delta} / 10m ·</span>}
+                    <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} inline />
+                  </div>
+                </div>
               </div>
-            </div>
-            {(() => {
-              const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
-              const delta = recent10m * 8
-              if (delta <= 0) return null
-              return (
-                <span className="rounded-full border border-[#FF2D78]/70 px-2.5 py-1 text-xs font-semibold text-[#FF2D78]">
-                  +{delta} / 10m
-                </span>
-              )
-            })()}
-          </div>
-          <div className="mt-4">
-            <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
-          </div>
-        </Card>
+            </Card>
+          )
+        })()}
+
+        <Button
+          onClick={onCreatePulse}
+          className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90"
+        >
+          Check in · Create live review
+        </Button>
+
+        <LiveNowStrip
+          venueId={venue.id}
+          pulses={venuePulses}
+          onSelect={setSelectedLiveReview}
+        />
+
+        <WorthGoingSummary summary={worthGoing} />
 
         {showArrivalPrompt && arrivalWatch && (
           <ArrivalPrompt
@@ -597,23 +606,11 @@ export function VenuePage({
           currentScore={venue.pulseScore}
         />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">Live Energy</h2>
-            {venue.lastPulseAt && (
-              <p className="text-sm text-muted-foreground">
-                Last pulse {formatTimeAgo(venue.lastPulseAt)}
-              </p>
-            )}
-          </div>
-          <Button
-            onClick={onCreatePulse}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus size={20} weight="bold" className="mr-2" />
-            Post live review
-          </Button>
-        </div>
+        {venue.lastPulseAt && (
+          <p className="text-sm text-muted-foreground">
+            Last pulse {formatTimeAgo(venue.lastPulseAt)}
+          </p>
+        )}
 
         {onStartCrewCheckIn && (
           <Button
@@ -693,12 +690,6 @@ export function VenuePage({
         />
 
         <Separator />
-
-        <LiveNowStrip
-          venueId={venue.id}
-          pulses={venuePulses}
-          onSelect={setSelectedLiveReview}
-        />
 
         <h2 className="text-xl font-bold">History</h2>
 

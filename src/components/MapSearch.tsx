@@ -210,7 +210,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : "Search venues or say 'show electric'"}
+          placeholder={isListening ? 'Listening...' : 'Search venues'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -219,7 +219,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            'pl-10 bg-background/70 backdrop-blur-sm border-border/80 h-11 focus:ring-2 focus:ring-accent transition-all shadow-none',
+            'h-11 rounded-[18px] border-0 bg-[#17171C] pl-10 shadow-none focus:ring-2 focus:ring-primary/40',
             query ? 'pr-20' : 'pr-12',
             isListening && 'ring-2 ring-accent animate-pulse'
           )}

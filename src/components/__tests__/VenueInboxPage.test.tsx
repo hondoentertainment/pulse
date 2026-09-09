@@ -60,7 +60,9 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Claim needed/i)).toBeInTheDocument()
+    expect(screen.getByText(/Tonight’s reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/The Showbox · owner inbox/)).toBeInTheDocument()
+    expect(screen.getByText(/Empty state until claim \/ venue_staff verified/)).toBeInTheDocument()
   })
 
   it('lists tonight reviews for a verified claimant', () => {
@@ -83,6 +85,9 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
+    expect(screen.getByText(/Tonight’s reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/Live reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/Avg energy/)).toBeInTheDocument()
     expect(screen.getByText(/DJ just started/)).toBeInTheDocument()
   })
 

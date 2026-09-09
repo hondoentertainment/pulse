@@ -2,17 +2,14 @@ import { useMemo } from 'react'
 import type { Pulse, User, Venue } from '@/lib/types'
 import type { VenueClaim } from '@/lib/venue-owner'
 import {
+  averageEnergyScore,
   canAccessVenueInbox,
-  energyChipLabel,
   getTonightLiveReviews,
-  relativeReviewTime,
-  snippetCaption,
 } from '@/lib/live-reviews'
-import { ENERGY_CONFIG } from '@/lib/types'
 import { CaretLeft } from '@phosphor-icons/react'
-import { Badge } from '@/components/ui/badge'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { track } from '@/lib/observability/analytics'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 
 interface VenueInboxPageProps {
   venue: Venue
@@ -41,6 +38,8 @@ export function VenueInboxPage({
     () => getTonightLiveReviews(pulses, venue.id),
     [pulses, venue.id],
   )
+  const visibleTonight = allowed ? tonight : []
+  const avgEnergy = averageEnergyScore(visibleTonight)
 
   if (!isFeatureEnabled('venueInbox')) {
     return (
@@ -58,31 +57,37 @@ export function VenueInboxPage({
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-          <button type="button" onClick={onBack} className="rounded-lg p-2 hover:bg-muted" aria-label="Back">
+      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg">
+        <div className="mx-auto flex max-w-2xl items-start gap-3 px-5 pb-2 pt-6">
+          <button type="button" onClick={onBack} className="mt-0.5 rounded-lg p-2 hover:bg-muted" aria-label="Back">
             <CaretLeft size={24} />
           </button>
-          <div>
-            <h1 className="text-xl font-bold">Venue inbox</h1>
-            <p className="text-xs text-muted-foreground">{venue.name} · tonight’s live reviews</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold">Tonight’s reviews</h1>
+            <p className="mt-1 text-[13px] text-muted-foreground">{venue.name} · owner inbox</p>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
-        {!allowed ? (
-          <div className="rounded-[18px] border border-dashed border-white/20 bg-card/70 p-5">
-            <h2 className="text-lg font-semibold">Claim needed</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              This read-only inbox is for verified venue owners and staff.
-              Claim is not a full CRM yet — associate this venue via a verified
-              claim or a venue_staff role to see tonight’s live reviews.
-            </p>
+      <div className="mx-auto max-w-2xl space-y-3.5 px-5 py-4">
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="rounded-[18px] bg-[#17171C] p-3.5">
+            <p className="text-[22px] font-bold leading-none text-primary">{visibleTonight.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Live reviews</p>
           </div>
+          <div className="rounded-[18px] bg-[#17171C] p-3.5">
+            <p className="text-[22px] font-bold leading-none text-[var(--energy-buzzing)]">{avgEnergy}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Avg energy</p>
+          </div>
+        </div>
+
+        {!allowed ? (
+          <p className="text-xs text-muted-foreground">
+            Empty state until claim / venue_staff verified
+          </p>
         ) : tonight.length === 0 ? (
-          <div className="rounded-[18px] border border-white/10 bg-card/70 p-5">
-            <h2 className="text-lg font-semibold">No live reviews tonight</h2>
+          <div className="rounded-[18px] bg-[#17171C] p-3.5">
+            <h2 className="text-base font-semibold">No live reviews tonight</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               When patrons post energy + caption reviews after 4pm, they will
               appear here. Nothing is fabricated.
@@ -90,36 +95,26 @@ export function VenueInboxPage({
           </div>
         ) : (
           <ul className="space-y-3">
-            {tonight.map((pulse, index) => {
-              const energy = ENERGY_CONFIG[pulse.energyRating]
-              return (
-                <li
-                  key={pulse.id}
-                  className="rounded-[16px] border border-white/10 bg-card/90 p-4"
-                  onClick={() => {
-                    track('pulse_viewed', {
-                      pulseId: pulse.id,
-                      venueId: venue.id,
-                      position: index,
-                      feed: 'inbox',
-                    })
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge
-                      style={{ backgroundColor: energy.color, color: 'white', borderColor: energy.color }}
-                    >
-                      {energyChipLabel(pulse.energyRating)}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{relativeReviewTime(pulse.createdAt)}</span>
-                  </div>
-                  <p className="mt-2 text-sm">{snippetCaption(pulse.caption, 200)}</p>
-                  {pulse.locationVerified === false && (
-                    <p className="mt-2 text-[11px] uppercase tracking-wide text-amber-400">Unverified location</p>
-                  )}
-                </li>
-              )
-            })}
+            {tonight.map((pulse, index) => (
+              <li
+                key={pulse.id}
+                onClick={() => {
+                  track('pulse_viewed', {
+                    pulseId: pulse.id,
+                    venueId: venue.id,
+                    position: index,
+                    feed: 'inbox',
+                  })
+                }}
+              >
+                <LiveReviewFeedCard
+                  energyRating={pulse.energyRating}
+                  createdAt={pulse.createdAt}
+                  caption={pulse.caption}
+                  unverified={pulse.locationVerified === false}
+                />
+              </li>
+            ))}
           </ul>
         )}
       </div>

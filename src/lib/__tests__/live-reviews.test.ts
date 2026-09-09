@@ -5,9 +5,12 @@ import {
   canAccessVenueInbox,
   canPostLiveReview,
   countLiveReviewsInWindow,
+  averageEnergyScore,
   energyChipLabel,
+  energyScoreColor,
   evaluateLocationProof,
   getLiveNowReviews,
+  relativeReviewTime,
   getTonightLiveReviews,
   isLiveReview,
   isWithinLiveNowWindow,
@@ -18,6 +21,7 @@ import {
   tonightWindowStart,
   validateLiveReviewCaption,
   formatLiveReviewsLastHour,
+  venueStatusLine,
 } from '../live-reviews'
 
 function makePulse(overrides: Partial<Pulse> = {}): Pulse {
@@ -194,6 +198,42 @@ describe('mapLiveReviewFields', () => {
       locationVerified: true,
       hasBody: true,
     })
+  })
+})
+
+describe('relativeReviewTime / averageEnergyScore / venueStatusLine', () => {
+  it('compacts formatTimeAgo for feed cards', () => {
+    expect(relativeReviewTime(new Date(Date.now() - 4 * 60 * 1000).toISOString())).toBe('4m')
+  })
+
+  it('maps energy pills onto a 0-100 average', () => {
+    expect(averageEnergyScore([])).toBe(0)
+    expect(averageEnergyScore([
+      { energyRating: 'electric' },
+      { energyRating: 'electric' },
+      { energyRating: 'electric' },
+    ])).toBe(100)
+  })
+
+  it('builds neighborhood · Open now when hours are present', () => {
+    const line = venueStatusLine({
+      neighborhood: 'Capitol Hill',
+      hours: {
+        monday: '5pm-2am',
+        tuesday: '5pm-2am',
+        wednesday: '5pm-2am',
+        thursday: '5pm-2am',
+        friday: '5pm-2am',
+        saturday: '5pm-2am',
+        sunday: '5pm-2am',
+      },
+    })
+    expect(line).toContain('Capitol Hill')
+    expect(line).toMatch(/Open now|Closed/)
+  })
+
+  it('colors high scores Electric pink', () => {
+    expect(energyScoreColor(82)).toBe('#FF2D78')
   })
 })
 

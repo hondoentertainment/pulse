@@ -11,7 +11,7 @@ test.describe('Venue nightlife shell (Figma Enhanced)', () => {
   test('map is home with Pulse title, energy pills, and nav', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Pulse' })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Where the energy is — right now')).toBeVisible()
-    await expect(page.getByPlaceholder(/Search venues or say/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/Search venues/i)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Electric' }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Buzzing' }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Near me/i }).first()).toBeVisible()
