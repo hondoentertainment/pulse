@@ -196,7 +196,9 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `InteractiveMap` | Main map with clustering |
+| `InteractiveMap` | Main map with clustering, live-review heatmap, and live toast |
+| `MapLiveReviewToast` | Floating `Live · venue · snippet` overlay on the map |
+| `SurgingNearbyList` | Last-hour live review cards under the map |
 | `MapboxBaseLayer` | Mapbox tile layer |
 | `MapFilters` | Energy/category filters |
 | `MapSearch` | Map-integrated search |

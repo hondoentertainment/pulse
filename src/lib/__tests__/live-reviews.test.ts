@@ -17,6 +17,7 @@ import {
   snippetCaption,
   tonightWindowStart,
   validateLiveReviewCaption,
+  formatLiveReviewsLastHour,
 } from '../live-reviews'
 
 function makePulse(overrides: Partial<Pulse> = {}): Pulse {
@@ -204,5 +205,16 @@ describe('snippetCaption / energyChipLabel', () => {
 
   it('labels energy chips', () => {
     expect(energyChipLabel('electric')).toBe('Electric')
+  })
+})
+
+describe('formatLiveReviewsLastHour', () => {
+  it('returns empty when there are no reviews', () => {
+    expect(formatLiveReviewsLastHour(0)).toBe('')
+  })
+
+  it('matches Figma map copy', () => {
+    expect(formatLiveReviewsLastHour(1)).toBe('1 live review · last hour')
+    expect(formatLiveReviewsLastHour(8)).toBe('8 live reviews · last hour')
   })
 })

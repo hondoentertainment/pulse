@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Venue, type Pulse } from '@/lib/types'
-import { countLiveReviewsInWindow, LIVE_NOW_WINDOW_MINUTES } from '@/lib/live-reviews'
 import { PulseScore } from '@/components/PulseScore'
+import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
+import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
+import {
+  buildMapLiveToast,
+  compareVenueMapActivity,
+  getVenueMapActivity,
+  type MapLiveToast,
+} from '@/lib/map-live-reviews'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
@@ -80,6 +87,17 @@ export function InteractiveMap({
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
+  const { toast: incomingLiveToast, dismissToast } = useMapLiveReviews(pulses, venues)
+  const [pinnedLiveToast, setPinnedLiveToast] = useState<MapLiveToast | null>(null)
+  const liveToast = pinnedLiveToast ?? incomingLiveToast
+  const handleDismissLiveToast = useCallback(() => {
+    setPinnedLiveToast(null)
+    dismissToast()
+  }, [dismissToast])
+  const handleOpenLiveToast = useCallback((next: MapLiveToast) => {
+    const venue = venues.find((item) => item.id === next.venueId)
+    if (venue) onVenueClick(venue)
+  }, [venues, onVenueClick])
   const loadingTimeoutRef = useRef<number | null>(null)
   const cameraSettleTimeoutRef = useRef<number | null>(null)
   const venueSelectTimeoutRef = useRef<number | null>(null)
@@ -221,10 +239,8 @@ export function InteractiveMap({
   }
 
   const getLiveIntelLabel = (venue: Venue) => {
-    const liveReviewCount = countLiveReviewsInWindow(pulses, venue.id, LIVE_NOW_WINDOW_MINUTES)
-    if (liveReviewCount > 0) {
-      return `${liveReviewCount} live review${liveReviewCount === 1 ? '' : 's'}`
-    }
+    const activity = getVenueMapActivity(venue, pulses)
+    if (activity.countLabel) return activity.countLabel
     const live = venue.liveSummary
     if (!live || live.reportCount === 0) return null
     if (live.waitTime !== null && live.waitTime <= 5) return 'Walk right in'
@@ -279,17 +295,17 @@ export function InteractiveMap({
 
     // Progressive disclosure: show top 5 surging venues by default
     if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
-      // Only nearby venues (within 50mi of center or user) sorted by pulseScore
+      // Nearby venues (within 50mi) ranked by live review volume, then heat
       const nearby = userLocation
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
-          .sort((a, b) => b.pulseScore - a.pulseScore)
-        : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
+          .sort((a, b) => compareVenueMapActivity(getVenueMapActivity(a, pulses), getVenueMapActivity(b, pulses)))
+        : filtered.sort((a, b) => compareVenueMapActivity(getVenueMapActivity(a, pulses), getVenueMapActivity(b, pulses)))
       return nearby.slice(0, 5)
     }
 
     return filtered
-  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap])
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, pulses])
 
   const availableCategories = Array.from(
     new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
@@ -321,7 +337,7 @@ export function InteractiveMap({
 
     drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredVenues, center, zoom, dimensions])
+  }, [filteredVenues, center, zoom, dimensions, pulses])
 
   const latLngToPixel = (
     lat: number,
@@ -465,27 +481,17 @@ export function InteractiveMap({
     if (!heatmapCtx) return
 
     venueList.forEach((venue) => {
-      if (venue.pulseScore <= 0) return
+      const activity = getVenueMapActivity(venue, pulses)
+      if (activity.heatScore <= 0) return
 
       const pos = latLngToPixel(venue.location.lat, venue.location.lng, mapCenter, mapZoom, dims)
-      const intensity = Math.min(venue.pulseScore / 100, 1)
-      const radius = Math.max(40 * mapZoom * (0.5 + intensity * 0.5), 20)
+      const intensity = Math.min(activity.heatScore / 100, 1)
+      const radius = Math.max(40 * mapZoom * (0.5 + intensity * 0.5) * activity.radiusFactor, 20)
+      const { r, g, b } = activity.heatColor
 
       const gradient = heatmapCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius)
-
-      if (venue.pulseScore >= 80) {
-        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 1.0})`) // Neon Fuchsia - boosted
-        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.6})`)
-      } else if (venue.pulseScore >= 60) {
-        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.9})`) // Neon Rose - boosted
-        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.5})`)
-      } else if (venue.pulseScore >= 30) {
-        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.8})`) // Neon Sky - boosted
-        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.4})`)
-      } else {
-        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.6})`) // Indigo - boosted
-        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.3})`)
-      }
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${intensity * 1.0})`)
+      gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${intensity * 0.55})`)
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
       heatmapCtx.fillStyle = gradient
@@ -999,14 +1005,15 @@ export function InteractiveMap({
         ))}
 
         {clusteredMapData.singles.map(({ venue, x, y }) => {
+          const activity = getVenueMapActivity(venue, pulses)
           const baseSize = accessibilityMode ? 24 : 18
-          const scale = venue.pulseScore > 0 ? 1 + (venue.pulseScore / 100) : 1
+          const scale = activity.heatScore > 0 ? 1 + (activity.heatScore / 100) : 1
           const markerSize = baseSize * zoom * scale * 0.6
           const isHighlighted = hoveredVenue?.id === venue.id
-          const isHighEnergy = venue.pulseScore >= 80
-          const hasRecentActivity = venue.lastActivity
+          const isHighEnergy = activity.heatScore >= 80
+          const hasRecentActivity = activity.hasFreshReview || (venue.lastActivity
             ? (Date.now() - new Date(venue.lastActivity).getTime()) < 10 * 60 * 1000
-            : venue.pulseScore >= 50
+            : activity.heatScore >= 50)
 
           const Icon = getCategoryIcon(venue.category)
           const iconSize = markerSize * 1.2
@@ -1040,11 +1047,11 @@ export function InteractiveMap({
                 cx={x}
                 cy={y}
                 r={markerSize}
-                fill={venue.pulseScore > 0 ? getEnergyColor(venue.pulseScore) : 'oklch(0.25 0.05 260)'}
+                fill={activity.heatScore > 0 ? getEnergyColor(activity.heatScore) : 'oklch(0.25 0.05 260)'}
                 stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
                 strokeWidth={isHighlighted ? 3 : 1.5}
                 className="transition-all duration-300"
-                filter={venue.pulseScore >= 30 ? `drop-shadow(0 0 ${venue.pulseScore >= 80 ? '8px' : '4px'} ${venue.pulseScore >= 80 ? 'rgba(217, 70, 239, 0.6)' : venue.pulseScore >= 60 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(14, 165, 233, 0.4)'})` : undefined}
+                filter={activity.heatScore >= 30 ? `drop-shadow(0 0 ${activity.heatScore >= 80 ? '8px' : '4px'} ${activity.heatScore >= 80 ? 'rgba(255, 45, 120, 0.6)' : activity.heatScore >= 60 ? 'rgba(255, 138, 0, 0.5)' : 'rgba(0, 209, 255, 0.4)'})` : undefined}
               />
 
               <text
@@ -1242,7 +1249,8 @@ export function InteractiveMap({
       ))}
 
       {clusteredMapData.singles.map(({ venue, x, y, distance }) => {
-        const showLabel = labelVenueIds.has(venue.id) || venue.pulseScore >= 75
+        const activity = getVenueMapActivity(venue, pulses)
+        const showLabel = labelVenueIds.has(venue.id) || activity.heatScore >= 75 || activity.liveReviewCount > 0
         const isHovered = hoveredVenue?.id === venue.id
 
         return (
@@ -1291,8 +1299,27 @@ export function InteractiveMap({
                   )}>
                     <p className="text-xs font-bold">{venue.name}</p>
                     <p className="text-[10px] font-semibold text-foreground">
-                      {getEnergyLabel(venue.pulseScore)} · {venue.pulseScore}
+                      {getEnergyLabel(activity.heatScore)} · {activity.heatScore}
                     </p>
+                    {activity.countLabel && (
+                      <button
+                        type="button"
+                        className="pointer-events-auto mt-1 rounded-full bg-[#FF2D78] px-2 py-0.5 text-[10px] font-semibold text-white"
+                        aria-label={`Live reviews at ${venue.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          triggerHapticFeedback('light')
+                          if (activity.latest) {
+                            setPinnedLiveToast(buildMapLiveToast(activity.latest, venue))
+                            dismissToast()
+                          } else {
+                            onVenueClick(venue)
+                          }
+                        }}
+                      >
+                        {activity.countLabel}
+                      </button>
+                    )}
                     <div className="flex items-center gap-2">
                       {venue.category && (
                         <p className="text-[10px] text-muted-foreground uppercase font-mono">
@@ -1533,6 +1560,14 @@ export function InteractiveMap({
             Near me
           </button>
         </div>
+
+        <AnimatePresence>
+          <MapLiveReviewToast
+            toast={liveToast}
+            onDismiss={handleDismissLiveToast}
+            onOpen={handleOpenLiveToast}
+          />
+        </AnimatePresence>
 
         {showOnboardingTips && (
           <Card className="mt-2 max-w-xl bg-card/95 backdrop-blur-sm border border-border shadow-lg p-3 pointer-events-auto">
@@ -1789,8 +1824,13 @@ export function InteractiveMap({
                               {formatDistance(point.distance, unitSystem)}
                             </p>
                           )}
+                          {getVenueMapActivity(point.venue, pulses).countLabel && (
+                            <p className="mt-1 text-[10px] font-semibold text-[#FF2D78]">
+                              {getVenueMapActivity(point.venue, pulses).countLabel}
+                            </p>
+                          )}
                         </div>
-                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                        <PulseScore score={getVenueMapActivity(point.venue, pulses).heatScore} size="xs" showLabel={false} />
                       </div>
                     </button>
                     <Button
