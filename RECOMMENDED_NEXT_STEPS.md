@@ -1,6 +1,6 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-03 after the Signal insight cycle (post-#70). The 2026-09-01 cycle notes are kept below.
+> Updated 2026-09-09 after shipping CSV import, JSON export, unusual-week, month calendar, and local reminder snooze. Human ops remain: #64, #65, #66.
 
 ## Decision
 
@@ -22,15 +22,17 @@ Five additive Signal features. Each is pure `src/lib/signal-*.ts` logic with uni
 
 Why these five: each closes a loop the PRD already promises (keep the streak, patterns you can act on, own your data) without inventing product surface. Sleep is paired with the *following* day on purpose: the score already weights sleep quality, so a same-day comparison would be circular.
 
-### Proposed next (not started)
+### Implemented — 2026-09-09 next-steps cycle
 
-Ordered by fit with the core loop. None needs a migration unless noted.
+| Feature | Module | Surface | Notes |
+|---|---|---|---|
+| CSV import | `signal-export.ts` (`entriesFromCsv`) + store `importEntries` | Settings → Import CSV | Skips invalid rows and existing `(dayKey, window)` conflicts |
+| JSON export | `signal-export.ts` (`entriesToJson`) | Settings → Export JSON | Ships with import |
+| Unusual-week flag | `signal-unusual-week.ts` | Trends card | Trailing 7 vs prior 21; gated until baseline is honest |
+| Month calendar | `signal-month-calendar.ts` | History grid | Coloured by score bucket |
+| Local reminder snooze | `signal-reminder.ts` + store `snoozedUntil` | Home nudge + Settings clear | Client-only; no migration |
 
-1. **CSV import** — invert `entriesToCsv`; needs a new store action plus one `saveSignalEntry` per row (the 23505 conflict path already exists). Completes the own-your-data story.
-2. **JSON export** — ~30 lines on `signal-export.ts`; ship together with import.
-3. **Unusual-week flag** — trailing 7 days against the prior 21-day baseline. Only honest after ~4 weeks of data; ship gated with a keep-logging fallback.
-4. **Month calendar view** — CSS grid coloured by `scoreBucketColor`. Presentation rather than insight, so it sits below the three above.
-5. **Local reminder snooze** — client-side `snoozedUntil`. Closed-app quiet hours would need a `signal_profiles` column (migration) and cron changes; call that out before starting.
+**Still human ops (cannot be done from this agent):** #64 prod migrations/env + live loop, #65 branch protection, #66 real-device Web Push.
 
 Rejected this cycle: per-entry notes (needs a DB column and contradicts the "no typing" promise), and everything under Parked.
 

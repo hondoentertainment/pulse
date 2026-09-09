@@ -9,6 +9,7 @@ export function useSignalReminder() {
   const entries = useSignalStore((state) => state.entries)
   const reminderEnabled = useSignalStore((state) => state.reminderEnabled)
   const reminderTime = useSignalStore((state) => state.profile?.reminderTime ?? '09:00')
+  const snoozedUntil = useSignalStore((state) => state.snoozedUntil)
   const [permission, setPermission] = useState<ReminderPermission>(() =>
     resolveReminderPermission(typeof Notification === 'undefined' ? undefined : Notification),
   )
@@ -32,6 +33,7 @@ export function useSignalReminder() {
         entries,
         now,
         windowMinutes: 12 * 60,
+        snoozedUntil,
       })
       setNudge(due)
     }
@@ -39,7 +41,7 @@ export function useSignalReminder() {
     tick()
     const id = window.setInterval(tick, 60_000)
     return () => window.clearInterval(id)
-  }, [entries, reminderEnabled, reminderTime])
+  }, [entries, reminderEnabled, reminderTime, snoozedUntil])
 
   useEffect(() => {
     if (!nudge || permission !== 'granted') return
@@ -55,5 +57,6 @@ export function useSignalReminder() {
     copy: reminderCopy(permission, hasVapidPublicKey),
     nudge,
     dismissNudge: () => setNudge(false),
+    snoozedUntil,
   }
 }

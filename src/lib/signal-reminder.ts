@@ -23,6 +23,21 @@ export function msUntilReminder(now: Date, reminderTime: string): number {
   return next.getTime() - now.getTime()
 }
 
+export function isReminderSnoozed(snoozedUntil: string | null | undefined, now: Date = new Date()): boolean {
+  if (!snoozedUntil) return false
+  const until = new Date(snoozedUntil)
+  if (Number.isNaN(until.getTime())) return false
+  return until.getTime() > now.getTime()
+}
+
+/** Local-only snooze: quiet until local midnight tomorrow. */
+export function snoozeReminderUntilTomorrow(now: Date = new Date()): string {
+  const until = new Date(now)
+  until.setHours(0, 0, 0, 0)
+  until.setDate(until.getDate() + 1)
+  return until.toISOString()
+}
+
 export function shouldSendReminder(input: {
   enabled: boolean
   reminderTime: string
@@ -30,8 +45,10 @@ export function shouldSendReminder(input: {
   entries: Array<{ dayKey?: string; createdAt: string }>
   now: Date
   windowMinutes?: number
+  snoozedUntil?: string | null
 }): boolean {
   if (!input.enabled) return false
+  if (isReminderSnoozed(input.snoozedUntil, input.now)) return false
   const dayKey = localDayKey(input.now)
   if (hasLoggedOnDay(input.entries as SignalEntry[], dayKey)) return false
 
