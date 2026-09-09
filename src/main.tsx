@@ -6,9 +6,12 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import { AppBootstrap } from './AppBootstrap.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
+import { applyAppDocumentTitle } from './lib/app-mode'
 import { queryClient } from './lib/query-client'
 
 import './main.css'
+
+applyAppDocumentTitle()
 
 // Spark workbench runtime is serve-only. Production Signal must not pull it
 // onto first paint. Venue persist lives in AppProviders, not this entry.

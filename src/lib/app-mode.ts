@@ -31,3 +31,14 @@ export function isVenueAppMode(): boolean {
 export function isSignalAppMode(): boolean {
   return APP_MODE === 'signal'
 }
+
+export function appDocumentTitle(mode: AppMode = APP_MODE): string {
+  return mode === 'signal'
+    ? 'Pulse Signal'
+    : 'Pulse — where the energy is right now'
+}
+
+export function applyAppDocumentTitle(): void {
+  if (typeof document === 'undefined') return
+  document.title = appDocumentTitle()
+}

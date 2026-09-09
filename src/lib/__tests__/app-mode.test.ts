@@ -26,4 +26,16 @@ describe('app-mode', () => {
     expect(mod.resolveAppMode()).toBe('venue')
     expect(mod.isVenueAppMode()).toBe(true)
   })
+
+  it('uses Pulse Signal document title only in signal mode', async () => {
+    vi.stubEnv('VITE_APP_MODE', 'venue')
+    vi.resetModules()
+    const venue = await import('@/lib/app-mode')
+    expect(venue.appDocumentTitle()).toMatch(/where the energy is/i)
+
+    vi.stubEnv('VITE_APP_MODE', 'signal')
+    vi.resetModules()
+    const signal = await import('@/lib/app-mode')
+    expect(signal.appDocumentTitle()).toBe('Pulse Signal')
+  })
 })
