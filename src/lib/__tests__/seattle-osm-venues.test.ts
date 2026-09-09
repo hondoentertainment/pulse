@@ -93,4 +93,29 @@ describe('Seattle OSM comprehensive catalog', () => {
     expect(names.some((name) => /^shorty/i.test(name))).toBe(false)
     expect(names.some((name) => /yoga|juice bar|arthur murray|dance studio/i.test(name))).toBe(false)
   })
+
+  it('drops same-address name variants and untagged Kenmore leaks', () => {
+    const names = catalog.venues.map((venue) => venue.name)
+    expect(names).toContain('Cultura')
+    expect(names).not.toContain('Culutura')
+    expect(names.some((name) => /mulligan/i.test(name))).toBe(false)
+    expect(names.some((name) => /tonsorium/i.test(name))).toBe(false)
+    for (const venue of catalog.venues) {
+      const isKenmorePark = venue.location_lat > 47.728 && venue.location_lng > -122.27
+      expect(isKenmorePark).toBe(false)
+    }
+  })
+})
+
+const seedSql = readFileSync(resolve(process.cwd(), 'supabase/seed.sql'), 'utf8')
+
+describe('Seattle seed.sql does not overwrite OSM inventory', () => {
+  it('scopes the curated-seed UPDATE to curated UUIDs only', () => {
+    expect(seedSql).toContain("inventory_source = 'curated-seed'")
+    expect(seedSql).toMatch(/WHERE id IN \(/)
+    expect(seedSql).not.toMatch(/inventory_source = 'curated-seed'[\s\S]*WHERE city = 'Seattle' AND state = 'WA';/)
+    for (const id of Object.values(SEATTLE_LAUNCH_VENUE_UUIDS)) {
+      expect(seedSql).toContain(id)
+    }
+  })
 })

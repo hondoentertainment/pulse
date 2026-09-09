@@ -100,6 +100,29 @@ function normalizeAddress(value) {
     .trim()
 }
 
+function levenshtein(a, b) {
+  if (a === b) return 0
+  const rows = a.length + 1
+  const cols = b.length + 1
+  const grid = Array.from({ length: rows }, (_, i) => {
+    const row = new Array(cols)
+    row[0] = i
+    return row
+  })
+  for (let j = 0; j < cols; j += 1) grid[0][j] = j
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      grid[i][j] = Math.min(
+        grid[i - 1][j] + 1,
+        grid[i][j - 1] + 1,
+        grid[i - 1][j - 1] + cost,
+      )
+    }
+  }
+  return grid[a.length][b.length]
+}
+
 function namesLooselyMatch(a, b) {
   const left = normalizeName(a)
   const right = normalizeName(b)
@@ -107,7 +130,47 @@ function namesLooselyMatch(a, b) {
   if (left === right) return true
   const shorter = left.length <= right.length ? left : right
   const longer = left.length <= right.length ? right : left
-  return shorter.length >= 6 && longer.startsWith(`${shorter} `)
+  if (shorter.length >= 6 && longer.startsWith(`${shorter} `)) return true
+  const maxDistance = shorter.length >= 8 ? 2 : 1
+  return shorter.length >= 5 && levenshtein(left, right) <= maxDistance
+}
+
+// Simplified Seattle city limits (not the metro bbox). Excludes Kenmore,
+// Lake Forest Park, Shoreline, Mercer Island, and Bellevue.
+const SEATTLE_CITY_RING = [
+  [-122.437, 47.495],
+  [-122.437, 47.595],
+  [-122.412, 47.650],
+  [-122.408, 47.734],
+  [-122.283, 47.734],
+  [-122.269, 47.705],
+  [-122.245, 47.690],
+  [-122.245, 47.640],
+  [-122.245, 47.575],
+  [-122.255, 47.512],
+  [-122.270, 47.495],
+  [-122.330, 47.495],
+  [-122.437, 47.495],
+]
+
+function pointInRing(lng, lat, ring) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    const intersect = ((yi > lat) !== (yj > lat))
+      && (lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi)
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+function isInsideSeattleCity(point, tags) {
+  const taggedCity = tags['addr:city']
+  if (taggedCity) return /seattle/i.test(taggedCity)
+  const postcode = tags['addr:postcode'] || ''
+  if (postcode) return postcode.startsWith('981')
+  return pointInRing(point.lng, point.lat, SEATTLE_CITY_RING)
 }
 
 function haversineMeters(a, b) {
@@ -225,13 +288,7 @@ for (const element of raw.elements || []) {
     rejected.notNightlife += 1
     continue
   }
-  const taggedCity = tags['addr:city']
-  if (taggedCity && !/seattle/i.test(taggedCity)) {
-    rejected.outsideCity = (rejected.outsideCity || 0) + 1
-    continue
-  }
-  const postcode = tags['addr:postcode'] || ''
-  if (postcode && !postcode.startsWith('981')) {
+  if (!isInsideSeattleCity(point, tags)) {
     rejected.outsideCity = (rejected.outsideCity || 0) + 1
     continue
   }
@@ -293,13 +350,14 @@ for (const venue of candidates) {
   const nameKey = normalizeName(venue.name)
   const addressKey = normalizeAddress(venue.location_address)
   const duplicate = kept.some((existing) => {
-    const sameName = normalizeName(existing.name) === nameKey
+    const sameName = namesLooselyMatch(existing.name, venue.name)
     const sameAddress = addressKey && normalizeAddress(existing.location_address) === addressKey
-    if (sameName && sameAddress) return true
-    if (sameName && haversineMeters(
+    const nearby = haversineMeters(
       { lat: venue.location_lat, lng: venue.location_lng },
       { lat: existing.location_lat, lng: existing.location_lng },
-    ) <= PROXIMITY_M) return true
+    ) <= PROXIMITY_M
+    if (sameName && sameAddress) return true
+    if (sameName && nearby) return true
     return false
   })
   if (duplicate) {
@@ -396,6 +454,18 @@ WHERE NOT EXISTS (
        AND v.city = 'Seattle'
        AND v.state = 'WA'
      )
+);
+
+-- Soft-delete OSM Seattle rows that dropped out of this snapshot
+-- (typos, out-of-city leaks). Never touches curated-seed.
+UPDATE venues
+SET deleted_at = now()
+WHERE inventory_source = 'osm'
+  AND deleted_at IS NULL
+  AND city = 'Seattle'
+  AND state = 'WA'
+  AND id NOT IN (
+${catalog.map((venue) => `    '${venue.id}'::uuid`).join(',\n')}
 );
 `
 

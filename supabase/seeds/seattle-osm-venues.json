@@ -12,10 +12,10 @@
       "unnamed": 3,
       "noCoords": 0,
       "notNightlife": 22,
-      "outsideCity": 3,
+      "outsideCity": 7,
       "curatedNameAddress": 18,
       "curatedGeo": 6,
-      "osmDup": 0
+      "osmDup": 1
     },
     "categories": {
       "Nightclub": 31,
@@ -1319,22 +1319,6 @@
       "category": "Bar",
       "phone": null,
       "website": "https://www.thecozynuttavern.com/",
-      "inventory_source": "osm"
-    },
-    {
-      "id": "3533417c-bbc3-5700-a1e7-589eeb4c2ed6",
-      "osmType": "node",
-      "osmId": 5938277186,
-      "name": "Culutura",
-      "location_lat": 47.614214,
-      "location_lng": -122.319801,
-      "location_address": "916 East Pike Street, Seattle, WA 98122",
-      "city": "Seattle",
-      "state": "WA",
-      "neighborhood": "Capitol Hill",
-      "category": "Bar",
-      "phone": null,
-      "website": null,
       "inventory_source": "osm"
     },
     {
@@ -4682,22 +4666,6 @@
       "inventory_source": "osm"
     },
     {
-      "id": "351c9299-cb87-585d-940e-eeba94f13477",
-      "osmType": "node",
-      "osmId": 12320472349,
-      "name": "Father Mulligan's Heritage Bar",
-      "location_lat": 47.733041,
-      "location_lng": -122.257363,
-      "location_address": "Seattle, WA",
-      "city": "Seattle",
-      "state": "WA",
-      "neighborhood": null,
-      "category": "Bar",
-      "phone": "+1-425-470-6500",
-      "website": "https://thelodgeatstedward.com/dining/father-mulligans-heritage-bar",
-      "inventory_source": "osm"
-    },
-    {
       "id": "c93be9df-b6b9-52a9-b52d-5e91d016cf6d",
       "osmType": "node",
       "osmId": 13706969504,
@@ -5015,22 +4983,6 @@
       "category": "Bar",
       "phone": null,
       "website": null,
-      "inventory_source": "osm"
-    },
-    {
-      "id": "ed336571-6100-5ab3-996c-9ddd4f53982a",
-      "osmType": "node",
-      "osmId": 12320472348,
-      "name": "The Tonsorium Bar",
-      "location_lat": 47.733069,
-      "location_lng": -122.257311,
-      "location_address": "Seattle, WA",
-      "city": "Seattle",
-      "state": "WA",
-      "neighborhood": null,
-      "category": "Bar",
-      "phone": null,
-      "website": "ht-tps://thelodgeatstedward.com/dining/tonsorium-bar",
       "inventory_source": "osm"
     },
     {
@@ -8023,6 +7975,54 @@
       "category": "Bar",
       "phone": null,
       "website": null,
+      "inventory_source": "osm"
+    },
+    {
+      "id": "b1c4a9b7-a3e0-5192-aac8-6410c151ebb7",
+      "osmType": "node",
+      "osmId": 1178248413,
+      "name": "Admiral Pub",
+      "location_lat": 47.582715,
+      "location_lng": -122.386291,
+      "location_address": "Seattle, WA",
+      "city": "Seattle",
+      "state": "WA",
+      "neighborhood": "West Seattle",
+      "category": "Bar",
+      "phone": null,
+      "website": null,
+      "inventory_source": "osm"
+    },
+    {
+      "id": "092a20f1-52fa-5074-8371-7e30e816bf87",
+      "osmType": "node",
+      "osmId": 10894634425,
+      "name": "Alaska Junction Breakfast Lounge",
+      "location_lat": 47.560255,
+      "location_lng": -122.387205,
+      "location_address": "Seattle, WA",
+      "city": "Seattle",
+      "state": "WA",
+      "neighborhood": "West Seattle",
+      "category": "Bar",
+      "phone": null,
+      "website": null,
+      "inventory_source": "osm"
+    },
+    {
+      "id": "c44d182a-c74f-5c1a-8bf5-1fce7996069d",
+      "osmType": "node",
+      "osmId": 3203559929,
+      "name": "Bale Breaker Yonder Taproom",
+      "location_lat": 47.664549,
+      "location_lng": -122.36756,
+      "location_address": "Seattle, WA",
+      "city": "Seattle",
+      "state": "WA",
+      "neighborhood": "Ballard",
+      "category": "Bar",
+      "phone": null,
+      "website": "https://www.bbycballard.com",
       "inventory_source": "osm"
     }
   ]
