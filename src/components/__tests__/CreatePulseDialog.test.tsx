@@ -132,7 +132,7 @@ describe('CreatePulseDialog', () => {
     expect(screen.queryByText(/Post live review/)).not.toBeInTheDocument()
   })
 
-  it('renders venue name in title when open', () => {
+  it('renders Figma create copy when open', () => {
     render(
       <CreatePulseDialog
         open
@@ -141,7 +141,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Post live review/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Post live review/ })).toBeInTheDocument()
     expect(screen.getByText(/the vibe right now/i)).toBeInTheDocument()
     expect(screen.getByText('Add photo (optional)')).toBeInTheDocument()
     expect(screen.getByText('Shows in Live now')).toBeInTheDocument()
