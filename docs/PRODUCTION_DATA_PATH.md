@@ -6,11 +6,11 @@ and live-intelligence data.
 ## Venue Coverage
 
 - **Seattle launch (shipping market):** 33 curated nightlife venues in
-  `src/lib/seattle-launch-venues.ts` (Capitol Hill, Belltown, Fremont, Ballard,
-  Downtown). That list is the product catalog when `VITE_LAUNCHED_CITIES=Seattle,WA`.
-  Apply it to Supabase with
-  `supabase/migrations/20260909120000_seattle_launch_venue_catalog.sql`.
-  Verify with `supabase/verify/seattle_launch_venues.sql`.
+  `src/lib/seattle-launch-venues.ts` plus 500 OpenStreetMap nightlife venues
+  (`inventory_source = osm`). Apply
+  `20260909120000_seattle_launch_venue_catalog.sql` then
+  `20260909180000_seattle_osm_venue_catalog.sql`.
+  Verify with `supabase/verify/seattle_launch_venues.sql` (33 curated + 500 osm).
 - The national venue catalog in `src/lib/us-venues.ts` is prototype coverage for
   local development, preview builds, and visual tests. It is not the Seattle
   launch source of truth.
@@ -43,7 +43,7 @@ supabase/migrations/20260429000000_realtime_venue_intelligence.sql
 After the Seattle catalog migration and deploy:
 
 1. Open the production Vercel URL.
-2. Confirm the Map tab shows the 33 Seattle launch venues (not an empty canvas and not only the fixture fallback).
-3. Spot-check Neumos, The Crocodile, Tractor Tavern, and The Showbox — pins and venue detail should open.
+2. Confirm the Map tab shows the Seattle catalog (33 curated + 500 OSM, 533 total) — not an empty canvas and not only the 33-venue fixture fallback.
+3. Spot-check Neumos (curated-seed) plus an OSM bar — pins and venue detail should open.
 4. If `VITE_LAUNCHED_CITIES=Seattle,WA`, other markets must not appear.
 5. Submit or inspect a live venue report to verify Supabase aggregates refresh.
