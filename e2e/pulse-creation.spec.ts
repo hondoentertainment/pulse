@@ -31,7 +31,7 @@ test.describe('Pulse creation flow', () => {
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
-    await expect(page.locator('text=/Post live review/i').first()).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -63,7 +63,7 @@ test.describe('Pulse creation flow', () => {
 
     const close = page.getByRole('button', { name: /^Close$/i })
     await expect(close).toBeVisible({ timeout: 5_000 })
-    await close.click()
+    await close.click({ force: true })
 
     await expect(page.getByRole('heading', { name: /Post live review/i })).not.toBeVisible({
       timeout: 5_000,

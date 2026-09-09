@@ -302,7 +302,10 @@ export function CreatePulseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="inset-0 top-0 left-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-5 overflow-y-auto rounded-none border-0 bg-[#0B0B0E] p-5 pt-14 shadow-none sm:max-w-none">
+      <DialogContent
+        fullscreen
+        className="flex flex-col gap-5 overflow-y-auto bg-[#0B0B0E]"
+      >
         <DialogHeader className="gap-1.5 text-left">
           <DialogTitle className="text-[22px] font-bold text-white">
             Post live review
