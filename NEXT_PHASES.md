@@ -1,6 +1,6 @@
 # Pulse — Codebase Review & Next Phases of Work
 
-> Last verified 2026-09-01 after the ESM + Signal-test cycle. **Pulse Signal is the shipping product** (`VITE_APP_MODE=signal`). Venue discovery stays in-repo behind `VITE_APP_MODE=venue`. See [PRD_SIGNAL.md](PRD_SIGNAL.md). Do not merge a default-mode flip.
+> Last verified 2026-09-09. **Venue + map is the shipping product** (`VITE_APP_MODE` unset or `venue`). Pulse Signal stays behind `VITE_APP_MODE=signal`. See [PRD.md](PRD.md).
 
 ## Current State Assessment
 
@@ -58,7 +58,7 @@ Measured 2026-09-01 after this slice (`vite build` / Signal default):
 | `observability` (`@vercel/*` only) | ~7.5 kB | yes |
 | `phosphor` | ~349 kB | **no** — loaded with Login/Signal/Venue |
 | `sentry` | ~448 kB | **no** — idle / error path |
-| `VenueApp` | ~111 kB | **no** — `VITE_APP_MODE=venue` only |
+| `VenueApp` | ~111 kB | **yes** — production default; Signal stays on `VITE_APP_MODE=signal` |
 | PWA precache | **~2.57 MB** (was ~4.1 MB) | under 3 MB |
 
 - [x] Lazy-load Sentry (idle init + separate chunk; do not bucket with Vercel analytics)

@@ -9,7 +9,7 @@ Apply the Signal schema (and the Seattle venue launch tables, if that project is
 - Supabase project admin access
 - Vercel project admin access
 - `supabase` CLI or Dashboard SQL editor
-- Production default remains `VITE_APP_MODE=signal` (unset is fine)
+- Signal is optional: set `VITE_APP_MODE=signal`. Unset / `venue` is the production nightlife default.
 
 ## Procedure
 

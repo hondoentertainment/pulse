@@ -1,13 +1,13 @@
 {
-  "name": "Pulse Signal",
+  "name": "Pulse",
   "short_name": "Pulse",
-  "description": "A quick daily check-in for energy, mood, and focus—trends, streaks, and one clear next step.",
+  "description": "Nightlife venue energy on a map — see what's surging and post a pulse.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
-  "theme_color": "#6d28d9",
-  "categories": ["health", "lifestyle", "wellness"],
+  "theme_color": "#FF2D78",
+  "categories": ["nightlife", "lifestyle", "social"],
   "icons": [
     {
       "src": "/icons/icon-72.png",

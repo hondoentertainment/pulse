@@ -1,11 +1,11 @@
 /**
  * Which product shell to mount at the root.
  *
- *   signal (default) — Pulse Signal daily check-in (`SignalApp`)
- *   venue            — venue discovery PWA (`AppRoutes`)
+ *   venue  (default) — nightlife venue + map PWA (`AppRoutes`)
+ *   signal           — Pulse Signal daily check-in (`SignalApp`)
  *
- * Set `VITE_APP_MODE=venue` for E2E / staging of the dormant venue product.
- * Production defaults to `signal` (decision #56, 2026-08-16).
+ * Production defaults to `venue` (owner-approved 2026-09-09, supersedes #56).
+ * Set `VITE_APP_MODE=signal` to run Signal behind a flag.
  */
 
 export type AppMode = 'signal' | 'venue'
@@ -19,7 +19,7 @@ function parseAppMode(value: unknown): AppMode | null {
 }
 
 export function resolveAppMode(): AppMode {
-  return parseAppMode(import.meta.env.VITE_APP_MODE) ?? 'signal'
+  return parseAppMode(import.meta.env.VITE_APP_MODE) ?? 'venue'
 }
 
 export const APP_MODE: AppMode = resolveAppMode()

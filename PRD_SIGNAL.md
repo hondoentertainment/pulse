@@ -1,13 +1,12 @@
 # Pulse Signal — Product Requirements
 
-> Shipping product for `VITE_APP_MODE=signal` (the production default).
-> Venue discovery is specified in [PRD.md](PRD.md) and stays behind `VITE_APP_MODE=venue`.
+> Optional product for `VITE_APP_MODE=signal`. Production default is venue + map ([PRD.md](PRD.md)).
 
 **One line:** A ten-second check-in, twice a day, that turns how you felt into patterns you can act on.
 
-## Decision (#56)
+## Decision (updated 2026-09-09)
 
-Pulse Signal is the default product. Venue discovery remains in the repo as a dormant, flag-gated shell. Do not flip the default without updating README, CI smoke jobs, and this file.
+Venue + map is the shipping default. Pulse Signal stays in-repo behind `VITE_APP_MODE=signal`. The 2026-08-16 Signal-default decision (#56) is superseded.
 
 ## Core loop
 

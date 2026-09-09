@@ -11,8 +11,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { EnergySlider } from './EnergySlider'
+import { EnergyPills } from './EnergyPills'
 import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext } from '@/lib/types'
-import { X, VideoCamera, CheckCircle, Hash } from '@phosphor-icons/react'
+import { X, VideoCamera, CheckCircle, Hash, ImageSquare } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
@@ -279,23 +280,26 @@ export function CreatePulseDialog({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">
-            Create Pulse at {venue?.name}
+            Create pulse
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Share the current energy, add a caption, photos, video, and hashtags.
+          <DialogDescription>
+            {venue ? `${venue.name} · verified check-in` : 'Share the current energy, add a caption, photos, video, and hashtags.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <div>
-            <label className="text-sm font-medium mb-3 block">How's the energy?</label>
-            <EnergySlider 
-              value={energyRating} 
-              onChange={setEnergyRating}
-              energyPhotos={energyPhotos}
-              onAddPhoto={handlePhotoUpload}
-              onRemovePhoto={removePhoto}
-            />
+            <label className="mb-3 block text-sm font-medium">Energy</label>
+            <EnergyPills value={energyRating} onChange={setEnergyRating} />
+            <div className="sr-only">
+              <EnergySlider
+                value={energyRating}
+                onChange={setEnergyRating}
+                energyPhotos={energyPhotos}
+                onAddPhoto={handlePhotoUpload}
+                onRemovePhoto={removePhoto}
+              />
+            </div>
           </div>
 
           {video && (
@@ -349,7 +353,7 @@ export function CreatePulseDialog({
           )}
 
           {!video && !isCompressing && (
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <input
                 ref={videoInputRef}
                 type="file"
@@ -358,7 +362,25 @@ export function CreatePulseDialog({
                 className="hidden"
                 id="video-upload"
               />
-              <label htmlFor="video-upload" className="flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const photoCount = Object.values(energyPhotos).filter(Boolean).length
+                  if (photoCount < 3) {
+                    handlePhotoUpload(energyRating)
+                    return
+                  }
+                  videoInputRef.current?.click()
+                }}
+                className="flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-white/20 bg-[#1C1C1E] px-4 py-8 text-center text-sm text-muted-foreground transition-colors hover:border-white/35"
+              >
+                <span className="flex items-center gap-2 font-medium text-foreground/80">
+                  <ImageSquare size={20} />
+                  <VideoCamera size={20} />
+                </span>
+                Add up to 3 photos or a 30s video
+              </button>
+              <label htmlFor="video-upload" className="block">
                 <Button
                   variant="outline"
                   className="w-full"
@@ -455,11 +477,11 @@ export function CreatePulseDialog({
               Cancel
             </Button>
             <Button
-              className="flex-1 bg-primary hover:bg-primary/90"
+              className="flex-1 rounded-full bg-primary hover:bg-primary/90"
               onClick={handleSubmit}
               disabled={isSubmitting || isCompressing}
             >
-              {isSubmitting ? 'Posting...' : 'Post Pulse'}
+              {isSubmitting ? 'Posting...' : 'Post pulse'}
             </Button>
           </div>
         </div>

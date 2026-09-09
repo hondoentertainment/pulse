@@ -214,25 +214,25 @@ export const ENERGY_CONFIG = {
   dead: {
     label: 'Dead',
     value: 0,
-    color: 'oklch(0.35 0.05 240)',
+    color: '#8A8A93',
     emoji: '💀'
   },
   chill: {
     label: 'Chill',
     value: 1,
-    color: 'oklch(0.60 0.15 150)',
+    color: '#00D1FF',
     emoji: '😌'
   },
   buzzing: {
     label: 'Buzzing',
     value: 2,
-    color: 'oklch(0.70 0.22 60)',
+    color: '#FF8A00',
     emoji: '🔥'
   },
   electric: {
     label: 'Electric',
     value: 3,
-    color: 'oklch(0.65 0.28 340)',
+    color: '#FF2D78',
     emoji: '⚡'
   }
 } as const

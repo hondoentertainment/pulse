@@ -1,8 +1,8 @@
 # Venture roadmap — next steps (execution checklist)
 
-This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`LoginScreen` → `SignalApp`). The venue / discovery shell is `src/AppRoutes.tsx` (not mounted unless `VITE_APP_MODE=venue`).
+This repo’s **shipped web entry** is `src/App.tsx` → **venue + map** (`VenueApp` / `AppRoutes`). Pulse Signal (`LoginScreen` → `SignalApp`) mounts only when `VITE_APP_MODE=signal`.
 
-**Decision (#56):** Pulse Signal is the default product. Venue discovery is dormant behind `VITE_APP_MODE=venue` (+ optional `VITE_LAUNCHED_CITIES=Seattle,WA`). See [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) and [PRD_SIGNAL.md](../PRD_SIGNAL.md).
+**Decision (2026-09-09):** Venue + map is the default product. Signal is optional behind `VITE_APP_MODE=signal` (+ optional venue geo-gate `VITE_LAUNCHED_CITIES=Seattle,WA`). See [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) and [PRD.md](../PRD.md). Supersedes #56.
 
 ## Implemented in codebase
 
@@ -26,7 +26,7 @@ This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`Logi
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_APP_MODE` | `signal` (default) or `venue` (staging only) |
+| `VITE_APP_MODE` | `venue` (default) or `signal` (optional) |
 | `VITE_LAUNCHED_CITIES` | Venue geo-gate. `Seattle,WA` is one market. |
 | `VITE_RESEARCH_FEEDBACK_URL` | Optional. Survey or Calendly in Settings. |
 | `VITE_VAPID_PUBLIC_KEY` / `VAPID_*` | Closed-app Web Push |
@@ -35,7 +35,7 @@ This repo’s **shipped web entry** is `src/App.tsx` → **Pulse Signal** (`Logi
 
 - **Production build:** `npm run build` (uses `tsc -b --noCheck`).
 - **Strict typecheck:** `npx tsc -b` — still blocked by legacy venue typings.
-- **Required smoke:** `smoke-preview` aliases `smoke-preview-signal`. Venue smoke is advisory.
+- **Required smoke:** `smoke-preview` aliases `smoke-preview-venue`. Signal smoke stays runnable under `VITE_APP_MODE=signal`.
 - **Tests:** `npm run test` and `npm run test:smoke:signal` before release.
 
 ## Series A narrative alignment

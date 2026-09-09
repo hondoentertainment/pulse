@@ -3,8 +3,8 @@ import { Toaster } from 'sonner'
 
 /**
  * Root app entry — mode controlled by `VITE_APP_MODE`:
- *   signal (default) — Pulse Signal (`LoginScreen` → `SignalApp`)
- *   venue            — full venue discovery shell (`AppRoutes` via AppProviders)
+ *   venue  (default) — nightlife venue + map shell (`AppRoutes` via AppProviders)
+ *   signal           — Pulse Signal (`LoginScreen` → `SignalApp`)
  *
  * See ARCHITECTURE.md — App entry and routing.
  */

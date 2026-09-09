@@ -133,6 +133,7 @@ vi.mock('@/components/RecommendationCard', () => ({
 const mockGetTrendingSections = vi.fn().mockReturnValue([])
 vi.mock('@/lib/venue-trending', () => ({
   getTrendingSections: (...args: any[]) => mockGetTrendingSections(...args),
+  calculateScoreVelocity: () => 0,
 }))
 
 const mockGetRecommendations = vi.fn().mockReturnValue([])
@@ -302,8 +303,8 @@ describe('TrendingSections', () => {
       />
     )
 
-    expect(screen.getByText('Trending Now')).toBeDefined()
-    expect(screen.getByText('Just Popped Off')).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Trending Now' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Just Popped Off' })).toBeDefined()
   })
 })
 
@@ -340,7 +341,7 @@ describe('TrendingTab', () => {
       />
     )
 
-    expect(screen.getByRole('heading', { name: 'Tonight' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Trending' })).toBeDefined()
     expect(screen.getByRole('tab', { name: 'Tonight' })).toBeDefined()
     expect(screen.getByRole('tab', { name: 'My Spots' })).toBeDefined()
   })

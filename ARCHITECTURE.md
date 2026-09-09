@@ -44,10 +44,10 @@ Pulse is a client-heavy PWA built with React 19 and Vite. The current architectu
 
 | Mode | Env | Component tree |
 |------|-----|----------------|
-| **Pulse Signal** (default) | `VITE_APP_MODE=signal` or unset | `LoginScreen` → `SignalApp` |
-| **Venue / social** | `VITE_APP_MODE=venue` | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+| **Venue / social** (default) | `VITE_APP_MODE=venue` or unset | `AppProviders` → `AppBootstrap` → `AppRoutes` |
+| **Pulse Signal** | `VITE_APP_MODE=signal` | `LoginScreen` → `SignalApp` |
 
-Signal routes: `/home`, `/trends`, `/history`, `/settings` (see [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)). Venue shell adds `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx).
+Venue routes: `/` (map home), `/trending`, `/discover`, `/map`, `/venue/:id`, and sub-pages via [`AppRoutes.tsx`](src/AppRoutes.tsx). Signal routes (`VITE_APP_MODE=signal`): `/home`, `/trends`, `/history`, `/settings` (see [`SignalApp.tsx`](src/components/signal/SignalApp.tsx)).
 
 Do not merge the two shells without an explicit product decision (single app vs. separate deployables) — they share design tokens but serve different primary jobs.
 

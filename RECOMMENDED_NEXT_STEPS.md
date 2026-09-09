@@ -1,10 +1,10 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-09 after shipping CSV import, JSON export, unusual-week, month calendar, and local reminder snooze. Human ops remain: #64, #65, #66.
+> Updated 2026-09-09 after Kyle's nightlife default flip. Venue + map is the shipping product. Signal remains flag-gated. Human ops remain: #64, #65, #66.
 
 ## Decision
 
-**Pulse Signal is the default product** (`VITE_APP_MODE=signal`). Venue discovery remains in-repo behind `VITE_APP_MODE=venue` and optional `VITE_LAUNCHED_CITIES=Seattle,WA`. See [PRD_SIGNAL.md](PRD_SIGNAL.md). Do not merge another default-mode flip.
+**Venue + map is the default product** (`VITE_APP_MODE` unset or `venue`). Pulse Signal stays reachable with `VITE_APP_MODE=signal`. Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`. See [PRD.md](PRD.md). Owner-approved 2026-09-09; supersedes #56 / the old "do not flip default" guidance.
 
 ## Feature roadmap
 
@@ -82,7 +82,7 @@ SIGNAL_PROD_URL=https://pulse-chi-nine.vercel.app npm run verify:signal-prod
 - AI concierge, ticketing, creator economy, video feed
 - Social comparison inside Signal
 - Invented Pulse Pro pricing or Stripe
-- Reopening #44 venue default flip
+- Reopening a Signal-default flip (superseded 2026-09-09)
 - Per-entry notes (needs a `signal_entries` column; contradicts "no typing")
 
 #42 / #44 / #55 / #60 stay superseded. #48–#53 shipped flag-gated in #62 and stay off the default path.

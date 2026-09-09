@@ -5,10 +5,10 @@ import { AppProviders } from '@/AppProviders'
 import { AppRoutes } from '@/AppRoutes'
 
 /**
- * Venue discovery shell — only mounted when `VITE_APP_MODE=venue`.
+ * Venue discovery shell — production default (`VITE_APP_MODE` unset or `venue`).
  *
- * Kept in its own module so the default Signal entry can `React.lazy` it
- * and keep AppRoutes / venue providers off the Signal first-paint graph.
+ * Kept in its own module so Signal (`VITE_APP_MODE=signal`) can stay off
+ * the venue first-paint graph.
  */
 export default function VenueApp() {
   return (

@@ -47,7 +47,7 @@ export function ScoreBreakdown({ venue, pulses }: ScoreBreakdownProps) {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
       >
         <Info size={16} className="group-hover:text-accent transition-colors" />
-        <span className="font-mono uppercase tracking-wide">Why this score?</span>
+        <span className="font-medium tracking-wide">Why this score?</span>
         {isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
       </button>
 

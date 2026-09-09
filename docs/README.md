@@ -1,6 +1,6 @@
 # Pulse Documentation
 
-The shipping product is **Pulse Signal**. Venue discovery docs below are for the flag-gated PWA (`VITE_APP_MODE=venue`). Start with [Getting Started](getting-started.md) or [PRD_SIGNAL.md](../PRD_SIGNAL.md).
+The shipping product is **Pulse** (venue + map). Pulse Signal docs below are for the flag-gated shell (`VITE_APP_MODE=signal`). Start with [Getting Started](getting-started.md) or [PRD.md](../PRD.md).
 
 ## Quick Links
 
