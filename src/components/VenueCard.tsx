@@ -9,6 +9,8 @@ import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
+import { EnergyBadge } from '@/components/EnergyBadge'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -78,7 +80,10 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                   </Badge>
                 )}
               </div>
-              <h3 className="mt-1 truncate text-2xl font-bold text-white drop-shadow">{venue.name}</h3>
+              <div className="mt-1 flex items-center gap-2">
+                <h3 className="truncate text-2xl font-bold text-white drop-shadow">{venue.name}</h3>
+                <EnergyBadge label={getEnergyLabel(venue.pulseScore)} className="shrink-0" />
+              </div>
             </div>
             <div className="rounded-2xl bg-black/45 p-2 backdrop-blur">
               <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />

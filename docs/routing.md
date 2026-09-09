@@ -8,10 +8,10 @@ How users move through Pulse. Two product shells exist with different routing mo
 
 | Shell | Mounted from | Router |
 |-------|--------------|--------|
-| **Signal** (current) | `src/App.tsx` | Internal router in `signal/SignalApp.tsx` |
-| **Venue discovery** | `src/AppRoutes.tsx` (swap entry) | React Router v7 |
+| **Venue + map** (default) | `src/App.tsx` when `VITE_APP_MODE` is unset or `venue` | React Router v7 (`AppRoutes.tsx`) |
+| **Signal** | `src/App.tsx` when `VITE_APP_MODE=signal` | Internal router in `signal/SignalApp.tsx` |
 
-To switch products, change what `App.tsx` renders after auth.
+To run Signal, set `VITE_APP_MODE=signal`.
 
 ---
 
@@ -36,14 +36,13 @@ Uses its own bottom nav — independent of `BottomNav.tsx`.
 
 ### Main tabs
 
-| Path | Tab ID | Component |
-|------|--------|-----------|
-| `/` | `trending` | `TrendingTab` |
-| `/discover` | `discover` | `DiscoverTab` |
-| `/map` | `map` | `InteractiveMap` |
-| `/notifications` | `notifications` | `NotificationFeed` |
-| `/profile` | `profile` | `ProfileTab` |
-| `/video` | `video` | `VideoFeed` (flagged) |
+| Path | Tab ID | Nav label | Component |
+|------|--------|-----------|-----------|
+| `/` or `/map` | `map` | Map | `InteractiveMap` + surging nearby |
+| `/trending` | `trending` | Trending | `TrendingTab` |
+| `/discover` | `discover` | Pulse | `DiscoverTab` |
+| `/notifications` | `notifications` | Friends | `NotificationFeed` |
+| `/profile` | `profile` | You | `ProfileTab` |
 
 ### Sub-pages
 

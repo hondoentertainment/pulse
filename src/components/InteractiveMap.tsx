@@ -1470,48 +1470,45 @@ export function InteractiveMap({
           </Card>
         </div>
 
-        {/* Quick Filter Chips */}
+        {/* Quick Filter Chips — Figma Enhanced: Electric / Buzzing / Near me */}
         <div className="mt-2 flex max-w-xl gap-2 overflow-x-auto pb-1 pointer-events-auto [scrollbar-width:none]">
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              if (filters.categories.includes('bar')) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
+              if (filters.energyLevels.includes('electric')) {
+                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric') }))
               } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
+                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric'] }))
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               "border backdrop-blur-md shadow-sm",
-              filters.categories.includes('bar')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+              filters.energyLevels.includes('electric')
+                ? "bg-[#FF2D78] text-white border-[#FF2D78]"
+                : "bg-card/90 text-[#FF2D78] border-[#FF2D78]/70 hover:bg-[#FF2D78]/10"
             )}
           >
-            <BeerBottle size={14} weight="fill" className="inline mr-1" />
-            Bars
+            Electric
           </button>
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
-              if (hasClub) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
+              if (filters.energyLevels.includes('buzzing')) {
+                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'buzzing') }))
               } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
+                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'buzzing'] }))
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               "border backdrop-blur-md shadow-sm",
-              filters.categories.includes('club') || filters.categories.includes('nightclub')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+              filters.energyLevels.includes('buzzing')
+                ? "bg-[#FF8A00] text-white border-[#FF8A00]"
+                : "bg-card/90 text-[#FF8A00] border-[#FF8A00]/70 hover:bg-[#FF8A00]/10"
             )}
           >
-            <MusicNotes size={14} weight="fill" className="inline mr-1" />
-            Clubs
+            Buzzing
           </button>
           <button
             onClick={() => {
@@ -1519,36 +1516,14 @@ export function InteractiveMap({
               setNearMeActive(!nearMeActive)
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
+              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               "border backdrop-blur-md shadow-sm",
               nearMeActive
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+                ? "bg-[#00D1FF] text-[#041018] border-[#00D1FF]"
+                : "bg-card/90 text-[#00D1FF] border-[#00D1FF]/70 hover:bg-[#00D1FF]/10"
             )}
           >
-            <MapPin size={14} weight="fill" className="inline mr-1" />
-            Near Me
-          </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-              if (hasHot) {
-                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
-              } else {
-                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
-              }
-            }}
-            className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
-              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <Fire size={14} weight="fill" className="inline mr-1" />
-            Hot
+            Near me
           </button>
         </div>
 

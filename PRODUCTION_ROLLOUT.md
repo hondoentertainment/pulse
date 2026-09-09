@@ -1,6 +1,6 @@
 # Production Rollout Plan
 
-This document turns remaining production gaps into a practical rollout plan. **Pulse Signal is the default / shipping product** (`VITE_APP_MODE=signal`). Venue discovery is parked behind `VITE_APP_MODE=venue` — do not treat venue map, onboarding, or pulse-creation work as the live product.
+This document turns remaining production gaps into a practical rollout plan. **Venue + map is the default / shipping product** (`VITE_APP_MODE` unset or `venue`). Pulse Signal is optional behind `VITE_APP_MODE=signal`.
 
 > Last verified 2026-09-01. Checklists below match `npm test` / `npm run lint` / `npm run build` / `npm run test:smoke:signal` on current `main`, not older review notes.
 
@@ -15,7 +15,7 @@ This document turns remaining production gaps into a practical rollout plan. **P
 
 ## Current Starting Point
 
-Signal is the live loop (check-in → score → streak → trends). Remaining production work is mostly **human ops**, not missing unit tests:
+Venue + map is the live loop (map → venue → pulse → trending). Signal remains a flag-gated loop. Remaining production work is mostly **human ops**, not missing unit tests:
 
 - Production Supabase migrations + env (#64) — out of scope for agents
 - GitHub branch protection / required checks (#65)

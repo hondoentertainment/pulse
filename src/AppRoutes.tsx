@@ -54,8 +54,8 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Mounting:** `src/App.tsx` mounts this router only in venue app mode
- * (`isVenueAppMode()`); the default Signal mode mounts `SignalApp` instead.
+ * **Mounting:** `src/App.tsx` mounts this router by default (venue mode).
+ * Signal mounts `SignalApp` only when `VITE_APP_MODE=signal`.
  *
  * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
  * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
@@ -168,7 +168,7 @@ export function AppRoutes() {
   // MainTabRouter / SubPageRouter read activeTab / subPage from app state.
   const wrapTab = () => (
     <>
-      <AppHeader {...headerProps} />
+      {activeTab !== 'map' && <AppHeader {...headerProps} />}
       <MainTabRouter />
     </>
   )
@@ -207,9 +207,10 @@ export function AppRoutes() {
         <Route path="/my-tickets" element={<SubPageRouter />} />
         <Route path="/night-planner" element={<SubPageRouter />} />
 
-        {/* Main tabs */}
+        {/* Main tabs — map is the production home */}
         <Route path="/discover" element={wrapTab()} />
         <Route path="/map" element={wrapTab()} />
+        <Route path="/trending" element={wrapTab()} />
         <Route path="/notifications" element={wrapTab()} />
         <Route path="/profile" element={wrapTab()} />
         <Route path="/" element={wrapTab()} />

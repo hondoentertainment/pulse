@@ -32,7 +32,7 @@ test.describe('Pulse creation flow', () => {
     await createBtn.click()
 
     // Dialog title
-    await expect(page.locator('text=/Create Pulse at/i').first()).toBeVisible({
+    await expect(page.locator('text=/Create pulse/i').first()).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -67,7 +67,7 @@ test.describe('Pulse creation flow', () => {
     await expect(cancel).toBeVisible({ timeout: 5_000 })
     await cancel.click()
 
-    await expect(page.locator('text=/Create Pulse at/i').first()).not.toBeVisible({
+    await expect(page.getByRole('heading', { name: /Create pulse/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you from a fresh clone to a running **Pulse Signal** dev environment. Signal is the default shell. The venue PWA only mounts when `VITE_APP_MODE=venue`.
+This guide walks you from a fresh clone to a running **Pulse** (venue + map) dev environment. Venue is the default shell. Pulse Signal only mounts when `VITE_APP_MODE=signal`.
 
 ## Prerequisites
 
@@ -31,8 +31,8 @@ cp .env.example .env
 ### App shell
 
 ```env
-# VITE_APP_MODE=signal              # default — Pulse Signal
-# VITE_APP_MODE=venue               # nightlife PWA (staging / E2E only)
+# VITE_APP_MODE=venue               # default — nightlife venue + map
+# VITE_APP_MODE=signal              # Pulse Signal (optional)
 # VITE_LAUNCHED_CITIES=Seattle,WA   # venue geo-gate
 ```
 

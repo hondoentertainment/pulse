@@ -3,10 +3,10 @@ import { useEffect } from 'react'
 import { getEnergyLabel } from '@/lib/pulse-engine'
 
 function getIGColor(score: number): string {
-  if (score >= 80) return '#E1306C'
-  if (score >= 60) return '#F77737'
-  if (score >= 30) return '#FCAF45'
-  return '#833AB4'
+  if (score >= 75) return '#FF2D78'
+  if (score >= 50) return '#FF8A00'
+  if (score >= 25) return '#00D1FF'
+  return '#8A8A93'
 }
 
 interface PulseScoreProps {

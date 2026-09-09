@@ -90,7 +90,16 @@ describe('useSignalStore import and snooze', () => {
     resetStore()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
   it('imports new day/window rows and skips conflicts', () => {
+    // Pin to morning so saveEntry writes a morning row. After noon UTC the same
+    // test would create an evening row and skip the imported evening conflict.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 16, 9, 0))
     const existing = useSignalStore.getState().saveEntry('user-1')
     const incoming = [
       { ...existing, id: 'dup' },

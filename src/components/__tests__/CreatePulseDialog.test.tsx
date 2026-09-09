@@ -30,6 +30,7 @@ vi.mock('@phosphor-icons/react', () => ({
   VideoCamera: (p: any) => <span data-testid="icon-VideoCamera" {...p} />,
   CheckCircle: (p: any) => <span data-testid="icon-CheckCircle" {...p} />,
   Hash: (p: any) => <span data-testid="icon-Hash" {...p} />,
+  ImageSquare: (p: any) => <span data-testid="icon-ImageSquare" {...p} />,
 }))
 
 vi.mock('@github/spark/hooks', () => ({
@@ -128,7 +129,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Create Pulse at Test Venue/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Create pulse/)).not.toBeInTheDocument()
   })
 
   it('renders venue name in title when open', () => {
@@ -140,7 +141,8 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Create Pulse at The Buzzy Bar/)).toBeInTheDocument()
+    expect(screen.getByText(/Create pulse/)).toBeInTheDocument()
+    expect(screen.getByText(/The Buzzy Bar · verified check-in/)).toBeInTheDocument()
   })
 
   it('fills caption and enforces 140 char cap', () => {

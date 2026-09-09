@@ -210,7 +210,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : 'Search venues, vibes, or categories'}
+          placeholder={isListening ? 'Listening...' : "Search venues or say 'show electric'"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}

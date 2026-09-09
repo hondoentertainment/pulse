@@ -11,6 +11,7 @@ const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then
 const TrendingTab = lazy(() => import('@/components/TrendingTab').then(m => ({ default: m.TrendingTab })))
 const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ default: m.ProfileTab })))
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
+const SurgingNearbyList = lazy(() => import('@/components/SurgingNearbyList').then(m => ({ default: m.SurgingNearbyList })))
 
 const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -143,9 +144,12 @@ export function MainTabRouter() {
         )}
 
         {activeTab === 'map' && (
-          <motion.div key="map" {...tabMotion} className="max-w-2xl mx-auto px-4 py-6 h-[calc(100vh-180px)]">
-            <div className="h-full" role="region" aria-labelledby="map-heading">
-              <h1 id="map-heading" className="sr-only">Map</h1>
+          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-4 px-4 pb-6 pt-6">
+            <header>
+              <h1 id="map-heading" className="text-3xl font-bold tracking-tight">Pulse</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Where the energy is — right now</p>
+            </header>
+            <div className="h-[42vh] min-h-[220px] overflow-hidden rounded-[20px] border border-white/10 bg-[#101014]" role="region" aria-labelledby="map-heading">
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}
@@ -155,6 +159,13 @@ export function MainTabRouter() {
                 locationHeading={realtimeLocation?.heading}
               />
             </div>
+            <SurgingNearbyList
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              userLocation={userLocation}
+              unitSystem={unitSystem}
+              onVenueClick={handleVenueClick}
+            />
           </motion.div>
         )}
 

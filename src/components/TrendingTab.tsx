@@ -127,8 +127,8 @@ export function TrendingTab({
     <main id="tonight-feed" aria-labelledby="tonight-heading">
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
         <div>
-          <h1 id="tonight-heading" className="text-2xl font-bold">Tonight</h1>
-          <p className="text-sm text-muted-foreground">Live rooms, saved spots, and curated Seattle listings.</p>
+          <h1 id="tonight-heading" className="text-3xl font-bold tracking-tight">Trending</h1>
+          <p className="text-sm text-muted-foreground">Just popped · Gaining · Hot now</p>
         </div>
         {isGeoGateEnabled(launchedMarkets) && (
           <GeoLaunchGate markets={launchedMarkets} venueCount={venues.length} />

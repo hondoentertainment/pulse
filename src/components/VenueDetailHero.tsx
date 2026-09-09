@@ -52,10 +52,11 @@ export function VenueDetailHero({
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
           <button
             onClick={onBack}
-            aria-label="Back to venues"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-colors hover:bg-black/55"
+            aria-label="Back to Map"
+            className="flex h-11 items-center gap-1.5 rounded-full bg-black/35 px-3 text-sm font-semibold text-[#00D1FF] backdrop-blur transition-colors hover:bg-black/55"
           >
-            <ArrowLeft size={24} weight="bold" />
+            <ArrowLeft size={18} weight="bold" />
+            Map
           </button>
           <div className="flex items-center gap-2">
             {onToggleFollow && (

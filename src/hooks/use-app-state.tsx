@@ -206,7 +206,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [selectedMarketKeyRaw, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
   const selectedMarketKey = selectedMarketKeyRaw ?? 'seattle'
-  const [activeTab, setActiveTab] = useState<TabId>('trending')
+  const [activeTab, setActiveTab] = useState<TabId>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
   const [subPage, setSubPage] = useState<SubPage>(null)

@@ -127,7 +127,6 @@ jobs:
   smoke-preview-venue:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -147,7 +146,7 @@ jobs:
           VITE_VISUAL_PREVIEW: 'true'
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
-        run: npx playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts
+        run: npx playwright test e2e/venue-shell.spec.ts e2e/pulse-creation.spec.ts e2e/search.spec.ts
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -159,16 +158,16 @@ jobs:
           if-no-files-found: ignore
 
   # Alias for GitHub branch protection that still requires `smoke-preview`.
-  # Signal is the shipping product; venue smoke stays advisory.
+  # Venue + map is the shipping product; Signal smoke stays a separate job.
   smoke-preview:
-    needs: [smoke-preview-signal]
+    needs: [smoke-preview-venue]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
     steps:
-      - name: Alias required check to Signal smoke
-        run: echo "smoke-preview satisfied by smoke-preview-signal"
+      - name: Alias required check to venue smoke
+        run: echo "smoke-preview satisfied by smoke-preview-venue"
 
   e2e-signal:
     runs-on: ubuntu-latest

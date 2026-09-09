@@ -41,10 +41,10 @@ interface MapFiltersProps {
 }
 
 const ENERGY_LEVELS = [
-  { value: 'dead' as const, label: 'Dead', color: 'oklch(0.35 0.05 240)', emoji: '💀' },
-  { value: 'chill' as const, label: 'Chill', color: 'oklch(0.60 0.15 150)', emoji: '😌' },
-  { value: 'buzzing' as const, label: 'Buzzing', color: 'oklch(0.70 0.22 60)', emoji: '🔥' },
-  { value: 'electric' as const, label: 'Electric', color: 'oklch(0.65 0.28 340)', emoji: '⚡' }
+  { value: 'dead' as const, label: 'Dead', color: '#8A8A93', emoji: '💀' },
+  { value: 'chill' as const, label: 'Chill', color: '#00D1FF', emoji: '😌' },
+  { value: 'buzzing' as const, label: 'Buzzing', color: '#FF8A00', emoji: '🔥' },
+  { value: 'electric' as const, label: 'Electric', color: '#FF2D78', emoji: '⚡' }
 ]
 
 const DISTANCE_OPTIONS_MILES = [

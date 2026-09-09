@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 test.describe.configure({ timeout: 60_000 })
 
 /**
- * Smoke tests for the default production entry (Pulse Signal).
- * Run with default Playwright env — do NOT set VITE_APP_MODE=venue.
+ * Smoke tests for Pulse Signal behind VITE_APP_MODE=signal.
+ * Run with CI `e2e-signal` or `npm run test:e2e:signal`.
  */
 test('loads signal shell with navigation', async ({ page }) => {
   await page.goto('/')

@@ -13,7 +13,8 @@ import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
 import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
-import { formatTimeAgo } from '@/lib/pulse-engine'
+import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
+import { EnergyBadge } from '@/components/EnergyBadge'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -318,10 +319,11 @@ export function VenuePage({
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              aria-label="Back to venues"
-              className="min-h-11 min-w-11 p-2 hover:bg-secondary rounded-lg transition-colors touch-manipulation active:scale-[0.98]"
+              aria-label="Back to Map"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-[#00D1FF] hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
             >
-              <ArrowLeft size={24} />
+              <ArrowLeft size={20} />
+              Map
             </button>
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{venue.name}</h1>
@@ -409,6 +411,36 @@ export function VenuePage({
         className="max-w-2xl mx-auto px-4 py-6 space-y-6"
       >
         <WorthGoingSummary summary={worthGoing} />
+
+        <Card className="rounded-[20px] border-white/10 bg-card/90 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p
+                className="text-6xl font-bold tabular-nums leading-none"
+                style={{ color: venue.pulseScore >= 75 ? '#FF2D78' : venue.pulseScore >= 50 ? '#FF8A00' : '#00D1FF' }}
+              >
+                {venue.pulseScore}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <EnergyBadge score={venue.pulseScore} filled={false} />
+                <span>{getEnergyLabel(venue.pulseScore)}</span>
+              </div>
+            </div>
+            {(() => {
+              const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
+              const delta = recent10m * 8
+              if (delta <= 0) return null
+              return (
+                <span className="rounded-full border border-[#FF2D78]/70 px-2.5 py-1 text-xs font-semibold text-[#FF2D78]">
+                  +{delta} / 10m
+                </span>
+              )
+            })()}
+          </div>
+          <div className="mt-4">
+            <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
+          </div>
+        </Card>
 
         {showArrivalPrompt && arrivalWatch && (
           <ArrivalPrompt
@@ -558,7 +590,7 @@ export function VenuePage({
             className="bg-primary hover:bg-primary/90"
           >
             <Plus size={20} weight="bold" className="mr-2" />
-            Create Pulse
+            Check in · Create pulse
           </Button>
         </div>
 
@@ -623,8 +655,6 @@ export function VenuePage({
           canReserve={Boolean(reserveAction || ticketAction)}
         />
 
-        <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
-
         {/* Phase 2: Activity Stream */}
         <VenueActivityStream
           venueId={venue.id}
@@ -633,11 +663,13 @@ export function VenuePage({
 
         <Separator />
 
+        <h2 className="text-xl font-bold">Live pulses</h2>
+
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
             variant="no-pulses"
             onAction={onCreatePulse}
-            actionLabel="Create Pulse"
+            actionLabel="Check in · Create pulse"
           />
         ) : (
           <div className="space-y-4">

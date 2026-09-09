@@ -1,9 +1,11 @@
 import { Pulse, Venue } from '@/lib/types'
-import { VenueCard } from './VenueCard'
 import { Badge } from './ui/badge'
 import { Separator } from './ui/separator'
-import { TrendUp, Lightning, Flame, Users, Clock } from '@phosphor-icons/react'
+import { TrendUp, Users, Clock } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { EnergyBadge } from '@/components/EnergyBadge'
+import { calculateScoreVelocity } from '@/lib/venue-trending'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 
 export interface TrendingSection {
   title: string
@@ -23,33 +25,31 @@ interface TrendingSectionsProps {
   onToggleFollow?: (venueId: string) => void
 }
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3958.8
-  const φ1 = (lat1 * Math.PI) / 180
-  const φ2 = (lat2 * Math.PI) / 180
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-  return R * c
-}
-
 function getSectionIcon(title: string) {
   switch (title) {
     case 'Trending Now':
-      return <TrendUp size={20} weight="fill" className="text-accent" />
+      return <span aria-hidden>🔥</span>
     case 'Just Popped Off':
-      return <Lightning size={20} weight="fill" className="text-[oklch(0.70_0.22_60)]" />
+      return <span aria-hidden>⚡</span>
     case 'Gaining Energy':
-      return <Flame size={20} weight="fill" className="text-primary" />
+      return <span aria-hidden>↗</span>
     case 'Expected to Be Busy':
       return <Users size={20} weight="duotone" className="text-muted-foreground" />
     default:
       return <TrendUp size={20} weight="fill" />
+  }
+}
+
+function getSectionShortTitle(title: string) {
+  switch (title) {
+    case 'Just Popped Off':
+      return 'Just Popped'
+    case 'Gaining Energy':
+      return 'Gaining'
+    case 'Trending Now':
+      return 'Trending Now'
+    default:
+      return title
   }
 }
 
@@ -70,12 +70,7 @@ function getTimeSinceUpdate(updatedAt: string): string {
 export function TrendingSections({
   sections,
   pulses = [],
-  userLocation,
   onVenueClick,
-  isFavorite,
-  onToggleFavorite,
-  isFollowed,
-  onToggleFollow,
 }: TrendingSectionsProps) {
   if (sections.length === 0) {
     return (
@@ -89,14 +84,6 @@ export function TrendingSections({
         </p>
       </div>
     )
-  }
-
-  const mediaByVenueId = new Map<string, string>()
-  for (const pulse of pulses) {
-    const photo = pulse.photos?.[0]
-    if (photo && !mediaByVenueId.has(pulse.venueId)) {
-      mediaByVenueId.set(pulse.venueId, photo)
-    }
   }
 
   return (
@@ -135,29 +122,32 @@ export function TrendingSections({
 
             <div className="space-y-3">
               {section.venues.map((venue) => {
-                const distance = userLocation
-                  ? calculateDistance(
-                      userLocation.lat,
-                      userLocation.lng,
-                      venue.location.lat,
-                      venue.location.lng
-                    )
-                  : undefined
+                const velocity = calculateScoreVelocity(venue, pulses)
+                const energyLabel = getEnergyLabel(venue.pulseScore)
+                const place = venue.neighborhood || venue.city
+                const metaParts = [
+                  velocity > 0 ? `Surge +${Math.round(velocity)}` : `${venue.pulseScore} score`,
+                  place,
+                ].filter(Boolean)
 
                 return (
-                  <VenueCard
+                  <button
                     key={venue.id}
-                    venue={venue}
-                    distance={distance}
-                    mediaUrl={mediaByVenueId.get(venue.id)}
+                    type="button"
+                    aria-label={`Open ${venue.name}`}
                     onClick={() => onVenueClick(venue)}
-                    isJustPopped={section.title === 'Just Popped Off'}
-                    isFavorite={isFavorite(venue.id)}
-                    onToggleFavorite={onToggleFavorite}
-                    isFollowed={isFollowed?.(venue.id)}
-                    onToggleFollow={onToggleFollow}
-                    showPreTrendingLabel={isPreTrending}
-                  />
+                    className="flex w-full items-start justify-between gap-3 rounded-[18px] border border-white/10 bg-card/80 px-4 py-3.5 text-left transition-colors hover:border-white/20"
+                  >
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-bold">
+                        {getSectionShortTitle(section.title)} — {venue.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {metaParts.join(' · ')}
+                      </p>
+                    </div>
+                    <EnergyBadge label={energyLabel} className="shrink-0" />
+                  </button>
                 )
               })}
             </div>
