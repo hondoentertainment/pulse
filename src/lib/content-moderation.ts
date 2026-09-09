@@ -177,9 +177,16 @@ export function filterModeratedPulses(
   pulses: Pulse[],
   currentUserId: string,
   blocks: UserBlock[],
-  mutes: UserMute[]
+  mutes: UserMute[],
+  reports: ContentReport[] = [],
 ): Pulse[] {
+  const hiddenIds = new Set(
+    reports
+      .filter((report) => report.reporterId === currentUserId && report.targetType === 'pulse')
+      .map((report) => report.targetId),
+  )
   return pulses.filter(p => {
+    if (hiddenIds.has(p.id)) return false
     if (isBlocked(blocks, currentUserId, p.userId)) return false
     if (isMuted(mutes, currentUserId, p.userId)) return false
     return true

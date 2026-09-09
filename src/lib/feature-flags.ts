@@ -9,6 +9,7 @@ export type FeatureFlag =
   | 'ticketing'
   | 'aiConcierge'
   | 'creatorEconomy'
+  | 'venueInbox'
 
 type FeatureFlagMap = Record<FeatureFlag, boolean>
 
@@ -35,6 +36,7 @@ const defaults: FeatureFlagMap = {
   ticketing: false,
   aiConcierge: false,
   creatorEconomy: false,
+  venueInbox: true,
 }
 
 export const featureFlags: FeatureFlagMap = {
@@ -51,6 +53,7 @@ export const featureFlags: FeatureFlagMap = {
   ticketing: parseFlag(import.meta.env.VITE_TICKETING_ENABLED, defaults.ticketing),
   aiConcierge: parseFlag(import.meta.env.VITE_AI_CONCIERGE_ENABLED, defaults.aiConcierge),
   creatorEconomy: parseFlag(import.meta.env.VITE_CREATOR_ECONOMY_ENABLED, defaults.creatorEconomy),
+  venueInbox: parseFlag(import.meta.env.VITE_FF_VENUE_INBOX, defaults.venueInbox),
 }
 
 export function isFeatureEnabled(flag: FeatureFlag): boolean {

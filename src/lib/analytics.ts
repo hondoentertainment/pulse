@@ -27,35 +27,6 @@ export type AnalyticsEvent =
   | { type: 'venue_data_fallback'; timestamp: number; source: 'supabase_empty' | 'supabase_unavailable'; count: number }
   | { type: 'event_rsvp'; timestamp: number; eventId: string; status: string }
   | { type: 'error'; timestamp: number; message: string; stack?: string; context?: string }
-  | { type: 'signal_app_shell_mount'; timestamp: number; path: string }
-  | { type: 'signal_auth_continue_click'; timestamp: number; isPlaceholder: boolean }
-  | { type: 'signal_auth_session_ready'; timestamp: number; isPlaceholder: boolean }
-  | { type: 'signal_auth_oauth_click'; timestamp: number; provider: 'google' | 'apple' }
-  | { type: 'signal_auth_magic_link_request'; timestamp: number }
-  | { type: 'signal_auth_guest_click'; timestamp: number }
-  | { type: 'signal_onboarding_step'; timestamp: number; step: 0 | 1 | 2; action: 'view' | 'next' | 'back' }
-  | { type: 'signal_onboarding_complete'; timestamp: number; durationMs: number; trackingFocus: string }
-  | { type: 'signal_check_in_saved'; timestamp: number; isFirstEntry: boolean; scoreBucket: 'low' | 'mid' | 'high' }
-  | { type: 'signal_first_win_open'; timestamp: number }
-  | { type: 'signal_first_win_dismiss'; timestamp: number }
-  | { type: 'signal_nav'; timestamp: number; to: string }
-  | { type: 'signal_sync_retry'; timestamp: number }
-  | { type: 'signal_research_cta_click'; timestamp: number; target: 'feedback' | 'pro_pilot' }
-  | { type: 'signal_pilot_signup'; timestamp: number; status: 'created' | 'already_registered' | 'failed' }
-  | { type: 'signal_reminder_toggle'; timestamp: number; enabled: boolean; permission: string }
-  | { type: 'signal_csv_export'; timestamp: number; count: number }
-  | { type: 'signal_csv_import'; timestamp: number; imported: number; skipped: number }
-  | { type: 'signal_json_export'; timestamp: number; count: number }
-  | { type: 'signal_unusual_week_view'; timestamp: number; ready: boolean; delta: number | null }
-  | { type: 'signal_month_calendar_view'; timestamp: number; daysWithScores: number }
-  | { type: 'signal_reminder_snooze'; timestamp: number; until: string | null }
-  | { type: 'signal_account_deleted'; timestamp: number }
-  | { type: 'signal_milestone_reached'; timestamp: number; milestone: number; streak: number }
-  | { type: 'signal_milestone_dismissed'; timestamp: number; milestone: number }
-  | { type: 'signal_sleep_link_view'; timestamp: number; pairs: number; ready: boolean }
-  | { type: 'signal_records_view'; timestamp: number; totalCheckIns: number; longestStreak: number }
-  | { type: 'signal_monthly_summary_view'; timestamp: number; daysLogged: number; ready: boolean }
-  | { type: 'signal_history_filter'; timestamp: number; tagCount: number; window: 'morning' | 'evening' | 'all'; shown: number }
   | { type: 'arrival_prompt_shown'; timestamp: number; venueId: string }
   | { type: 'arrival_confirmed'; timestamp: number; venueId: string }
   | { type: 'mismatch_reported'; timestamp: number; venueId: string; correction: string }
@@ -351,28 +322,6 @@ export function calculateRetention(
     cohortDate,
     totalUsers: cohortUsers.length,
     retainedByDay,
-  }
-}
-
-export function analyzeSignalFunnel(events: AnalyticsEvent[]): FunnelAnalysis {
-  const sessionReady = events.filter((e) => e.type === 'signal_auth_session_ready').length
-  const continues = events.filter((e) => e.type === 'signal_auth_continue_click').length
-  const onboardSteps = events.filter((e) => e.type === 'signal_onboarding_step' && e.action === 'view')
-  const onboardDone = events.filter((e) => e.type === 'signal_onboarding_complete').length
-  const firstCheckIns = events.filter((e) => e.type === 'signal_check_in_saved' && e.isFirstEntry).length
-
-  const steps: FunnelStep[] = [
-    { name: 'Session ready', count: sessionReady, dropoffRate: 0 },
-    { name: 'Auth continue click', count: continues, dropoffRate: sessionReady > 0 ? 1 - continues / sessionReady : 0 },
-    { name: 'Onboarding views', count: onboardSteps.length, dropoffRate: continues > 0 ? 1 - onboardSteps.length / continues : 0 },
-    { name: 'Onboarding complete', count: onboardDone, dropoffRate: continues > 0 ? 1 - onboardDone / continues : 0 },
-    { name: 'First check-in', count: firstCheckIns, dropoffRate: onboardDone > 0 ? 1 - firstCheckIns / onboardDone : 0 },
-  ]
-  return {
-    name: 'Pulse Signal activation',
-    steps,
-    totalConversionRate: sessionReady > 0 ? firstCheckIns / sessionReady : 0,
-    totalUsers: sessionReady,
   }
 }
 

@@ -25,6 +25,12 @@ import { createUserClient } from '../_lib/supabase-server.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
+const PULSE_KINDS = ['pulse', 'review'] as const
+type PulseKind = (typeof PULSE_KINDS)[number]
+
+const LIVE_REVIEW_CAPTION_MIN = 1
+const LIVE_REVIEW_CAPTION_MAX = 280
+const VENUE_COOLDOWN_MS = 120 * 60 * 1000
 
 type PulseCreateBody = {
   venueId: string
@@ -34,6 +40,8 @@ type PulseCreateBody = {
   video?: string | null
   hashtags?: string[]
   crewId?: string | null
+  kind?: PulseKind
+  locationVerified?: boolean
 }
 
 const PULSE_TTL_MS = 90 * 60 * 1000
@@ -65,6 +73,8 @@ const validateBody = (
     return { ok: false, error: `energyRating must be one of: ${ENERGY_RATINGS.join(', ')}` }
   }
 
+  const kind = (asEnum(body.kind, PULSE_KINDS) as PulseKind | null) ?? 'review'
+
   let caption: string | undefined
   if (body.caption !== undefined && body.caption !== null) {
     if (typeof body.caption !== 'string' || body.caption.length > 500) {
@@ -72,6 +82,17 @@ const validateBody = (
     }
     caption = body.caption.trim()
   }
+
+  if (kind === 'review') {
+    if (!caption || caption.length < LIVE_REVIEW_CAPTION_MIN) {
+      return { ok: false, error: 'caption is required for a live review' }
+    }
+    if (caption.length > LIVE_REVIEW_CAPTION_MAX) {
+      return { ok: false, error: `caption must be ${LIVE_REVIEW_CAPTION_MAX} characters or fewer for a live review` }
+    }
+  }
+
+  const locationVerified = body.locationVerified === true
 
   let crewId: string | null | undefined
   if (body.crewId !== undefined && body.crewId !== null) {
@@ -97,6 +118,8 @@ const validateBody = (
       video: video ?? null,
       hashtags: sanitizeStringArray(body.hashtags, 10, 64),
       crewId: crewId ?? null,
+      kind,
+      locationVerified,
     },
   }
 }
@@ -168,10 +191,33 @@ export default async function handler(
     reactions: { fire: [], eyes: [], skull: [], lightning: [] },
     created_at: createdAt,
     expires_at: expiresAt,
+    kind: validated.value.kind ?? 'review',
+    location_verified: validated.value.locationVerified ?? false,
   }
 
   try {
     const client = createUserClient(auth.context.token)
+
+    const cooldownCutoff = new Date(now.getTime() - VENUE_COOLDOWN_MS).toISOString()
+    const { data: recentAtVenue, error: cooldownError } = await client
+      .from('pulses')
+      .select('id')
+      .eq('user_id', auth.context.userId)
+      .eq('venue_id', validated.value.venueId)
+      .is('deleted_at', null)
+      .gte('created_at', cooldownCutoff)
+      .limit(1)
+
+    if (cooldownError) {
+      fail(res, 500, 'persist_failed', 'Failed to check review cooldown', {
+        details: cooldownError.message,
+      })
+      return
+    }
+    if (Array.isArray(recentAtVenue) && recentAtVenue.length > 0) {
+      fail(res, 429, 'venue_cooldown', 'Wait before posting another live review at this venue')
+      return
+    }
     const { data, error } = await client
       .from('pulses')
       .insert(pulseRow)

@@ -104,16 +104,16 @@ function syncOfflinePulses() {
   })
 }
 
-// Legacy SW. Production uses VitePWA generateSW + /signal-push-sw.js.
+// Legacy SW. Production uses VitePWA generateSW.
 // Keep these handlers for local/public fallback.
 self.addEventListener('push', function (event) {
   var payload = event.data ? event.data.json() : {}
-  var title = payload.title || 'Pulse Signal'
-  var body = payload.body || 'Take 10 seconds to log today’s signal.'
+  var title = payload.title || 'Pulse'
+  var body = payload.body || 'See where the energy is right now.'
   var extra = payload.data || {}
   var url = (typeof extra.url === 'string' && extra.url.charAt(0) === '/')
     ? extra.url
-    : extra.kind === 'signal_reminder' ? '/home' : '/'
+    : '/'
   event.waitUntil(
     self.registration.showNotification(title, {
       body: body,

@@ -97,6 +97,7 @@ export const PulseCard = memo(function PulseCard({ pulse, allPulses = [], onReac
               </div>
               <p className="text-xs text-muted-foreground">
                 {venueName ? `${venueName} · ` : ''}{formatTimeAgo(pulse.createdAt)}
+                {pulse.locationVerified === false ? ' · Unverified' : ''}
               </p>
               {trustBadges.length > 0 && (
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">

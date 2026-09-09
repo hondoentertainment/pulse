@@ -157,6 +157,7 @@ export function MainTabRouter() {
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
+                pulses={visiblePulses}
               />
             </div>
             <SurgingNearbyList

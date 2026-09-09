@@ -30,9 +30,8 @@ export default defineConfig(({ command }) => {
             if (normalizedId.includes('/@phosphor-icons/')) {
               return 'phosphor'
             }
-            // Sentry must stay on its own async chunk. Sharing a name with the
-            // statically imported `@vercel/analytics` module pulled the SDK
-            // onto Signal first paint.
+            // Sentry must stay on its own async chunk so it is not pulled onto
+            // first paint with the statically imported `@vercel/analytics` module.
             if (normalizedId.includes('/@sentry/')) {
               return 'sentry'
             }
@@ -79,7 +78,6 @@ export default defineConfig(({ command }) => {
         injectRegister: 'auto',
         manifest: false, // Utilizing existing public/manifest.json
         workbox: {
-          importScripts: ['/signal-push-sw.js'],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           globIgnores: [
             '**/proxy.js',

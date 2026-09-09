@@ -21,6 +21,7 @@ Accepted falsy values: `0`, `false`, `no`, `off`
 | `ticketing` | `VITE_TICKETING_ENABLED` | `false` | Ticket purchase, QR codes, staff scanner |
 | `aiConcierge` | `VITE_AI_CONCIERGE_ENABLED` | `false` | AI night-planning chat sheet |
 | `creatorEconomy` | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab, referrals, payouts |
+| `venueInbox` | `VITE_FF_VENUE_INBOX` | `true` | Read-only venue live-review inbox (`/venue/:id/inbox`) |
 
 \* Safety Kit defaults to on in dev (`.env.example`) but should stay **off in production** until Twilio and server env are configured. See [Safety Kit](safety-kit.md).
 
@@ -55,7 +56,7 @@ See [Data Layer](data-layer.md).
 | Env variable | Default | Notes |
 |--------------|---------|-------|
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disables writes client-side during outages |
-| `VITE_LAUNCHED_CITIES` | empty | City+state allowlist for venue geo-gate. Use `Seattle,WA` (one market). Multiple markets: `Seattle,WA;Portland,OR`. Empty = no gate. Default product stays Signal. |
+| `VITE_LAUNCHED_CITIES` | empty | City+state allowlist for venue geo-gate. Use `Seattle,WA` (one market). Multiple markets: `Seattle,WA;Portland,OR`. Empty = no gate. |
 
 ## Observability
 

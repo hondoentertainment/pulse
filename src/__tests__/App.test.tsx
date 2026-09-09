@@ -1,78 +1,16 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
-const { authState, supabaseMock } = vi.hoisted(() => {
-  const authState = { session: null as unknown, error: null as { message: string } | null }
-  const supabaseMock = {
-    auth: {
-      getSession: async () => ({ data: { session: authState.session } }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInAnonymously: async () => ({ error: authState.error }),
-      signInWithOAuth: async () => ({ error: authState.error }),
-      signInWithOtp: async () => ({ error: authState.error }),
-      signOut: async () => ({ error: null }),
-    },
-    from: () => ({
-      select: () => ({ eq: () => ({ single: async () => ({ data: null, error: { code: 'PGRST116' } }) }) }),
-    }),
-  }
-  return { authState, supabaseMock }
-})
-
-vi.mock('@/lib/supabase', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/supabase')>('@/lib/supabase')
-  return {
-    ...actual,
-    supabase: supabaseMock,
-    hasSupabaseConfig: false,
-    hasPlaceholderCredentials: () => true,
-    isE2EAuthBypassEnabled: false,
-  }
-})
-
-vi.mock('@/lib/analytics', () => ({
-  trackEvent: vi.fn(),
-  trackError: vi.fn(),
+vi.mock('@/VenueApp', () => ({
+  default: () => <div>Venue shell</div>,
 }))
 
 describe('App', () => {
-  beforeEach(() => {
-    authState.session = null
-    authState.error = null
-    localStorage.clear()
-  })
-
-  it('mounts the venue shell by default', async () => {
-    vi.stubEnv('VITE_APP_MODE', '')
-    vi.resetModules()
+  it('always mounts the venue shell', async () => {
     const { default: App } = await import('@/App')
     render(<App />)
-
-    await waitFor(
-      () => {
-        expect(
-          screen.getByText(/Loading Pulse|Where the energy is|Get Started|Pulse/i),
-        ).toBeInTheDocument()
-      },
-      { timeout: 8_000 },
-    )
-  })
-
-  it('mounts a global Sonner toaster on the Signal login branch', async () => {
-    vi.stubEnv('VITE_APP_MODE', 'signal')
-    vi.resetModules()
-    const { default: App } = await import('@/App')
-    render(<App />)
-
-    await waitFor(
-      () => {
-        expect(screen.getByRole('heading', { name: /Your daily state, in 10 seconds/i })).toBeInTheDocument()
-      },
-      { timeout: 8_000 },
-    )
-
-    expect(screen.getByRole('region', { name: /Notifications/i })).toBeInTheDocument()
+    expect(screen.getByText('Venue shell')).toBeInTheDocument()
   })
 })

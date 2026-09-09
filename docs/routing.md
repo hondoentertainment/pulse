@@ -1,6 +1,6 @@
 # Routing & Navigation
 
-How users move through Pulse. Two product shells exist with different routing models.
+How users move through Pulse. The app is venue + map only.
 
 ---
 
@@ -8,25 +8,7 @@ How users move through Pulse. Two product shells exist with different routing mo
 
 | Shell | Mounted from | Router |
 |-------|--------------|--------|
-| **Venue + map** (default) | `src/App.tsx` when `VITE_APP_MODE` is unset or `venue` | React Router v7 (`AppRoutes.tsx`) |
-| **Signal** | `src/App.tsx` when `VITE_APP_MODE=signal` | Internal router in `signal/SignalApp.tsx` |
-
-To run Signal, set `VITE_APP_MODE=signal`.
-
----
-
-## Signal app routes
-
-`signal/SignalApp.tsx`:
-
-| Path | Screen |
-|------|--------|
-| `/home` | Daily check-in |
-| `/trends` | Trend chart |
-| `/history` | Check-in history |
-| `/settings` | Signal settings |
-
-Uses its own bottom nav — independent of `BottomNav.tsx`.
+| **Venue + map** | `src/App.tsx` → `VenueApp` | React Router v7 (`AppRoutes.tsx`) |
 
 ---
 
@@ -66,6 +48,7 @@ Uses its own bottom nav — independent of `BottomNav.tsx`.
 | Path | Component |
 |------|-----------|
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` (read-only tonight’s live reviews) |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
 
 ### Deep links (native)
@@ -109,8 +92,7 @@ Prefer URL-driven navigation for production (shareable links, deep links).
 
 | Component | Behavior |
 |-----------|----------|
-| `LoginScreen` | Shown when no session (Signal entry) |
-| `AuthGate` | Supabase OAuth / magic link (venue entry) |
+| `AuthGate` | Supabase OAuth / magic link |
 | `ProtectedRoute` | React Router wrapper — redirects unauthenticated |
 | `OnboardingFlow` | First-run wizard before main shell |
 

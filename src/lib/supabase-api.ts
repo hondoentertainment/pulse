@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import type { Venue, Pulse, EnergyRating, ReactionType, VenueLiveSummary } from './types'
 import type { LiveReport } from './live-intelligence'
+import { mapLiveReviewFields } from './live-reviews'
 
 type VenueLiveReportRow = {
   id: string
@@ -165,7 +166,8 @@ export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     isPending: false,
-    uploadError: false
+    uploadError: false,
+    ...mapLiveReviewFields(row),
   }))
 }
 
@@ -185,7 +187,9 @@ export async function uploadPulseToSupabase(pulse: Pulse): Promise<boolean> {
     credibility_weight: pulse.credibilityWeight,
     reactions: pulse.reactions,
     created_at: pulse.createdAt,
-    expires_at: pulse.expiresAt
+    expires_at: pulse.expiresAt,
+    kind: pulse.kind ?? 'review',
+    location_verified: pulse.locationVerified ?? false,
   })
   
   if (error) {

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { EnergyBadge } from '@/components/EnergyBadge'
 import { calculateScoreVelocity } from '@/lib/venue-trending'
 import { getEnergyLabel } from '@/lib/pulse-engine'
+import { countLiveReviewsInWindow, LIVE_NOW_WINDOW_MINUTES } from '@/lib/live-reviews'
 
 export interface TrendingSection {
   title: string
@@ -125,8 +126,10 @@ export function TrendingSections({
                 const velocity = calculateScoreVelocity(venue, pulses)
                 const energyLabel = getEnergyLabel(venue.pulseScore)
                 const place = venue.neighborhood || venue.city
+                const liveReviewCount = countLiveReviewsInWindow(pulses, venue.id, LIVE_NOW_WINDOW_MINUTES)
                 const metaParts = [
                   velocity > 0 ? `Surge +${Math.round(velocity)}` : `${venue.pulseScore} score`,
+                  liveReviewCount > 0 ? `${liveReviewCount} live reviews` : null,
                   place,
                 ].filter(Boolean)
 

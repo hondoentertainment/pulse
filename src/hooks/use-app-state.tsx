@@ -589,8 +589,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   // ── Derived values ───────────────────────────────────────
   const moderatedPulses = useMemo(
-    () => filterModeratedPulses(pulses || [], currentUser?.id || '', userBlocks || [], userMutes || []),
-    [currentUser?.id, pulses, userBlocks, userMutes]
+    () => filterModeratedPulses(pulses || [], currentUser?.id || '', userBlocks || [], userMutes || [], contentReports || []),
+    [contentReports, currentUser?.id, pulses, userBlocks, userMutes]
   )
 
   const [pulseAuthorsById, setPulseAuthorsById] = useState<Record<string, User>>({})

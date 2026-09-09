@@ -8,28 +8,11 @@ Reference for React components in `src/components/`. Use this when locating UI f
 
 ## Entry points
 
-Pulse has two product shells. Only one is mounted from `src/App.tsx` at a time.
+Pulse mounts one product shell: venue + map.
 
-### Current entry (`App.tsx`)
+### Current entry (`App.tsx` → `VenueApp` → `AppRoutes.tsx`)
 
-```
-LoginScreen (unauthenticated)
-    └── SignalApp (authenticated)
-            Routes: /home, /trends, /history, /settings
-```
-
-| Component | Path | Role |
-|-----------|------|------|
-| `LoginScreen` | `LoginScreen.tsx` | Root auth UI |
-| `SignalApp` | `signal/SignalApp.tsx` | Self-contained router + bottom nav |
-| `SignalOnboarding` | `signal/SignalOnboarding.tsx` | Signal first-run onboarding |
-| `SignalCheckIn` | `signal/SignalCheckIn.tsx` | Daily check-in flow |
-| `SignalChart` | `signal/SignalChart.tsx` | Trend visualization |
-| `FirstWinDialog` | `signal/FirstWinDialog.tsx` | First-check-in celebration |
-
-### Venue discovery shell (`AppRoutes.tsx`)
-
-The full nightlife discovery experience. **Not mounted from `App.tsx` today** — swap the entry in `App.tsx` to use `AppRoutes` when switching products.
+The nightlife discovery experience.
 
 ```
 AppRoutes (React Router)
@@ -91,6 +74,7 @@ AppRoutes (React Router)
 | `/` | Redirect to active tab |
 | `/discover`, `/map`, `/trending`, `/notifications`, `/profile` | Tab views |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
 | Sub-page paths | `SubPageRouter` |
 

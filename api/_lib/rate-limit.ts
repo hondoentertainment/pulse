@@ -141,6 +141,8 @@ export const RATE_LIMITS = {
   moderation_check: { maxTokens: 60, refillRate: 1, windowMs: 60_000 },
   // 10 pulse creations per hour per user.
   pulse_create: { maxTokens: 10, refillRate: 10 / 3600, windowMs: 3_600_000 },
+  // 3 pulse reports per hour per user.
+  pulse_report: { maxTokens: 3, refillRate: 3 / 3600, windowMs: 3_600_000 },
   // Generic write default — used when an endpoint forgets to pick a bucket.
   default_write: { maxTokens: 30, refillRate: 0.5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>

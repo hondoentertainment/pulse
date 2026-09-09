@@ -47,7 +47,6 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab |
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Video pulse feed |
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disable writes during outage |
-| `VITE_APP_MODE` | `venue` | `venue` (default shipping shell) or `signal` (optional) |
 | `VITE_LAUNCHED_CITIES` | empty | Venue geo-gate. `Seattle,WA` is one market, not two tokens. |
 
 Full detail: [Feature Flags](feature-flags.md).
@@ -162,10 +161,7 @@ Full detail: [Feature Flags](feature-flags.md).
 | Variable | Scope | Description |
 |----------|-------|-------------|
 | `VITE_RESEARCH_FEEDBACK_URL` | client | Survey/Calendly link in Settings |
-| `VITE_VAPID_PUBLIC_KEY` | client | Web Push public key for Signal reminders |
-| `VAPID_PUBLIC_KEY` | server | Web Push public key |
-| `VAPID_PRIVATE_KEY` | server | Web Push private key — **never expose** |
-| `CRON_SECRET` | server | Protects Signal reminder dispatch and other crons |
+| `CRON_SECRET` | server | Protects wait-time and safety crons |
 | `VITE_APP_VERSION` | client | App version for push registration |
 | `VITE_API_BASE_URL` | client | API base override (tests) |
 | `PROJECT_ROOT` | build | Vite project root override |

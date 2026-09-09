@@ -151,7 +151,7 @@ export function AppShell() {
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
         <Suspense fallback={null}>
-          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} userLocation={userLocation} onSubmit={handleSubmitPulse} />
         </Suspense>
       </>
     )
@@ -188,12 +188,12 @@ export function AppShell() {
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
       <Suspense fallback={null}>
-        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} userLocation={userLocation} onSubmit={handleSubmitPulse} />
       </Suspense>
 
       <motion.button
         data-testid="create-pulse-fab"
-        aria-label="Create a pulse"
+        aria-label="Post a live review"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}

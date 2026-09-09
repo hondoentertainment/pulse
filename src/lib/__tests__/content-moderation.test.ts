@@ -117,6 +117,16 @@ describe('filterModeratedPulses', () => {
     const filtered = filterModeratedPulses(pulses, 'me', blocks, mutes)
     expect(filtered.length).toBe(1)
   })
+
+  it('hides pulses the current user reported', () => {
+    const pulses = [
+      makePulse({ id: 'keep', userId: 'normal-user' }),
+      makePulse({ id: 'hidden', userId: 'normal-user' }),
+    ]
+    const reports = [createReport('me', 'pulse', 'hidden', 'spam')]
+    const filtered = filterModeratedPulses(pulses, 'me', [], [], reports)
+    expect(filtered.map((p) => p.id)).toEqual(['keep'])
+  })
 })
 
 describe('getPendingReportCount', () => {

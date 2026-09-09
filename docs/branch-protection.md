@@ -6,7 +6,7 @@ This agent cannot change protection (no admin API). A solo maintainer also canno
 
 ## Required status checks
 
-Prefer the shipping Signal jobs. Do **not** require the legacy single name `smoke-preview` unless the alias job in `.github/workflows/ci.yml` is present (it is — it needs `smoke-preview-signal`).
+Prefer the shipping venue jobs. Do **not** require retired Signal job names (`smoke-preview-signal`, `e2e-signal`). The `smoke-preview` alias still exists and needs `smoke-preview-venue`.
 
 | Check | Workflow job | Notes |
 |-------|----------------|-------|
@@ -14,16 +14,14 @@ Prefer the shipping Signal jobs. Do **not** require the legacy single name `smok
 | Unit tests + coverage | `test` | Required |
 | Build | `build` | Required |
 | Bundle size | `bundle-size` | Optional — Lighthouse JS budget is noisy |
-| Signal smoke | `smoke-preview` **or** `smoke-preview-signal` | Required. The `smoke-preview` job is an alias so stale protection stays green |
-| Signal E2E | `e2e-signal` | Recommended |
-| Venue smoke | `smoke-preview-venue` | Advisory only (`continue-on-error`) |
-| TypeScript strict | `typecheck-strict` | Advisory — legacy venue errors |
-| Dependency audit | `dependency-audit` | Advisory |
+| Venue smoke | `smoke-preview` **or** `smoke-preview-venue` | Required. The `smoke-preview` job is an alias so stale protection stays green |
+| TypeScript strict | `typecheck-strict` | Blocking on current `main` |
+| Dependency audit | `dependency-audit` | Blocking on current `main` |
 
 ## Solo-maintainer clicks
 
 1. GitHub repo → **Settings** → **Branches** → rule on `main`.
-2. **Require status checks to pass** → search `smoke-preview` (alias) or replace it with `smoke-preview-signal`. Remove any required check that no longer exists as a job name.
+2. **Require status checks to pass** → search `smoke-preview` (alias) or `smoke-preview-venue`. Remove any required check that no longer exists as a job name (`smoke-preview-signal`, `e2e-signal`).
 3. Either:
    - **Allow specified actors to bypass** (the owner), **or**
    - Set **Required approving reviews** to **0**
@@ -41,7 +39,6 @@ gh api repos/hondoentertainment/pulse/branches/main/protection \
   --field required_status_checks[contexts][]=test \
   --field required_status_checks[contexts][]=build \
   --field required_status_checks[contexts][]=smoke-preview \
-  --field required_status_checks[contexts][]=e2e-signal \
   --field enforce_admins=false \
   --field required_pull_request_reviews[required_approving_review_count]=0
 ```
@@ -49,4 +46,4 @@ gh api repos/hondoentertainment/pulse/branches/main/protection \
 ## Ownership
 
 - Owner: repository admin
-- Last reviewed: 2026-08-30
+- Last reviewed: 2026-09-09

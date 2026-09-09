@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { Venue } from '@/lib/types'
+import { Venue, type Pulse } from '@/lib/types'
+import { countLiveReviewsInWindow, LIVE_NOW_WINDOW_MINUTES } from '@/lib/live-reviews'
 import { PulseScore } from '@/components/PulseScore'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
@@ -37,6 +38,7 @@ interface InteractiveMapProps {
   isTracking?: boolean
   locationAccuracy?: number
   locationHeading?: number | null
+  pulses?: Pulse[]
 }
 
 const ZOOM_STEP = 1.35
@@ -48,7 +50,8 @@ export function InteractiveMap({
   onVenueClick,
   isTracking = false,
   locationAccuracy,
-  locationHeading
+  locationHeading,
+  pulses = [],
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -218,6 +221,10 @@ export function InteractiveMap({
   }
 
   const getLiveIntelLabel = (venue: Venue) => {
+    const liveReviewCount = countLiveReviewsInWindow(pulses, venue.id, LIVE_NOW_WINDOW_MINUTES)
+    if (liveReviewCount > 0) {
+      return `${liveReviewCount} live review${liveReviewCount === 1 ? '' : 's'}`
+    }
     const live = venue.liveSummary
     if (!live || live.reportCount === 0) return null
     if (live.waitTime !== null && live.waitTime <= 5) return 'Walk right in'

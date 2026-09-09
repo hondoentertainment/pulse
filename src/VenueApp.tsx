@@ -5,10 +5,7 @@ import { AppProviders } from '@/AppProviders'
 import { AppRoutes } from '@/AppRoutes'
 
 /**
- * Venue discovery shell — production default (`VITE_APP_MODE` unset or `venue`).
- *
- * Kept in its own module so Signal (`VITE_APP_MODE=signal`) can stay off
- * the venue first-paint graph.
+ * Venue discovery shell — the only Pulse product surface.
  */
 export default function VenueApp() {
   return (

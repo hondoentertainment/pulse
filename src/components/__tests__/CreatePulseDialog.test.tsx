@@ -129,7 +129,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Create pulse/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Live review/)).not.toBeInTheDocument()
   })
 
   it('renders venue name in title when open', () => {
@@ -141,23 +141,22 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Create pulse/)).toBeInTheDocument()
-    expect(screen.getByText(/The Buzzy Bar · verified check-in/)).toBeInTheDocument()
+    expect(screen.getByText(/Live review/)).toBeInTheDocument()
+    expect(screen.getByText(/The Buzzy Bar · energy \+ a short on-site note/)).toBeInTheDocument()
   })
 
-  it('fills caption and enforces 140 char cap', () => {
+  it('fills caption and enforces 280 char cap', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={makeVenue()} onSubmit={vi.fn()} />
     )
     const textarea = screen.getByPlaceholderText(/What's the vibe/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'Amazing night!' } })
     expect(textarea.value).toBe('Amazing night!')
-    expect(screen.getByText(/14\/140/)).toBeInTheDocument()
+    expect(screen.getByText(/14\/280/)).toBeInTheDocument()
 
-    // Exceed 140 — should be capped
-    const long = 'a'.repeat(200)
+    const long = 'a'.repeat(320)
     fireEvent.change(textarea, { target: { value: long } })
-    expect(textarea.value.length).toBe(140)
+    expect(textarea.value.length).toBe(280)
   })
 
   it('updates energy via slider interaction', () => {
@@ -195,7 +194,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.click(screen.getByText('Set Buzzing'))
     fireEvent.click(screen.getByText('Add Photo'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -203,6 +202,7 @@ describe('CreatePulseDialog', () => {
     const payload = onSubmit.mock.calls[0][0]
     expect(payload.energyRating).toBe('buzzing')
     expect(payload.caption).toBe('Great vibes')
+    expect(payload.kind).toBe('review')
     expect(payload.photos.length).toBe(1)
     expect(onClose).toHaveBeenCalled()
   })
@@ -220,7 +220,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.change(screen.getByPlaceholderText(/What's the vibe/i), {
       target: { value: 'this has badword inside' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalled()
@@ -249,8 +249,7 @@ describe('CreatePulseDialog', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={null} onSubmit={onSubmit} />
     )
-    // Button still renders; click should be a no-op
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled()
     })

@@ -48,10 +48,6 @@
     {
       "path": "/api/safety/cron/check-expired",
       "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/signal/reminders/dispatch",
-      "schedule": "*/15 * * * *"
     }
   ]
 }

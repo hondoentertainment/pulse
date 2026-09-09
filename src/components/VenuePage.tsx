@@ -32,6 +32,12 @@ import { VenueActivityStream } from './VenueActivityStream'
 import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import { trackEvent } from '@/lib/analytics'
+import { track } from '@/lib/observability/analytics'
+import { LiveNowStrip } from '@/components/LiveNowStrip'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { getLiveNowReviews } from '@/lib/live-reviews'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { useNavigate } from 'react-router-dom'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
@@ -115,9 +121,11 @@ export function VenuePage({
   hasMoreVenuePulses,
   isLoadingMoreVenuePulses,
 }: VenuePageProps) {
+  const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
@@ -181,6 +189,19 @@ export function VenuePage({
     if (!showArrivalPrompt || !arrivalWatch) return
     trackEvent({ type: 'arrival_prompt_shown', timestamp: Date.now(), venueId: arrivalWatch.venueId })
   }, [arrivalWatch, showArrivalPrompt])
+
+  useEffect(() => {
+    track('venue_viewed', { venueId: venue.id, source: 'deeplink' })
+  }, [venue.id])
+
+  const liveNowReviews = useMemo(
+    () => getLiveNowReviews(venuePulses, venue.id),
+    [venue.id, venuePulses],
+  )
+  const historyPulses = useMemo(() => {
+    const liveIds = new Set(liveNowReviews.map((pulse) => pulse.id))
+    return venuePulses.filter((pulse) => !liveIds.has(pulse.id))
+  }, [liveNowReviews, venuePulses])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
@@ -590,7 +611,7 @@ export function VenuePage({
             className="bg-primary hover:bg-primary/90"
           >
             <Plus size={20} weight="bold" className="mr-2" />
-            Check in · Create pulse
+            Post live review
           </Button>
         </div>
 
@@ -602,6 +623,16 @@ export function VenuePage({
           >
             <CalendarCheck size={18} weight="bold" className="mr-2" />
             Check In With Crew
+          </Button>
+        )}
+
+        {isFeatureEnabled('venueInbox') && (
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/venue/${venue.id}/inbox`)}
+            className="w-full"
+          >
+            Venue inbox
           </Button>
         )}
 
@@ -663,17 +694,25 @@ export function VenuePage({
 
         <Separator />
 
-        <h2 className="text-xl font-bold">Live pulses</h2>
+        <LiveNowStrip
+          venueId={venue.id}
+          pulses={venuePulses}
+          onSelect={setSelectedLiveReview}
+        />
+
+        <h2 className="text-xl font-bold">History</h2>
 
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
             variant="no-pulses"
             onAction={onCreatePulse}
-            actionLabel="Check in · Create pulse"
+            actionLabel="Post live review"
           />
+        ) : historyPulses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Older reviews will appear here after they leave the live window.</p>
         ) : (
           <div className="space-y-4">
-            {venuePulses.map((pulse) => (
+            {historyPulses.map((pulse) => (
               <PulseCard
                 key={pulse.id}
                 pulse={pulse}
@@ -696,6 +735,27 @@ export function VenuePage({
           </div>
         )}
       </motion.div>
+
+      <Dialog open={Boolean(selectedLiveReview)} onOpenChange={(open) => { if (!open) setSelectedLiveReview(null) }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Live review</DialogTitle>
+            <DialogDescription>
+              Full on-site review at {venue.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLiveReview && (
+            <PulseCard
+              pulse={selectedLiveReview}
+              allPulses={venuePulses}
+              onReaction={(type) => onReaction(selectedLiveReview.id, type)}
+              currentUserId={currentUser?.id}
+              onReport={onReportPulse}
+              venueName={venue.name}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ShareSheet
         open={shareOpen}

@@ -1,12 +1,12 @@
 # Pulse Documentation
 
-The shipping product is **Pulse** (venue + map). Pulse Signal docs below are for the flag-gated shell (`VITE_APP_MODE=signal`). Start with [Getting Started](getting-started.md) or [PRD.md](../PRD.md).
+The shipping product is **Pulse** (venue + map). The former Pulse Signal check-in product was removed. Start with [Getting Started](getting-started.md) or [PRD.md](../PRD.md).
 
 ## Quick Links
 
 | I want to… | Start here |
 |------------|------------|
-| Understand Pulse Signal | [PRD_SIGNAL.md](../PRD_SIGNAL.md) + [signal-launch runbook](runbooks/signal-launch.md) |
+| Understand Pulse | [PRD.md](../PRD.md) |
 | Run the app locally | [Getting Started](getting-started.md) |
 | Understand the architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | Find a React component | [Component Catalog](component-catalog.md) |
@@ -62,10 +62,9 @@ The shipping product is **Pulse** (venue + map). Pulse Signal docs below are for
 | [Differentiators](differentiators.md) | Weather boost, wait time, accessibility filter pack |
 | [PRODUCTION_ROLLOUT.md](../PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](../NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
-| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Current ops queue (Signal-first) |
+| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Current ops queue |
 | [VENTURE_NEXT_STEPS.md](VENTURE_NEXT_STEPS.md) | Venture-scale roadmap notes |
 | [Pulse Pro interview brief](pulse-pro-offer-research.md) | Offer research — no invented price |
-| [PRD_SIGNAL.md](../PRD_SIGNAL.md) | Shipping Signal requirements |
 
 ### Feature PRDs (`docs/prd/`)
 
@@ -130,9 +129,7 @@ The shipping product is **Pulse** (venue + map). Pulse Signal docs below are for
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |
 | [Supabase Outage](runbooks/supabase-outage.md) | Database or Realtime down |
 | [Surge Traffic](runbooks/surge-traffic.md) | Traffic spike handling |
-| [Signal Launch](runbooks/signal-launch.md) | Apply Signal migrations, prove the live loop |
-| [Signal Web Push](runbooks/signal-web-push.md) | Closed-app reminder proof |
-| [Venue Staging](runbooks/venue-staging.md) | Flag-gated venue preview — never flip production default |
+| [Venue Staging](runbooks/venue-staging.md) | Venue preview / production checks |
 
 ---
 

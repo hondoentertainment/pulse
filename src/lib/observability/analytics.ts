@@ -69,13 +69,15 @@ export interface EventRegistry {
     hashtagCount?: number
     energyRating?: string
     isFirstPulse?: boolean
+    kind?: 'pulse' | 'review'
+    locationVerified?: boolean
   }
   pulse_viewed: {
     pulseId: string
     venueId?: string
     dwellMs?: number
     position?: number
-    feed?: 'home' | 'venue' | 'friends' | 'trending'
+    feed?: 'home' | 'venue' | 'friends' | 'trending' | 'live_now' | 'inbox'
   }
   reaction_added: {
     pulseId: string

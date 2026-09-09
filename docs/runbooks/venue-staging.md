@@ -1,49 +1,39 @@
-# Runbook: Venue (shipping default) and Signal flag
+# Runbook: Venue staging and production checks
 
 ## Purpose
 
-Confirm the nightlife venue + map shell is what production mounts, and exercise Pulse Signal only when explicitly flagged.
+Confirm the nightlife venue + map shell is what every environment mounts. Pulse is venue-only; there is no Signal product flag.
 
 ## Preconditions
 
-- Vercel project admin access
-- Production should **unset** `VITE_APP_MODE` or set `VITE_APP_MODE=venue`
-- Do **not** set production `VITE_APP_MODE=signal` unless intentionally shipping Signal
+- Preview or production deploy of this repo
+- Optional: `VITE_LAUNCHED_CITIES=Seattle,WA` if exercising the geo-gate
 
 ## Procedure
 
-1. Production / Preview without `VITE_APP_MODE` (or with `venue`) should title **Pulse** and show map / discover — not Pulse Signal Today.
-2. To run Signal on a preview only:
-   - `VITE_APP_MODE=signal`
-   - Redeploy so `VITE_*` values bake in.
-3. Optional venue geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`
-4. Venue Supabase vars if you are testing persistence.
-
-Local venue (default):
+1. Open production / preview. The HTML title should be **Pulse — where the energy is right now** and the first surface should be map / discover.
+2. Confirm there is no Pulse Signal Today / check-in shell, and no `VITE_APP_MODE` env var is required.
+3. Exercise the nightlife loop: map → venue → pulse → trending.
+4. Local:
 
 ```bash
 npm run dev
-```
-
-Local Signal:
-
-```bash
-VITE_APP_MODE=signal npm run dev
+npm run test:smoke:venue
 ```
 
 ## Verification
 
-- [ ] Unset `VITE_APP_MODE` resolves to venue (`src/lib/app-mode.ts`)
-- [ ] Production / default preview shows the venue shell (map home)
-- [ ] `VITE_APP_MODE=signal` still mounts Signal
-- [ ] CI `smoke-preview` follows venue smoke; Signal smoke stays runnable under signal mode
+- [ ] App boots the venue shell with no mode switch
+- [ ] Title matches Pulse nightlife copy
+- [ ] CI `smoke-preview` follows `smoke-preview-venue`
+- [ ] `VITE_LAUNCHED_CITIES` (if set) only gates venue markets
 
 ## Rollback / Escalation
 
-- To revert a mistaken Signal production flag: unset `VITE_APP_MODE` or set `venue` and redeploy.
-- To temporarily restore Signal as the live shell: set production `VITE_APP_MODE=signal` (product decision — do not do this casually).
+- If a deploy is fixture-only, set `VITE_SUPABASE_*` and rebuild.
+- If the map or pulse loop is broken, roll back the deploy ([bad-deploy](bad-deploy.md)).
 
 ## Ownership
 
-- Owner: Venue product engineer
+- Owner: Pulse venue engineer
 - Last reviewed: 2026-09-09

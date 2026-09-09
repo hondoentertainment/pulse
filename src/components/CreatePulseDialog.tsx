@@ -22,17 +22,26 @@ import { moderateServer } from '@/lib/moderation-client'
 import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
+import {
+  LIVE_REVIEW_CAPTION_MAX,
+  evaluateLocationProof,
+  validateLiveReviewCaption,
+  type LocationProof,
+} from '@/lib/live-reviews'
 
 interface CreatePulseDialogProps {
   open: boolean
   onClose: () => void
   venue: Venue | null
+  userLocation?: { lat: number; lng: number } | null
   onSubmit: (data: {
     energyRating: EnergyRating
     caption: string
     photos: string[]
     video?: string
     hashtags?: string[]
+    kind: 'review'
+    locationVerified: boolean
   }) => void
 }
 
@@ -40,6 +49,7 @@ export function CreatePulseDialog({
   open,
   onClose,
   venue,
+  userLocation = null,
   onSubmit
 }: CreatePulseDialogProps) {
   const [energyRating, setEnergyRating] = useState<EnergyRating>('chill')
@@ -94,8 +104,16 @@ export function CreatePulseDialog({
     })
   }
 
+  const locationProof: LocationProof = evaluateLocationProof(userLocation, venue?.location)
+
   const handleSubmit = async () => {
     if (!venue) return
+
+    const captionCheck = validateLiveReviewCaption(caption)
+    if (!captionCheck.ok) {
+      toast.error(captionCheck.error ?? 'Caption is required')
+      return
+    }
 
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
 
@@ -122,19 +140,24 @@ export function CreatePulseDialog({
 
     await onSubmit({
       energyRating,
-      caption,
+      caption: captionCheck.caption,
       photos,
       video: video || undefined,
-      hashtags: selectedHashtags
+      hashtags: selectedHashtags,
+      kind: 'review',
+      locationVerified: locationProof.locationVerified,
     })
 
     track('pulse_created', {
       pulseId: `pulse-${Date.now()}`,
       venueId: venue.id,
       hasPhoto: photos.length > 0,
+      hasCaption: true,
       hashtagCount: selectedHashtags.length,
       energyRating,
       isFirstPulse: !hasSubmittedFirstPulse.current,
+      kind: 'review',
+      locationVerified: locationProof.locationVerified,
     })
     hasSubmittedFirstPulse.current = true
 
@@ -280,10 +303,12 @@ export function CreatePulseDialog({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">
-            Create pulse
+            Live review
           </DialogTitle>
           <DialogDescription>
-            {venue ? `${venue.name} · verified check-in` : 'Share the current energy, add a caption, photos, video, and hashtags.'}
+            {venue
+              ? `${venue.name} · energy + a short on-site note`
+              : 'Share the current energy, add a caption, and optional photos.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -398,20 +423,26 @@ export function CreatePulseDialog({
 
           <div className="space-y-2">
             <label htmlFor="create-pulse-caption" className="text-sm font-medium">
-              Caption <span className="text-muted-foreground">(optional)</span>
+              Caption <span className="text-destructive">*</span>
             </label>
             <Textarea
               id="create-pulse-caption"
-              placeholder="What's the vibe?"
+              placeholder="What's the vibe right now?"
               value={caption}
-              onChange={(e) => setCaption(e.target.value.slice(0, 140))}
-              maxLength={140}
+              onChange={(e) => setCaption(e.target.value.slice(0, LIVE_REVIEW_CAPTION_MAX))}
+              maxLength={LIVE_REVIEW_CAPTION_MAX}
               rows={3}
               className="resize-none"
-              aria-describedby="create-pulse-caption-count"
+              aria-required="true"
+              aria-describedby="create-pulse-caption-count create-pulse-location-proof"
             />
             <p id="create-pulse-caption-count" className="text-xs text-muted-foreground text-right">
-              {caption.length}/140
+              {caption.length}/{LIVE_REVIEW_CAPTION_MAX}
+            </p>
+            <p id="create-pulse-location-proof" className="text-xs text-muted-foreground">
+              {locationProof.reason === 'verified' && 'Near-venue check-in confirmed.'}
+              {locationProof.reason === 'outside_radius' && 'You look outside the check-in radius — this will post as unverified.'}
+              {locationProof.reason === 'location_unavailable' && 'Location off — you can still post, marked unverified.'}
             </p>
           </div>
 
@@ -479,9 +510,9 @@ export function CreatePulseDialog({
             <Button
               className="flex-1 rounded-full bg-primary hover:bg-primary/90"
               onClick={handleSubmit}
-              disabled={isSubmitting || isCompressing}
+              disabled={isSubmitting || isCompressing || caption.trim().length === 0}
             >
-              {isSubmitting ? 'Posting...' : 'Post pulse'}
+              {isSubmitting ? 'Posting...' : 'Post live review'}
             </Button>
           </div>
         </div>
