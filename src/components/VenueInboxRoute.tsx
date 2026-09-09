@@ -59,7 +59,7 @@ export function VenueInboxRoute() {
     <VenueInboxPage
       venue={venue}
       pulses={moderatedPulses}
-      currentUser={currentUser}
+      currentUser={currentUser ?? null}
       claims={claims ?? []}
       staffRoles={staffRoles}
       onBack={() => navigate(`/venue/${venue.id}`)}

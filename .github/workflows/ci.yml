@@ -117,7 +117,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          set -e
+          for attempt in 1 2 3; do
+            if npx playwright install --with-deps chromium; then
+              exit 0
+            fi
+            echo "Playwright install attempt ${attempt} failed"
+            if [ "${attempt}" -eq 3 ]; then
+              echo "Falling back to browser-only install"
+              npx playwright install chromium
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
       - name: Smoke tests (Venue)
         env:
           VITE_E2E_AUTH_BYPASS: 'true'
