@@ -44,9 +44,7 @@ describe('App', () => {
     localStorage.clear()
   })
 
-  it('mounts the venue shell by default', async () => {
-    vi.stubEnv('VITE_APP_MODE', '')
-    vi.resetModules()
+  it('mounts the venue shell', async () => {
     const { default: App } = await import('@/App')
     render(<App />)
 
@@ -58,21 +56,5 @@ describe('App', () => {
       },
       { timeout: 8_000 },
     )
-  })
-
-  it('mounts a global Sonner toaster on the Signal login branch', async () => {
-    vi.stubEnv('VITE_APP_MODE', 'signal')
-    vi.resetModules()
-    const { default: App } = await import('@/App')
-    render(<App />)
-
-    await waitFor(
-      () => {
-        expect(screen.getByRole('heading', { name: /Your daily state, in 10 seconds/i })).toBeInTheDocument()
-      },
-      { timeout: 8_000 },
-    )
-
-    expect(screen.getByRole('region', { name: /Notifications/i })).toBeInTheDocument()
   })
 })

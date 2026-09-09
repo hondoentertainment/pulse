@@ -28,18 +28,20 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260417000010_video_pulses.sql` | video metadata, reports, storage bucket |
 | `20260428000000_venue_feedback_leadership.sql` | live reports, aggregates, pulse_reactions |
 | `20260429000000_realtime_venue_intelligence.sql` | score functions, wait times, intelligence |
-| `20260816000000_signal_core.sql` | Signal entries + profiles, AM/PM unique window |
-| `20260816000001_signal_pilot_signups.sql` | Pulse Pro waitlist emails |
-| `20260816000002_signal_push_subscriptions.sql` | Web Push endpoints for Signal reminders |
+| `20260816000000_signal_core.sql` | Leftover unused Signal entries + profiles (not dropped) |
+| `20260816000001_signal_pilot_signups.sql` | Leftover unused Pulse Pro waitlist emails (not dropped) |
+| `20260816000002_signal_push_subscriptions.sql` | Leftover unused Web Push endpoints (not dropped) |
 | `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (includes leftover Signal tables plus Seattle venue launch).
 
 ---
 
-## Pulse Signal
+## Leftover Pulse Signal tables (unused)
 
-Shipping product tables. Owner-only RLS. `ON DELETE CASCADE` from `auth.users`.
+The Signal product was removed. These tables may still exist in shared databases. They are **not** used by the venue app. No drop migration was added.
+
+Owner-only RLS. `ON DELETE CASCADE` from `auth.users`.
 
 ### `signal_entries`
 

@@ -1,12 +1,12 @@
 # Pulse — Codebase Review & Next Phases of Work
 
-> Last verified 2026-09-09. **Venue + map is the shipping product** (`VITE_APP_MODE` unset or `venue`). Pulse Signal stays behind `VITE_APP_MODE=signal`. See [PRD.md](PRD.md).
+> Last verified 2026-09-09. **Venue + map is the only product.** Pulse Signal was removed (no `VITE_APP_MODE`). See [PRD.md](PRD.md).
 
 ## Current State Assessment
 
 ### Project Overview
 
-**Pulse Signal** is a twice-daily check-in PWA (energy, mood, stress, sleep → a 0–100 signal, streak, and one next step). The older nightlife/venue discovery shell remains flag-gated and is not the live product.
+**Pulse** is a nightlife venue + map PWA (map → venue → pulse → trending). The former Pulse Signal personal check-in product was removed.
 
 ### Scale
 
@@ -14,15 +14,14 @@
 |--------|-------|
 | Unit / component test files | 115 passing + 2 skipped (Vitest) |
 | Total unit tests | 1246 passing + 20 skipped |
-| Signal smoke | `npm run test:smoke:signal` (`e2e/smoke.spec.ts`) |
-| Venue smoke | advisory (`test:smoke:venue`, CI `continue-on-error`) |
+| Venue smoke | `npm run test:smoke:venue` (primary CI path) |
 | CI/CD workflows | 4 |
 
 ### Build Status (2026-09-01)
 
 - **Tests:** Green — including `analytics.test.ts` and `interactive-map.test.ts` (the old “failing tests” bullets were stale).
 - **Lint:** **0 errors**, ~184 warnings (unused import/var warnings cleared this cycle). Do not raise `--max-warnings`.
-- **Build:** Passes. First-paint work in this cycle: keep Sentry off the Signal critical path, stop Phosphor leaking into `react-vendor`, gate Spark `proxy.js` to `vite serve`, lazy-load the venue shell.
+- **Build:** Passes. First-paint work: keep Sentry off the critical path, stop Phosphor leaking into `react-vendor`, gate Spark `proxy.js` to `vite serve`.
 - **Bundle:** `react-vendor` no longer includes `@phosphor-icons/react`; Sentry is its own async chunk (not shared with `@vercel/analytics`). PWA precache ignores `proxy.js` / Mapbox.
 
 For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -58,7 +57,7 @@ Measured 2026-09-01 after this slice (`vite build` / Signal default):
 | `observability` (`@vercel/*` only) | ~7.5 kB | yes |
 | `phosphor` | ~349 kB | **no** — loaded with Login/Signal/Venue |
 | `sentry` | ~448 kB | **no** — idle / error path |
-| `VenueApp` | ~111 kB | **yes** — production default; Signal stays on `VITE_APP_MODE=signal` |
+| `VenueApp` | ~111 kB | **yes** — the only product shell |
 | PWA precache | **~2.57 MB** (was ~4.1 MB) | under 3 MB |
 
 - [x] Lazy-load Sentry (idle init + separate chunk; do not bucket with Vercel analytics)

@@ -1,21 +1,21 @@
 # Production Rollout Plan
 
-This document turns remaining production gaps into a practical rollout plan. **Venue + map is the default / shipping product** (`VITE_APP_MODE` unset or `venue`). Pulse Signal is optional behind `VITE_APP_MODE=signal`.
+This document turns remaining production gaps into a practical rollout plan. **Venue + map is the only product.** Pulse Signal was removed.
 
-> Last verified 2026-09-01. Checklists below match `npm test` / `npm run lint` / `npm run build` / `npm run test:smoke:signal` on current `main`, not older review notes.
+> Last verified 2026-09-09. Checklists below match `npm test` / `npm run lint` / `npm run build` / `npm run test:smoke:venue` on current `main`, not older review notes.
 
 ## Rollout Phases at a Glance
 
 | Phase | Goal | Status |
 |-------|------|--------|
 | **Phase 0** | Stabilize the prototype | **Gates green** — lint warnings + human ops remain |
-| **Phase 1** | Build production foundations | In progress (Signal schema/auth in code; prod migrate is #64) |
+| **Phase 1** | Build production foundations | In progress (venue schema/auth in code; prod migrate is #64) |
 | **Phase 2** | Harden for beta | Not started |
 | **Phase 3** | Launch readiness | Not started |
 
 ## Current Starting Point
 
-Venue + map is the live loop (map → venue → pulse → trending). Signal remains a flag-gated loop. Remaining production work is mostly **human ops**, not missing unit tests:
+Venue + map is the live loop (map → venue → pulse → trending). Remaining production work is mostly **human ops**, not missing unit tests:
 
 - Production Supabase migrations + env (#64) — out of scope for agents
 - GitHub branch protection / required checks (#65)
@@ -24,19 +24,19 @@ Venue + map is the live loop (map → venue → pulse → trending). Signal rema
 
 ## Phase 0: Stabilize The Prototype
 
-**Goal:** Keep the shipping Signal app consistent, testable, and easy to evolve. Venue smoke stays advisory.
+**Goal:** Keep the shipping venue app consistent, testable, and easy to evolve.
 
 ### Work Items
 
 - [x] Fix the previously cited test failures (`analytics.test.ts`, `interactive-map.test.ts`) — both already green; do not reopen
 - [x] Zero lint **errors** (`npm run lint`; ~194 warnings remain — do not raise `--max-warnings`)
-- [x] CI jobs exist for `lint`, `test`, `build`, `smoke-preview-signal` (+ `smoke-preview` alias)
+- [x] CI jobs exist for `lint`, `test`, `build`, `smoke-preview-venue` (+ `smoke-preview` alias)
 - [x] Document local setup, release checks, and conventions ([RELEASE_CHECKS.md](RELEASE_CHECKS.md), [CONTRIBUTING.md](CONTRIBUTING.md))
-- [x] Signal Playwright smoke (`e2e/smoke.spec.ts` / `npm run test:smoke:signal`) — onboarding, Today, Trends, History, check-in
+- [x] Venue Playwright smoke (`npm run test:smoke:venue`) — shell, pulse creation, search
 - [x] Bundle-size script + CI `bundle-size` job; Signal first-paint: Sentry on its own async chunk, Phosphor out of `react-vendor`, Spark `proxy.js` serve-only, venue shell lazy
 - [ ] Remaining lint warnings / unused exports (trend down; not a merge blocker)
 - [ ] Make `lint` / `test` / `build` / `smoke-preview` **required** on `main` — human GitHub admin (#65)
-- [ ] Venue Playwright (map, pulse creation, venue page) — **parked**; do not expand unless a Signal smoke is missing
+- [x] Venue Playwright (map, pulse creation, search) — primary smoke path
 
 ### Current Progress
 
@@ -44,12 +44,12 @@ Venue + map is the live loop (map → venue → pulse → trending). Signal rema
 - Release check documentation completed ([RELEASE_CHECKS.md](RELEASE_CHECKS.md))
 - Contributing guide added ([CONTRIBUTING.md](CONTRIBUTING.md))
 - Architecture documentation added ([ARCHITECTURE.md](ARCHITECTURE.md))
-- CI includes Signal smoke as the required-check alias; venue smoke is `continue-on-error`
+- CI includes venue smoke as the required-check alias (`smoke-preview` → `smoke-preview-venue`)
 
 ### Exit Criteria
 
 - [x] Build, test, and lint-error baselines are stable and documented
-- [x] Signal critical path has browser smoke coverage
+- [x] Venue critical path has browser smoke coverage
 - [ ] CI is required for merges on GitHub (workflow exists; branch protection is #65)
 - [x] Bundle size is tracked (`npm run bundle-size` after `build`)
 
@@ -165,10 +165,10 @@ Venue + map is the live loop (map → venue → pulse → trending). Signal rema
 ## Recommended Order Of Execution
 
 1. ~~Fix remaining test failures and lint errors~~ — tests green, lint **errors** at zero (warnings remain)
-2. ~~Browser smoke for Signal critical flows~~ — `test:smoke:signal` exists; do not expand venue E2E
-3. **Human ops:** apply production Signal migrations + env (#64), prove live loop
-4. **Human ops:** branch protection / required checks (#65), real-device Web Push (#66)
-5. Further Signal-only bundle / dead-export cleanup (keep venue code flag-gated)
+2. ~~Browser smoke for Signal critical flows~~ — Signal product removed; venue smoke is the primary path
+3. **Human ops:** apply production venue migrations + env (#64), prove the live nightlife loop
+4. **Human ops:** branch protection / required checks (#65)
+5. Dead-export cleanup on unused venue-adjacent modules (do not restore Signal)
 6. Monitoring, moderation, and staging environment
 7. Launch policy and operational readiness
 

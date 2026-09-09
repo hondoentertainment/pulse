@@ -136,13 +136,6 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 | `us-markets.ts` | City/market definitions |
 | `global-venues.ts` | Global venue catalog |
 
-## Signal product (alternate shell)
-
-| Module | Purpose |
-|--------|---------|
-| `signal-data.ts` | Signal app data layer |
-| `signal-insights.ts` | Daily check-in insights |
-
 ## Platform & native
 
 | Module | Purpose |

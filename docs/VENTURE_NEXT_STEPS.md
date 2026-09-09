@@ -1,43 +1,39 @@
 # Venture roadmap — next steps (execution checklist)
 
-This repo’s **shipped web entry** is `src/App.tsx` → **venue + map** (`VenueApp` / `AppRoutes`). Pulse Signal (`LoginScreen` → `SignalApp`) mounts only when `VITE_APP_MODE=signal`.
+This repo’s **shipped web entry** is `src/App.tsx` → **venue + map** (`VenueApp` / `AppRoutes`). Pulse Signal (personal check-in) was removed; there is no app-mode switch.
 
-**Decision (2026-09-09):** Venue + map is the default product. Signal is optional behind `VITE_APP_MODE=signal` (+ optional venue geo-gate `VITE_LAUNCHED_CITIES=Seattle,WA`). See [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) and [PRD.md](../PRD.md). Supersedes #56.
+**Decision:** Pulse is the nightlife venue + map PWA. Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`. See [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) and [PRD.md](../PRD.md).
 
 ## Implemented in codebase
 
-- **Activation analytics** — `signal_*` events in `@/lib/analytics`. Funnel helper: `analyzeSignalFunnel(getEvents())`.
-- **Research / pilot surface** — Settings: Pro pilot email → `signal_pilot_signups` via `/api/signal/pilot`, plus optional `VITE_RESEARCH_FEEDBACK_URL`.
-- **AM/PM + reminders** — unique window constraint, cron dispatch, honest reminder copy.
-- **History tools** — CSV export, weekly summary, tag-pattern insights, account data delete.
-- **Timezone-stable retention helpers** — `generateNightRecap` / `generateDailyDrop` use explicit UTC in date windows where tests depended on local TZ.
+- **Venue core loop** — map, venue page, pulse create, trending.
+- **Auth + persistence** — Supabase when `VITE_SUPABASE_*` is set; otherwise seeded fixtures.
+- **Venue analytics** — `app_open`, `venue_view`, `pulse_submit`, and related events in `@/lib/analytics`.
 
 ## Your weekly habits (not automatable)
 
 | Habit | Outcome |
 |--------|---------|
-| Apply / confirm production migrations + env | Persistence and reminders actually work |
-| Review **Vercel Analytics** for `signal_*` | Activation & drop-off visibility |
-| **User interviews** — target 2–5 per week | ICP and wording; Pro offer only after waitlist emails |
-| Prove closed-app Web Push once VAPID is set | Reminder loop is real |
-| **Metrics stand-up** | D1/D7 check-in retention |
+| Apply / confirm production venue migrations + env | Persistence actually works |
+| Review **Vercel Analytics** for venue / pulse events | Activation & drop-off visibility |
+| **User interviews** — target 2–5 per week | ICP and wording |
+| **Metrics stand-up** | D1/D7 pulse / check-in retention |
 
 ## Environment
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_APP_MODE` | `venue` (default) or `signal` (optional) |
 | `VITE_LAUNCHED_CITIES` | Venue geo-gate. `Seattle,WA` is one market. |
 | `VITE_RESEARCH_FEEDBACK_URL` | Optional. Survey or Calendly in Settings. |
-| `VITE_VAPID_PUBLIC_KEY` / `VAPID_*` | Closed-app Web Push |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Persistence (rebuild required) |
 
 ## CI / engineering
 
 - **Production build:** `npm run build` (uses `tsc -b --noCheck`).
-- **Strict typecheck:** `npx tsc -b` — still blocked by legacy venue typings.
-- **Required smoke:** `smoke-preview` aliases `smoke-preview-venue`. Signal smoke stays runnable under `VITE_APP_MODE=signal`.
-- **Tests:** `npm run test` and `npm run test:smoke:signal` before release.
+- **Strict typecheck:** `npx tsc -b`.
+- **Required smoke:** `smoke-preview` aliases `smoke-preview-venue`.
+- **Tests:** `npm run test` and `npm run test:smoke:venue` before release.
 
 ## Series A narrative alignment
 
-Keep UI, manifest, and copy on **one product** (Pulse Signal). Ship logs and `signal_*` events support a credible “we measure activation” story. Do not pitch venue discovery as the live product while production titles Pulse Signal.
+Keep UI, manifest, and copy on **one product** (Pulse venue + map). Do not pitch the retired Signal check-in product.

@@ -6,15 +6,15 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import { AppBootstrap } from './AppBootstrap.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
-import { applyAppDocumentTitle } from './lib/app-mode'
 import { queryClient } from './lib/query-client'
 
 import './main.css'
 
-applyAppDocumentTitle()
+if (typeof document !== 'undefined') {
+  document.title = 'Pulse — where the energy is right now'
+}
 
-// Spark workbench runtime is serve-only. Production Signal must not pull it
-// onto first paint. Venue persist lives in AppProviders, not this entry.
+// Spark workbench runtime is serve-only. Venue persist lives in AppProviders.
 if (import.meta.env.DEV) {
   void import('@github/spark/spark')
 }

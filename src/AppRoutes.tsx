@@ -54,8 +54,7 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Mounting:** `src/App.tsx` mounts this router by default (venue mode).
- * Signal mounts `SignalApp` only when `VITE_APP_MODE=signal`.
+ * **Mounting:** `src/App.tsx` → `VenueApp` always mounts this router.
  *
  * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
  * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
