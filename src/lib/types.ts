@@ -77,7 +77,7 @@ export interface Venue {
   city?: string
   state?: string
   neighborhood?: string
-  inventorySource?: 'curated-seed' | 'user' | 'import'
+  inventorySource?: 'curated-seed' | 'user' | 'import' | 'osm'
   pulseScore: number
   lastPulseAt?: string
   category?: string

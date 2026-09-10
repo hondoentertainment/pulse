@@ -57,10 +57,13 @@ historical migrations once they're in staging/prod.
 ## 3. Seeding data
 
 `supabase/seed.sql` inserts ~20 representative US venues plus the Seattle
-launch safety-net rows. `supabase db reset` applies migrations first, including
-`20260909120000_seattle_launch_venue_catalog.sql` (33 curated Seattle venues).
+launch safety-net rows. Its curated-seed UPDATE targets only the 33 curated
+UUIDs so it cannot rewrite OSM rows. `supabase db reset` applies migrations
+first, including `20260909120000_seattle_launch_venue_catalog.sql` (33 curated
+Seattle venues) and `20260909180000_seattle_osm_venue_catalog.sql` (500 OSM
+nightlife venues).
 
-For production project `xeldqwhztcnnvazmshzh`, paste that migration into the
+For production project `xeldqwhztcnnvazmshzh`, paste those migrations into the
 SQL editor (migration history versions there do not match repo filenames).
 Then run `supabase/verify/seattle_launch_venues.sql`.
 

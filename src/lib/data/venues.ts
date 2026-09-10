@@ -83,7 +83,7 @@ const SELECT_COLUMNS = `
 /**
  * Fetch all visible venues. Large result sets should use `listNearby`.
  */
-export async function listVenues(limit = 500): Promise<Venue[]> {
+export async function listVenues(limit = 1000): Promise<Venue[]> {
   const result = await fromAlive('venues', SELECT_COLUMNS)
     .order('pulse_score', { ascending: false })
     .limit(limit)

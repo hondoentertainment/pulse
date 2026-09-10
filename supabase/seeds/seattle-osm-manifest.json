@@ -1,0 +1,25 @@
+{
+  "source": "OpenStreetMap Overpass",
+  "query": "[out:json][timeout:180];\n(\n  nwr[\"amenity\"~\"^(bar|pub|nightclub|biergarten|hookah_lounge|stripclub|casino)$\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"tourism\"=\"nightclub\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"leisure\"~\"^(dance|bowling_alley)$\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"music_venue\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"concert_hall\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"craft\"=\"brewery\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"brewery\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"industrial\"=\"brewery\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"restaurant\"][\"bar\"=\"yes\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"restaurant\"][\"cocktails\"=\"yes\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"restaurant\"][\"microbrewery\"=\"yes\"](47.495,-122.459,47.734,-122.224);\n  nwr[\"amenity\"=\"cafe\"][\"bar\"=\"yes\"](47.495,-122.459,47.734,-122.224);\n);\nout center tags;",
+  "fetchedAt": "2026-09-09T19:32:42.959Z",
+  "endpoint": "https://overpass-api.de/api/interpreter",
+  "rawElements": 633,
+  "target": 500,
+  "selected": 500,
+  "curatedKeptSeparate": 33,
+  "rejected": {
+    "unnamed": 3,
+    "noCoords": 0,
+    "notNightlife": 22,
+    "outsideCity": 7,
+    "curatedNameAddress": 18,
+    "curatedGeo": 6,
+    "osmDup": 1
+  },
+  "categories": {
+    "Nightclub": 31,
+    "Bar": 460,
+    "Lounge": 6,
+    "Music Venue": 3
+  }
+}

@@ -34,6 +34,7 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
 | `20260909000000_live_reviews.sql` | Live reviews + heatmap |
 | `20260909120000_seattle_launch_venue_catalog.sql` | Idempotent 33-venue Seattle catalog upsert |
+| `20260909180000_seattle_osm_venue_catalog.sql` | Idempotent 500-venue Seattle OSM nightlife catalog |
 
 Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables) and [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (33 Seattle venues).
 
@@ -111,7 +112,7 @@ Venue catalog with live intelligence fields.
 | `pre_trending`, `pre_trending_label` | BOOL/TEXT | Surge labels |
 | `seeded` | BOOL | Seed vs real venue |
 | `neighborhood` | TEXT | Launch neighborhood (Capitol Hill, Belltown, …) |
-| `inventory_source` | TEXT | `curated-seed` for launch listings |
+| `inventory_source` | TEXT | `curated-seed` (launch 33) or `osm` (comprehensive Seattle catalog) |
 | `dress_code` | ENUM | casual, smart_casual, upscale, formal, etc. |
 | `cover_charge_cents` | INT | |
 | `accessibility_features` | TEXT[] | GIN-indexed |

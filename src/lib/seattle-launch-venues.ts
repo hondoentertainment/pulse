@@ -11,8 +11,10 @@ export const SEATTLE_LAUNCH_NEIGHBORHOODS = [
 export type SeattleLaunchNeighborhood = (typeof SEATTLE_LAUNCH_NEIGHBORHOODS)[number]
 
 export const SEATTLE_LAUNCH_INVENTORY_SOURCE = 'curated-seed' as const
+export const SEATTLE_OSM_INVENTORY_SOURCE = 'osm' as const
 export const SEATTLE_LAUNCH_MIN_VENUES = 25
 export const SEATTLE_LAUNCH_MAX_VENUES = 40
+export const SEATTLE_OSM_TARGET_VENUES = 500
 
 export interface SeattleLaunchVenue extends Venue {
   city: 'Seattle'
