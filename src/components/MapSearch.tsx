@@ -62,7 +62,8 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
       const searchQuery = query.toLowerCase()
       const matchesName = venue.name.toLowerCase().includes(searchQuery)
       const matchesCategory = venue.category?.toLowerCase().includes(searchQuery)
-      return matchesName || matchesCategory
+      const matchesNeighborhood = venue.neighborhood?.toLowerCase().includes(searchQuery)
+      return matchesName || matchesCategory || Boolean(matchesNeighborhood)
     })
     : []
 

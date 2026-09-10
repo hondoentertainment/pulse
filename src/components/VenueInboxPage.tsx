@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { Pulse, User, Venue } from '@/lib/types'
 import type { VenueClaim } from '@/lib/venue-owner'
 import {
@@ -10,6 +10,7 @@ import { CaretLeft } from '@phosphor-icons/react'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { track } from '@/lib/observability/analytics'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { Button } from '@/components/ui/button'
 
 interface VenueInboxPageProps {
   venue: Venue
@@ -18,6 +19,8 @@ interface VenueInboxPageProps {
   claims?: VenueClaim[]
   staffRoles?: Array<{ venueId: string; userId: string }>
   onBack: () => void
+  onSubmitClaim?: (input: { evidence: string; notes?: string }) => Promise<void> | void
+  claimBusy?: boolean
 }
 
 export function VenueInboxPage({
@@ -27,6 +30,8 @@ export function VenueInboxPage({
   claims = [],
   staffRoles = [],
   onBack,
+  onSubmitClaim,
+  claimBusy = false,
 }: VenueInboxPageProps) {
   const allowed = canAccessVenueInbox({
     userId: currentUser?.id,
@@ -40,6 +45,11 @@ export function VenueInboxPage({
   )
   const visibleTonight = allowed ? tonight : []
   const avgEnergy = averageEnergyScore(visibleTonight)
+  const myClaim = claims.find(
+    (claim) => claim.venueId === venue.id && claim.claimantUserId === currentUser?.id,
+  )
+  const [evidence, setEvidence] = useState('')
+  const [notes, setNotes] = useState('')
 
   if (!isFeatureEnabled('venueInbox')) {
     return (
@@ -83,9 +93,56 @@ export function VenueInboxPage({
         </div>
 
         {!allowed ? (
-          <p className="text-xs text-muted-foreground">
-            Empty state until claim / venue_staff verified
-          </p>
+          <div className="rounded-[18px] bg-[#17171C] p-3.5 space-y-3">
+            <h2 className="text-base font-semibold">Claim needed</h2>
+            <p className="text-sm text-muted-foreground">
+              Tonight’s reviews stay hidden until a verified venue claim or a
+              venue_staff row unlocks this inbox. Pending claims do not grant access.
+            </p>
+            {myClaim?.status === 'pending' ? (
+              <p className="text-xs text-muted-foreground">
+                Your claim is pending review. We will not invent an approval.
+              </p>
+            ) : myClaim?.status === 'rejected' ? (
+              <p className="text-xs text-muted-foreground">
+                Previous claim was rejected{myClaim.rejectedReason ? `: ${myClaim.rejectedReason}` : '.'}
+              </p>
+            ) : null}
+            {currentUser && onSubmitClaim && myClaim?.status !== 'pending' && (
+              <form
+                className="space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void onSubmitClaim({ evidence, notes })
+                }}
+              >
+                <label className="block text-xs text-muted-foreground" htmlFor="claim-evidence">
+                  How are you connected to this venue?
+                </label>
+                <textarea
+                  id="claim-evidence"
+                  value={evidence}
+                  onChange={(event) => setEvidence(event.target.value)}
+                  minLength={8}
+                  required
+                  placeholder="I manage the door / I own the lease / staff email…"
+                  className="w-full min-h-20 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Business name (optional)"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <Button type="submit" disabled={claimBusy || evidence.trim().length < 8}>
+                  {claimBusy ? 'Submitting…' : 'Submit claim'}
+                </Button>
+              </form>
+            )}
+            {!currentUser && (
+              <p className="text-xs text-muted-foreground">Sign in to submit a venue claim.</p>
+            )}
+          </div>
         ) : tonight.length === 0 ? (
           <div className="rounded-[18px] bg-[#17171C] p-3.5">
             <h2 className="text-base font-semibold">No live reviews tonight</h2>

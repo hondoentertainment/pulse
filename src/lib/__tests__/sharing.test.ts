@@ -4,7 +4,9 @@ import {
   getPulseDeepLink,
   generateVenueShareCard,
   generatePulseShareCard,
+  generateJustReviewedShareCard,
   generateStoryShareText,
+  getPublicAppOrigin,
   generateEnergyCardData,
   createReferralInvite,
   acceptReferralInvite,
@@ -37,12 +39,14 @@ const pulse: Pulse = {
 }
 
 describe('deep links', () => {
-  it('generates venue deep link', () => {
-    expect(getVenueDeepLink('v1')).toBe('https://pulse.app/venue/v1')
+  it('uses the public Pulse origin when no window is present', () => {
+    expect(getPublicAppOrigin({ env: {}, locationOrigin: null })).toBe('https://pulse-chi-nine.vercel.app')
+    expect(getVenueDeepLink('v1', 'https://pulse-chi-nine.vercel.app')).toBe('https://pulse-chi-nine.vercel.app/venue/v1')
+    expect(getPublicAppOrigin({ locationOrigin: 'https://example.com/' })).toBe('https://example.com')
   })
 
   it('generates pulse deep link', () => {
-    expect(getPulseDeepLink('p1')).toBe('https://pulse.app/pulse/p1')
+    expect(getPulseDeepLink('p1', 'https://pulse.app')).toBe('https://pulse.app/pulse/p1')
   })
 
   it('supports custom base URL', () => {
@@ -67,7 +71,14 @@ describe('generatePulseShareCard', () => {
     const card = generatePulseShareCard(pulse, venue, 'alice')
     expect(card.title).toContain('alice')
     expect(card.title).toContain('Test Bar')
-    expect(card.url).toContain('/pulse/p1')
+    expect(card.url).toContain('/venue/v1')
+  })
+
+  it('builds a just-reviewed card', () => {
+    const card = generateJustReviewedShareCard(venue, 'DJ just started')
+    expect(card.title).toContain('Just reviewed')
+    expect(card.description).toContain('DJ just started')
+    expect(card.url).toContain('/venue/v1')
   })
 })
 

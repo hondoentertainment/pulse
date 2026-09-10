@@ -10,7 +10,7 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import {
   ArrowLeft, Bell, Eye, EyeSlash, Ruler, Shield, Palette,
   Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash,
-  Translate, DownloadSimple, Eyeglasses, MapPin,
+  Translate, DownloadSimple, Eyeglasses, MapPin, Flag,
 } from '@phosphor-icons/react'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
@@ -20,6 +20,9 @@ import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefer
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState, useEffect } from 'react'
+import { listMyPulseReports, type PulseReportRow } from '@/lib/data/pulses'
+import { USE_SUPABASE_BACKEND } from '@/lib/data'
+import { describeVenueSurgePushStub } from '@/lib/venue-surge-watch'
 import { motion } from 'framer-motion'
 
 interface SettingsPageProps {
@@ -39,10 +42,27 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
   const [currentLocale, setCurrentLocale] = useState<Locale>(getLocale())
   const [contrastMode, setContrastMode] = useState<HighContrastMode>(getHighContrastMode())
   const [canInstallPwa, setCanInstallPwa] = useState(false)
+  const [myReports, setMyReports] = useState<PulseReportRow[]>([])
   const installState = getInstallState()
+  const surgeStub = describeVenueSurgePushStub()
 
   useEffect(() => {
     return listenForInstallPrompt(() => setCanInstallPwa(true))
+  }, [])
+
+  useEffect(() => {
+    if (!USE_SUPABASE_BACKEND) return
+    let cancelled = false
+    void listMyPulseReports()
+      .then((rows) => {
+        if (!cancelled) setMyReports(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setMyReports([])
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -183,6 +203,35 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
                 className="data-[state=checked]:bg-primary"
               />
             </SettingRow>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Flag size={18} weight="fill" className="text-destructive" />
+              <Label className="font-bold">My reports</Label>
+            </div>
+            {!USE_SUPABASE_BACKEND ? (
+              <p className="text-xs text-muted-foreground">
+                Sign in with Supabase to list reports you filed. They persist in pulse_reports.
+              </p>
+            ) : myReports.length === 0 ? (
+              <p className="text-xs text-muted-foreground">You have not reported any live reviews yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {myReports.map((report) => (
+                  <li key={report.id} className="rounded-lg bg-secondary/50 p-3 text-xs">
+                    <p className="font-medium text-foreground">{report.reason} · {report.status ?? 'pending'}</p>
+                    <p className="text-muted-foreground mt-1">Review {report.pulse_id}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Venue surge alerts stay local ({surgeStub.storageKey}). Closed-app push is a future
+              venue-only stub — Signal Web Push will not be rebuilt.
+            </p>
           </Card>
         </motion.div>
 

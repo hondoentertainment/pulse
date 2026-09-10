@@ -82,7 +82,9 @@ export function useVoiceFilter(
       onFiltersChange({
         energyLevels: [],
         categories: [],
-        maxDistance: Infinity
+        maxDistance: Infinity,
+        neighborhoods: [],
+        inventoryLayer: 'curated',
       })
       toast.success('Filters cleared', {
         description: 'All filters have been removed'

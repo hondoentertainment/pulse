@@ -249,8 +249,43 @@ export async function createPulseReport(input: CreatePulseReportInput): Promise<
       pulse_id: input.pulseId,
       reason: input.reason,
       details: input.details ?? null,
+      status: 'pending',
     })
   if (result.error) {
     throw Object.assign(new Error(result.error.message), { cause: result.error })
   }
+}
+
+export interface PulseReportRow {
+  id: string
+  pulse_id: string
+  reporter_id: string
+  reason: string
+  details: string | null
+  created_at: string
+  status?: string | null
+  reviewed_at?: string | null
+}
+
+export async function listMyPulseReports(): Promise<PulseReportRow[]> {
+  const userId = await requireUserId({ action: 'view your reports' })
+  const { data, error } = await supabase
+    .from('pulse_reports')
+    .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+    .eq('reporter_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error || !data) return []
+  return data as PulseReportRow[]
+}
+
+export async function listModerationPulseReports(): Promise<PulseReportRow[]> {
+  await requireUserId({ action: 'triage reports' })
+  const { data, error } = await supabase
+    .from('pulse_reports')
+    .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error || !data) return []
+  return data as PulseReportRow[]
 }
