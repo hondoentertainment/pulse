@@ -48,12 +48,21 @@ describe('getVenueMapActivity', () => {
   })
 
   it('boosts heatmap from real review volume and latest energy', () => {
+    const nowMs = Date.parse('2026-09-10T13:00:00.000Z')
     const venue = makeVenue({ pulseScore: 40 })
     const pulses = [
-      makePulse({ id: 'a' }),
-      makePulse({ id: 'b', energyRating: 'buzzing' }),
+      makePulse({
+        id: 'a',
+        energyRating: 'electric',
+        createdAt: new Date(nowMs - 2 * 60 * 1000).toISOString(),
+      }),
+      makePulse({
+        id: 'b',
+        energyRating: 'buzzing',
+        createdAt: new Date(nowMs - 40 * 60 * 1000).toISOString(),
+      }),
     ]
-    const activity = getVenueMapActivity(venue, pulses)
+    const activity = getVenueMapActivity(venue, pulses, nowMs)
     expect(activity.liveReviewCount).toBe(2)
     expect(activity.countLabel).toBe('2 live reviews · last hour')
     expect(activity.heatScore).toBeGreaterThan(40)
