@@ -1,16 +1,28 @@
 import { useMemo, useState } from 'react'
 import type { Pulse, User, Venue } from '@/lib/types'
 import type { VenueClaim } from '@/lib/venue-owner'
+import type { ContentReport } from '@/lib/content-moderation'
 import {
-  averageEnergyScore,
   canAccessVenueInbox,
-  getTonightLiveReviews,
 } from '@/lib/live-reviews'
+import { ENERGY_CONFIG } from '@/lib/types'
+import { formatTimeAgo } from '@/lib/pulse-engine'
 import { CaretLeft } from '@phosphor-icons/react'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { track } from '@/lib/observability/analytics'
-import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { Button } from '@/components/ui/button'
+import {
+  createOwnerReply,
+  isPulseDismissed,
+  loadOwnerDismissals,
+  loadOwnerReplies,
+  persistOwnerDismissal,
+  persistOwnerReply,
+  reportsForPulse,
+  summarizeOwnerInbox,
+  type OwnerInboxDismissal,
+  type OwnerInboxReply,
+} from '@/lib/owner-inbox'
 
 interface VenueInboxPageProps {
   venue: Venue
@@ -21,6 +33,8 @@ interface VenueInboxPageProps {
   onBack: () => void
   onSubmitClaim?: (input: { evidence: string; notes?: string }) => Promise<void> | void
   claimBusy?: boolean
+  reports?: ContentReport[]
+  onDismissReports?: (pulseId: string) => void
 }
 
 export function VenueInboxPage({
@@ -32,6 +46,8 @@ export function VenueInboxPage({
   onBack,
   onSubmitClaim,
   claimBusy = false,
+  reports = [],
+  onDismissReports,
 }: VenueInboxPageProps) {
   const allowed = canAccessVenueInbox({
     userId: currentUser?.id,
@@ -39,17 +55,21 @@ export function VenueInboxPage({
     claims,
     staffRoles,
   })
-  const tonight = useMemo(
-    () => getTonightLiveReviews(pulses, venue.id),
-    [pulses, venue.id],
+  const summary = useMemo(
+    () => summarizeOwnerInbox({ pulses, venueId: venue.id, reports }),
+    [pulses, venue.id, reports],
   )
+  const tonight = summary.tonight
   const visibleTonight = allowed ? tonight : []
-  const avgEnergy = averageEnergyScore(visibleTonight)
   const myClaim = claims.find(
     (claim) => claim.venueId === venue.id && claim.claimantUserId === currentUser?.id,
   )
   const [evidence, setEvidence] = useState('')
   const [notes, setNotes] = useState('')
+  const [replyingId, setReplyingId] = useState<string | null>(null)
+  const [replyBody, setReplyBody] = useState('')
+  const [replies, setReplies] = useState<OwnerInboxReply[]>(() => loadOwnerReplies())
+  const [dismissals, setDismissals] = useState<OwnerInboxDismissal[]>(() => loadOwnerDismissals())
 
   if (!isFeatureEnabled('venueInbox')) {
     return (
@@ -78,17 +98,19 @@ export function VenueInboxPage({
             <CaretLeft size={18} />
             Venue
           </button>
-          <h1 className="text-[22px] font-bold text-white">Tonight’s reviews</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">{venue.name} · owner inbox</p>
+          <h1 className="text-[22px] font-bold text-white">Tonight’s queue</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {venue.name} · {allowed ? 'verified claim' : 'owner inbox'}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
           <div className="rounded-[18px] bg-[#17171C] p-3.5">
-            <p className="text-[22px] font-bold leading-none text-primary">{visibleTonight.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">Live reviews</p>
+            <p className="text-[22px] font-bold leading-none text-white">{allowed ? summary.reviewCount : 0}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Reviews</p>
           </div>
           <div className="rounded-[18px] bg-[#17171C] p-3.5">
-            <p className="text-[22px] font-bold leading-none text-[var(--energy-buzzing)]">{avgEnergy}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">Avg energy</p>
+            <p className="text-[22px] font-bold leading-none text-[#F2BF40]">{allowed ? summary.reportCount : 0}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Reports</p>
           </div>
         </div>
 
@@ -153,26 +175,95 @@ export function VenueInboxPage({
           </div>
         ) : (
           <ul className="space-y-3">
-            {tonight.map((pulse, index) => (
-              <li
-                key={pulse.id}
-                onClick={() => {
-                  track('pulse_viewed', {
-                    pulseId: pulse.id,
-                    venueId: venue.id,
-                    position: index,
-                    feed: 'inbox',
-                  })
-                }}
-              >
-                <LiveReviewFeedCard
-                  energyRating={pulse.energyRating}
-                  createdAt={pulse.createdAt}
-                  caption={pulse.caption}
-                  unverified={pulse.locationVerified === false}
-                />
-              </li>
-            ))}
+            {visibleTonight.filter((pulse) => !isPulseDismissed(dismissals, pulse.id, venue.id)).map((pulse, index) => {
+              const pulseReports = reportsForPulse(reports, pulse.id)
+              const existingReplies = replies.filter((reply) => reply.pulseId === pulse.id)
+              return (
+                <li
+                  key={pulse.id}
+                  className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2"
+                  onClick={() => {
+                    track('pulse_viewed', {
+                      pulseId: pulse.id,
+                      venueId: venue.id,
+                      position: index,
+                      feed: 'inbox',
+                    })
+                  }}
+                >
+                  <p className="text-[13px] font-semibold text-white">
+                    {ENERGY_CONFIG[pulse.energyRating].label} · {formatTimeAgo(pulse.createdAt).replace(' ago', '')}
+                  </p>
+                  {pulse.caption && (
+                    <p className="text-sm text-white">{pulse.caption}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-[#1F1F24] px-3 py-1.5 text-xs font-medium text-[#9E9EAD]"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setReplyingId(pulse.id)
+                        setReplyBody('')
+                      }}
+                    >
+                      Reply
+                    </button>
+                    {pulseReports.length > 0 && (
+                      <button
+                        type="button"
+                        className="rounded-full bg-[#1F1F24] px-3 py-1.5 text-xs font-medium text-[#9E9EAD]"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onDismissReports?.(pulse.id)
+                          setDismissals(persistOwnerDismissal({
+                            pulseId: pulse.id,
+                            venueId: venue.id,
+                            dismissedAt: new Date().toISOString(),
+                          }))
+                        }}
+                      >
+                        Dismiss report
+                      </button>
+                    )}
+                  </div>
+                  {existingReplies.map((reply) => (
+                    <p key={reply.id} className="text-xs text-muted-foreground">
+                      Reply: {reply.body}
+                    </p>
+                  ))}
+                  {replyingId === pulse.id && (
+                    <form
+                      className="space-y-2"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        const reply = createOwnerReply({
+                          pulseId: pulse.id,
+                          venueId: venue.id,
+                          body: replyBody,
+                        })
+                        if (!reply) return
+                        setReplies(persistOwnerReply(reply))
+                        setReplyingId(null)
+                        setReplyBody('')
+                      }}
+                    >
+                      <label className="sr-only" htmlFor={`reply-${pulse.id}`}>Reply</label>
+                      <textarea
+                        id={`reply-${pulse.id}`}
+                        value={replyBody}
+                        onChange={(event) => setReplyBody(event.target.value)}
+                        className="w-full min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                        placeholder="Reply to this review"
+                      />
+                      <Button type="submit" disabled={replyBody.trim().length === 0}>
+                        Send reply
+                      </Button>
+                    </form>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

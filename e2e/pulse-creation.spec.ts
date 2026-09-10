@@ -31,7 +31,7 @@ test.describe('Pulse creation flow', () => {
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
-    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Quick pulse/i })).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -49,7 +49,7 @@ test.describe('Pulse creation flow', () => {
     await expect(caption).toBeVisible({ timeout: 5_000 })
     await caption.fill('Testing the vibe')
 
-    await expect(page.getByRole('button', { name: /Post live review/i }).last()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Post · 1 tap/i }).last()).toBeVisible()
   })
 
   test('cancel closes the dialog without submitting', async ({ page }) => {
@@ -61,12 +61,12 @@ test.describe('Pulse creation flow', () => {
     const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
     await createBtn.click()
 
-    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Quick pulse/i })).toBeVisible({
       timeout: 5_000,
     })
     await page.keyboard.press('Escape')
 
-    await expect(page.getByRole('heading', { name: /Post live review/i })).not.toBeVisible({
+    await expect(page.getByRole('heading', { name: /Quick pulse/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

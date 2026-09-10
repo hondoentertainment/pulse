@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { BottomNav } from '@/components/BottomNav'
 import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { USE_SUPABASE_BACKEND, VenueData, CheckInData } from '@/lib/data'
@@ -10,6 +11,7 @@ import { AuthRequiredError } from '@/lib/auth/require-auth'
 import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import type { Pulse, PulseWithUser, Venue } from '@/lib/types'
 import { toast } from 'sonner'
+import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 
@@ -21,6 +23,7 @@ export function VenueRoute() {
   const { activeTab, navigateToTab } = useRouteNavigation()
   const state = useAppState()
   const handlers = useAppHandlers()
+  const { session, isPlaceholder } = useSupabaseAuth()
 
   const {
     venues,
@@ -115,6 +118,16 @@ export function VenueRoute() {
     : undefined
 
   const handleCheckIn = async () => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect) {
+      toast.error(WRITE_AUTH_COPY.checkIn.title, { description: WRITE_AUTH_COPY.checkIn.description })
+      navigate(authRedirect)
+      return
+    }
+
     if (USE_SUPABASE_BACKEND) {
       try {
         await CheckInData.createCheckIn({
@@ -126,7 +139,8 @@ export function VenueRoute() {
         toast.success('Checked in!', { description: venue.name })
       } catch (error) {
         if (error instanceof AuthRequiredError) {
-          toast.error('Sign in to check in', { description: error.message })
+          toast.error(WRITE_AUTH_COPY.checkIn.title, { description: WRITE_AUTH_COPY.checkIn.description })
+          navigate(AUTH_PATH)
           return
         }
         if (error instanceof RlsDeniedError) {

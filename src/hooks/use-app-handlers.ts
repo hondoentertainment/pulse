@@ -26,7 +26,7 @@ import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/
 import type { TabId } from '@/components/BottomNav'
 import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { getCreatePulseAuthRedirect } from '@/lib/guest-discovery'
+import { getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 
 import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
@@ -82,7 +82,7 @@ export function useAppHandlers() {
       hasSession: Boolean(session),
     })
     if (authRedirect) {
-      toast.error('Sign in required', { description: 'Sign in to create a Pulse.' })
+      toast.error(WRITE_AUTH_COPY.create.title, { description: WRITE_AUTH_COPY.create.description })
       navigate(authRedirect)
       return
     }
@@ -110,9 +110,22 @@ export function useAppHandlers() {
     kind?: 'pulse' | 'review'
     locationVerified?: boolean
   }) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect) {
+      toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
+      navigate(writeRedirect)
+      return
+    }
+
     if (!venueForPulse || !currentUser || !venues) return
 
-    const captionCheck = validateLiveReviewCaption(data.caption)
+    const wantsReview = (data.kind ?? 'review') === 'review' && data.caption.trim().length > 0
+    const captionCheck = wantsReview
+      ? validateLiveReviewCaption(data.caption)
+      : { ok: true as const, caption: (data.caption ?? '').trim() }
     if (!captionCheck.ok) {
       toast.error(captionCheck.error ?? 'Caption is required for a live review')
       return
@@ -121,7 +134,8 @@ export function useAppHandlers() {
     if (USE_SUPABASE_BACKEND) {
       const userId = await getUserIdOrNull()
       if (!userId) {
-        toast.error('Sign in required', { description: 'Sign in to post a live review.' })
+        toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
+        navigate(writeRedirect ?? '/auth')
         return
       }
     }
@@ -169,7 +183,7 @@ export function useAppHandlers() {
       isPending: true,
       credibilityWeight: userCredibility,
       isPioneer,
-      kind: data.kind ?? 'review' as const,
+      kind: wantsReview ? 'review' as const : 'pulse' as const,
       locationVerified,
       hasBody: true,
     }
@@ -299,8 +313,11 @@ export function useAppHandlers() {
   }, [
     crewCheckIns,
     currentUser,
+    isPlaceholder,
+    navigate,
     notificationSettings?.friendPulses,
     pulses,
+    session,
     setCreateDialogOpen,
     setHashtags,
     setNotifications,

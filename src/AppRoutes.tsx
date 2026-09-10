@@ -21,6 +21,8 @@ import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
 import { VenueInboxRoute } from '@/components/VenueInboxRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
+import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
+import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
@@ -167,7 +169,8 @@ export function AppRoutes() {
 
   // ── Loading gate ─────────────────────────
   if (!venues || !currentUser || !pulses) {
-    return <PageSkeleton />
+    const onMap = pathname === '/' || pathname === '/map'
+    return onMap ? <MapHomeSkeleton /> : <PageSkeleton />
   }
 
   // ── Admin dashboard ──────────────────────
@@ -205,6 +208,7 @@ export function AppRoutes() {
   // ── Main shell with routes ───────────────────────
   return (
     <main className="min-h-screen bg-background pb-20">
+      <OfflineBanner />
       <Toaster position="top-center" theme="dark" />
 
       <Routes>

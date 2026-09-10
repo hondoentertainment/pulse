@@ -22,6 +22,7 @@ const toast: MapLiveToast = {
   snippet: 'DJ just switched — floor is packed.',
   energy: 'electric',
   createdAt: new Date().toISOString(),
+  headline: '⚡ Neon Lounge just went Electric',
 }
 
 describe('MapLiveReviewToast', () => {
@@ -35,7 +36,7 @@ describe('MapLiveReviewToast', () => {
   it('shows Live · venue · snippet and opens on tap', () => {
     const onOpen = vi.fn()
     render(<MapLiveReviewToast toast={toast} onDismiss={vi.fn()} onOpen={onOpen} />)
-    expect(screen.getByText('Live · Neon Lounge')).toBeInTheDocument()
+    expect(screen.getByText('⚡ Neon Lounge just went Electric')).toBeInTheDocument()
     expect(screen.getByText(/DJ just switched/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button'))
     expect(onOpen).toHaveBeenCalledWith(toast)

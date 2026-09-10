@@ -63,6 +63,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | [PRODUCTION_ROLLOUT.md](../PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](../NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
 | [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Current ops queue |
+| [Uber UX Targets](uber-ux.md) | Figma Uber UX frames → map, create, share, inbox, offline |
 | [VENTURE_NEXT_STEPS.md](VENTURE_NEXT_STEPS.md) | Venture-scale roadmap notes |
 | [Pulse Pro interview brief](pulse-pro-offer-research.md) | Offer research — no invented price |
 

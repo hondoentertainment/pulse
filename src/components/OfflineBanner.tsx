@@ -1,26 +1,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { WifiSlash, WifiHigh } from '@phosphor-icons/react'
+import { draftSnippet, readPulseDraft } from '@/lib/pulse-draft'
 
 type ConnectionStatus = 'online' | 'offline' | 'reconnected'
 
 export function OfflineBanner() {
   const [status, setStatus] = useState<ConnectionStatus>(
-    navigator.onLine ? 'online' : 'offline'
+    typeof navigator === 'undefined' || navigator.onLine ? 'online' : 'offline',
   )
+  const [dismissed, setDismissed] = useState(false)
+  const [draftLine, setDraftLine] = useState('')
 
   const handleOnline = useCallback(() => {
     setStatus('reconnected')
+    setDismissed(false)
   }, [])
 
   const handleOffline = useCallback(() => {
     setStatus('offline')
+    setDismissed(false)
+    setDraftLine(draftSnippet(readPulseDraft()))
   }, [])
 
   useEffect(() => {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setDraftLine(draftSnippet(readPulseDraft()))
+    }
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
@@ -29,15 +36,11 @@ export function OfflineBanner() {
 
   useEffect(() => {
     if (status !== 'reconnected') return
-
-    const timer = setTimeout(() => {
-      setStatus('online')
-    }, 3000)
-
+    const timer = setTimeout(() => setStatus('online'), 3000)
     return () => clearTimeout(timer)
   }, [status])
 
-  const isVisible = status === 'offline' || status === 'reconnected'
+  const isVisible = !dismissed && (status === 'offline' || status === 'reconnected')
 
   return (
     <AnimatePresence>
@@ -48,32 +51,34 @@ export function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -60, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className={`fixed top-14 left-0 right-0 z-50 ${
-            status === 'offline'
-              ? 'bg-destructive text-destructive-foreground'
-              : 'bg-green-600 text-white'
-          }`}
+          className="fixed top-0 left-0 right-0 z-50 bg-[#0B0B0E]/95 px-5 pb-4 pt-6 backdrop-blur-md"
+          role="status"
         >
-          <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-medium">
-            {status === 'offline' ? (
-              <>
-                <WifiSlash size={18} weight="bold" className="shrink-0" />
-                <span>
-                  You&apos;re offline — pulses will sync when reconnected
-                </span>
-              </>
-            ) : (
-              <>
-                <WifiHigh size={18} weight="bold" className="shrink-0" />
-                <span>Back online! Syncing...</span>
-                <motion.div
-                  className="ml-1 h-1 w-1 rounded-full bg-white"
-                  animate={{ opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                />
-              </>
-            )}
-          </div>
+          {status === 'offline' ? (
+            <div className="mx-auto max-w-2xl space-y-3">
+              <h2 className="text-[22px] font-bold text-white">You’re offline</h2>
+              <p className="text-sm text-muted-foreground">
+                Map shows last known energy. Pulses queue until you’re back.
+              </p>
+              {draftLine && (
+                <div className="rounded-[18px] bg-[#17171C] p-3.5">
+                  <p className="text-sm font-semibold text-white">Draft saved</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{draftLine}</p>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setDismissed(true)}
+                className="h-12 w-full rounded-2xl bg-[#1F1F24] text-[15px] font-semibold text-white"
+              >
+                Keep browsing
+              </button>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-2xl py-2 text-sm font-medium text-white">
+              Back online! Syncing queued pulses…
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

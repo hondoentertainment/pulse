@@ -51,6 +51,8 @@ describe('useMapLiveReviews', () => {
       id: 'fresh',
       venueName: 'Neon Lounge',
       snippet: 'Bar is three deep.',
+      headline: '⚡ Neon Lounge just went Electric',
     })
+    expect(result.current.bloomVenueId).toBe('venue-1')
   })
 })

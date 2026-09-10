@@ -3,7 +3,9 @@ import {
   AUTH_PATH,
   DISCOVERY_AUTH_GATE_COPY,
   getCreatePulseAuthRedirect,
+  getWriteAuthRedirect,
   shouldBlockDiscoveryForAuth,
+  WRITE_AUTH_COPY,
 } from '../guest-discovery'
 
 describe('guest discovery policy', () => {
@@ -39,5 +41,12 @@ describe('guest discovery policy', () => {
       isPlaceholder: false,
       hasSession: true,
     })).toBeNull()
+  })
+
+  it('redirects guest check-in and review to /auth, not toast-only', () => {
+    expect(getWriteAuthRedirect({ isPlaceholder: false, hasSession: false })).toBe(AUTH_PATH)
+    expect(WRITE_AUTH_COPY.checkIn.description).toContain('check in')
+    expect(WRITE_AUTH_COPY.review.description).toContain('live review')
+    expect(WRITE_AUTH_COPY.intel.description).toContain('live intel')
   })
 })

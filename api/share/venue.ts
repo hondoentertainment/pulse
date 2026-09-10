@@ -57,7 +57,7 @@ export default async function handler(
   const raw = req.query?.venueId
   const venueId = Array.isArray(raw) ? raw[0] : raw
   const origin = originFromReq(req)
-  const target = venueId ? `${origin}/venue/${encodeURIComponent(venueId)}` : `${origin}/`
+  const target = venueId ? `${origin}/venue/${encodeURIComponent(venueId)}?from=share` : `${origin}/`
 
   let title = 'Pulse'
   let description = 'Nightlife energy on a map — live reviews from people who are there.'
@@ -94,7 +94,9 @@ export default async function handler(
   <meta property="og:title" content="${escapeHtml(title)}" />
   <meta property="og:description" content="${escapeHtml(description)}" />
   <meta property="og:url" content="${escapeHtml(target)}" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="${escapeHtml(`${origin}/api/share/og?venueId=${encodeURIComponent(venueId ?? '')}`)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="${escapeHtml(`${origin}/api/share/og?venueId=${encodeURIComponent(venueId ?? '')}`)}" />
   <meta http-equiv="refresh" content="0;url=${escapeHtml(target)}" />
   <link rel="canonical" href="${escapeHtml(target)}" />
 </head>

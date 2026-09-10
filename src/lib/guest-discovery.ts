@@ -33,3 +33,21 @@ export function getCreatePulseAuthRedirect(input: {
   if (input.isPlaceholder || input.hasSession) return null
   return AUTH_PATH
 }
+
+/**
+ * Guest check-in, live review, and live intel must land on `/auth`
+ * (not toast-only). Same gate as Create Pulse.
+ */
+export function getWriteAuthRedirect(input: {
+  isPlaceholder: boolean
+  hasSession: boolean
+}): string | null {
+  return getCreatePulseAuthRedirect(input)
+}
+
+export const WRITE_AUTH_COPY = {
+  checkIn: { title: 'Sign in required', description: 'Sign in to check in.' },
+  review: { title: 'Sign in required', description: 'Sign in to post a live review.' },
+  intel: { title: 'Sign in required', description: 'Sign in to report live intel.' },
+  create: { title: 'Sign in required', description: 'Sign in to create a Pulse.' },
+} as const
