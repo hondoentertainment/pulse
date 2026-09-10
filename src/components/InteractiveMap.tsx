@@ -12,6 +12,12 @@ import {
   type VenueMapActivity,
 } from '@/lib/map-live-reviews'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
+import {
+  collectNeighborhoods,
+  filterMapVenues,
+  isCuratedVenue,
+  shouldClusterMapMarkers,
+} from '@/lib/map-filters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import {
@@ -87,7 +93,9 @@ export const InteractiveMap = memo(function InteractiveMap({
   const [filters, setFilters] = useState<MapFiltersState>({
     energyLevels: [],
     categories: [],
-    maxDistance: Infinity
+    maxDistance: Infinity,
+    neighborhoods: [],
+    inventoryLayer: 'curated',
   })
   const [nearMeActive, setNearMeActive] = useState(false)
 
@@ -253,13 +261,6 @@ export const InteractiveMap = memo(function InteractiveMap({
     return ((θ * 180) / Math.PI + 360) % 360
   }
 
-  const getEnergyLevelFromScore = (score: number): string => {
-    if (score >= 80) return 'electric'
-    if (score >= 60) return 'buzzing'
-    if (score >= 30) return 'chill'
-    return 'dead'
-  }
-
   const getCategoryIcon = (category?: string) => {
     switch (category?.toLowerCase()) {
       case 'bar': return BeerBottle
@@ -295,50 +296,27 @@ export const InteractiveMap = memo(function InteractiveMap({
   }
 
   const filteredVenues = useMemo(() => {
-    const filtered = venues.filter((venue) => {
-      if (filters.energyLevels.length > 0) {
-        const energyLevel = getEnergyLevelFromScore(venue.pulseScore) as Exclude<EnergyFilter, 'all'>
-        if (!filters.energyLevels.includes(energyLevel)) {
-          return false
-        }
-      }
-
-      if (filters.categories.length > 0 && venue.category) {
-        if (!filters.categories.includes(venue.category)) {
-          return false
-        }
-      }
-
-      if (filters.maxDistance !== Infinity && userLocation) {
-        const distance = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.location.lat,
-          venue.location.lng
-        )
-        if (distance > filters.maxDistance) {
-          return false
-        }
-      }
-      // Near Me filter (0.5 mile radius)
-      if (nearMeActive && userLocation) {
-        const distance = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.location.lat,
-          venue.location.lng
-        )
-        if (distance > 0.5) {
-          return false
-        }
-      }
-
-      return true
+    const filtered = filterMapVenues({
+      venues,
+      filters,
+      userLocation,
+      nearMe: nearMeActive,
     })
 
-    // Progressive disclosure: show top 5 surging venues by default
-    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
-      // Nearby venues (within 50mi) ranked by live review volume, then heat
+    const extraFiltersOn =
+      filters.energyLevels.length > 0 ||
+      filters.categories.length > 0 ||
+      (filters.neighborhoods?.length ?? 0) > 0
+    const layer = filters.inventoryLayer ?? 'curated'
+
+    // All-Seattle + no extra filters: keep the old top-5 surging preview
+    // unless the user asked for the full catalog.
+    if (
+      layer === 'all' &&
+      !showFullHeatmap &&
+      !nearMeActive &&
+      !extraFiltersOn
+    ) {
       const nearby = userLocation
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
@@ -356,6 +334,7 @@ export const InteractiveMap = memo(function InteractiveMap({
     ).sort(),
     [venues],
   )
+  const availableNeighborhoods = useMemo(() => collectNeighborhoods(venues), [venues])
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -813,7 +792,11 @@ export const InteractiveMap = memo(function InteractiveMap({
     })
   }, [center, filteredVenues, zoom, dimensions, userLocation])
 
-  const shouldClusterMarkers = zoom < 1.05 && !isDragging
+  const shouldClusterMarkers = shouldClusterMapMarkers({
+    zoom,
+    isDragging,
+    inventoryLayer: filters.inventoryLayer ?? 'curated',
+  })
 
   const clusteredMapData = useMemo(() => {
     return clusterVenueRenderPoints(venueRenderPoints, zoom, shouldClusterMarkers)
@@ -872,7 +855,12 @@ export const InteractiveMap = memo(function InteractiveMap({
     return ids
   }, [clusteredMapData.singles, isDragging, isCameraMoving, zoom, hoveredVenue, accessibilityMode])
 
-  const activeFilterCount = filters.energyLevels.length + filters.categories.length + (filters.maxDistance !== Infinity ? 1 : 0)
+  const activeFilterCount =
+    filters.energyLevels.length +
+    filters.categories.length +
+    (filters.neighborhoods?.length ?? 0) +
+    ((filters.inventoryLayer ?? 'curated') === 'all' ? 1 : 0) +
+    (filters.maxDistance !== Infinity ? 1 : 0)
 
   const previewVenues = useMemo(() => {
     if (!center) return [] as VenueRenderPoint[]
@@ -893,21 +881,27 @@ export const InteractiveMap = memo(function InteractiveMap({
 
   const bestNextVenue = previewVenues[0] ?? null
 
+  const inventoryLayer = filters.inventoryLayer ?? 'curated'
   const mapModeLabel = nearMeActive
     ? 'Near Me'
     : activeFilterCount > 0
       ? 'Filtered'
-      : showFullHeatmap
-        ? 'Full Map'
-        : 'Top Surges'
+      : inventoryLayer === 'curated'
+        ? 'Launch 33'
+        : showFullHeatmap
+          ? 'All Seattle'
+          : 'Top Surges'
   const mapSummary = activeFilterCount > 0
     ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
-    : showFullHeatmap
-      ? `${filteredVenues.length} venues in view`
-      : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
+    : inventoryLayer === 'curated'
+      ? `${filteredVenues.length} curated launch venues`
+      : showFullHeatmap
+        ? `${filteredVenues.length} venues in view`
+        : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
   const showCuratedToggle = !nearMeActive
     && filters.energyLevels.length === 0
     && filters.categories.length === 0
+    && (filters.neighborhoods?.length ?? 0) === 0
     && filters.maxDistance === Infinity
 
   useEffect(() => {
@@ -1098,8 +1092,8 @@ export const InteractiveMap = memo(function InteractiveMap({
                 cy={y}
                 r={markerSize}
                 fill={activity.heatScore > 0 ? getEnergyColor(activity.heatScore) : 'oklch(0.25 0.05 260)'}
-                stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
-                strokeWidth={isHighlighted ? 3 : 1.5}
+                stroke={isHighlighted ? 'white' : isCuratedVenue(venue) ? '#F7D774' : 'oklch(0.15 0 0)'}
+                strokeWidth={isHighlighted ? 3 : isCuratedVenue(venue) ? 2.4 : 1.5}
                 className="transition-all duration-300"
                 filter={activity.heatScore >= 30 ? `drop-shadow(0 0 ${activity.heatScore >= 80 ? '8px' : '4px'} ${activity.heatScore >= 80 ? 'rgba(255, 45, 120, 0.6)' : activity.heatScore >= 60 ? 'rgba(255, 138, 0, 0.5)' : 'rgba(0, 209, 255, 0.4)'})` : undefined}
               />
@@ -1539,16 +1533,31 @@ export const InteractiveMap = memo(function InteractiveMap({
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">{mapSummary}</p>
                 </div>
-                {showCuratedToggle && (
+                <div className="flex shrink-0 gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleToggleFullHeatmap}
-                    className="h-8 shrink-0 px-3 text-[11px] font-semibold"
+                    onClick={() => {
+                      triggerHapticFeedback('light')
+                      const next = (filters.inventoryLayer ?? 'curated') === 'curated' ? 'all' : 'curated'
+                      setFilters((current) => ({ ...current, inventoryLayer: next }))
+                      if (next === 'all') setShowFullHeatmap(true)
+                    }}
+                    className="h-8 px-3 text-[11px] font-semibold"
                   >
-                    {showFullHeatmap ? "Top only" : "Show all"}
+                    {(filters.inventoryLayer ?? 'curated') === 'curated' ? 'Launch 33' : 'All Seattle'}
                   </Button>
-                )}
+                  {showCuratedToggle && (filters.inventoryLayer ?? 'curated') === 'all' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleToggleFullHeatmap}
+                      className="h-8 px-3 text-[11px] font-semibold"
+                    >
+                      {showFullHeatmap ? 'Top only' : 'Show all'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
@@ -1606,6 +1615,30 @@ export const InteractiveMap = memo(function InteractiveMap({
           >
             Near me
           </button>
+          {availableNeighborhoods.slice(0, 8).map((name) => {
+            const selected = (filters.neighborhoods ?? []).includes(name)
+            return (
+              <button
+                key={name}
+                onClick={() => {
+                  triggerHapticFeedback('light')
+                  const current = filters.neighborhoods ?? []
+                  const next = selected
+                    ? current.filter((item) => item !== name)
+                    : [...current, name]
+                  setFilters((state) => ({ ...state, neighborhoods: next }))
+                }}
+                className={cn(
+                  'shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]',
+                  selected
+                    ? 'bg-white text-black'
+                    : 'border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground',
+                )}
+              >
+                {name}
+              </button>
+            )
+          })}
         </div>
 
         {showOnboardingTips && (
@@ -1694,6 +1727,7 @@ export const InteractiveMap = memo(function InteractiveMap({
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
+          availableNeighborhoods={availableNeighborhoods}
         />
 
         {/* Unified Control Group */}
@@ -1918,6 +1952,8 @@ export const InteractiveMap = memo(function InteractiveMap({
 
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
+          (filters.neighborhoods?.length ?? 0) > 0 ||
+          (filters.inventoryLayer ?? 'curated') === 'all' ||
           filters.maxDistance !== Infinity) && (
             <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">

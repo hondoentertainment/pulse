@@ -18,6 +18,8 @@ merge, without over-fitting to the current state of the app.
 | Smoke tests    | `smoke-preview-venue` | Playwright venue smoke fails. | `playwright.config.ts`             |
 | Smoke alias    | `smoke-preview`        | Fails if `smoke-preview-venue` failed. Exists so stale branch protection stays green. | `.github/workflows/ci.yml` |
 
+Human branch-protection clicks (require these two; remove Signal check names): [github-branch-protection.md](./runbooks/github-branch-protection.md) (#65).
+
 Hard-fail gates: lint, test, build, bundle-size, `smoke-preview-venue`, `smoke-preview`.
 Advisory: none of the smoke jobs. `typecheck-strict` and `dependency-audit` are blocking on current `main`.
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getVenueActionCtas } from '../venue-action-ctas'
-import { getWatchedVenueIds, isVenueSurgeWatched, toggleVenueSurgeWatch } from '../venue-surge-watch'
+import { describeVenueSurgePushStub, getWatchedVenueIds, isVenueSurgeWatched, toggleVenueSurgeWatch } from '../venue-surge-watch'
 import type { Venue } from '../types'
 import type { VenueLiveData } from '../live-intelligence'
 
@@ -129,5 +129,6 @@ describe('venue surge watch storage', () => {
     expect(isVenueSurgeWatched('venue-1', storage)).toBe(true)
     expect(toggleVenueSurgeWatch('venue-1', storage)).toBe(false)
     expect(getWatchedVenueIds(storage)).toEqual([])
+    expect(describeVenueSurgePushStub().signalWebPush).toBe(false)
   })
 })

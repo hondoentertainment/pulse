@@ -35,8 +35,9 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260909000000_live_reviews.sql` | Live reviews + heatmap |
 | `20260909120000_seattle_launch_venue_catalog.sql` | Idempotent 33-venue Seattle catalog upsert |
 | `20260909180000_seattle_osm_venue_catalog.sql` | Idempotent 500-venue Seattle OSM nightlife catalog |
+| `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables) and [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (33 Seattle venues).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), and [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql).
 
 ---
 
@@ -308,6 +309,24 @@ Maps users to venue roles. **Note:** migrations define conflicting role enums �
 |-----------|-------|
 | `20260417000003` | owner, admin, staff |
 | `20260417000007` | admin, door, manager |
+
+### `venue_claims`
+
+Server source of truth for venue inbox access (`20260910140000`). Unique `(venue_id, user_id)`.
+
+| Column | Notes |
+|--------|-------|
+| `venue_id` | FK → venues |
+| `user_id` | FK → profiles |
+| `status` | `pending` \| `verified` \| `rejected` |
+| `evidence`, `notes` | Claimant text; admin notes on reject |
+| `reviewed_at` | Set when verified/rejected |
+
+RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row.
+
+### `pulse_reports` (queue columns)
+
+Existing hide/report table plus `status` (`pending` \| `reviewed` \| `actioned` \| `dismissed`) and `reviewed_at`.
 
 ### `venue_payout_accounts`
 

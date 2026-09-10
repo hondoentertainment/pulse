@@ -53,6 +53,7 @@ historical migrations once they're in staging/prod.
 | `20260329000003_realtime.sql` | Publication for realtime channels |
 | `20260417000001_core_tables_and_soft_delete.sql` | **new** reactions/check_ins/follows + soft-delete + updated_at |
 | `20260417000002_rls_policies_enforcement.sql` | **new** full RLS policy set + admin bypass |
+| `20260910140000_venue_claims_and_report_queue.sql` | **new** venue_claims + pulse_reports.status |
 
 ## 3. Seeding data
 
@@ -65,7 +66,7 @@ nightlife venues).
 
 For production project `xeldqwhztcnnvazmshzh`, paste those migrations into the
 SQL editor (migration history versions there do not match repo filenames).
-Then run `supabase/verify/seattle_launch_venues.sql`.
+Then run `supabase/verify/seattle_launch_venues.sql`. Paste `20260910140000_venue_claims_and_report_queue.sql` the same way and run `supabase/verify/venue_claims.sql`.
 
 For a CLI-linked project whose history matches the repo:
 

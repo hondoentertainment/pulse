@@ -11,6 +11,7 @@ export * as ReactionData from './reactions'
 export * as CheckInData from './check-ins'
 export * as FollowData from './follows'
 export * as NotificationData from './notifications'
+export * as VenueClaimData from './venue-claims'
 export {
   USE_SUPABASE_BACKEND,
   hasSupabaseEnv,

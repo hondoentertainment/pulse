@@ -1,30 +1,68 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-09. Pulse is venue + map only. The former Pulse Signal check-in product was removed (no `VITE_APP_MODE`). Human ops remain: venue migrations/env (#64), branch protection (#65).
+> Updated 2026-09-10. Pulse is **venue + map only**. Signal is gone (no `VITE_APP_MODE`).
+> Shipped in-repo: full venue schema, 33 curated + 500 OSM = **533** Seattle venues,
+> live reviews, map realtime, Figma-matched UI, and map first-paint perf.
 
 ## Decision
 
-**Pulse is the nightlife venue + map PWA.** Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`. See [PRD.md](PRD.md). Signal was removed rather than left behind a flag.
+**Pulse is the nightlife venue + map PWA.** Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`.
+See [PRD.md](PRD.md). Do not restore Signal or a dual-mode flag.
 
-## Still required in production (human ops)
+## What this PR adds (product)
 
-These cannot be completed from this agent (no Supabase admin, no Vercel token, no GitHub admin on `main`). Tracked as #64, #65.
+| Area | In-repo |
+|------|---------|
+| Trust | Server `venue_claims` + RLS; inbox reads verified claims / `venue_staff`; reporter list + admin report status |
+| Map | Clustering on the 533-venue catalog; neighborhood + energy pills; Launch 33 vs All Seattle |
+| Growth | Stable `/venue/:id` share URLs, copy/share, OG card at `/api/share/venue`, venue-surge stub (not Signal push) |
 
-1. **OPS-1 / OPS-2** (#64) Apply venue / Seattle launch migrations in the production Supabase project:
-   - `20260825000000_venue_signal_seattle_launch.sql` (and earlier venue schema as needed)
-   - Leftover Signal tables from `20260816000000_signal_core.sql` / `_pilot_signups` / `_push_subscriptions` may already exist. They are unused by the app; do not drop them without a dedicated review.
-2. **OPS-1 env** Set production (and rebuild):
+## Human ops still required
+
+These cannot be completed from this agent (no GitHub admin UI, no Vercel token, no live-loop proof on prod).
+
+### #64 — Confirm Vercel env + prove live loop
+
+Migrations are **largely applied** on production Supabase `xeldqwhztcnnvazmshzh` (venue schema, `live_reviews`, 533 Seattle venues). Remaining:
+
+1. Confirm Vercel production env (and rebuild):
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (legacy alias `SUPABASE_SERVICE_ROLE`)
-   - `CRON_SECRET` (wait-time + safety crons)
-   - Do **not** set `VITE_APP_MODE` — the variable is gone
-3. **HOUSE-1 remainder** (#65) GitHub → Settings → Branches → `main`:
-   - Required check `smoke-preview` aliases `smoke-preview-venue`. Remove retired `smoke-preview-signal` / `e2e-signal` required checks if they are still listed.
-   - Solo maintainer: allow admin bypass **or** set required reviews to 0 — the owner cannot approve their own PR
+   - `CRON_SECRET`
+   - Do **not** set `VITE_APP_MODE`
+2. Prove the live loop on https://pulse-chi-nine.vercel.app/ — sign in, post a live review, confirm Live now + map toast / Surging without refresh.
 
-## Historical — Signal (removed)
+**New migration to paste** (SQL editor; history versions there do not match repo filenames):
 
-The following shipped in-repo for Pulse Signal and was deleted with the product: check-in windows, trends, CSV/JSON export, reminders, pilot signup, and `signal_*` analytics. Do not restore a dual-mode flag.
+- `supabase/migrations/20260910140000_venue_claims_and_report_queue.sql`
+- Verify with `supabase/verify/venue_claims.sql`
+
+Then close #64 when the two remaining boxes are checked.
+
+### #65 — Branch protection (human GitHub UI)
+
+Exact clicks: [docs/runbooks/github-branch-protection.md](docs/runbooks/github-branch-protection.md).
+
+Required checks: `smoke-preview` and/or `smoke-preview-venue`.  
+Remove any required check named `smoke-preview-signal` or `e2e-signal`.  
+Solo maintainer: admin bypass **or** required reviews = 0.
+
+### #66 — Signal Web Push
+
+**Close as not planned** (or leave closed). The Signal VAPID / closed-app reminder path was removed with the product.
+
+If we want push later, open a **new** venue-specific issue (surge alerts when a followed venue goes Electric). Do not revive Signal push. In-repo stub: `src/lib/venue-surge-watch.ts` (`describeVenueSurgePushStub`).
+
+## Apply claims migration (prod)
+
+Project: `xeldqwhztcnnvazmshzh`.
+
+1. Supabase → SQL editor
+2. Paste `20260910140000_venue_claims_and_report_queue.sql`
+3. Run `supabase/verify/venue_claims.sql`
+4. Confirm `venue_claims` exists with RLS on, and `pulse_reports.status` is present
+
+Do **not** drop leftover `signal_*` tables without a dedicated review.
 
 ## Parked
 
@@ -32,3 +70,4 @@ The following shipped in-repo for Pulse Signal and was deleted with the product:
 - AI concierge, ticketing, creator economy, video feed
 - Invented Pulse Pro pricing or Stripe
 - Restoring Pulse Signal or a Signal-default flip
+- Closed-app Web Push (unless a new venue-surge issue is opened)

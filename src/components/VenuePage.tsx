@@ -13,7 +13,7 @@ import { VenueActionPanel } from '@/components/VenueActionPanel'
 import { MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
-import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
+import { generateVenueShareCard, getVenueDeepLink, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -201,6 +201,15 @@ export function VenuePage({
     const card = generateVenueShareCard(venue)
     setShareCard(card)
     setShareOpen(true)
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getVenueDeepLink(venue.id))
+      toast.success('Venue link copied')
+    } catch {
+      toast.error('Could not copy link')
+    }
   }
 
   const actionCtas = getVenueActionCtas(venue, {
@@ -415,6 +424,13 @@ export function VenuePage({
                 className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
               >
                 <ShareNetwork size={24} className="text-muted-foreground" />
+              </button>
+              <button
+                onClick={() => { void handleCopyLink() }}
+                aria-label="Copy venue link"
+                className="min-h-11 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                Copy link
               </button>
               <button
                 onClick={onToggleFavorite}

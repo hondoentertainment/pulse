@@ -41,11 +41,43 @@ const ENERGY_COLORS: Record<string, string> = {
   Dead: '#607D8B',
 }
 
+export function getPublicAppOrigin(options: {
+  env?: Record<string, string | undefined>
+  locationOrigin?: string | null
+} = {}): string {
+  const env = options.env ?? (
+    typeof import.meta !== 'undefined'
+      ? (import.meta as { env?: Record<string, string | undefined> }).env
+      : undefined
+  ) ?? {}
+  const locationOrigin = Object.prototype.hasOwnProperty.call(options, 'locationOrigin')
+    ? options.locationOrigin
+    : (typeof window !== 'undefined' ? window.location.origin : undefined)
+  if (locationOrigin && /^https?:\/\//.test(locationOrigin)) {
+    return locationOrigin.replace(/\/$/, '')
+  }
+  const fromEnv = env.VITE_PUBLIC_APP_URL
+  if (fromEnv && /^https?:\/\//.test(fromEnv)) {
+    return fromEnv.replace(/\/$/, '')
+  }
+  return 'https://pulse-chi-nine.vercel.app'
+}
+
 /**
  * Generate a deep link URL for a venue.
  */
-export function getVenueDeepLink(venueId: string, baseUrl: string = 'https://pulse.app'): string {
-  return `${baseUrl}/venue/${venueId}`
+export function getVenueDeepLink(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/venue/${venueId}`
+}
+
+export function getVenueSharePreviewUrl(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/api/share/venue?venueId=${encodeURIComponent(venueId)}`
 }
 
 /**
@@ -83,7 +115,21 @@ export function generatePulseShareCard(pulse: Pulse, venue: Venue, username: str
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getPulseDeepLink(pulse.id),
+    url: getVenueDeepLink(venue.id),
+  }
+}
+
+export function generateJustReviewedShareCard(venue: Venue, caption: string): ShareCard {
+  const label = getEnergyLabel(venue.pulseScore)
+  const snippet = caption.trim()
+  return {
+    title: `Just reviewed ${venue.name}`,
+    description: snippet || `${label} right now on Pulse`,
+    imageText: `${venue.name}\nJust reviewed · ${label}`,
+    energyLabel: label,
+    energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
+    score: venue.pulseScore,
+    url: getVenueDeepLink(venue.id),
   }
 }
 
