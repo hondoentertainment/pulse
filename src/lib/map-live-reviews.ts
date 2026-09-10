@@ -41,6 +41,29 @@ export interface MapLiveToast {
   snippet: string
   energy: EnergyRating
   createdAt: string
+  headline: string
+}
+
+export function formatJustWentElectric(venueName: string, energy: EnergyRating): string {
+  const label = energy === 'electric'
+    ? 'Electric'
+    : energy === 'buzzing'
+      ? 'Buzzing'
+      : energy === 'chill'
+        ? 'Chill'
+        : 'Dead'
+  return `⚡ ${venueName} just went ${label}`
+}
+
+export function formatSurgingRailSubline(activity: VenueMapActivity, nowMs: number = Date.now()): string {
+  if (activity.hasFreshReview) return 'Live · just now'
+  if (activity.latest) {
+    const ageMin = Math.max(0, Math.round((nowMs - new Date(activity.latest.createdAt).getTime()) / 60000))
+    if (activity.liveReviewCount > 1) {
+      return `+${activity.liveReviewCount} in ${Math.max(ageMin, 1)}m`
+    }
+  }
+  return 'Rail updates without refresh'
 }
 
 const ENERGY_HEAT: Record<EnergyRating, number> = {
@@ -228,6 +251,7 @@ export function buildMapLiveToast(pulse: Pulse, venue: Venue): MapLiveToast {
     snippet: snippetCaption(pulse.caption, 72),
     energy: pulse.energyRating,
     createdAt: pulse.createdAt,
+    headline: formatJustWentElectric(venue.name, pulse.energyRating),
   }
 }
 

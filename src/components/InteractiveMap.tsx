@@ -60,6 +60,9 @@ interface InteractiveMapProps {
   onEnergyLevelsChange?: (levels: EnergyFilter[]) => void
   nearMe?: boolean
   onNearMeChange?: (active: boolean) => void
+  inventoryLayer?: 'curated' | 'all'
+  onInventoryLayerChange?: (layer: 'curated' | 'all') => void
+  bloomVenueId?: string | null
 }
 
 const ZOOM_STEP = 1.35
@@ -79,6 +82,9 @@ export const InteractiveMap = memo(function InteractiveMap({
   onEnergyLevelsChange,
   nearMe,
   onNearMeChange,
+  inventoryLayer: inventoryLayerProp,
+  onInventoryLayerChange,
+  bloomVenueId = null,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -110,6 +116,12 @@ export const InteractiveMap = memo(function InteractiveMap({
       setNearMeActive(nearMe)
     }
   }, [nearMe])
+
+  useEffect(() => {
+    if (inventoryLayerProp) {
+      setFilters((current) => ({ ...current, inventoryLayer: inventoryLayerProp }))
+    }
+  }, [inventoryLayerProp])
 
   const applyEnergyLevels = (levels: EnergyFilter[]) => {
     setFilters((current) => ({ ...current, energyLevels: levels }))
@@ -1055,7 +1067,8 @@ export const InteractiveMap = memo(function InteractiveMap({
           const markerSize = baseSize * zoom * scale * 0.6
           const isHighlighted = hoveredVenue?.id === venue.id
           const isHighEnergy = activity.heatScore >= 80
-          const hasRecentActivity = activity.hasFreshReview || (venue.lastActivity
+          const isBlooming = bloomVenueId === venue.id || incomingLiveToast?.venueId === venue.id
+          const hasRecentActivity = isBlooming || activity.hasFreshReview || (venue.lastActivity
             ? (Date.now() - new Date(venue.lastActivity).getTime()) < 10 * 60 * 1000
             : activity.heatScore >= 50)
 
@@ -1072,8 +1085,9 @@ export const InteractiveMap = memo(function InteractiveMap({
                     r={markerSize * 2.5}
                     fill={getEnergyColor(venue.pulseScore)}
                     opacity={0.15}
-                    className="animate-pulse-glow"
-                    style={{ animationDuration: '3s' }}
+                    className={isBlooming ? 'animate-ping' : 'animate-pulse-glow'}
+                    style={{ animationDuration: isBlooming ? '1.2s' : '3s' }}
+                    data-bloom={isBlooming ? 'true' : undefined}
                   />
                   <circle
                     cx={x}
@@ -1081,8 +1095,8 @@ export const InteractiveMap = memo(function InteractiveMap({
                     r={markerSize * 1.8}
                     fill={getEnergyColor(venue.pulseScore)}
                     opacity={0.25}
-                    className="animate-pulse"
-                    style={{ animationDuration: '2s' }}
+                    className={isBlooming ? 'animate-ping' : 'animate-pulse'}
+                    style={{ animationDuration: isBlooming ? '1.2s' : '2s' }}
                   />
                 </>
               )}
@@ -1541,6 +1555,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                       triggerHapticFeedback('light')
                       const next = (filters.inventoryLayer ?? 'curated') === 'curated' ? 'all' : 'curated'
                       setFilters((current) => ({ ...current, inventoryLayer: next }))
+                      onInventoryLayerChange?.(next)
                       if (next === 'all') setShowFullHeatmap(true)
                     }}
                     className="h-8 px-3 text-[11px] font-semibold"

@@ -7,6 +7,10 @@ import {
   generateJustReviewedShareCard,
   generateStoryShareText,
   getPublicAppOrigin,
+  getVenueShareLandingPath,
+  getImHereMapPath,
+  getVenueShareOgImageUrl,
+  buildShareOgCard,
   generateEnergyCardData,
   createReferralInvite,
   acceptReferralInvite,
@@ -51,6 +55,25 @@ describe('deep links', () => {
 
   it('supports custom base URL', () => {
     expect(getVenueDeepLink('v1', 'https://example.com')).toBe('https://example.com/venue/v1')
+  })
+
+  it('builds I’m-here map path and share landing that match the OG card', () => {
+    expect(getVenueShareLandingPath('v1')).toBe('/venue/v1?from=share')
+    expect(getImHereMapPath('v1')).toBe('/?here=v1')
+    expect(getVenueShareOgImageUrl('v1', 'https://pulse.example')).toBe(
+      'https://pulse.example/api/share/og?venueId=v1',
+    )
+    const card = buildShareOgCard({
+      venueName: 'Neumos',
+      energyLabel: 'Electric',
+      freshness: '12m ago',
+      caption: 'DJ just switched — floor is packed.',
+    })
+    expect(card.eyebrow).toBe('Someone shared a venue')
+    expect(card.title).toBe('Neumos')
+    expect(card.energyLine).toBe('Electric · 12m ago')
+    expect(card.caption).toContain('floor is packed')
+    expect(card.cta).toBe("I'm here · open map")
   })
 })
 

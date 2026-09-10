@@ -8,6 +8,12 @@ import type { Venue } from '@/lib/types'
 import type { EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { MapEnergyPills } from '@/components/MapEnergyPills'
+import { MapInventoryPills } from '@/components/MapInventoryPills'
+import { TonightHomeHeader } from '@/components/TonightHomeHeader'
+import { ColdStartTip } from '@/components/ColdStartTip'
+import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
+import { dismissColdStartTip, shouldShowColdStartTip } from '@/lib/cold-start'
+import type { MapInventoryLayer } from '@/lib/map-filters'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -65,6 +71,7 @@ export function MainTabRouter() {
     handlePulseReport,
     handlePromotionImpression,
     handlePromotionClick,
+    handleCreatePulse,
   } = handlers
 
   // Card taps set selectedVenue (for state consumers) and route to the venue
@@ -94,8 +101,14 @@ export function MainTabRouter() {
 
   const [mapEnergyLevels, setMapEnergyLevels] = useState<EnergyFilter[]>([])
   const [mapNearMe, setMapNearMe] = useState(false)
+  const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
+  const [showColdStart, setShowColdStart] = useState(() => shouldShowColdStartTip())
 
-  if (!venues || !currentUser) return null
+  const handleMapPinClick = useCallback((venue: Venue) => {
+    handleCreatePulse(venue.id)
+  }, [handleCreatePulse])
+
+  if (!venues || !currentUser) return <MapHomeSkeleton />
 
   return (
     <Suspense fallback={pageFallback}>
@@ -151,15 +164,32 @@ export function MainTabRouter() {
 
         {activeTab === 'map' && (
           <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-3.5 px-5 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-8">
-            <header>
-              <h1 id="map-heading" className="text-[28px] font-bold tracking-tight text-white">Pulse</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Where the energy is — right now</p>
-            </header>
+            <TonightHomeHeader
+              venues={visibleVenues}
+              pulses={visiblePulses}
+              userLocation={userLocation}
+              savedVenueIds={favoriteVenues.map((venue) => venue.id)}
+              onVenueClick={handleVenueClick}
+            />
+            {showColdStart && (
+              <ColdStartTip
+                onDismiss={() => {
+                  dismissColdStartTip()
+                  setShowColdStart(false)
+                }}
+              />
+            )}
             <MapSearch
               venues={visibleVenues}
               onVenueSelect={handleVenueClick}
               userLocation={userLocation}
               compact
+            />
+            <MapInventoryPills
+              inventoryLayer={inventoryLayer}
+              nearMeActive={mapNearMe}
+              onInventoryLayerChange={setInventoryLayer}
+              onToggleNearMe={() => setMapNearMe((current) => !current)}
             />
             <MapEnergyPills
               energyLevels={mapEnergyLevels}
@@ -173,11 +203,11 @@ export function MainTabRouter() {
               }}
               onToggleNearMe={() => setMapNearMe((current) => !current)}
             />
-            <div className="h-[300px] overflow-hidden rounded-[20px] bg-[#12141A]" role="region" aria-labelledby="map-heading">
+            <div className="h-[300px] overflow-hidden rounded-[20px] bg-[#12141A]" role="region" aria-labelledby="tonight-home-heading">
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}
-                onVenueClick={handleVenueClick}
+                onVenueClick={handleMapPinClick}
                 isTracking={isTracking}
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
@@ -187,6 +217,8 @@ export function MainTabRouter() {
                 onEnergyLevelsChange={setMapEnergyLevels}
                 nearMe={mapNearMe}
                 onNearMeChange={setMapNearMe}
+                inventoryLayer={inventoryLayer}
+                onInventoryLayerChange={setInventoryLayer}
               />
             </div>
             <SurgingNearbyList

@@ -129,7 +129,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Post live review/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Quick pulse/)).not.toBeInTheDocument()
   })
 
   it('renders Figma create copy when open', () => {
@@ -141,10 +141,10 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByRole('heading', { name: /Post live review/ })).toBeInTheDocument()
-    expect(screen.getByText(/the vibe right now/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Quick pulse/ })).toBeInTheDocument()
+    expect(screen.getByText(/The Buzzy Bar · from map pin/)).toBeInTheDocument()
     expect(screen.getByText('Add photo (optional)')).toBeInTheDocument()
-    expect(screen.getByText('Shows in Live now')).toBeInTheDocument()
+    expect(screen.getByText(/draft never lost/i)).toBeInTheDocument()
   })
 
   it('fills caption and enforces 280 char cap', () => {
@@ -154,11 +154,11 @@ describe('CreatePulseDialog', () => {
     const textarea = screen.getByPlaceholderText(/What's the vibe/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'Amazing night!' } })
     expect(textarea.value).toBe('Amazing night!')
-    expect(screen.getByText(/14 \/ 280/)).toBeInTheDocument()
+    expect(screen.getByText(/14 \/ 120/)).toBeInTheDocument()
 
-    const long = 'a'.repeat(320)
+    const long = 'a'.repeat(200)
     fireEvent.change(textarea, { target: { value: long } })
-    expect(textarea.value.length).toBe(280)
+    expect(textarea.value.length).toBe(120)
   })
 
   it('updates energy via slider interaction', () => {
@@ -196,7 +196,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.click(screen.getByText('Set Buzzing'))
     fireEvent.click(screen.getByText('Add Photo'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -222,7 +222,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.change(screen.getByPlaceholderText(/What's the vibe/i), {
       target: { value: 'this has badword inside' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalled()
@@ -251,7 +251,7 @@ describe('CreatePulseDialog', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={null} onSubmit={onSubmit} />
     )
-    fireEvent.click(screen.getByRole('button', { name: /Post live review/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled()
     })

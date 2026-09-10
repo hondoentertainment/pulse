@@ -5,6 +5,7 @@ import { useAppState } from '@/hooks/use-app-state'
 import { VenueInboxPage } from '@/components/VenueInboxPage'
 import { listMyVenueStaffRoles, type VenueStaffMembership } from '@/lib/data/venue-staff'
 import { listMyVenueClaims, submitVenueClaim } from '@/lib/data/venue-claims'
+import { dismissReportsForPulse } from '@/lib/owner-inbox'
 import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
 import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
 import type { Venue } from '@/lib/types'
@@ -14,7 +15,7 @@ import { toast } from 'sonner'
 export function VenueInboxRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
-  const { venues, currentUser, moderatedPulses } = useAppState()
+  const { venues, currentUser, moderatedPulses, contentReports, setContentReports } = useAppState()
   const [localClaims, setLocalClaims] = useKV<VenueClaim[]>('venue-claims', [])
   const [serverClaims, setServerClaims] = useState<VenueClaim[]>([])
   const [staffRoles, setStaffRoles] = useState<VenueStaffMembership[]>([])
@@ -113,6 +114,10 @@ export function VenueInboxRoute() {
       onBack={() => navigate(`/venue/${venue.id}`)}
       onSubmitClaim={handleSubmitClaim}
       claimBusy={claimBusy}
+      reports={contentReports ?? []}
+      onDismissReports={(pulseId) => {
+        setContentReports((current) => dismissReportsForPulse(current ?? [], pulseId))
+      }}
     />
   )
 }

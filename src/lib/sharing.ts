@@ -80,6 +80,50 @@ export function getVenueSharePreviewUrl(
   return `${baseUrl.replace(/\/$/, '')}/api/share/venue?venueId=${encodeURIComponent(venueId)}`
 }
 
+export function getVenueShareOgImageUrl(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/api/share/og?venueId=${encodeURIComponent(venueId)}`
+}
+
+/** Landing used by crawlers + humans after a shared link. */
+export function getVenueShareLandingPath(venueId: string): string {
+  return `/venue/${venueId}?from=share`
+}
+
+/** “I'm here · open map” — focuses the home map on this pin. */
+export function getImHereMapPath(venueId: string): string {
+  return `/?here=${encodeURIComponent(venueId)}`
+}
+
+export interface ShareOgCard {
+  title: string
+  energyLine: string
+  caption: string
+  eyebrow: string
+  cta: string
+}
+
+export function buildShareOgCard(input: {
+  venueName: string
+  energyLabel: string
+  freshness?: string
+  caption?: string
+}): ShareOgCard {
+  const freshness = input.freshness?.trim()
+  const energyLine = freshness
+    ? `${input.energyLabel} · ${freshness}`
+    : input.energyLabel
+  return {
+    title: input.venueName,
+    energyLine,
+    caption: (input.caption ?? '').trim(),
+    eyebrow: 'Someone shared a venue',
+    cta: "I'm here · open map",
+  }
+}
+
 /**
  * Generate a deep link URL for a pulse.
  */

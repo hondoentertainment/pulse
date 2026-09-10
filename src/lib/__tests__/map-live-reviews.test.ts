@@ -179,6 +179,7 @@ describe('collectLiveReviewArrivals', () => {
       id: 'fresh',
       venueName: 'Neon Lounge',
       snippet: 'Line moved fast.',
+      headline: '⚡ Neon Lounge just went Electric',
     })
   })
 
@@ -195,10 +196,11 @@ describe('collectLiveReviewArrivals', () => {
 })
 
 describe('buildMapLiveToast', () => {
-  it('uses Live · venue · snippet shape', () => {
+  it('uses Live · venue · snippet shape plus just-went headline', () => {
     const toast = buildMapLiveToast(makePulse(), makeVenue())
     expect(toast.venueName).toBe('Neon Lounge')
     expect(toast.snippet).toContain('DJ just switched')
     expect(toast.energy).toBe('electric')
+    expect(toast.headline).toBe('⚡ Neon Lounge just went Electric')
   })
 })

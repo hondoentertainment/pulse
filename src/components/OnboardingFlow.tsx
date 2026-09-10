@@ -6,6 +6,7 @@ import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check } from '@pho
 import { motion, AnimatePresence } from 'framer-motion'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { applyReferralCode } from '@/lib/creators-client'
+import { ALL_SEATTLE_TIP, COLD_START_HEADLINE, COLD_START_SUBLINE } from '@/lib/cold-start'
 
 interface OnboardingFlowProps {
   onComplete: (preferences: OnboardingPreferences) => void
@@ -118,9 +119,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Lightning size={40} weight="fill" className="text-white" />
                 </div>
                 <h1 className="text-3xl font-bold mt-6">Welcome to Pulse</h1>
+                <p className="text-2xl font-bold text-white">{COLD_START_HEADLINE}</p>
                 <p className="text-foreground/75">
-                  Real-time energy ratings for your city's best spots
+                  {COLD_START_SUBLINE}
                 </p>
+                <p className="text-xs text-muted-foreground">{ALL_SEATTLE_TIP}</p>
               </div>
 
               <div className="space-y-4">
@@ -388,8 +391,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold">You're all set!</h2>
                 <p className="text-foreground/75">
-                  Time to discover what's buzzing near you
+                  {COLD_START_SUBLINE}
                 </p>
+                <p className="text-xs text-muted-foreground">{ALL_SEATTLE_TIP}</p>
               </div>
 
               <div className="space-y-2 text-sm text-foreground/75">

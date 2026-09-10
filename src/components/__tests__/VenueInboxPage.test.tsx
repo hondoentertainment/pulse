@@ -60,7 +60,7 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByRole('heading', { name: /Tonight’s reviews/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Tonight’s queue/ })).toBeInTheDocument()
     expect(screen.getByText(/The Showbox · owner inbox/)).toBeInTheDocument()
     expect(screen.getByText(/Claim needed/)).toBeInTheDocument()
     expect(screen.getByText(/verified venue claim or a venue_staff row/)).toBeInTheDocument()
@@ -86,10 +86,11 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Tonight’s reviews/)).toBeInTheDocument()
-    expect(screen.getByText(/Live reviews/)).toBeInTheDocument()
-    expect(screen.getByText(/Avg energy/)).toBeInTheDocument()
+    expect(screen.getByText(/Tonight’s queue/)).toBeInTheDocument()
+    expect(screen.getByText(/Reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/Reports/)).toBeInTheDocument()
     expect(screen.getByText(/DJ just started/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument()
   })
 
   it('lets a signed-in user submit a claim from the empty state', () => {
@@ -108,6 +109,47 @@ describe('VenueInboxPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Submit claim/i }))
     expect(onSubmitClaim).toHaveBeenCalled()
+  })
+
+  it('lets a verified owner reply and dismiss a report', () => {
+    const claims: VenueClaim[] = [{
+      id: 'c1',
+      venueId: 'venue-1',
+      claimantUserId: 'owner-1',
+      businessName: 'Showbox',
+      businessEmail: 'a@b.com',
+      verificationMethod: 'email',
+      status: 'verified',
+      createdAt: new Date().toISOString(),
+    }]
+    const onDismissReports = vi.fn()
+    render(
+      <VenueInboxPage
+        venue={makeVenue()}
+        pulses={[makePulse()]}
+        currentUser={makeUser()}
+        claims={claims}
+        reports={[{
+          id: 'r1',
+          reporterId: 'u2',
+          targetType: 'pulse',
+          targetId: 'p-1',
+          reason: 'spam',
+          createdAt: new Date().toISOString(),
+          status: 'pending',
+        }]}
+        onDismissReports={onDismissReports}
+        onBack={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }))
+    fireEvent.change(screen.getByPlaceholderText(/Reply to this review/i), {
+      target: { value: 'Thanks for coming' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Send reply/i }))
+    expect(screen.getByText(/Reply: Thanks for coming/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss report/i }))
+    expect(onDismissReports).toHaveBeenCalledWith('p-1')
   })
 
   it('calls onBack', () => {

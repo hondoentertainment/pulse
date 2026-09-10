@@ -28,5 +28,6 @@ export function useMapLiveReviews(pulses: Pulse[], venues: Venue[]) {
   return {
     toast,
     dismissToast,
+    bloomVenueId: toast?.venueId ?? null,
   }
 }

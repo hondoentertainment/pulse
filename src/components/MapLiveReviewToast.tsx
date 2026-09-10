@@ -41,8 +41,8 @@ export const MapLiveReviewToast = memo(function MapLiveReviewToast({ toast, onDi
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#FF2D78]">
-              Live · {toast.venueName}
+            <p className="text-sm font-semibold text-white">
+              {toast.headline}
             </p>
             <p className="mt-1 line-clamp-2 text-sm text-foreground">
               {toast.snippet || 'New live review'}

@@ -34,7 +34,10 @@ import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { isFeatureEnabled } from '@/lib/feature-flags'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { ShareArrivalCard } from '@/components/ShareArrivalCard'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
@@ -118,6 +121,9 @@ export function VenuePage({
   isLoadingMoreVenuePulses,
 }: VenuePageProps) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromShare = searchParams.get('from') === 'share'
+  const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
@@ -292,8 +298,13 @@ export function VenuePage({
   }
 
   const submitLiveReport = async (type: LiveReport['type'], value: unknown) => {
-    if (!currentUser) {
-      toast.error('Sign in to report live intel')
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.intel.title, { description: WRITE_AUTH_COPY.intel.description })
+      navigate(authRedirect ?? '/auth')
       return
     }
 
@@ -347,6 +358,9 @@ export function VenuePage({
             <p className="mt-1 text-[13px] text-muted-foreground">{venueStatusLine(venue)}</p>
           )}
         </div>
+        {fromShare && (
+          <ShareArrivalCard venue={venue} pulses={venuePulses} />
+        )}
         {(() => {
           const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
           const delta = recent10m * 8

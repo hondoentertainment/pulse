@@ -1,7 +1,8 @@
 import { memo, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
 import { EnergyBadge } from '@/components/EnergyBadge'
-import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap } from '@/lib/map-live-reviews'
+import { TrustGlanceRow } from '@/components/TrustGlanceRow'
+import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -58,9 +59,10 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                     className="shrink-0"
                   />
                 </div>
-                {activity.countLabel && (
-                  <p className="text-xs text-muted-foreground">{activity.countLabel}</p>
-                )}
+                <TrustGlanceRow venue={venue} pulses={pulses} activity={activity} />
+                <p className="text-xs text-muted-foreground">
+                  {activity.countLabel || formatSurgingRailSubline(activity)}
+                </p>
               </button>
             )
           })}

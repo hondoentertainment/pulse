@@ -23,11 +23,16 @@ import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
 import {
-  LIVE_REVIEW_CAPTION_MAX,
   evaluateLocationProof,
   validateLiveReviewCaption,
   type LocationProof,
 } from '@/lib/live-reviews'
+import {
+  clearPulseDraft,
+  QUICK_PULSE_CAPTION_MAX,
+  readPulseDraft,
+  writePulseDraft,
+} from '@/lib/pulse-draft'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -40,7 +45,7 @@ interface CreatePulseDialogProps {
     photos: string[]
     video?: string
     hashtags?: string[]
-    kind: 'review'
+    kind: 'review' | 'pulse'
     locationVerified: boolean
   }) => void
 }
@@ -72,6 +77,24 @@ export function CreatePulseDialog({
   const hasSubmittedFirstPulse = useRef<boolean>(false)
   const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
+
+  useEffect(() => {
+    if (!open || !venue) return
+    const draft = readPulseDraft()
+    if (draft && draft.venueId === venue.id) {
+      setEnergyRating(draft.energyRating)
+      setCaption(draft.caption)
+    }
+  }, [open, venue])
+
+  useEffect(() => {
+    if (!open || !venue) return
+    writePulseDraft({
+      venueId: venue.id,
+      energyRating,
+      caption,
+    })
+  }, [open, venue, energyRating, caption])
 
   useEffect(() => {
     if (venue && allHashtags && allHashtags.length > 0) {
@@ -109,7 +132,11 @@ export function CreatePulseDialog({
   const handleSubmit = async () => {
     if (!venue) return
 
-    const captionCheck = validateLiveReviewCaption(caption)
+    const trimmed = caption.trim()
+    const wantsReview = trimmed.length > 0
+    const captionCheck = wantsReview
+      ? validateLiveReviewCaption(trimmed)
+      : { ok: true as const, caption: trimmed }
     if (!captionCheck.ok) {
       toast.error(captionCheck.error ?? 'Caption is required')
       return
@@ -144,9 +171,10 @@ export function CreatePulseDialog({
       photos,
       video: video || undefined,
       hashtags: selectedHashtags,
-      kind: 'review',
+      kind: wantsReview ? 'review' : 'pulse',
       locationVerified: locationProof.locationVerified,
     })
+    clearPulseDraft()
 
     track('pulse_created', {
       pulseId: `pulse-${Date.now()}`,
@@ -308,10 +336,10 @@ export function CreatePulseDialog({
       >
         <DialogHeader className="gap-1.5 text-left">
           <DialogTitle className="text-[22px] font-bold text-white">
-            Post live review
+            Quick pulse
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            What’s the vibe right now?
+            {venue ? `${venue.name} · from map pin` : 'What’s the vibe right now?'}
           </DialogDescription>
         </DialogHeader>
 
@@ -337,15 +365,15 @@ export function CreatePulseDialog({
               id="create-pulse-caption"
               placeholder="What's the vibe right now?"
               value={caption}
-              onChange={(e) => setCaption(e.target.value.slice(0, LIVE_REVIEW_CAPTION_MAX))}
-              maxLength={LIVE_REVIEW_CAPTION_MAX}
+              onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
+              maxLength={QUICK_PULSE_CAPTION_MAX}
               rows={3}
               className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[15px] shadow-none focus-visible:ring-0"
               aria-required="true"
               aria-describedby="create-pulse-caption-count create-pulse-location-proof"
             />
             <p id="create-pulse-caption-count" className="mt-2 text-[11px] text-muted-foreground">
-              {caption.length} / {LIVE_REVIEW_CAPTION_MAX}
+              {caption.length} / {QUICK_PULSE_CAPTION_MAX}
             </p>
           </div>
 
@@ -442,7 +470,7 @@ export function CreatePulseDialog({
                 <span className="inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
                   Near venue ✓
                 </span>
-                <span className="text-xs text-muted-foreground">Location verified</span>
+                <span className="text-xs text-muted-foreground">Auto from map</span>
               </>
             ) : (
               <>
@@ -518,10 +546,13 @@ export function CreatePulseDialog({
           <Button
             className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90 disabled:bg-primary disabled:opacity-60"
             onClick={handleSubmit}
-            disabled={isSubmitting || isCompressing || caption.trim().length === 0}
+            disabled={isSubmitting || isCompressing}
           >
-            {isSubmitting ? 'Posting...' : 'Post live review'}
+            {isSubmitting ? 'Posting...' : 'Post · 1 tap'}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Photo optional · draft never lost
+          </p>
         </div>
       </DialogContent>
     </Dialog>
