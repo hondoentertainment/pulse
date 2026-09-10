@@ -6,6 +6,7 @@ import {
   filterMapVenues,
   isCuratedVenue,
   shouldClusterMapMarkers,
+  type EnergyFilter,
 } from '../map-filters'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
@@ -45,7 +46,7 @@ const belltownOsmHot = makeVenue({
 })
 
 const emptyFilters = {
-  energyLevels: [] as const,
+  energyLevels: [] as EnergyFilter[],
   categories: [] as string[],
   neighborhoods: [] as string[],
   inventoryLayer: 'curated' as const,
