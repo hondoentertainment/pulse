@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
 import {
   buildMapLiveToast,
+  buildVenueActivityMap,
   collectLiveReviewArrivals,
   getSurgingNearbyVenues,
   getVenueMapActivity,
@@ -95,6 +96,24 @@ describe('getSurgingNearbyVenues', () => {
   })
 })
 
+describe('buildVenueActivityMap', () => {
+  it('matches per-venue activity after a single pulse scan', () => {
+    const venues = [
+      makeVenue({ id: 'venue-1', pulseScore: 40 }),
+      makeVenue({ id: 'venue-2', name: 'Barrio', pulseScore: 12 }),
+    ]
+    const pulses = [
+      makePulse({ id: 'a', venueId: 'venue-1' }),
+      makePulse({ id: 'b', venueId: 'venue-1', energyRating: 'buzzing' }),
+    ]
+    const nowMs = Date.now()
+    const map = buildVenueActivityMap(venues, pulses, nowMs)
+    expect(map.get('venue-1')).toEqual(getVenueMapActivity(venues[0], pulses, nowMs))
+    expect(map.get('venue-2')).toEqual(getVenueMapActivity(venues[1], pulses, nowMs))
+    expect(map.get('venue-2')?.liveReviewCount).toBe(0)
+  })
+})
+
 describe('stampVenuesFromLiveReviews', () => {
   it('stamps lastActivity from the newest review only', () => {
     const older = makePulse({
@@ -117,6 +136,17 @@ describe('stampVenuesFromLiveReviews', () => {
       [makePulse({ kind: 'pulse', caption: 'check in', hasBody: true })],
     )
     expect(updated.lastActivity).toBeUndefined()
+  })
+
+  it('returns the same array when no visible venue matches', () => {
+    const venues = [makeVenue({ id: 'visible' })]
+    expect(stampVenuesFromLiveReviews(venues, [makePulse({ venueId: 'hidden' })])).toBe(venues)
+  })
+
+  it('returns the same array when lastActivity is already stamped', () => {
+    const createdAt = new Date().toISOString()
+    const venues = [makeVenue({ lastActivity: createdAt, lastPulseAt: createdAt })]
+    expect(stampVenuesFromLiveReviews(venues, [makePulse({ createdAt })])).toBe(venues)
   })
 })
 

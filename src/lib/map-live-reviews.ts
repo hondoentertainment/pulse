@@ -8,8 +8,8 @@
 import type { EnergyRating, Pulse, Venue } from './types'
 import {
   formatLiveReviewsLastHour,
-  getLiveNowReviews,
   isLiveReview,
+  isWithinLiveNowWindow,
   LIVE_HOUR_WINDOW_MINUTES,
   snippetCaption,
 } from './live-reviews'
@@ -64,14 +64,38 @@ export function heatColorForScore(score: number): RgbColor {
   return ENERGY_RGB.dead
 }
 
-export function getVenueMapActivity(
-  venue: Venue,
+/**
+ * Single-pass index of last-hour live reviews. Map + Surging used to call
+ * `getLiveNowReviews` (full pulse scan + sort) once per venue, per render.
+ */
+export function indexLiveReviewsByVenue(
   pulses: Pulse[],
   nowMs: number = Date.now(),
+  windowMinutes: number = LIVE_HOUR_WINDOW_MINUTES,
+): Map<string, Pulse[]> {
+  const byVenue = new Map<string, Pulse[]>()
+  for (const pulse of pulses) {
+    if (!isLiveReview(pulse) || !isWithinLiveNowWindow(pulse.createdAt, nowMs, windowMinutes)) {
+      continue
+    }
+    const existing = byVenue.get(pulse.venueId)
+    if (existing) existing.push(pulse)
+    else byVenue.set(pulse.venueId, [pulse])
+  }
+  for (const list of byVenue.values()) {
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+  return byVenue
+}
+
+export function getVenueMapActivityFromLive(
+  venue: Venue,
+  live: readonly Pulse[] | undefined,
+  nowMs: number = Date.now(),
 ): VenueMapActivity {
-  const live = getLiveNowReviews(pulses, venue.id, nowMs, LIVE_HOUR_WINDOW_MINUTES)
-  const latest = live[0] ?? null
-  const liveReviewCount = live.length
+  const reviews = live ?? []
+  const latest = reviews[0] ?? null
+  const liveReviewCount = reviews.length
   const volumeBoost = liveReviewCount > 0 ? Math.min(28, liveReviewCount * 7) : 0
   const energyBoost = latest ? ENERGY_HEAT[latest.energyRating] : 0
   const heatScore = Math.min(100, Math.max(0, venue.pulseScore + volumeBoost + energyBoost))
@@ -91,6 +115,37 @@ export function getVenueMapActivity(
   }
 }
 
+export function getVenueMapActivity(
+  venue: Venue,
+  pulses: Pulse[],
+  nowMs: number = Date.now(),
+): VenueMapActivity {
+  const live: Pulse[] = []
+  for (const pulse of pulses) {
+    if (pulse.venueId !== venue.id) continue
+    if (!isLiveReview(pulse) || !isWithinLiveNowWindow(pulse.createdAt, nowMs, LIVE_HOUR_WINDOW_MINUTES)) {
+      continue
+    }
+    live.push(pulse)
+  }
+  live.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  return getVenueMapActivityFromLive(venue, live, nowMs)
+}
+
+/** Precompute activity for every venue after one pulse scan. */
+export function buildVenueActivityMap(
+  venues: Venue[],
+  pulses: Pulse[],
+  nowMs: number = Date.now(),
+): Map<string, VenueMapActivity> {
+  const index = indexLiveReviewsByVenue(pulses, nowMs)
+  const map = new Map<string, VenueMapActivity>()
+  for (const venue of venues) {
+    map.set(venue.id, getVenueMapActivityFromLive(venue, index.get(venue.id), nowMs))
+  }
+  return map
+}
+
 export function compareVenueMapActivity(a: VenueMapActivity, b: VenueMapActivity): number {
   if (b.liveReviewCount !== a.liveReviewCount) return b.liveReviewCount - a.liveReviewCount
   if (b.heatScore !== a.heatScore) return b.heatScore - a.heatScore
@@ -105,6 +160,7 @@ export function getSurgingNearbyVenues(
     maxDistanceMi?: number
     limit?: number
     nowMs?: number
+    activityByVenue?: Map<string, VenueMapActivity>
   } = {},
 ): Venue[] {
   const {
@@ -112,6 +168,7 @@ export function getSurgingNearbyVenues(
     maxDistanceMi = MAP_SURGE_RADIUS_MI,
     limit = 6,
     nowMs = Date.now(),
+    activityByVenue = buildVenueActivityMap(venues, pulses, nowMs),
   } = options
 
   return venues
@@ -125,11 +182,11 @@ export function getSurgingNearbyVenues(
         )
         if (distance > maxDistanceMi) return false
       }
-      return getVenueMapActivity(venue, pulses, nowMs).liveReviewCount > 0
+      return (activityByVenue.get(venue.id)?.liveReviewCount ?? 0) > 0
     })
     .sort((a, b) => compareVenueMapActivity(
-      getVenueMapActivity(a, pulses, nowMs),
-      getVenueMapActivity(b, pulses, nowMs),
+      activityByVenue.get(a.id) ?? getVenueMapActivityFromLive(a, undefined, nowMs),
+      activityByVenue.get(b.id) ?? getVenueMapActivityFromLive(b, undefined, nowMs),
     ))
     .slice(0, limit)
 }
@@ -144,16 +201,23 @@ export function stampVenuesFromLiveReviews(venues: Venue[], reviews: Pulse[]): V
     }
   }
   if (latestByVenue.size === 0) return venues
+  if (!venues.some((venue) => latestByVenue.has(venue.id))) return venues
 
-  return venues.map((venue) => {
+  let changed = false
+  const next = venues.map((venue) => {
     const latest = latestByVenue.get(venue.id)
     if (!latest) return venue
+    if (venue.lastActivity === latest.createdAt && venue.lastPulseAt === latest.createdAt) {
+      return venue
+    }
+    changed = true
     return {
       ...venue,
       lastActivity: latest.createdAt,
       lastPulseAt: latest.createdAt,
     }
   })
+  return changed ? next : venues
 }
 
 export function buildMapLiveToast(pulse: Pulse, venue: Venue): MapLiveToast {
@@ -178,21 +242,25 @@ export function collectLiveReviewArrivals(
   venues: Venue[],
   nowMs: number = Date.now(),
 ): { nextSeen: Set<string>; nextPrimed: boolean; arrivals: MapLiveToast[] } {
-  const live = getLiveNowReviews(pulses, undefined, nowMs, LIVE_HOUR_WINDOW_MINUTES)
+  const liveByVenue = indexLiveReviewsByVenue(pulses, nowMs)
   const nextSeen = new Set(seenIds)
   if (!primed) {
-    for (const pulse of live) nextSeen.add(pulse.id)
+    for (const list of liveByVenue.values()) {
+      for (const pulse of list) nextSeen.add(pulse.id)
+    }
     return { nextSeen, nextPrimed: true, arrivals: [] }
   }
 
   const venueById = new Map(venues.map((venue) => [venue.id, venue]))
   const arrivals: MapLiveToast[] = []
-  for (const pulse of live) {
-    if (nextSeen.has(pulse.id)) continue
-    nextSeen.add(pulse.id)
-    const venue = venueById.get(pulse.venueId)
-    if (!venue) continue
-    arrivals.push(buildMapLiveToast(pulse, venue))
+  for (const list of liveByVenue.values()) {
+    for (const pulse of list) {
+      if (nextSeen.has(pulse.id)) continue
+      nextSeen.add(pulse.id)
+      const venue = venueById.get(pulse.venueId)
+      if (!venue) continue
+      arrivals.push(buildMapLiveToast(pulse, venue))
+    }
   }
   return { nextSeen, nextPrimed: true, arrivals }
 }

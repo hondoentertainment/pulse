@@ -316,16 +316,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queryKey: ['venues'],
     queryFn: fetchVenuesFromSupabase,
     enabled: hasSupabaseConfig,
-    staleTime: 10_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
   const { data: serverPulses } = useQuery({
     queryKey: ['pulses'],
     queryFn: fetchPulsesFromSupabase,
     enabled: hasSupabaseConfig,
-    staleTime: 5_000,
-    refetchInterval: 15_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
   // Seed demo events / promotions

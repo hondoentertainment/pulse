@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { memo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { EnergyBadge } from '@/components/EnergyBadge'
 import type { MapLiveToast } from '@/lib/map-live-reviews'
@@ -12,7 +12,7 @@ interface MapLiveReviewToastProps {
   onOpen: (toast: MapLiveToast) => void
 }
 
-export function MapLiveReviewToast({ toast, onDismiss, onOpen }: MapLiveReviewToastProps) {
+export const MapLiveReviewToast = memo(function MapLiveReviewToast({ toast, onDismiss, onOpen }: MapLiveReviewToastProps) {
   useEffect(() => {
     if (!toast) return
     const timer = window.setTimeout(onDismiss, TOAST_MS)
@@ -53,4 +53,4 @@ export function MapLiveReviewToast({ toast, onDismiss, onOpen }: MapLiveReviewTo
       </button>
     </motion.div>
   )
-}
+})

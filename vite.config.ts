@@ -50,6 +50,12 @@ export default defineConfig(({ command }) => {
             if (normalizedId.includes('/@supabase/')) {
               return 'supabase'
             }
+            if (normalizedId.includes('/mapbox-gl/')) {
+              return 'mapbox-gl'
+            }
+            if (normalizedId.includes('/recharts/') || normalizedId.includes('/d3-')) {
+              return 'charts-vendor'
+            }
             if (
               normalizedId.includes('/node_modules/react/') ||
               normalizedId.includes('/node_modules/react-dom/') ||
@@ -97,6 +103,28 @@ export default defineConfig(({ command }) => {
                   options: {
                     maxRetentionTime: 24 * 60, // Retry for max 24 Hours
                   },
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'pulse-media',
+                expiration: {
+                  maxEntries: 80,
+                  maxAgeSeconds: 7 * 24 * 60 * 60,
+                },
+              },
+            },
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|webp|avif|gif)$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'pulse-images',
+                expiration: {
+                  maxEntries: 80,
+                  maxAgeSeconds: 7 * 24 * 60 * 60,
                 },
               },
             },

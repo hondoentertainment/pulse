@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { trackError } from '@/lib/analytics'
-import { AlertTriangleIcon, RefreshCwIcon } from 'lucide-react'
+import { WarningCircle, ArrowClockwise } from '@phosphor-icons/react'
 
 interface ErrorFallbackProps {
   error: Error
@@ -21,7 +21,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps)
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <Alert variant="destructive" className="mb-6">
-          <AlertTriangleIcon />
+          <WarningCircle size={16} weight="fill" />
           <AlertTitle>Pulse hit a problem</AlertTitle>
           <AlertDescription>
             Something went wrong while loading the app. You can try again. If this keeps happening, refresh the page or come back later.
@@ -36,7 +36,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps)
         </div>
 
         <Button onClick={resetErrorBoundary} className="w-full" variant="outline">
-          <RefreshCwIcon />
+          <ArrowClockwise size={16} weight="bold" />
           Try again
         </Button>
       </div>

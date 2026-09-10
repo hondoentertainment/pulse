@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
@@ -86,6 +86,10 @@ export function AppRoutes() {
     setStoryViewerOpen,
     setActiveTab, setSubPage,
   } = state
+  const [pulseDialogReady, setPulseDialogReady] = useState(false)
+  useEffect(() => {
+    if (createDialogOpen) setPulseDialogReady(true)
+  }, [createDialogOpen])
 
   // URL → app-state sync. MainTabRouter/SubPageRouter render from useAppState,
   // so without this a direct load / refresh of /discover, /events, etc. would
@@ -239,15 +243,17 @@ export function AppRoutes() {
         unreadNotifications={unreadNotificationCount}
       />
 
-      <Suspense fallback={null}>
-        <CreatePulseDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          venue={venueForPulse}
-          userLocation={userLocation ?? realtimeLocation ?? null}
-          onSubmit={handleSubmitPulse}
-        />
-      </Suspense>
+      {pulseDialogReady && (
+        <Suspense fallback={null}>
+          <CreatePulseDialog
+            open={createDialogOpen}
+            onClose={() => setCreateDialogOpen(false)}
+            venue={venueForPulse}
+            userLocation={userLocation ?? realtimeLocation ?? null}
+            onSubmit={handleSubmitPulse}
+          />
+        </Suspense>
+      )}
 
       <motion.button
         whileHover={{ scale: 1.05 }}
