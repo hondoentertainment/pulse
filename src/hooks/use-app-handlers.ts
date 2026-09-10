@@ -24,7 +24,9 @@ import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted
 import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import type { TabId } from '@/components/BottomNav'
+import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { getCreatePulseAuthRedirect } from '@/lib/guest-discovery'
 
 import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
@@ -48,7 +50,8 @@ function milesBetween(
 
 export function useAppHandlers() {
   const state = useAppState()
-  const { updateProfile } = useSupabaseAuth()
+  const navigate = useNavigate()
+  const { updateProfile, session, isPlaceholder } = useSupabaseAuth()
   const {
     venues,
     pulses,
@@ -74,6 +77,16 @@ export function useAppHandlers() {
   } = state
 
   const handleCreatePulse = useCallback((venueId: string) => {
+    const authRedirect = getCreatePulseAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect) {
+      toast.error('Sign in required', { description: 'Sign in to create a Pulse.' })
+      navigate(authRedirect)
+      return
+    }
+
     if (!venues || !currentUser || !pulses) return
     const venue = venues.find(v => v.id === venueId)
     if (!venue) return
@@ -86,7 +99,7 @@ export function useAppHandlers() {
     }
     setVenueForPulse(venue)
     setCreateDialogOpen(true)
-  }, [currentUser, pulses, setCreateDialogOpen, setVenueForPulse, venues])
+  }, [currentUser, isPlaceholder, navigate, pulses, session, setCreateDialogOpen, setVenueForPulse, venues])
 
   const handleSubmitPulse = useCallback(async (data: {
     energyRating: EnergyRating

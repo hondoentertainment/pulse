@@ -48,7 +48,7 @@ export function AuthGate() {
           </div>
           <h1 className="text-3xl font-bold">Welcome to Pulse</h1>
           <p className="text-sm text-muted-foreground">
-            Sign in to discover what's buzzing near you
+            Sign in to create pulses, post live reviews, or manage your venue
           </p>
         </div>
 

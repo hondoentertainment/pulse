@@ -202,6 +202,24 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
   return profile ?? undefined
 }
 
+/** Local browse identity so guests can reach map + venues without a session. */
+export const GUEST_BROWSE_USER_ID = 'guest-browse'
+
+export function createGuestBrowseUser(): User {
+  return {
+    id: GUEST_BROWSE_USER_ID,
+    username: 'guest',
+    friends: [],
+    favoriteVenues: [],
+    followedVenues: [],
+    createdAt: '1970-01-01T00:00:00.000Z',
+  }
+}
+
+export function resolveAppUser(profile: User | null | undefined): User {
+  return profile ?? createGuestBrowseUser()
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
   const [selectedMarketKeyRaw, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
@@ -233,13 +251,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const { profile: supabaseProfile } = useSupabaseAuth()
 
-  const [currentUser, setCurrentUser] = useState<User | undefined>(undefined)
+  const [currentUser, setCurrentUser] = useState<User | undefined>(() => createGuestBrowseUser())
   const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
   const hasTrackedVenueFallback = useRef(false)
 
-  // Bridge Supabase Profile -> Local State
+  // Bridge Supabase Profile -> Local State. Guests keep a browse identity
+  // so the map shell is not stuck on the loading gate without a session.
   useEffect(() => {
-    setCurrentUser(getCurrentUserFromProfile(supabaseProfile))
+    setCurrentUser(resolveAppUser(supabaseProfile))
   }, [supabaseProfile])
 
   const launchedCitiesRaw = import.meta.env.VITE_LAUNCHED_CITIES ?? ''
