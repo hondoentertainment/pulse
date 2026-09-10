@@ -1,26 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../_lib/supabase-server.js', () => ({
-  createUserClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => ({
-            is: () => ({
-              gte: () => ({
-                limit: async () => ({ data: [], error: null }),
-              }),
-            }),
-          }),
-        }),
-      }),
-      insert: () => ({
-        select: () => ({
-          single: async () => ({ data: { id: 'pulse-1' }, error: null }),
-        }),
-      }),
-    }),
-  }),
+  createUserClient: () => {
+    const chain: Record<string, unknown> = {}
+    chain.select = () => chain
+    chain.eq = () => chain
+    chain.is = () => chain
+    chain.gte = () => chain
+    chain.limit = async () => ({ data: [], error: null })
+    chain.maybeSingle = async () => ({ data: null, error: null })
+    chain.insert = () => chain
+    chain.single = async () => ({ data: { id: 'pulse-1' }, error: null })
+    return { from: () => chain }
+  },
 }))
 
 vi.mock('../../_lib/auth.js', () => ({

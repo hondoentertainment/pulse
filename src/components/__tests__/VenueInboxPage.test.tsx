@@ -60,9 +60,10 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Tonight’s reviews/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Tonight’s reviews/ })).toBeInTheDocument()
     expect(screen.getByText(/The Showbox · owner inbox/)).toBeInTheDocument()
-    expect(screen.getByText(/Empty state until claim \/ venue_staff verified/)).toBeInTheDocument()
+    expect(screen.getByText(/Claim needed/)).toBeInTheDocument()
+    expect(screen.getByText(/verified venue claim or a venue_staff row/)).toBeInTheDocument()
   })
 
   it('lists tonight reviews for a verified claimant', () => {
@@ -89,6 +90,24 @@ describe('VenueInboxPage', () => {
     expect(screen.getByText(/Live reviews/)).toBeInTheDocument()
     expect(screen.getByText(/Avg energy/)).toBeInTheDocument()
     expect(screen.getByText(/DJ just started/)).toBeInTheDocument()
+  })
+
+  it('lets a signed-in user submit a claim from the empty state', () => {
+    const onSubmitClaim = vi.fn()
+    render(
+      <VenueInboxPage
+        venue={makeVenue()}
+        pulses={[makePulse()]}
+        currentUser={makeUser()}
+        onBack={vi.fn()}
+        onSubmitClaim={onSubmitClaim}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText(/How are you connected/i), {
+      target: { value: 'I manage the door Friday nights' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Submit claim/i }))
+    expect(onSubmitClaim).toHaveBeenCalled()
   })
 
   it('calls onBack', () => {

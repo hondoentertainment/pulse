@@ -22,6 +22,7 @@ import { consume } from '../_lib/rate-limit.js'
 import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
 import { checkContent } from '../_lib/moderation.js'
 import { createUserClient } from '../_lib/supabase-server.js'
+import { resolvePostedLocationVerified } from '../_lib/location-proof.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
@@ -42,6 +43,8 @@ type PulseCreateBody = {
   crewId?: string | null
   kind?: PulseKind
   locationVerified?: boolean
+  lat?: number
+  lng?: number
 }
 
 const PULSE_TTL_MS = 90 * 60 * 1000
@@ -93,6 +96,8 @@ const validateBody = (
   }
 
   const locationVerified = body.locationVerified === true
+  const lat = typeof body.lat === 'number' && Number.isFinite(body.lat) ? body.lat : undefined
+  const lng = typeof body.lng === 'number' && Number.isFinite(body.lng) ? body.lng : undefined
 
   let crewId: string | null | undefined
   if (body.crewId !== undefined && body.crewId !== null) {
@@ -120,6 +125,8 @@ const validateBody = (
       crewId: crewId ?? null,
       kind,
       locationVerified,
+      lat,
+      lng,
     },
   }
 }
@@ -218,6 +225,31 @@ export default async function handler(
       fail(res, 429, 'venue_cooldown', 'Wait before posting another live review at this venue')
       return
     }
+
+    let locationVerified = validated.value.locationVerified === true
+    const userLocation =
+      validated.value.lat !== undefined && validated.value.lng !== undefined
+        ? { lat: validated.value.lat, lng: validated.value.lng }
+        : null
+    const { data: venueRow } = await client
+      .from('venues')
+      .select('location_lat, location_lng')
+      .eq('id', validated.value.venueId)
+      .maybeSingle()
+    const venueLocation =
+      venueRow &&
+      typeof venueRow.location_lat === 'number' &&
+      typeof venueRow.location_lng === 'number'
+        ? { lat: venueRow.location_lat, lng: venueRow.location_lng }
+        : null
+    const proof = resolvePostedLocationVerified({
+      clientVerified: validated.value.locationVerified,
+      userLocation,
+      venueLocation,
+    })
+    locationVerified = proof.locationVerified
+    pulseRow.location_verified = locationVerified
+
     const { data, error } = await client
       .from('pulses')
       .insert(pulseRow)

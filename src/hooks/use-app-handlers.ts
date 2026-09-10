@@ -29,6 +29,7 @@ import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
 import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
+import { getVenueDeepLink } from '@/lib/sharing'
 import { track } from '@/lib/observability/analytics'
 
 function milesBetween(
@@ -202,7 +203,16 @@ export function useAppHandlers() {
           : 'Location was unavailable, so this review is unmarked.',
       })
     }
-    toast.success('Live review posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
+    toast.success('Live review posted!', {
+      description: `Your vibe at ${venueForPulse.name} is live`,
+      action: {
+        label: 'Copy link',
+        onClick: () => {
+          const url = getVenueDeepLink(venueForPulse.id)
+          void navigator.clipboard?.writeText(url)
+        },
+      },
+    })
     announce(`Live review posted at ${venueForPulse.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: true, hashtagCount: data.hashtags?.length || 0 })

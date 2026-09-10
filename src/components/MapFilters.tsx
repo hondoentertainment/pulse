@@ -10,17 +10,15 @@ import { cn } from '@/lib/utils'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useVoiceFilter } from '@/hooks/use-voice-filter'
 import { AccessibilityFilter } from '@/components/filters/AccessibilityFilter'
-import type { AccessibilityFeature } from '@/lib/types'
+import {
+  type DistanceFilter,
+  type EnergyFilter,
+  type MapFiltersState,
+  type MapInventoryLayer,
+} from '@/lib/map-filters'
+import { SEATTLE_LAUNCH_NEIGHBORHOODS } from '@/lib/seattle-launch-venues'
 
-export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
-export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
-
-export interface MapFiltersState {
-  energyLevels: EnergyFilter[]
-  categories: string[]
-  maxDistance: DistanceFilter
-  accessibilityFeatures?: AccessibilityFeature[]
-}
+export type { DistanceFilter, EnergyFilter, MapFiltersState, MapInventoryLayer }
 
 function accessibilityFilterFlagOn(): boolean {
   try {
@@ -38,6 +36,7 @@ interface MapFiltersProps {
   filters: MapFiltersState
   onChange: (filters: MapFiltersState) => void
   availableCategories: string[]
+  availableNeighborhoods?: string[]
 }
 
 const ENERGY_LEVELS = [
@@ -55,7 +54,14 @@ const DISTANCE_OPTIONS_MILES = [
   { value: Infinity, labelMi: 'All', labelKm: 'All' }
 ]
 
-export function MapFilters({ filters, onChange, availableCategories }: MapFiltersProps) {
+export function MapFilters({
+  filters,
+  onChange,
+  availableCategories,
+  availableNeighborhoods = [...SEATTLE_LAUNCH_NEIGHBORHOODS],
+}: MapFiltersProps) {
+  const neighborhoods = filters.neighborhoods ?? []
+  const inventoryLayer: MapInventoryLayer = filters.inventoryLayer ?? 'curated'
   const [isOpen, setIsOpen] = useState(false)
   const [accessibilityOpen, setAccessibilityOpen] = useState(false)
   const { unitSystem } = useUnitPreference()
@@ -111,13 +117,24 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
       energyLevels: [],
       categories: [],
       maxDistance: Infinity,
+      neighborhoods: [],
+      inventoryLayer: 'curated',
       accessibilityFeatures: []
     })
+  }
+
+  const toggleNeighborhood = (name: string) => {
+    const next = neighborhoods.includes(name)
+      ? neighborhoods.filter((item) => item !== name)
+      : [...neighborhoods, name]
+    onChange({ ...filters, neighborhoods: next })
   }
 
   const activeFilterCount =
     filters.energyLevels.length +
     filters.categories.length +
+    neighborhoods.length +
+    (inventoryLayer === 'all' ? 1 : 0) +
     (filters.maxDistance !== Infinity ? 1 : 0) +
     selectedAccessibility.length
 
@@ -283,6 +300,75 @@ export function MapFilters({ filters, onChange, availableCategories }: MapFilter
                           </Button>
                         ))}
                       </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} weight="fill" className="text-[#00D1FF]" />
+                        <h4 className="font-semibold text-sm">Neighborhood</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={neighborhoods.length === 0 ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => onChange({ ...filters, neighborhoods: [] })}
+                          className={cn(
+                            'h-9 rounded-full',
+                            neighborhoods.length === 0 && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
+                          )}
+                        >
+                          All
+                        </Button>
+                        {availableNeighborhoods.map((name) => (
+                          <Button
+                            key={name}
+                            variant={neighborhoods.includes(name) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => toggleNeighborhood(name)}
+                            className={cn(
+                              'h-9 rounded-full',
+                              neighborhoods.includes(name) && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
+                            )}
+                          >
+                            {name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm">Catalog</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={inventoryLayer === 'curated' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => onChange({ ...filters, inventoryLayer: 'curated' })}
+                          className={cn(
+                            'h-9 rounded-full',
+                            inventoryLayer === 'curated' && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
+                          )}
+                        >
+                          Launch 33
+                        </Button>
+                        <Button
+                          variant={inventoryLayer === 'all' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => onChange({ ...filters, inventoryLayer: 'all' })}
+                          className={cn(
+                            'h-9 rounded-full',
+                            inventoryLayer === 'all' && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
+                          )}
+                        >
+                          All Seattle
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Launch 33 keeps curated-seed venues on top. All Seattle adds OSM nightlife.
+                      </p>
                     </div>
 
                     <Separator />

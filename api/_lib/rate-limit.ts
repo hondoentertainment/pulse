@@ -143,6 +143,8 @@ export const RATE_LIMITS = {
   pulse_create: { maxTokens: 10, refillRate: 10 / 3600, windowMs: 3_600_000 },
   // 3 pulse reports per hour per user.
   pulse_report: { maxTokens: 3, refillRate: 3 / 3600, windowMs: 3_600_000 },
+  // 5 venue claim submissions per hour per user.
+  venue_claim: { maxTokens: 5, refillRate: 5 / 3600, windowMs: 3_600_000 },
   // Generic write default — used when an endpoint forgets to pick a bucket.
   default_write: { maxTokens: 30, refillRate: 0.5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>
