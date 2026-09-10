@@ -40,7 +40,7 @@ describe('buildTrustGlance', () => {
     }))
     const glance = buildTrustGlance(makeVenue(), pulses, nowMs)
     expect(glance.verification).toBe('GPS ✓')
-    expect(glance.freshness).toMatch(/m ago$/)
+    expect(glance.freshness).toBe('1m ago')
     expect(glance.whySurging).toBe('Why surging: +8 reviews / 20m')
     expect(glance.line).toContain('GPS ✓')
     expect(glance.line).toContain('Why surging')

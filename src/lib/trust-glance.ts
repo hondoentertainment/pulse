@@ -4,7 +4,14 @@
  */
 
 import type { Pulse, Venue } from './types'
-import { formatTimeAgo } from './pulse-engine'
+function formatFreshness(dateString: string, nowMs: number): string {
+  const then = new Date(dateString).getTime()
+  const diffMins = Math.floor((nowMs - then) / 60000)
+  if (!Number.isFinite(diffMins) || diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
+  return `${Math.floor(diffMins / 1440)}d ago`
+}
 import {
   getVenueMapActivity,
   type VenueMapActivity,
@@ -58,9 +65,9 @@ export function buildTrustGlance(
   const resolved = activity ?? getVenueMapActivity(venue, pulses, nowMs)
   const latest = resolved.latest
   const freshness = latest
-    ? formatTimeAgo(latest.createdAt)
+    ? formatFreshness(latest.createdAt, nowMs)
     : venue.lastPulseAt
-      ? formatTimeAgo(venue.lastPulseAt)
+      ? formatFreshness(venue.lastPulseAt, nowMs)
       : 'No pulses yet'
   const locationVerified = latest?.locationVerified === true
   const verification: TrustGlance['verification'] = locationVerified ? 'GPS ✓' : 'Unverified'

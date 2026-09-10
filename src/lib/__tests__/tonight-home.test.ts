@@ -59,12 +59,13 @@ describe('buildTonightHome', () => {
       pulseScore: 40,
     })
     const now = new Date('2026-09-11T04:40:00.000Z')
+    const createdAt = new Date(now.getTime() - 8 * 60 * 1000).toISOString()
     const home = buildTonightHome({
       venues: [makeVenue(), barrio, chop],
       pulses: [
-        makePulse(),
-        makePulse({ id: 'p2', venueId: 'barrio', energyRating: 'buzzing' }),
-        makePulse({ id: 'p3', venueId: 'chop', energyRating: 'chill' }),
+        makePulse({ createdAt }),
+        makePulse({ id: 'p2', venueId: 'barrio', energyRating: 'buzzing', createdAt }),
+        makePulse({ id: 'p3', venueId: 'chop', energyRating: 'chill', createdAt }),
       ],
       userLocation: { lat: 47.614, lng: -122.32 },
       savedVenueIds: ['neumos'],
