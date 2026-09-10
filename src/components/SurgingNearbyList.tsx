@@ -20,12 +20,12 @@ export function SurgingNearbyList({
   const nearby = getSurgingNearbyVenues(venues, pulses, { userLocation })
 
   return (
-    <section aria-labelledby="surging-nearby-heading" className="space-y-3">
-      <h2 id="surging-nearby-heading" className="text-xl font-bold">
+    <section aria-labelledby="surging-nearby-heading" className="space-y-3.5">
+      <h2 id="surging-nearby-heading" className="text-base font-bold">
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
-        <p className="rounded-[18px] border border-white/10 bg-card/60 px-4 py-3.5 text-sm text-muted-foreground">
+        <p className="rounded-[18px] bg-[#17171C] p-3.5 text-sm text-muted-foreground">
           Quiet nearby — no live reviews in the last hour.
         </p>
       ) : (
@@ -39,19 +39,19 @@ export function SurgingNearbyList({
                 type="button"
                 aria-label={`Open ${venue.name}${activity.countLabel ? `, ${activity.countLabel}` : ''}`}
                 onClick={() => onVenueClick(venue)}
-                className="flex w-full items-start justify-between gap-3 rounded-[18px] border border-white/10 bg-card/80 px-4 py-3.5 text-left transition-colors hover:border-white/20"
+                className="flex w-full flex-col gap-2 rounded-[18px] bg-[#17171C] p-3.5 text-left transition-colors hover:bg-[#1C1C21]"
               >
-                <div className="min-w-0">
-                  <h3 className="truncate text-base font-bold text-foreground">{venue.name}</h3>
-                  {activity.countLabel && (
-                    <p className="mt-1 text-sm text-muted-foreground">{activity.countLabel}</p>
-                  )}
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="truncate text-[15px] font-semibold text-foreground">{venue.name}</h3>
+                  <EnergyBadge
+                    rating={energy}
+                    score={energy ? undefined : venue.pulseScore}
+                    className="shrink-0"
+                  />
                 </div>
-                <EnergyBadge
-                  rating={energy}
-                  score={energy ? undefined : venue.pulseScore}
-                  className="shrink-0"
-                />
+                {activity.countLabel && (
+                  <p className="text-xs text-muted-foreground">{activity.countLabel}</p>
+                )}
               </button>
             )
           })}

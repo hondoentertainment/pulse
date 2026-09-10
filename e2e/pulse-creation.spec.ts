@@ -27,11 +27,11 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
-    await expect(page.locator('text=/Live review/i').first()).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
       timeout: 5_000,
     })
   })
@@ -42,7 +42,7 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
     await createBtn.click()
 
     const caption = page.getByPlaceholder(/What's the vibe/i)
@@ -58,14 +58,15 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Post live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
     await createBtn.click()
 
-    const cancel = page.getByRole('button', { name: /^Cancel$/i })
-    await expect(cancel).toBeVisible({ timeout: 5_000 })
-    await cancel.click()
+    await expect(page.getByRole('heading', { name: /Post live review/i })).toBeVisible({
+      timeout: 5_000,
+    })
+    await page.keyboard.press('Escape')
 
-    await expect(page.getByRole('heading', { name: /Live review/i })).not.toBeVisible({
+    await expect(page.getByRole('heading', { name: /Post live review/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

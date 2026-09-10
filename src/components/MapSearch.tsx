@@ -18,9 +18,11 @@ interface MapSearchProps {
   venues: Venue[]
   onVenueSelect: (venue: Venue) => void
   userLocation: { lat: number; lng: number } | null
+  /** Hide voice search so the map tab matches the Figma search field. */
+  compact?: boolean
 }
 
-export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProps) {
+export function MapSearch({ venues, onVenueSelect, userLocation, compact = false }: MapSearchProps) {
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -210,7 +212,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : "Search venues or say 'show electric'"}
+          placeholder={isListening ? 'Listening...' : 'Search venues'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -219,8 +221,10 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            'pl-10 bg-background/70 backdrop-blur-sm border-border/80 h-11 focus:ring-2 focus:ring-accent transition-all shadow-none',
-            query ? 'pr-20' : 'pr-12',
+            'h-11 rounded-[18px] border-0 bg-[#17171C] pl-10 shadow-none focus:ring-2 focus:ring-primary/40',
+            compact
+              ? (query ? 'pr-12' : 'pr-4')
+              : (query ? 'pr-20' : 'pr-12'),
             isListening && 'ring-2 ring-accent animate-pulse'
           )}
         />
@@ -236,24 +240,26 @@ export function MapSearch({ venues, onVenueSelect, userLocation }: MapSearchProp
               <X size={16} weight="bold" />
             </Button>
           )}
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
-            className={cn(
-              'h-11 w-11 transition-colors',
-              isListening && 'bg-accent text-accent-foreground animate-pulse',
-              !isSupported && 'opacity-50 cursor-not-allowed'
-            )}
-            onClick={handleVoiceSearch}
-            disabled={!isSupported}
-          >
-            <Microphone
-              size={18}
-              weight={isListening ? 'fill' : 'bold'}
-              className={isListening ? 'animate-pulse' : ''}
-            />
-          </Button>
+          {!compact && (
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={isListening ? 'Stop voice search' : 'Start voice search'}
+              className={cn(
+                'h-11 w-11 transition-colors',
+                isListening && 'bg-accent text-accent-foreground animate-pulse',
+                !isSupported && 'opacity-50 cursor-not-allowed'
+              )}
+              onClick={handleVoiceSearch}
+              disabled={!isSupported}
+            >
+              <Microphone
+                size={18}
+                weight={isListening ? 'fill' : 'bold'}
+                className={isListening ? 'animate-pulse' : ''}
+              />
+            </Button>
+          )}
         </div>
       </div>
 

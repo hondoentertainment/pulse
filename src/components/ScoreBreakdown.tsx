@@ -8,9 +8,10 @@ import { cn } from '@/lib/utils'
 interface ScoreBreakdownProps {
   venue: Venue
   pulses: Pulse[]
+  inline?: boolean
 }
 
-export function ScoreBreakdown({ venue, pulses }: ScoreBreakdownProps) {
+export function ScoreBreakdown({ venue, pulses, inline = false }: ScoreBreakdownProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const recentPulses = pulses.filter(p => {
@@ -41,14 +42,17 @@ export function ScoreBreakdown({ venue, pulses }: ScoreBreakdownProps) {
   const avgEnergyLabel = avgEnergy >= 2.5 ? 'Electric' : avgEnergy >= 1.5 ? 'Buzzing' : avgEnergy >= 0.5 ? 'Chill' : 'Dead'
 
   return (
-    <div className="space-y-2">
+    <div className={inline ? 'min-w-0' : 'space-y-2'}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        className={cn(
+          'flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors group',
+          inline ? 'text-xs' : 'gap-2 text-sm',
+        )}
       >
-        <Info size={16} className="group-hover:text-accent transition-colors" />
-        <span className="font-medium tracking-wide">Why this score?</span>
-        {isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
+        {!inline && <Info size={16} className="group-hover:text-accent transition-colors" />}
+        <span className={inline ? 'font-normal' : 'font-medium tracking-wide'}>Why this score?</span>
+        {!inline && (isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />)}
       </button>
 
       <AnimatePresence>

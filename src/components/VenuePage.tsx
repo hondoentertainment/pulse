@@ -4,24 +4,21 @@ import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
-import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
+import { MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
-import { EnergyBadge } from '@/components/EnergyBadge'
 import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
-import { VenueDetailHero } from './VenueDetailHero'
 import type { ContentReport } from '@/lib/content-moderation'
 // Phase 2: Venue star moment
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
@@ -35,7 +32,7 @@ import { trackEvent } from '@/lib/analytics'
 import { track } from '@/lib/observability/analytics'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getLiveNowReviews } from '@/lib/live-reviews'
+import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate } from 'react-router-dom'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
@@ -51,7 +48,6 @@ import {
   type LiveReport,
 } from '@/lib/live-intelligence'
 import { seedVenueOperatorStatus } from '@/lib/venue-operator-live'
-import { useCurrentTime } from '@/hooks/use-current-time'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
 import { queryClient } from '@/lib/query-client'
@@ -102,7 +98,7 @@ export function VenuePage({
   userLocation,
   unitSystem,
   locationName,
-  isTracking,
+  isTracking: _isTracking,
   hasRealtimeLocation,
   isFavorite,
   isFollowed,
@@ -130,9 +126,7 @@ export function VenuePage({
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
   const [arrivalTick, setArrivalTick] = useState(0)
-  const currentTime = useCurrentTime()
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
-  const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
 
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
@@ -323,75 +317,109 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
-      <VenueDetailHero
-        venue={venue}
-        mediaUrl={heroMediaUrl}
-        isFavorite={isFavorite}
-        isFollowed={isFollowed}
-        onBack={onBack}
-        onShare={handleShare}
-        onToggleFavorite={onToggleFavorite}
-        onToggleFollow={onToggleFollow}
-      />
-
-      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              aria-label="Back to Map"
-              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-[#00D1FF] hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
-            >
-              <ArrowLeft size={20} />
-              Map
-            </button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{venue.name}</h1>
-              {venue.pulseScore >= 25 && getContextualLabel(venue) && (
-                <p className="text-sm text-accent font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
-              )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                {venue.category && (
-                  <span className="font-mono uppercase">{venue.category}</span>
-                )}
-                {distance !== undefined && (
-                  <>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <MapPin size={14} weight="fill" />
-                      <span>{formatDistance(distance, unitSystem)} away</span>
-                    </div>
-                  </>
-                )}
+    <div className="min-h-screen bg-[#0B0B0E] pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mx-auto max-w-2xl space-y-3.5 px-5 pb-6 pt-8"
+      >
+        <div>
+          <button
+            onClick={onBack}
+            aria-label="Back to Map"
+            className="mb-3 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={18} />
+            Map
+          </button>
+          <h1 className="text-[22px] font-bold text-white">{venue.name}</h1>
+          {venueStatusLine(venue) && (
+            <p className="mt-1 text-[13px] text-muted-foreground">{venueStatusLine(venue)}</p>
+          )}
+        </div>
+        {(() => {
+          const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
+          const delta = recent10m * 8
+          return (
+            <Card className="rounded-[18px] border-0 bg-[#17171C] p-3.5 shadow-none">
+              <div className="flex items-center gap-3.5">
+                <p
+                  className="text-[52px] font-bold tabular-nums leading-none"
+                  style={{ color: energyScoreColor(venue.pulseScore) }}
+                >
+                  {venue.pulseScore}
+                </p>
+                <div className="min-w-0">
+                  <p className="text-[17px] font-semibold text-white">{getEnergyLabel(venue.pulseScore)}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                    {delta > 0 && <span>+{delta} / 10m ·</span>}
+                    <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} inline />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
+            </Card>
+          )
+        })()}
+
+        <Button
+          onClick={onCreatePulse}
+          className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90"
+        >
+          Check in · Create live review
+        </Button>
+
+        <LiveNowStrip
+          venueId={venue.id}
+          pulses={venuePulses}
+          onSelect={setSelectedLiveReview}
+        />
+
+        <details className="rounded-[18px] bg-[#17171C] p-3.5">
+          <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+            More venue details
+          </summary>
+          <div className="mt-4 space-y-6">
+            {venue.pulseScore >= 25 && getContextualLabel(venue) && (
+              <p className="text-sm font-medium italic text-accent">{getContextualLabel(venue)}</p>
+            )}
+            {distance !== undefined && (
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                <MapPin size={14} weight="fill" />
+                {formatDistance(distance, unitSystem)} away
+              </p>
+            )}
+            {locationName && (
+              <p className="text-xs text-muted-foreground">
+                {locationName}
+                {hasRealtimeLocation ? ' · LIVE' : ''}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
               {onToggleFollow && (
                 <button
                   onClick={onToggleFollow}
-                  aria-label={isFollowed ? "Unfollow venue" : "Follow venue"}
-                  className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
-                  title={isFollowed ? "Unfollow" : "Follow"}
+                  aria-label={isFollowed ? 'Unfollow venue' : 'Follow venue'}
+                  className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
                 >
                   <HeartStraight
                     size={24}
-                    weight={isFollowed ? "fill" : "regular"}
-                    className={isFollowed ? "text-primary" : "text-muted-foreground"}
+                    weight={isFollowed ? 'fill' : 'regular'}
+                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
                   />
                 </button>
               )}
               <button
                 onClick={handleShare}
                 aria-label="Share venue"
-                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
+                className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
               >
                 <ShareNetwork size={24} className="text-muted-foreground" />
               </button>
               <button
                 onClick={onToggleFavorite}
-                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
               >
                 <Star
                   size={24}
@@ -399,69 +427,8 @@ export function VenuePage({
                   className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
                 />
               </button>
-              <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
             </div>
-          </div>
-          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
-            {locationName && (
-              <div className="flex items-center gap-1.5">
-                <MapPin size={12} weight="fill" className={cn(
-                  "transition-colors",
-                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
-                )} />
-                <span>{locationName}</span>
-                {hasRealtimeLocation && (
-                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
-                    LIVE
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="flex items-center gap-1.5">
-              <Clock size={12} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-2xl mx-auto px-4 py-6 space-y-6"
-      >
         <WorthGoingSummary summary={worthGoing} />
-
-        <Card className="rounded-[20px] border-white/10 bg-card/90 p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p
-                className="text-6xl font-bold tabular-nums leading-none"
-                style={{ color: venue.pulseScore >= 75 ? '#FF2D78' : venue.pulseScore >= 50 ? '#FF8A00' : '#00D1FF' }}
-              >
-                {venue.pulseScore}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <EnergyBadge score={venue.pulseScore} filled={false} />
-                <span>{getEnergyLabel(venue.pulseScore)}</span>
-              </div>
-            </div>
-            {(() => {
-              const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
-              const delta = recent10m * 8
-              if (delta <= 0) return null
-              return (
-                <span className="rounded-full border border-[#FF2D78]/70 px-2.5 py-1 text-xs font-semibold text-[#FF2D78]">
-                  +{delta} / 10m
-                </span>
-              )
-            })()}
-          </div>
-          <div className="mt-4">
-            <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
-          </div>
-        </Card>
 
         {showArrivalPrompt && arrivalWatch && (
           <ArrivalPrompt
@@ -597,23 +564,11 @@ export function VenuePage({
           currentScore={venue.pulseScore}
         />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">Live Energy</h2>
-            {venue.lastPulseAt && (
-              <p className="text-sm text-muted-foreground">
-                Last pulse {formatTimeAgo(venue.lastPulseAt)}
-              </p>
-            )}
-          </div>
-          <Button
-            onClick={onCreatePulse}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus size={20} weight="bold" className="mr-2" />
-            Post live review
-          </Button>
-        </div>
+        {venue.lastPulseAt && (
+          <p className="text-sm text-muted-foreground">
+            Last pulse {formatTimeAgo(venue.lastPulseAt)}
+          </p>
+        )}
 
         {onStartCrewCheckIn && (
           <Button
@@ -694,12 +649,6 @@ export function VenuePage({
 
         <Separator />
 
-        <LiveNowStrip
-          venueId={venue.id}
-          pulses={venuePulses}
-          onSelect={setSelectedLiveReview}
-        />
-
         <h2 className="text-xl font-bold">History</h2>
 
         {venuePulses.length === 0 ? (
@@ -734,6 +683,8 @@ export function VenuePage({
             ) : null}
           </div>
         )}
+          </div>
+        </details>
       </motion.div>
 
       <Dialog open={Boolean(selectedLiveReview)} onOpenChange={(open) => { if (!open) setSelectedLiveReview(null) }}>

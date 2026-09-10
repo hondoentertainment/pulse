@@ -6,7 +6,7 @@
  * can only be created against venues already in the visible catalog.
  */
 
-import { CHECK_IN_RADIUS_MILES, COOLDOWN_MINUTES, type EnergyRating, type Pulse, type PulseKind } from './types'
+import { CHECK_IN_RADIUS_MILES, COOLDOWN_MINUTES, ENERGY_CONFIG, type EnergyRating, type Pulse, type PulseKind, type Venue } from './types'
 import { canPostPulse, calculateDistance, formatTimeAgo, isWithinRadius } from './pulse-engine'
 import type { VenueClaim } from './venue-owner'
 
@@ -14,6 +14,7 @@ export const LIVE_REVIEW_CAPTION_MIN = 1
 export const LIVE_REVIEW_CAPTION_MAX = 280
 export const LIVE_NOW_WINDOW_MINUTES = 90
 export const LIVE_HOUR_WINDOW_MINUTES = 60
+export const LIVE_REVIEWS_LAST_HOUR_MINUTES = LIVE_HOUR_WINDOW_MINUTES
 export const LIVE_REVIEW_COOLDOWN_MINUTES = COOLDOWN_MINUTES
 
 export interface LocationProof {
@@ -145,7 +146,33 @@ export function formatLiveReviewsLastHour(count: number): string {
 }
 
 export function relativeReviewTime(createdAt: string): string {
-  return formatTimeAgo(createdAt)
+  return formatTimeAgo(createdAt).replace(/\s+ago$/, '')
+}
+
+/** 0–100 score from energy pills (Dead 0 · Electric 100). */
+export function averageEnergyScore(pulses: Array<{ energyRating: EnergyRating }>): number {
+  if (pulses.length === 0) return 0
+  const sum = pulses.reduce((acc, pulse) => acc + ENERGY_CONFIG[pulse.energyRating].value, 0)
+  return Math.round((sum / pulses.length) * (100 / 3))
+}
+
+export function venueStatusLine(venue: Pick<Venue, 'neighborhood' | 'city' | 'hours'>): string {
+  const place = venue.neighborhood || venue.city
+  const hours = venue.hours
+  let status = ''
+  if (hours) {
+    const day = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+    const today = hours[day as keyof typeof hours]
+    if (today && today !== 'Closed') status = 'Open now'
+    else if (today === 'Closed') status = 'Closed'
+  }
+  return [place, status].filter(Boolean).join(' · ')
+}
+
+export function energyScoreColor(score: number): string {
+  if (score >= 75) return ENERGY_CONFIG.electric.color
+  if (score >= 50) return ENERGY_CONFIG.buzzing.color
+  return ENERGY_CONFIG.chill.color
 }
 
 /** Tonight starts at 16:00 local. If it is before 16:00, use yesterday 16:00. */

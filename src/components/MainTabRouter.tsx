@@ -1,10 +1,13 @@
-import { lazy, Suspense, useCallback, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import type { Venue } from '@/lib/types'
+import type { EnergyFilter } from '@/components/MapFilters'
+import { MapSearch } from '@/components/MapSearch'
+import { MapEnergyPills } from '@/components/MapEnergyPills'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -89,6 +92,9 @@ export function MainTabRouter() {
     [pulsesWithUsers, visibleVenueIds]
   )
 
+  const [mapEnergyLevels, setMapEnergyLevels] = useState<EnergyFilter[]>([])
+  const [mapNearMe, setMapNearMe] = useState(false)
+
   if (!venues || !currentUser) return null
 
   return (
@@ -144,12 +150,30 @@ export function MainTabRouter() {
         )}
 
         {activeTab === 'map' && (
-          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-4 px-4 pb-6 pt-6">
+          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-3.5 px-5 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-8">
             <header>
-              <h1 id="map-heading" className="text-3xl font-bold tracking-tight">Pulse</h1>
+              <h1 id="map-heading" className="text-[28px] font-bold tracking-tight text-white">Pulse</h1>
               <p className="mt-1 text-sm text-muted-foreground">Where the energy is — right now</p>
             </header>
-            <div className="h-[42vh] min-h-[220px] overflow-hidden rounded-[20px] border border-white/10 bg-[#101014]" role="region" aria-labelledby="map-heading">
+            <MapSearch
+              venues={visibleVenues}
+              onVenueSelect={handleVenueClick}
+              userLocation={userLocation}
+              compact
+            />
+            <MapEnergyPills
+              energyLevels={mapEnergyLevels}
+              nearMeActive={mapNearMe}
+              onToggleEnergy={(level) => {
+                setMapEnergyLevels((current) => (
+                  current.includes(level)
+                    ? current.filter((item) => item !== level)
+                    : [...current, level]
+                ))
+              }}
+              onToggleNearMe={() => setMapNearMe((current) => !current)}
+            />
+            <div className="h-[300px] overflow-hidden rounded-[20px] bg-[#12141A]" role="region" aria-labelledby="map-heading">
               <InteractiveMap
                 venues={visibleVenues}
                 userLocation={userLocation}
@@ -158,6 +182,11 @@ export function MainTabRouter() {
                 locationAccuracy={realtimeLocation?.accuracy}
                 locationHeading={realtimeLocation?.heading}
                 pulses={visiblePulses}
+                chrome="heatmap"
+                energyLevels={mapEnergyLevels}
+                onEnergyLevelsChange={setMapEnergyLevels}
+                nearMe={mapNearMe}
+                onNearMeChange={setMapNearMe}
               />
             </div>
             <SurgingNearbyList

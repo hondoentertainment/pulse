@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { EnergySlider } from './EnergySlider'
 import { EnergyPills } from './EnergyPills'
 import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext } from '@/lib/types'
-import { X, VideoCamera, CheckCircle, Hash, ImageSquare } from '@phosphor-icons/react'
+import { X, CheckCircle, Hash } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
@@ -298,25 +298,27 @@ export function CreatePulseDialog({
     }
   }
 
+  const photoCount = Object.values(energyPhotos).filter(Boolean).length
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">
-            Live review
+      <DialogContent
+        fullscreen
+        className="flex flex-col gap-5 overflow-y-auto bg-[#0B0B0E]"
+      >
+        <DialogHeader className="gap-1.5 text-left">
+          <DialogTitle className="text-[22px] font-bold text-white">
+            Post live review
           </DialogTitle>
-          <DialogDescription>
-            {venue
-              ? `${venue.name} · energy + a short on-site note`
-              : 'Share the current energy, add a caption, and optional photos.'}
+          <DialogDescription className="text-sm text-muted-foreground">
+            What’s the vibe right now?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-3.5 py-1">
           <div>
-            <label className="mb-3 block text-sm font-medium">Energy</label>
             <EnergyPills value={energyRating} onChange={setEnergyRating} />
-            <div className="sr-only">
+            <div className="hidden">
               <EnergySlider
                 value={energyRating}
                 onChange={setEnergyRating}
@@ -327,33 +329,52 @@ export function CreatePulseDialog({
             </div>
           </div>
 
+          <div className="relative rounded-[18px] bg-[#17171C] p-3.5">
+            <label htmlFor="create-pulse-caption" className="sr-only">
+              Caption
+            </label>
+            <Textarea
+              id="create-pulse-caption"
+              placeholder="What's the vibe right now?"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value.slice(0, LIVE_REVIEW_CAPTION_MAX))}
+              maxLength={LIVE_REVIEW_CAPTION_MAX}
+              rows={3}
+              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[15px] shadow-none focus-visible:ring-0"
+              aria-required="true"
+              aria-describedby="create-pulse-caption-count create-pulse-location-proof"
+            />
+            <p id="create-pulse-caption-count" className="mt-2 text-[11px] text-muted-foreground">
+              {caption.length} / {LIVE_REVIEW_CAPTION_MAX}
+            </p>
+          </div>
+
           {video && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Video</label>
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="relative rounded-lg overflow-hidden bg-secondary aspect-video"
+                className="relative aspect-video overflow-hidden rounded-[18px] bg-secondary"
               >
                 <video
                   src={video}
                   controls
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 >
                   Your browser does not support the video tag.
                 </video>
                 <button
                   onClick={removeVideo}
                   aria-label="Remove video"
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
+                  className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 hover:bg-black transition-colors"
                 >
                   <X size={16} weight="bold" className="text-white" />
                 </button>
-                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
+                <div className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 font-mono text-xs text-white">
                   {Math.round(videoDuration)}s
                 </div>
                 {compressedSize > 0 && originalSize > 0 && (
-                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono flex items-center gap-1">
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 font-mono text-xs text-white">
                     <CheckCircle size={12} weight="fill" className="text-accent" />
                     {formatFileSize(compressedSize)}
                   </div>
@@ -378,7 +399,7 @@ export function CreatePulseDialog({
           )}
 
           {!video && !isCompressing && (
-            <div className="space-y-2">
+            <div>
               <input
                 ref={videoInputRef}
                 type="file"
@@ -390,131 +411,117 @@ export function CreatePulseDialog({
               <button
                 type="button"
                 onClick={() => {
-                  const photoCount = Object.values(energyPhotos).filter(Boolean).length
                   if (photoCount < 3) {
                     handlePhotoUpload(energyRating)
                     return
                   }
                   videoInputRef.current?.click()
                 }}
-                className="flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-white/20 bg-[#1C1C1E] px-4 py-8 text-center text-sm text-muted-foreground transition-colors hover:border-white/35"
+                className="flex min-h-[96px] w-full flex-col items-center justify-center gap-2 rounded-[18px] border-[1.5px] border-dashed border-primary/50 bg-[#17171C] px-3.5 py-7 text-center transition-colors hover:border-primary/80"
               >
-                <span className="flex items-center gap-2 font-medium text-foreground/80">
-                  <ImageSquare size={20} />
-                  <VideoCamera size={20} />
-                </span>
-                Add up to 3 photos or a 30s video
+                {photoCount > 0 ? (
+                  <>
+                    <p className="text-sm font-semibold text-white">
+                      {photoCount} photo{photoCount === 1 ? '' : 's'} added
+                    </p>
+                    <p className="text-xs text-muted-foreground">Tap to add another · shows in Live now</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-white">Add photo (optional)</p>
+                    <p className="text-xs text-muted-foreground">Shows in Live now</p>
+                  </>
+                )}
               </button>
-              <label htmlFor="video-upload" className="block">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  asChild
-                >
-                  <span>
-                    <VideoCamera size={20} weight="fill" className="mr-2" />
-                    Add Video (max 30s)
-                  </span>
-                </Button>
-              </label>
             </div>
           )}
 
-          <div className="space-y-2">
-            <label htmlFor="create-pulse-caption" className="text-sm font-medium">
-              Caption <span className="text-destructive">*</span>
-            </label>
-            <Textarea
-              id="create-pulse-caption"
-              placeholder="What's the vibe right now?"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value.slice(0, LIVE_REVIEW_CAPTION_MAX))}
-              maxLength={LIVE_REVIEW_CAPTION_MAX}
-              rows={3}
-              className="resize-none"
-              aria-required="true"
-              aria-describedby="create-pulse-caption-count create-pulse-location-proof"
-            />
-            <p id="create-pulse-caption-count" className="text-xs text-muted-foreground text-right">
-              {caption.length}/{LIVE_REVIEW_CAPTION_MAX}
-            </p>
-            <p id="create-pulse-location-proof" className="text-xs text-muted-foreground">
-              {locationProof.reason === 'verified' && 'Near-venue check-in confirmed.'}
-              {locationProof.reason === 'outside_radius' && 'You look outside the check-in radius — this will post as unverified.'}
-              {locationProof.reason === 'location_unavailable' && 'Location off — you can still post, marked unverified.'}
-            </p>
+          <div id="create-pulse-location-proof" className="flex items-center gap-2">
+            {locationProof.reason === 'verified' ? (
+              <>
+                <span className="inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
+                  Near venue ✓
+                </span>
+                <span className="text-xs text-muted-foreground">Location verified</span>
+              </>
+            ) : (
+              <>
+                <span className="inline-flex items-center rounded-full border border-[#40404D] bg-[#1F1F24] px-3 py-1.5 text-xs font-semibold text-[#9E9EAD]">
+                  Unverified
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {locationProof.reason === 'outside_radius'
+                    ? 'Outside check-in radius — will post unverified.'
+                    : 'Location off — you can still post, marked unverified.'}
+                </span>
+              </>
+            )}
           </div>
 
           {suggestedGroups.length > 0 && (
-            <div className="space-y-3">
-              {suggestedGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Hash size={14} weight="bold" className="text-muted-foreground" />
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {group.label}
-                    </label>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.hashtags.map((hashtag) => {
-                      const isSelected = selectedHashtags.includes(hashtag.name)
-                      const isSeeded = hashtag.seeded
-                      
-                      return (
-                        <motion.button
-                          key={hashtag.id}
-                          type="button"
-                          onClick={() => toggleHashtag(hashtag.name)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Badge
-                            variant={isSelected ? "default" : "outline"}
-                            className={`cursor-pointer transition-all ${
-                              isSelected 
-                                ? 'bg-primary text-primary-foreground border-primary' 
-                                : 'hover:border-primary/50'
-                            } ${
-                              isSeeded && !isSelected ? 'border-dashed' : ''
-                            }`}
+            <details className="rounded-[18px] bg-[#17171C] p-3.5">
+              <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+                Hashtags (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                {suggestedGroups.map((group, groupIndex) => (
+                  <div key={groupIndex} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Hash size={14} weight="bold" className="text-muted-foreground" />
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {group.label}
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.hashtags.map((hashtag) => {
+                        const isSelected = selectedHashtags.includes(hashtag.name)
+                        const isSeeded = hashtag.seeded
+
+                        return (
+                          <motion.button
+                            key={hashtag.id}
+                            type="button"
+                            onClick={() => toggleHashtag(hashtag.name)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                           >
-                            <span className="mr-1">{hashtag.emoji}</span>
-                            #{hashtag.name}
-                          </Badge>
-                        </motion.button>
-                      )
-                    })}
+                            <Badge
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'hover:border-primary/50'
+                              } ${
+                                isSeeded && !isSelected ? 'border-dashed' : ''
+                              }`}
+                            >
+                              <span className="mr-1">{hashtag.emoji}</span>
+                              #{hashtag.name}
+                            </Badge>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {selectedHashtags.length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedHashtags.length}/5 hashtags selected
-                  </p>
-                </div>
-              )}
-            </div>
+                ))}
+                {selectedHashtags.length > 0 && (
+                  <div className="border-t border-border pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {selectedHashtags.length}/5 hashtags selected
+                    </p>
+                  </div>
+                )}
+              </div>
+            </details>
           )}
 
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 rounded-full bg-primary hover:bg-primary/90"
-              onClick={handleSubmit}
-              disabled={isSubmitting || isCompressing || caption.trim().length === 0}
-            >
-              {isSubmitting ? 'Posting...' : 'Post live review'}
-            </Button>
-          </div>
+          <Button
+            className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90 disabled:bg-primary disabled:opacity-60"
+            onClick={handleSubmit}
+            disabled={isSubmitting || isCompressing || caption.trim().length === 0}
+          >
+            {isSubmitting ? 'Posting...' : 'Post live review'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

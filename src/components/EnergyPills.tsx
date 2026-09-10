@@ -21,14 +21,12 @@ export function EnergyPills({ value, onChange }: EnergyPillsProps) {
             onClick={() => onChange(level)}
             aria-pressed={selected}
             className={cn(
-              'min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition-colors touch-manipulation',
-              selected ? 'text-white' : 'bg-transparent',
+              'min-h-11 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors touch-manipulation',
+              selected
+                ? 'border border-transparent text-white'
+                : 'border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD]',
             )}
-            style={{
-              borderColor: config.color,
-              color: selected ? '#fff' : config.color,
-              backgroundColor: selected ? config.color : 'transparent',
-            }}
+            style={selected ? { backgroundColor: config.color } : undefined}
           >
             {config.label}
           </button>

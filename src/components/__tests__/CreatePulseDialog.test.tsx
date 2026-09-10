@@ -129,10 +129,10 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Live review/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Post live review/)).not.toBeInTheDocument()
   })
 
-  it('renders venue name in title when open', () => {
+  it('renders Figma create copy when open', () => {
     render(
       <CreatePulseDialog
         open
@@ -141,8 +141,10 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Live review/)).toBeInTheDocument()
-    expect(screen.getByText(/The Buzzy Bar · energy \+ a short on-site note/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Post live review/ })).toBeInTheDocument()
+    expect(screen.getByText(/the vibe right now/i)).toBeInTheDocument()
+    expect(screen.getByText('Add photo (optional)')).toBeInTheDocument()
+    expect(screen.getByText('Shows in Live now')).toBeInTheDocument()
   })
 
   it('fills caption and enforces 280 char cap', () => {
@@ -152,7 +154,7 @@ describe('CreatePulseDialog', () => {
     const textarea = screen.getByPlaceholderText(/What's the vibe/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'Amazing night!' } })
     expect(textarea.value).toBe('Amazing night!')
-    expect(screen.getByText(/14\/280/)).toBeInTheDocument()
+    expect(screen.getByText(/14 \/ 280/)).toBeInTheDocument()
 
     const long = 'a'.repeat(320)
     fireEvent.change(textarea, { target: { value: long } })
@@ -228,7 +230,7 @@ describe('CreatePulseDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('Cancel button calls onClose without submitting', () => {
+  it('Close button calls onClose without submitting', () => {
     const onClose = vi.fn()
     const onSubmit = vi.fn()
     render(
@@ -239,7 +241,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Close$/i }))
     expect(onClose).toHaveBeenCalled()
     expect(onSubmit).not.toHaveBeenCalled()
   })
