@@ -21,7 +21,9 @@ import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
 import { VenueInboxRoute } from '@/components/VenueInboxRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
 
 // ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
@@ -56,6 +58,10 @@ const VenueMetadataRoute = lazy(() =>
  * parse them.
  *
  * **Mounting:** `src/App.tsx` → `VenueApp` always mounts this router.
+ *
+ * **Guest browse:** map + venues are public after onboarding. AuthGate is
+ * only the `/auth` route for write actions (Create Pulse, live reviews,
+ * inbox, claims) — it must not replace the discovery shell.
  *
  * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
  * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
@@ -131,8 +137,27 @@ export function AppRoutes() {
     )
   }
 
-  // ── Auth gate (only when real Supabase credentials are configured) ──
-  if (!isPlaceholder && !session && !authLoading && hasCompletedOnboarding) {
+  // Sign-in is opt-in for write actions. Do not replace map + venues.
+  if (pathname === AUTH_PATH) {
+    if (authLoading) {
+      return <PageSkeleton />
+    }
+    if (isPlaceholder || session) {
+      return <Navigate to="/" replace />
+    }
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <AuthGate />
+      </Suspense>
+    )
+  }
+
+  if (shouldBlockDiscoveryForAuth({
+    isPlaceholder,
+    hasSession: Boolean(session),
+    authLoading,
+    hasCompletedOnboarding: Boolean(hasCompletedOnboarding),
+  })) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <AuthGate />
@@ -185,7 +210,14 @@ export function AppRoutes() {
       <Routes>
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
-        <Route path="/venue/:venueId/inbox" element={<VenueInboxRoute />} />
+        <Route
+          path="/venue/:venueId/inbox"
+          element={(
+            <ProtectedRoute>
+              <VenueInboxRoute />
+            </ProtectedRoute>
+          )}
+        />
 
         {/* Admin-only: structured venue metadata editor. Non-admins get a 403
             rendered by VenueMetadataRoute itself. */}
@@ -256,6 +288,8 @@ export function AppRoutes() {
       )}
 
       <motion.button
+        type="button"
+        aria-label="Create Pulse"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {

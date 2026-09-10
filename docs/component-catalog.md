@@ -17,7 +17,7 @@ The nightlife discovery experience.
 ```
 AppRoutes (React Router)
 ├── OnboardingFlow (first launch)
-├── AuthGate (Supabase sign-in)
+├── AuthGate (`/auth` only — create / reviews / inbox / claims)
 ├── Main tabs via MainTabRouter
 │     trending | discover | map | notifications | profile
 ├── SubPageRouter (secondary pages)
@@ -35,7 +35,7 @@ AppRoutes (React Router)
 | `BottomNav` | `BottomNav.tsx` | 5-tab primary navigation |
 | `AppHeader` | `AppHeader.tsx` | Location/market header |
 | `OnboardingFlow` | `OnboardingFlow.tsx` | First-run preferences |
-| `AuthGate` | `AuthGate.tsx` | Supabase auth gate |
+| `AuthGate` | `AuthGate.tsx` | Sign-in for write actions (`/auth`) |
 | `ProtectedRoute` | `ProtectedRoute.tsx` | Generic React Router auth guard |
 | `PageSkeleton` | `PageSkeleton.tsx` | Loading gate |
 
@@ -72,6 +72,7 @@ AppRoutes (React Router)
 | Path | Component |
 |------|-----------|
 | `/` | Redirect to active tab |
+| `/auth` | `AuthGate` (guest create / reviews / inbox / claims) |
 | `/discover`, `/map`, `/trending`, `/notifications`, `/profile` | Tab views |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
 | `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` |

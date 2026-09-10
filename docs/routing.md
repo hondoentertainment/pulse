@@ -47,6 +47,7 @@ How users move through Pulse. The app is venue + map only.
 
 | Path | Component |
 |------|-----------|
+| `/auth` | `AuthGate` (write actions only — not discovery) |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
 | `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` (read-only tonight’s live reviews) |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
@@ -90,10 +91,12 @@ Prefer URL-driven navigation for production (shareable links, deep links).
 
 ## Auth gates
 
+Map + venue browse is public after onboarding. Auth does **not** wall discovery.
+
 | Component | Behavior |
 |-----------|----------|
-| `AuthGate` | Supabase OAuth / magic link |
-| `ProtectedRoute` | React Router wrapper — redirects unauthenticated |
+| `AuthGate` | `/auth` only — Create Pulse, live reviews, inbox, claims |
+| `ProtectedRoute` | React Router wrapper — redirects unauthenticated users to `/auth` |
 | `OnboardingFlow` | First-run wizard before main shell |
 
 E2E tests bypass auth with `VITE_E2E_AUTH_BYPASS=true`.
