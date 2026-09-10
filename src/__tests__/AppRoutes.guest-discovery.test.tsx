@@ -54,11 +54,17 @@ vi.mock('framer-motion', () => {
   }
   return {
     motion: {
-      div: ({ children, ...props }: any) => <div {...strip(props)}>{children}</div>,
-      button: ({ children, ...props }: any) => <button {...strip(props)}>{children}</button>,
-      span: ({ children, ...props }: any) => <span {...strip(props)}>{children}</span>,
+      div: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) => (
+        <div {...strip(props)}>{children}</div>
+      ),
+      button: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) => (
+        <button {...strip(props)}>{children}</button>
+      ),
+      span: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) => (
+        <span {...strip(props)}>{children}</span>
+      ),
     },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   }
 })
 
