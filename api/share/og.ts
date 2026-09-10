@@ -33,7 +33,7 @@ export default async function handler(
   const venueId = Array.isArray(raw) ? raw[0] : raw
   let title = 'Pulse'
   let energyLine = 'Live reviews on Pulse'
-  let caption = 'I’m here · open map'
+  const caption = 'I’m here · open map'
 
   if (venueId) {
     try {
