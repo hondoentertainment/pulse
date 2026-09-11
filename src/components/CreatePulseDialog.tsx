@@ -460,7 +460,7 @@ export function CreatePulseDialog({
                 ) : (
                   <>
                     <p className="text-sm font-semibold text-foreground">Add photo (optional)</p>
-                    <p className="text-xs text-muted-foreground">Photo optional · draft never lost</p>
+                    <p className="text-xs text-muted-foreground">Shows in Live now</p>
                   </>
                 )}
               </button>
