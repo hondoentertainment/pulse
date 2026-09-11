@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
-import { buildTrustGlance, formatWhySurging } from '../trust-glance'
+import { buildTrustGlance, formatWhySurging, shouldShowMapTrustHover } from '../trust-glance'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {
@@ -62,6 +62,14 @@ describe('buildTrustGlance', () => {
     expect(glance.verification).toBe('Unverified')
     expect(glance.whySurging).toBe('Soft signal')
     expect(glance.line).toContain('Unverified')
+  })
+})
+
+describe('shouldShowMapTrustHover', () => {
+  it('shows chips on heatmap and full chrome unless the camera is moving', () => {
+    expect(shouldShowMapTrustHover({ hasHoveredVenue: true })).toBe(true)
+    expect(shouldShowMapTrustHover({ hasHoveredVenue: true, isDragging: true })).toBe(false)
+    expect(shouldShowMapTrustHover({ hasHoveredVenue: false })).toBe(false)
   })
 })
 

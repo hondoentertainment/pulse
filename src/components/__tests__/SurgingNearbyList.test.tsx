@@ -71,6 +71,8 @@ describe('SurgingNearbyList', () => {
     expect(screen.getByText('Neon Lounge')).toBeInTheDocument()
     expect(screen.getByText('DJ just switched — floor is packed.')).toBeInTheDocument()
     expect(screen.getByText('Electric')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Trust at a glance' })).toBeInTheDocument()
+    expect(screen.getByText('Just now')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /DJ just switched/i }))
     expect(onVenueClick).toHaveBeenCalledWith(venue)
   })

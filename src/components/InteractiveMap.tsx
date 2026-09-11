@@ -3,7 +3,7 @@ import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
 import { TrustPinChips } from '@/components/TrustPinChips'
-import { buildTrustGlance } from '@/lib/trust-glance'
+import { buildTrustGlance, shouldShowMapTrustHover } from '@/lib/trust-glance'
 import { markMapInteractive } from '@/lib/cold-start'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
@@ -1424,9 +1424,15 @@ export const InteractiveMap = memo(function InteractiveMap({
       })}
 
       <AnimatePresence>
-        {chrome === 'full' && hoveredVenue && !isDragging && !isCameraMoving && (() => {
+        {shouldShowMapTrustHover({
+          hasHoveredVenue: Boolean(hoveredVenue),
+          isDragging,
+          isCameraMoving,
+        }) && hoveredVenue && (() => {
           const pos = getVenuePixelPosition(hoveredVenue)
           if (!pos) return null
+          const compact = chrome === 'heatmap'
+          const glance = buildTrustGlance(hoveredVenue, pulses)
 
           const distance = userLocation
             ? calculateDistance(
@@ -1437,8 +1443,8 @@ export const InteractiveMap = memo(function InteractiveMap({
             )
             : undefined
 
-          const tooltipWidth = 240
-          const tooltipHeight = 100
+          const tooltipWidth = compact ? 220 : 240
+          const tooltipHeight = compact ? 72 : 100
           const padding = 16
 
           let left = pos.x
@@ -1489,27 +1495,29 @@ export const InteractiveMap = memo(function InteractiveMap({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
-                          {hoveredVenue.category || 'Venue'}
-                        </Badge>
-                        {getLiveIntelLabel(hoveredVenue) && (
-                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
-                            {getLiveIntelLabel(hoveredVenue)}
+                      {!compact && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
+                            {hoveredVenue.category || 'Venue'}
                           </Badge>
-                        )}
-                        {distance !== undefined && (
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {formatDistance(distance, unitSystem)}
-                          </span>
-                        )}
-                      </div>
+                          {getLiveIntelLabel(hoveredVenue) && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
+                              {getLiveIntelLabel(hoveredVenue)}
+                            </Badge>
+                          )}
+                          {distance !== undefined && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {formatDistance(distance, unitSystem)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
+                    {!compact && <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />}
                   </div>
-                  <TrustPinChips chips={buildTrustGlance(hoveredVenue, pulses).chips} />
+                  <TrustPinChips chips={glance.chips} />
 
-                  {hoveredVenue.location.address && (
+                  {!compact && hoveredVenue.location.address && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin size={12} weight="fill" />
                       <p className="text-[10px] line-clamp-1">
@@ -1518,20 +1526,21 @@ export const InteractiveMap = memo(function InteractiveMap({
                     </div>
                   )}
 
-                  {/* Social Signals / Stats simulated */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Users size={12} />
-                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                  {!compact && (
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Users size={12} />
+                          <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
+                          <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
-                        <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
-                      </div>
+                      <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
                     </div>
-                    <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
-                  </div>
+                  )}
                 </div>
                 {/* Pointer arrow */}
                 <div

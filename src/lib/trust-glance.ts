@@ -98,6 +98,15 @@ export function buildTrustGlance(
   }
 }
 
+/** Guest map home uses heatmap chrome — hover chips must still render. */
+export function shouldShowMapTrustHover(input: {
+  hasHoveredVenue: boolean
+  isDragging?: boolean
+  isCameraMoving?: boolean
+}): boolean {
+  return input.hasHoveredVenue && !input.isDragging && !input.isCameraMoving
+}
+
 export function buildTrustChips(input: {
   freshness: string
   verification: TrustGlance['verification']
