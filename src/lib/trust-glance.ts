@@ -21,6 +21,12 @@ import { isLiveReview } from './live-reviews'
 export const SURGE_WHY_WINDOW_MINUTES = 20
 export const SURGE_WHY_MIN_REVIEWS = 3
 
+export interface TrustChip {
+  id: 'freshness' | 'verified' | 'density'
+  label: string
+  tone: 'hot' | 'ok' | 'soft'
+}
+
 export interface TrustGlance {
   freshness: string
   verification: 'GPS ✓' | 'Unverified'
@@ -28,6 +34,7 @@ export interface TrustGlance {
   line: string
   liveReviewCount: number
   locationVerified: boolean
+  chips: TrustChip[]
 }
 
 export function countReviewsInWindow(
@@ -73,6 +80,13 @@ export function buildTrustGlance(
   const verification: TrustGlance['verification'] = locationVerified ? 'GPS ✓' : 'Unverified'
   const recentCount = countReviewsInWindow(pulses, venue.id, SURGE_WHY_WINDOW_MINUTES, nowMs)
   const whySurging = formatWhySurging(recentCount)
+  const chips = buildTrustChips({
+    freshness,
+    verification,
+    whySurging,
+    recentCount,
+    locationVerified,
+  })
   return {
     freshness,
     verification,
@@ -80,5 +94,35 @@ export function buildTrustGlance(
     line: `${freshness} · ${verification} · ${whySurging}`,
     liveReviewCount: resolved.liveReviewCount,
     locationVerified,
+    chips,
   }
+}
+
+export function buildTrustChips(input: {
+  freshness: string
+  verification: TrustGlance['verification']
+  whySurging: string
+  recentCount: number
+  locationVerified: boolean
+}): TrustChip[] {
+  const densityLabel = input.recentCount >= SURGE_WHY_MIN_REVIEWS
+    ? `+${input.recentCount} / ${SURGE_WHY_WINDOW_MINUTES}m`
+    : 'Soft signal'
+  return [
+    {
+      id: 'freshness',
+      label: input.freshness,
+      tone: input.freshness === 'No pulses yet' ? 'soft' : 'ok',
+    },
+    {
+      id: 'verified',
+      label: input.locationVerified ? 'Verified' : 'Unverified',
+      tone: input.locationVerified ? 'hot' : 'soft',
+    },
+    {
+      id: 'density',
+      label: densityLabel,
+      tone: input.recentCount >= SURGE_WHY_MIN_REVIEWS ? 'hot' : 'soft',
+    },
+  ]
 }

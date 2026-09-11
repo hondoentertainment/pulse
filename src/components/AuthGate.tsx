@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { track } from '@/lib/observability/analytics'
 import { Lightning, Envelope, CircleNotch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { UX_CTA } from '@/lib/ux-chrome'
 
 export function AuthGate() {
   const { signInWithOAuth, signInWithOtp, authError, isLoading } = useSupabaseAuth()
@@ -12,8 +14,14 @@ export function AuthGate() {
 
   const busy = isLoading || localLoading
 
+  useEffect(() => {
+    track('funnel_step', { step: 'auth', guest: true })
+    track('auth_started', { method: 'redirect' })
+  }, [])
+
   const handleGoogle = async () => {
     setLocalLoading(true)
+    track('auth_started', { method: 'google' })
     try {
       await signInWithOAuth('google')
     } finally {
@@ -35,46 +43,42 @@ export function AuthGate() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm space-y-8"
       >
-        {/* Logo / branding */}
-        <div className="text-center space-y-3">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center">
-            <Lightning size={40} weight="fill" className="text-white" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+            <Lightning size={32} weight="fill" className="text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold">Welcome to Pulse</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-[28px] font-bold tracking-tight text-foreground">Welcome to Pulse</h1>
+          <p className="text-[15px] text-muted-foreground">
             Sign in to create pulses, post live reviews, or manage your venue
           </p>
         </div>
 
-        {/* Error display */}
         {authError && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {authError}
           </div>
         )}
 
-        {/* Magic link sent confirmation */}
         {otpSent && !authError && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary text-center"
+            className="rounded-xl border border-border bg-card px-4 py-3 text-center text-sm text-foreground"
           >
             Check your email for the magic link!
           </motion.div>
         )}
 
-        {/* Google OAuth */}
         <button
           onClick={handleGoogle}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-accent px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+          className={`${UX_CTA} flex items-center justify-center gap-3 disabled:pointer-events-none disabled:opacity-50`}
         >
           {busy ? (
             <CircleNotch size={20} className="animate-spin" />
@@ -101,14 +105,12 @@ export function AuthGate() {
           Continue with Google
         </button>
 
-        {/* Divider */}
         <div className="flex items-center gap-4">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-xs text-muted-foreground uppercase tracking-wider">or</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
-        {/* Magic link email */}
         <div className="space-y-3">
           <input
             type="email"
@@ -116,12 +118,12 @@ export function AuthGate() {
             onChange={(e) => { setEmail(e.target.value); setOtpSent(false) }}
             placeholder="your@email.com"
             disabled={busy}
-            className="w-full rounded-2xl border border-white/10 bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all disabled:opacity-50"
+            className="w-full rounded-full border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
           />
           <button
             onClick={handleMagicLink}
             disabled={busy || !email.trim()}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-r from-primary/80 to-accent/80 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:shadow-accent/35 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-card text-sm font-semibold text-foreground disabled:pointer-events-none disabled:opacity-50"
           >
             {busy ? (
               <CircleNotch size={20} className="animate-spin" />
@@ -132,7 +134,7 @@ export function AuthGate() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground leading-relaxed">
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
           By continuing you agree to Pulse's Terms of Service and Privacy Policy.
         </p>
       </motion.div>

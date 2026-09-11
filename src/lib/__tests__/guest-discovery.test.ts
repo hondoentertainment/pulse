@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   AUTH_PATH,
   DISCOVERY_AUTH_GATE_COPY,
@@ -6,6 +6,7 @@ import {
   getWriteAuthRedirect,
   shouldBlockDiscoveryForAuth,
   WRITE_AUTH_COPY,
+  closeComposerForAuthRedirect,
 } from '../guest-discovery'
 
 describe('guest discovery policy', () => {
@@ -48,5 +49,13 @@ describe('guest discovery policy', () => {
     expect(WRITE_AUTH_COPY.checkIn.description).toContain('check in')
     expect(WRITE_AUTH_COPY.review.description).toContain('live review')
     expect(WRITE_AUTH_COPY.intel.description).toContain('live intel')
+  })
+
+  it('closes the composer when redirecting a guest to /auth', () => {
+    const setCreateDialogOpen = vi.fn()
+    const setVenueForPulse = vi.fn()
+    closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
+    expect(setCreateDialogOpen).toHaveBeenCalledWith(false)
+    expect(setVenueForPulse).toHaveBeenCalledWith(null)
   })
 })

@@ -1,6 +1,8 @@
 import { ENERGY_CONFIG, type EnergyRating } from '@/lib/types'
 import { relativeReviewTime, snippetCaption } from '@/lib/live-reviews'
 import { cn } from '@/lib/utils'
+import { PulseActionRow } from '@/components/ux/PulseActionRow'
+import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 
 interface LiveReviewFeedCardProps {
   energyRating: EnergyRating
@@ -10,6 +12,13 @@ interface LiveReviewFeedCardProps {
   as?: 'button' | 'article'
   onClick?: () => void
   className?: string
+  displayName?: string
+  handle?: string
+  avatarUrl?: string
+  boostCount?: number
+  onBoost?: () => void
+  onReply?: () => void
+  onShare?: () => void
 }
 
 export function LiveReviewFeedCard({
@@ -20,45 +29,56 @@ export function LiveReviewFeedCard({
   as = 'article',
   onClick,
   className,
+  displayName,
+  handle,
+  avatarUrl,
+  boostCount,
+  onBoost,
+  onReply,
+  onShare,
 }: LiveReviewFeedCardProps) {
   const energy = ENERGY_CONFIG[energyRating]
-  const body = (
+  const name = displayName || energy.label
+  const metaHandle = handle ?? `@${energyRating}`
+  const body = snippetCaption(caption, 200) || 'On-site energy'
+
+  const meta = (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white"
-            style={{ backgroundColor: energy.color }}
-          >
-            {energy.label}
-          </span>
-          {unverified && (
-            <span className="text-[11px] font-medium text-muted-foreground">Unverified</span>
-          )}
-        </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {relativeReviewTime(createdAt)}
+      <div className="flex min-w-0 items-baseline gap-1">
+        <span className="truncate text-[15px] font-bold text-foreground">{name}</span>
+        <span className="truncate text-[15px] text-muted-foreground">{metaHandle}</span>
+        <span className="shrink-0 text-[15px] text-muted-foreground">· {relativeReviewTime(createdAt)}</span>
+      </div>
+      <p className="mt-0.5 text-[15px] leading-5 text-foreground">{body}</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-foreground">
+          {energy.label}
+        </span>
+        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+          {unverified ? 'Unverified' : 'Verified'}
         </span>
       </div>
-      <p className="mt-2 text-sm text-foreground">
-        {snippetCaption(caption, 200) || 'On-site energy'}
-      </p>
     </>
   )
 
-  const cardClass = cn(
-    'w-full rounded-[18px] bg-[#17171C] p-3.5 text-left',
-    as === 'button' && 'transition-colors hover:bg-[#1C1C21]',
-    className,
+  return (
+    <article className={cn('flex gap-3 border-b border-border px-0 py-3', className)}>
+      <TimelineAvatar name={name} src={avatarUrl} />
+      <div className="min-w-0 flex-1">
+        {as === 'button' ? (
+          <button type="button" onClick={onClick} aria-label={body} className="block w-full text-left">
+            {meta}
+          </button>
+        ) : (
+          <div>{meta}</div>
+        )}
+        <PulseActionRow
+          boostCount={boostCount}
+          onBoost={onBoost}
+          onReply={onReply ?? onClick}
+          onShare={onShare ?? onClick}
+        />
+      </div>
+    </article>
   )
-
-  if (as === 'button') {
-    return (
-      <button type="button" onClick={onClick} className={cardClass}>
-        {body}
-      </button>
-    )
-  }
-
-  return <article className={cardClass}>{body}</article>
 }

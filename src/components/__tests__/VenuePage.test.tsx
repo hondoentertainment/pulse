@@ -62,6 +62,7 @@ vi.mock('@phosphor-icons/react', () => ({
   Car: (p: any) => <span data-testid="icon-Car" {...p} />,
   CalendarCheck: (p: any) => <span data-testid="icon-CalendarCheck" {...p} />,
   ShareNetwork: (p: any) => <span data-testid="icon-ShareNetwork" {...p} />,
+  ChatCircle: (p: any) => <span data-testid="icon-ChatCircle" {...p} />,
   Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
   SealCheck: (p: any) => <span data-testid="icon-SealCheck" {...p} />,
   Ticket: (p: any) => <span data-testid="icon-Ticket" {...p} />,
@@ -261,15 +262,15 @@ describe.skip('VenuePage', () => {
     expect(screen.getAllByText(/123 Main St/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows the Check in · Create live review CTA', () => {
+  it('shows the I’m here · Pulse CTA', () => {
     render(<VenuePage {...baseProps()} />)
-    expect(screen.getAllByRole('button', { name: /Check in · Create live review/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /I’m here · Pulse/i }).length).toBeGreaterThan(0)
   })
 
-  it('calls onCreatePulse when Check in · Create live review is clicked', () => {
+  it('calls onCreatePulse when I’m here · Pulse is clicked', () => {
     const onCreatePulse = vi.fn()
     render(<VenuePage {...baseProps()} onCreatePulse={onCreatePulse} />)
-    const buttons = screen.getAllByRole('button', { name: /Check in · Create live review/i })
+    const buttons = screen.getAllByRole('button', { name: /I’m here · Pulse/i })
     fireEvent.click(buttons[0])
     expect(onCreatePulse).toHaveBeenCalled()
   })
@@ -296,7 +297,7 @@ describe.skip('VenuePage', () => {
 
   it('check-in/create pulse still renders without currentUser (auth-gated reporting)', () => {
     render(<VenuePage {...baseProps()} currentUser={null} />)
-    expect(screen.getAllByRole('button', { name: /Check in · Create live review/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /I’m here · Pulse/i }).length).toBeGreaterThan(0)
     // Venue memory card should NOT render when there is no user
     expect(screen.queryByTestId('venue-memory')).not.toBeInTheDocument()
   })

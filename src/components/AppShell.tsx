@@ -197,7 +197,7 @@ export function AppShell() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/40 flex items-center justify-center z-40 touch-manipulation"
+        className="fixed right-[calc(1.25rem+env(safe-area-inset-right,0px))] bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,45,120,0.35)] touch-manipulation"
       >
         <Plus size={28} weight="bold" />
       </motion.button>

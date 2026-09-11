@@ -2,6 +2,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
+import { TrustPinChips } from '@/components/TrustPinChips'
+import { buildTrustGlance } from '@/lib/trust-glance'
+import { markMapInteractive } from '@/lib/cold-start'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
   buildMapLiveToast,
@@ -63,6 +66,8 @@ interface InteractiveMapProps {
   inventoryLayer?: 'curated' | 'all'
   onInventoryLayerChange?: (layer: 'curated' | 'all') => void
   bloomVenueId?: string | null
+  /** Deep-link / I’m-here pin to center on. */
+  focusVenueId?: string | null
 }
 
 const ZOOM_STEP = 1.35
@@ -85,6 +90,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   inventoryLayer: inventoryLayerProp,
   onInventoryLayerChange,
   bloomVenueId = null,
+  focusVenueId = null,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -212,6 +218,20 @@ export const InteractiveMap = memo(function InteractiveMap({
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
   }, [userLocation, followUser])
+
+  useEffect(() => {
+    markMapInteractive()
+  }, [])
+
+  useEffect(() => {
+    if (!focusVenueId) return
+    const venue = venues.find((item) => item.id === focusVenueId)
+    if (!venue?.location) return
+    setFollowUser(false)
+    setCenter({ lat: venue.location.lat, lng: venue.location.lng })
+    setZoom((current) => clampZoom(Math.max(2.1, current)))
+    setHoveredVenue(venue)
+  }, [focusVenueId, venues])
 
   useEffect(() => {
     if (userLocation && !center) {
@@ -1487,6 +1507,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                     </div>
                     <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
                   </div>
+                  <TrustPinChips chips={buildTrustGlance(hoveredVenue, pulses).chips} />
 
                   {hoveredVenue.location.address && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">

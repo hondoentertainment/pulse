@@ -200,6 +200,13 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 | `InteractiveMap` | Main map with clustering, live-review heatmap, and live toast |
 | `MapLiveReviewToast` | Floating `Live · venue · snippet` overlay on the map |
 | `SurgingNearbyList` | Last-hour live review cards under the map |
+| `TonightHomeHeader` | Tonight · neighborhood + X tabs (Tonight / Live / Map) + For you rows |
+| `TonightEmptyState` | Teach map → venue → pulse |
+| `LivePulseTimeline` | City-wide X timeline of last-90-min venue pulses |
+| `TrustPinChips` | Freshness / verified / density chips |
+| `InstallAffordance` | Add to home screen on the map tab |
+| `ShareArrivalCard` | Shared-link landing + I’m here |
+| `OpsQueuePage` | `/ops` claim verify + report dismiss |
 | `MapboxBaseLayer` | Mapbox tile layer |
 | `MapFilters` | Energy/category filters |
 | `MapSearch` | Map-integrated search |
@@ -242,7 +249,13 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 | Component | Purpose |
 |-----------|---------|
 | `PulseCard` | Pulse in feed |
-| `CreatePulseDialog` | Create pulse modal |
+| `CreatePulseDialog` | Create pulse modal (X composer + Uber Post · 1 tap) |
+| `LiveReviewFeedCard` | Timeline pulse: avatar · name · @venue · time · action row |
+| `FeedTabBar` | X underline tabs (`src/components/ux/`) |
+| `FilterPill` | Uber floating filter chip |
+| `PulseActionRow` | Boost · reply · share icon row |
+| `ComposerVenueChip` | Venue attachment chip in composer |
+| `TimelineAvatar` | Letter / photo avatar for feed rows |
 | `PulseMediaCarousel` | Pulse photo/video carousel |
 | `PulseScore` | Energy score display |
 | `StoryRing` | Story avatar ring |

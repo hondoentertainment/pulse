@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
 
 describe('MapInventoryPills', () => {
-  it('renders Launch 33, All Seattle, and Near me', () => {
+  it('renders Launch 33, All Seattle, and Surging', () => {
     render(
       <MapInventoryPills
         inventoryLayer="curated"
@@ -16,7 +16,7 @@ describe('MapInventoryPills', () => {
     )
     expect(screen.getByRole('button', { name: 'Launch 33' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'All Seattle' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('button', { name: 'Near me' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Surging' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('switches inventory and near me', () => {
@@ -31,7 +31,7 @@ describe('MapInventoryPills', () => {
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'All Seattle' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Surging' }))
     expect(onLayer).toHaveBeenCalledWith('all')
     expect(onNear).toHaveBeenCalled()
   })

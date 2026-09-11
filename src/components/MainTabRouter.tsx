@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,10 +10,16 @@ import { MapSearch } from '@/components/MapSearch'
 import { MapEnergyPills } from '@/components/MapEnergyPills'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
+import { LivePulseTimeline } from '@/components/LivePulseTimeline'
 import { ColdStartTip } from '@/components/ColdStartTip'
+import { InstallAffordance } from '@/components/InstallAffordance'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
-import { dismissColdStartTip, shouldShowColdStartTip } from '@/lib/cold-start'
+import type { MapHomeSurface } from '@/lib/ux-chrome'
+import { dismissColdStartTip, markNavigationStart, shouldShowColdStartTip } from '@/lib/cold-start'
+import { parseHereVenueId } from '@/lib/im-here'
+import { track } from '@/lib/observability/analytics'
 import type { MapInventoryLayer } from '@/lib/map-filters'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -78,6 +84,9 @@ export function MainTabRouter() {
   // detail page. AppRoutes renders VenuePage only via the /venue/:id route, so
   // navigation — not just state — is what opens the page.
   const navigate = useNavigate()
+  const location = useLocation()
+  const { session, isPlaceholder } = useSupabaseAuth()
+  const hereVenueId = parseHereVenueId(location.search)
   const handleVenueClick = useCallback(
     (venue: Venue) => {
       setSelectedVenue(venue)
@@ -103,6 +112,39 @@ export function MainTabRouter() {
   const [mapNearMe, setMapNearMe] = useState(false)
   const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
   const [showColdStart, setShowColdStart] = useState(() => shouldShowColdStartTip())
+  const [surgingReady, setSurgingReady] = useState(false)
+  const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
+
+  useEffect(() => {
+    markNavigationStart()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'map') return
+    track('funnel_step', { step: 'guest_map', guest: !session && !isPlaceholder })
+  }, [activeTab, isPlaceholder, session])
+
+  const openedHereRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!hereVenueId || openedHereRef.current === hereVenueId) return
+    openedHereRef.current = hereVenueId
+    const venue = visibleVenues.find((item) => item.id === hereVenueId)
+    if (venue) setSelectedVenue(venue)
+    if (session || isPlaceholder) {
+      handleCreatePulse(hereVenueId)
+    }
+  }, [handleCreatePulse, hereVenueId, isPlaceholder, session, setSelectedVenue, visibleVenues])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const idle = window.requestIdleCallback
+      ?? ((cb: () => void) => window.setTimeout(cb, 400))
+    const id = idle(() => setSurgingReady(true))
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id as number)
+      else window.clearTimeout(id as number)
+    }
+  }, [])
 
   const handleMapPinClick = useCallback((venue: Venue) => {
     handleCreatePulse(venue.id)
@@ -163,71 +205,92 @@ export function MainTabRouter() {
         )}
 
         {activeTab === 'map' && (
-          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-3.5 px-5 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-8">
+          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-3 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6">
             <TonightHomeHeader
               venues={visibleVenues}
               pulses={visiblePulses}
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
+              followedVenueIds={followedVenues.map((venue) => venue.id)}
+              locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
+              surface={mapSurface}
+              onSurfaceChange={setMapSurface}
             />
-            {showColdStart && (
-              <ColdStartTip
-                onDismiss={() => {
-                  dismissColdStartTip()
-                  setShowColdStart(false)
-                }}
+            {mapSurface === 'live' && (
+              <LivePulseTimeline
+                pulses={visiblePulsesWithUsers}
+                venues={visibleVenues}
+                onVenueClick={handleVenueClick}
               />
             )}
-            <MapSearch
-              venues={visibleVenues}
-              onVenueSelect={handleVenueClick}
-              userLocation={userLocation}
-              compact
-            />
-            <MapInventoryPills
-              inventoryLayer={inventoryLayer}
-              nearMeActive={mapNearMe}
-              onInventoryLayerChange={setInventoryLayer}
-              onToggleNearMe={() => setMapNearMe((current) => !current)}
-            />
-            <MapEnergyPills
-              energyLevels={mapEnergyLevels}
-              nearMeActive={mapNearMe}
-              onToggleEnergy={(level) => {
-                setMapEnergyLevels((current) => (
-                  current.includes(level)
-                    ? current.filter((item) => item !== level)
-                    : [...current, level]
-                ))
-              }}
-              onToggleNearMe={() => setMapNearMe((current) => !current)}
-            />
-            <div className="h-[300px] overflow-hidden rounded-[20px] bg-[#12141A]" role="region" aria-labelledby="tonight-home-heading">
-              <InteractiveMap
-                venues={visibleVenues}
-                userLocation={userLocation}
-                onVenueClick={handleMapPinClick}
-                isTracking={isTracking}
-                locationAccuracy={realtimeLocation?.accuracy}
-                locationHeading={realtimeLocation?.heading}
-                pulses={visiblePulses}
-                chrome="heatmap"
-                energyLevels={mapEnergyLevels}
-                onEnergyLevelsChange={setMapEnergyLevels}
-                nearMe={mapNearMe}
-                onNearMeChange={setMapNearMe}
-                inventoryLayer={inventoryLayer}
-                onInventoryLayerChange={setInventoryLayer}
-              />
-            </div>
-            <SurgingNearbyList
-              venues={visibleVenues}
-              pulses={visiblePulses}
-              userLocation={userLocation}
-              unitSystem={unitSystem}
-              onVenueClick={handleVenueClick}
-            />
+            {mapSurface === 'map' && (
+              <>
+                {showColdStart && (
+                  <ColdStartTip
+                    onDismiss={() => {
+                      dismissColdStartTip()
+                      setShowColdStart(false)
+                    }}
+                  />
+                )}
+                <InstallAffordance />
+                <MapSearch
+                  venues={visibleVenues}
+                  onVenueSelect={handleVenueClick}
+                  userLocation={userLocation}
+                  compact
+                />
+                <MapInventoryPills
+                  inventoryLayer={inventoryLayer}
+                  nearMeActive={mapNearMe}
+                  onInventoryLayerChange={setInventoryLayer}
+                  onToggleNearMe={() => setMapNearMe((current) => !current)}
+                />
+                <MapEnergyPills
+                  energyLevels={mapEnergyLevels}
+                  nearMeActive={mapNearMe}
+                  onToggleEnergy={(level) => {
+                    setMapEnergyLevels((current) => (
+                      current.includes(level)
+                        ? current.filter((item) => item !== level)
+                        : [...current, level]
+                    ))
+                  }}
+                  onToggleNearMe={() => setMapNearMe((current) => !current)}
+                />
+                <div className="-mx-4 h-[320px] overflow-hidden bg-[#14171c]" role="region" aria-labelledby="tonight-home-heading">
+                  <InteractiveMap
+                    venues={visibleVenues}
+                    userLocation={userLocation}
+                    onVenueClick={handleMapPinClick}
+                    isTracking={isTracking}
+                    locationAccuracy={realtimeLocation?.accuracy}
+                    locationHeading={realtimeLocation?.heading}
+                    pulses={visiblePulses}
+                    chrome="heatmap"
+                    energyLevels={mapEnergyLevels}
+                    onEnergyLevelsChange={setMapEnergyLevels}
+                    nearMe={mapNearMe}
+                    onNearMeChange={setMapNearMe}
+                    inventoryLayer={inventoryLayer}
+                    onInventoryLayerChange={setInventoryLayer}
+                    focusVenueId={hereVenueId}
+                  />
+                </div>
+                {surgingReady ? (
+                  <SurgingNearbyList
+                    venues={visibleVenues}
+                    pulses={visiblePulses}
+                    userLocation={userLocation}
+                    unitSystem={unitSystem}
+                    onVenueClick={handleVenueClick}
+                  />
+                ) : (
+                  <div className="h-16 animate-pulse rounded-lg bg-muted" aria-hidden />
+                )}
+              </>
+            )}
           </motion.div>
         )}
 

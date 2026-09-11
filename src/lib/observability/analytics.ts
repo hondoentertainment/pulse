@@ -87,7 +87,16 @@ export interface EventRegistry {
   // --- Venue ------------------------------------------------------------
   venue_viewed: {
     venueId: string
-    source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity'
+    source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity' | 'share' | 'im_here'
+  }
+  /** Lightweight activation funnel — console/debug or existing adapters only. */
+  funnel_step: {
+    step: 'guest_map' | 'venue' | 'auth' | 'first_pulse'
+    venueId?: string
+    guest?: boolean
+  }
+  auth_started: {
+    method?: 'google' | 'otp' | 'redirect'
   }
   check_in_completed: {
     venueId: string

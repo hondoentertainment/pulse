@@ -1,8 +1,11 @@
 import { memo, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
-import { EnergyBadge } from '@/components/EnergyBadge'
-import { TrustGlanceRow } from '@/components/TrustGlanceRow'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { PulseActionRow } from '@/components/ux/PulseActionRow'
+import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { venueHandle } from '@/lib/venue-handle'
 import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -29,41 +32,63 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
   )
 
   return (
-    <section aria-labelledby="surging-nearby-heading" className="space-y-3.5">
-      <h2 id="surging-nearby-heading" className="text-base font-bold">
+    <section aria-labelledby="surging-nearby-heading">
+      <h2 id="surging-nearby-heading" className="pb-2 text-[13px] font-semibold text-muted-foreground">
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
-        <p className="rounded-[18px] bg-[#17171C] p-3.5 text-sm text-muted-foreground">
-          Quiet nearby — no live reviews in the last hour.
-        </p>
+        <div className="border-y border-border py-5">
+          <p className="text-[15px] text-muted-foreground">
+            Quiet nearby — no live reviews in the last hour.
+          </p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Map → venue → pulse. Browse the real Seattle catalog, then post when you’re there.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div>
           {nearby.map((venue) => {
             const activity = activityByVenueId.get(venue.id)
               ?? getVenueMapActivityFromLive(venue, undefined)
-            const energy = activity.latest?.energyRating
+            const open = () => onVenueClick(venue)
+            if (activity.latest) {
+              return (
+                <LiveReviewFeedCard
+                  key={venue.id}
+                  as="button"
+                  energyRating={activity.latest.energyRating}
+                  createdAt={activity.latest.createdAt}
+                  caption={activity.latest.caption || formatSurgingRailSubline(activity)}
+                  unverified={activity.latest.locationVerified === false}
+                  displayName={venue.name}
+                  handle={venueHandle(venue.name)}
+                  onClick={open}
+                />
+              )
+            }
             return (
-              <button
-                key={venue.id}
-                type="button"
-                aria-label={`Open ${venue.name}${activity.countLabel ? `, ${activity.countLabel}` : ''}`}
-                onClick={() => onVenueClick(venue)}
-                className="flex w-full flex-col gap-2 rounded-[18px] bg-[#17171C] p-3.5 text-left transition-colors hover:bg-[#1C1C21]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="truncate text-[15px] font-semibold text-foreground">{venue.name}</h3>
-                  <EnergyBadge
-                    rating={energy}
-                    score={energy ? undefined : venue.pulseScore}
-                    className="shrink-0"
-                  />
+              <article key={venue.id} className="flex gap-3 border-b border-border py-3.5">
+                <TimelineAvatar name={venue.name} />
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    aria-label={`Open ${venue.name}${activity.countLabel ? `, ${activity.countLabel}` : ''}`}
+                    onClick={open}
+                    className="block w-full text-left"
+                  >
+                    <div className="flex min-w-0 items-baseline gap-1.5">
+                      <h3 className="truncate text-[15px] font-bold text-foreground">{venue.name}</h3>
+                      <span className="truncate text-[14px] text-muted-foreground">
+                        {venueHandle(venue.name)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[15px] text-foreground">
+                      {activity.countLabel || getEnergyLabel(venue.pulseScore)}
+                    </p>
+                  </button>
+                  <PulseActionRow onReply={open} onShare={open} />
                 </div>
-                <TrustGlanceRow venue={venue} pulses={pulses} activity={activity} />
-                <p className="text-xs text-muted-foreground">
-                  {activity.countLabel || formatSurgingRailSubline(activity)}
-                </p>
-              </button>
+              </article>
             )
           })}
         </div>

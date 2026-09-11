@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
-import { buildTonightHome, resolveHomeNeighborhood } from '../tonight-home'
+import { buildTonightHome, resolveHomeNeighborhood, TONIGHT_EMPTY_LOOP, timeOfDayBoost } from '../tonight-home'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {
@@ -76,5 +76,28 @@ describe('buildTonightHome', () => {
     expect(home.startHere?.venue.name).toBeTruthy()
     expect(home.startHere?.headline).toMatch(/is \w+ right now/)
     expect(home.heatingUp.length).toBeGreaterThan(0)
+    expect(home.empty).toBeNull()
+  })
+
+  it('teaches map → venue → pulse when nothing is surging', () => {
+    const home = buildTonightHome({
+      venues: [makeVenue({ pulseScore: 0 })],
+      pulses: [],
+      userLocation: null,
+      locationDenied: true,
+      now: new Date('2026-09-11T04:40:00.000Z'),
+    })
+    expect(home.title).toContain('Tonight ·')
+    expect(home.subtitle).toContain('Launch 33 fallback')
+    expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
+    expect(home.startHere?.suggested).toBe(true)
+    expect(home.startHere?.headline).toMatch(/^Start at /)
+  })
+})
+
+describe('timeOfDayBoost', () => {
+  it('boosts music venues at night without inventing energy', () => {
+    expect(timeOfDayBoost('Music Venue', 22)).toBeGreaterThan(timeOfDayBoost('Cafe', 22))
+    expect(timeOfDayBoost('Restaurant', 17)).toBeGreaterThan(0)
   })
 })

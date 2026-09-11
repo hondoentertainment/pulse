@@ -22,12 +22,16 @@ Ship the eight Figma frames on [Uber UX Targets](https://www.figma.com/design/ws
 | 7 | Reliability · Empty + offline | `OfflineBanner` + `MapHomeSkeleton` + queued draft | Offline copy, Keep browsing, skeleton matches map, draft never lost |
 | 8 | First session · Cold start | Onboarding + `ColdStartTip` | Launch 33 first; All Seattle tip; Start Exploring; map skeleton under 2s path |
 
-Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWriteAuthRedirect`). Toast-only is a production gap after #83.
+Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWriteAuthRedirect` + `closeComposerForAuthRedirect`). Toast-only is not acceptable — the composer must close.
+
+See [next-steps.md](next-steps.md) for #84–#87 + PWA / trust chips / ops / funnel / catalog.
+
+Visual overlay after those frames: [Uber × X UX](uber-x-ux.md) (pure black / hairline timeline + Pulse energy accent).
 
 ## Procedure
 
 1. Open `/` as a guest — map + Launch 33 / All Seattle / Near me.
-2. Tap a pin → Quick pulse (sign-in redirect if no session).
+2. Tap a pin → Cancel + Post composer (sign-in redirect if no session).
 3. Share a venue URL → crawler hits `/api/share/venue` (OG + image) → human lands on `?from=share`.
 4. Verified owner opens inbox → reply / dismiss tonight’s queue.
 5. Toggle offline → banner + Keep browsing; drafts persist.
@@ -42,4 +46,4 @@ Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWri
 ## Ownership
 
 - Owner: Pulse product / map + live reviews
-- Last reviewed: 2026-09-10
+- Last reviewed: 2026-09-11

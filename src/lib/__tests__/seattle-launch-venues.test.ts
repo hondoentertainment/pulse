@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { reportCatalogQuality } from '../catalog-quality'
 import {
   SEATTLE_LAUNCH_MAX_VENUES,
   SEATTLE_LAUNCH_MIN_VENUES,
@@ -56,5 +57,11 @@ describe('Seattle launch inventory', () => {
       expect(CATALOG_MIGRATION).toContain(venue.name.replace(/'/g, "''"))
       expect(CATALOG_MIGRATION).toContain(venue.location.address)
     }
+  })
+
+  it('keeps every Launch 33 pin rankable for Tonight', () => {
+    const report = reportCatalogQuality(SEATTLE_LAUNCH_VENUES)
+    expect(report.hiddenBadPins).toBe(0)
+    expect(report.rankable).toBe(SEATTLE_LAUNCH_VENUES.length)
   })
 })

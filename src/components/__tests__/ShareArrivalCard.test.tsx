@@ -12,6 +12,10 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => navigate }
 })
 
+vi.mock('@/hooks/use-supabase-auth', () => ({
+  useSupabaseAuth: () => ({ session: null, isPlaceholder: false }),
+}))
+
 describe('ShareArrivalCard', () => {
   it('matches the OG card and opens the map', () => {
     const venue: Venue = {

@@ -1,13 +1,42 @@
+import { useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import { buildTonightHome } from '@/lib/tonight-home'
-import { TrustGlanceRow } from '@/components/TrustGlanceRow'
+import { calculateDistance } from '@/lib/pulse-engine'
+import { TonightEmptyState } from '@/components/TonightEmptyState'
+import { FeedTabBar } from '@/components/ux/FeedTabBar'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { PulseActionRow } from '@/components/ux/PulseActionRow'
+import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { getVenueMapActivity } from '@/lib/map-live-reviews'
+import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
+import { ENERGY_CONFIG } from '@/lib/types'
+import { venueHandle } from '@/lib/venue-handle'
+import type { MapHomeSurface } from '@/lib/ux-chrome'
+
+const MAP_TABS = [
+  { id: 'tonight' as const, label: 'Tonight' },
+  { id: 'live' as const, label: 'Live' },
+  { id: 'map' as const, label: 'Map' },
+]
+
+type TonightFeed = 'foryou' | 'following' | 'near'
+
+const TONIGHT_FEEDS: readonly { id: TonightFeed; label: string }[] = [
+  { id: 'foryou', label: 'For you' },
+  { id: 'following', label: 'Following' },
+  { id: 'near', label: 'Near' },
+]
 
 interface TonightHomeHeaderProps {
   venues: Venue[]
   pulses: Pulse[]
   userLocation: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
+  followedVenueIds?: readonly string[]
+  locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
+  surface?: MapHomeSurface
+  onSurfaceChange?: (surface: MapHomeSurface) => void
 }
 
 export function TonightHomeHeader({
@@ -15,53 +44,220 @@ export function TonightHomeHeader({
   pulses,
   userLocation,
   savedVenueIds = [],
+  followedVenueIds = [],
+  locationDenied,
   onVenueClick,
+  surface = 'map',
+  onSurfaceChange,
 }: TonightHomeHeaderProps) {
+  const [tonightFeed, setTonightFeed] = useState<TonightFeed>('foryou')
   const home = buildTonightHome({
     venues,
     pulses,
     userLocation,
     savedVenueIds,
+    locationDenied,
   })
 
-  return (
-    <section aria-labelledby="tonight-home-heading" className="space-y-3">
-      <header>
-        <h1 id="tonight-home-heading" className="text-[24px] font-bold tracking-tight text-white">
-          {home.title}
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">{home.subtitle}</p>
-      </header>
+  const followingVenues = useMemo(() => {
+    const saved = new Set([...savedVenueIds, ...followedVenueIds])
+    return venues.filter((venue) => saved.has(venue.id))
+  }, [followedVenueIds, savedVenueIds, venues])
 
-      {home.startHere && (
-        <button
-          type="button"
-          onClick={() => onVenueClick(home.startHere!.venue)}
-          className="w-full rounded-[18px] bg-[#17171C] p-3.5 text-left"
-        >
-          <p className="text-xs font-medium text-primary">Start here</p>
-          <p className="mt-1 text-lg font-bold text-white">{home.startHere.headline}</p>
-          <div className="mt-1">
-            <TrustGlanceRow venue={home.startHere.venue} pulses={pulses} />
-          </div>
-        </button>
+  const nearVenues = useMemo(() => {
+    if (!userLocation) return []
+    return [...venues]
+      .map((venue) => ({
+        venue,
+        miles: calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng,
+        ),
+      }))
+      .sort((a, b) => a.miles - b.miles)
+      .slice(0, 8)
+      .map((row) => row.venue)
+  }, [userLocation, venues])
+
+  return (
+    <section aria-labelledby="tonight-home-heading">
+      {onSurfaceChange && (
+        <FeedTabBar
+          tabs={MAP_TABS}
+          value={surface}
+          onChange={onSurfaceChange}
+          ariaLabel="Map home views"
+        />
       )}
 
-      {home.heatingUp.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-white">Also heating up</h2>
-          {home.heatingUp.map((pick) => (
-            <button
-              key={pick.venue.id}
-              type="button"
-              onClick={() => onVenueClick(pick.venue)}
-              className="w-full rounded-[18px] bg-[#17171C] px-3.5 py-3 text-left text-sm font-semibold text-white"
-            >
-              {pick.venue.name} · {pick.energyLabel}
-            </button>
-          ))}
+      {surface !== 'tonight' && (
+        <header className="space-y-1 pt-3">
+          <h1 id="tonight-home-heading" className="text-[22px] font-bold tracking-tight text-foreground">
+            {surface === 'live' ? 'Live' : home.title}
+          </h1>
+        </header>
+      )}
+      {surface === 'tonight' && (
+        <h1 id="tonight-home-heading" className="sr-only">
+          {home.title}
+        </h1>
+      )}
+
+      {(!onSurfaceChange || surface === 'tonight') && (
+        <div className="pt-1">
+          <FeedTabBar<TonightFeed>
+            tabs={TONIGHT_FEEDS}
+            value={tonightFeed}
+            onChange={setTonightFeed}
+            ariaLabel="Tonight feeds"
+            className="mt-1"
+          />
+
+          {tonightFeed === 'foryou' && (
+            <>
+              {home.startHere && (
+                <>
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Start here</h2>
+                  <TonightFeedRow
+                    venue={home.startHere.venue}
+                    headline={home.startHere.headline}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                  />
+                </>
+              )}
+
+              {home.heatingUp.length > 0 && (
+                <div>
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
+                  {home.heatingUp.map((pick) => (
+                    <TonightFeedRow
+                      key={pick.venue.id}
+                      venue={pick.venue}
+                      headline={pick.headline}
+                      pulses={pulses}
+                      onVenueClick={onVenueClick}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {home.empty && <TonightEmptyState empty={home.empty} />}
+            </>
+          )}
+
+          {tonightFeed === 'following' && (
+            followingVenues.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: 'Nothing in Following yet',
+                  body: 'Save or follow a real Seattle venue from the map. We never invent a list.',
+                  steps: ['Open the map', 'Tap a pin you care about', 'Save or follow, then come back'],
+                }}
+              />
+            ) : (
+              followingVenues.map((venue) => (
+                <TonightFeedRow
+                  key={venue.id}
+                  venue={venue}
+                  headline={`${venue.name} is on your list`}
+                  pulses={pulses}
+                  onVenueClick={onVenueClick}
+                />
+              ))
+            )
+          )}
+
+          {tonightFeed === 'near' && (
+            nearVenues.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: locationDenied || !userLocation
+                    ? 'Location off — showing Launch 33 instead'
+                    : 'Quiet nearby',
+                  body: 'Near uses your map pin against the real catalog. Guests can browse; posting still needs a sign-in.',
+                  steps: ['Allow location or stay on Launch 33', 'Tap a nearby pin', 'Post a pulse when you’re there'],
+                }}
+              />
+            ) : (
+              nearVenues.map((venue) => (
+                <TonightFeedRow
+                  key={venue.id}
+                  venue={venue}
+                  headline={`${venue.name} is close`}
+                  pulses={pulses}
+                  onVenueClick={onVenueClick}
+                />
+              ))
+            )
+          )}
         </div>
       )}
     </section>
+  )
+}
+
+function TonightFeedRow({
+  venue,
+  headline,
+  pulses,
+  onVenueClick,
+}: {
+  venue: Venue
+  headline: string
+  pulses: Pulse[]
+  onVenueClick: (venue: Venue) => void
+}) {
+  const activity = getVenueMapActivity(venue, pulses)
+  if (activity.latest) {
+    return (
+      <LiveReviewFeedCard
+        as="button"
+        energyRating={activity.latest.energyRating}
+        createdAt={activity.latest.createdAt}
+        caption={activity.latest.caption || headline}
+        unverified={activity.latest.locationVerified === false}
+        displayName={venue.name}
+        handle={venueHandle(venue.name)}
+        onClick={() => onVenueClick(venue)}
+      />
+    )
+  }
+
+  const open = () => onVenueClick(venue)
+  const energyLabel = getEnergyLabel(venue.pulseScore)
+  const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
+    .find((key) => ENERGY_CONFIG[key].label === energyLabel)
+  return (
+    <article className="flex gap-3 border-b border-border py-3.5">
+      <TimelineAvatar name={venue.name} />
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={open} className="block w-full text-left">
+          <div className="flex min-w-0 items-baseline gap-1.5">
+            <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
+            <span className="truncate text-[14px] text-muted-foreground">{venueHandle(venue.name)}</span>
+            {venue.lastPulseAt && (
+              <span className="shrink-0 text-[14px] text-muted-foreground">
+                · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[15px] leading-5 text-foreground">{headline}</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
+              {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
+            </span>
+            {pulses.some((pulse) => pulse.venueId === venue.id && pulse.locationVerified) && (
+              <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
+                Verified
+              </span>
+            )}
+          </div>
+        </button>
+        <PulseActionRow onReply={open} onShare={open} />
+      </div>
+    </article>
   )
 }

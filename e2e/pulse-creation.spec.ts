@@ -27,13 +27,14 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /I’m here · Pulse/i }).first()
     await expect(createBtn).toBeVisible({ timeout: 10_000 })
     await createBtn.click()
 
-    await expect(page.getByRole('heading', { name: /Quick pulse/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: /^Cancel$/i })).toBeVisible({
       timeout: 5_000,
     })
+    await expect(page.getByRole('button', { name: /^Post$/i })).toBeVisible()
   })
 
   test('can fill caption and select energy', async ({ page }) => {
@@ -42,7 +43,7 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /I’m here · Pulse/i }).first()
     await createBtn.click()
 
     const caption = page.getByPlaceholder(/What's the vibe/i)
@@ -58,15 +59,15 @@ test.describe('Pulse creation flow', () => {
       return
     }
 
-    const createBtn = page.getByRole('button', { name: /Check in · Create live review/i }).first()
+    const createBtn = page.getByRole('button', { name: /I’m here · Pulse/i }).first()
     await createBtn.click()
 
-    await expect(page.getByRole('heading', { name: /Quick pulse/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: /^Cancel$/i })).toBeVisible({
       timeout: 5_000,
     })
-    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: /^Cancel$/i }).click()
 
-    await expect(page.getByRole('heading', { name: /Quick pulse/i })).not.toBeVisible({
+    await expect(page.getByRole('button', { name: /^Cancel$/i })).not.toBeVisible({
       timeout: 5_000,
     })
   })

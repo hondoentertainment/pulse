@@ -4,6 +4,10 @@
 > Shipped in-repo: full venue schema, 33 curated + 500 OSM = **533** Seattle venues,
 > live reviews, map realtime, Figma-matched UI, and map first-paint perf.
 
+## Next-steps PR (#84–#87 + soon stack)
+
+In-repo follow-through lives in [docs/next-steps.md](docs/next-steps.md) and [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md). Optional SQL: `supabase/migrations/20260911000000_owner_report_triage.sql`.
+
 ## Decision
 
 **Pulse is the nightlife venue + map PWA.** Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`.

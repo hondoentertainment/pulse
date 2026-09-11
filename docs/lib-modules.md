@@ -146,6 +146,20 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 | `stripe-client.ts` / `stripe-loader.ts` | Stripe.js loading |
 | `white-label.ts` | White-label configuration |
 
+## Next-steps product (#84–#87)
+
+| Module | Purpose |
+|--------|---------|
+| `guest-discovery.ts` | Guest browse + write `/auth` redirect; close composer |
+| `im-here.ts` | `/?here=` map focus + signed-in create |
+| `cold-start.ts` | Launch 33 tip + `pulse_map_interactive` timing |
+| `tonight-home.ts` | Tonight ranking + teach-the-loop empty |
+| `neighborhood-geo.ts` | Seattle hood inference + saved fallback |
+| `catalog-quality.ts` | Hide bad / OSM-dupe pins from Tonight |
+| `trust-glance.ts` | Freshness / verified / density chips |
+| `install-affordance.ts` | Home-screen PWA prompt |
+| `ops-client.ts` | `/ops` claims + report triage |
+
 ## Config flags
 
 | Module | Purpose |

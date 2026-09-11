@@ -24,3 +24,73 @@ export function dismissColdStartTip(store: Storage | null = typeof window === 'u
     /* ignore quota */
   }
 }
+
+/**
+ * Cold-start measurement helper.
+ *
+ * How to measure (DevTools or `?debug=coldstart`):
+ * 1. Hard reload `/` with Launch 33 default (All Seattle OSM stays filtered out).
+ * 2. Look for Performance marks:
+ *    - `pulse_nav_start` (or Navigation Timing `startTime`)
+ *    - `pulse_map_interactive` when the map canvas first paints
+ * 3. `measureColdStartMs()` returns that delta. Target: under ~2000ms feel
+ *    on a mid phone. Heavy work (All Seattle clustering, surging rail) is
+ *    deferred until after this mark.
+ */
+export const MAP_INTERACTIVE_MARK = 'pulse_map_interactive'
+export const NAV_START_MARK = 'pulse_nav_start'
+export const COLD_START_MEASURE = 'pulse_cold_start'
+
+type ColdStartPerf = {
+  mark(name: string): unknown
+  measure(name: string, startMark?: string, endMark?: string): unknown
+  getEntriesByName(name: string): Array<{ name: string; duration?: number }>
+}
+
+export function markNavigationStart(
+  perf: ColdStartPerf | null = typeof performance === 'undefined' ? null : performance,
+): void {
+  try {
+    perf?.mark(NAV_START_MARK)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function markMapInteractive(
+  perf: ColdStartPerf | null = typeof performance === 'undefined' ? null : performance,
+): number | null {
+  if (!perf) return null
+  try {
+    if (perf.getEntriesByName(MAP_INTERACTIVE_MARK).length > 0) {
+      return readColdStartMs(perf)
+    }
+    perf.mark(MAP_INTERACTIVE_MARK)
+    try {
+      perf.measure(COLD_START_MEASURE, NAV_START_MARK, MAP_INTERACTIVE_MARK)
+    } catch {
+      try {
+        perf.measure(COLD_START_MEASURE)
+      } catch {
+        /* Navigation Timing startTime is implicit */
+      }
+    }
+    return readColdStartMs(perf)
+  } catch {
+    return null
+  }
+}
+
+export function readColdStartMs(
+  perf: Pick<ColdStartPerf, 'getEntriesByName'> | null = typeof performance === 'undefined' ? null : performance,
+): number | null {
+  const measures = perf?.getEntriesByName(COLD_START_MEASURE) ?? []
+  const last = measures[measures.length - 1]
+  const duration = last?.duration
+  return duration !== undefined && Number.isFinite(duration) ? Math.round(duration) : null
+}
+
+export function formatColdStartDebug(ms: number | null): string {
+  if (ms === null) return 'Cold start not measured'
+  return `Map interactive in ${ms}ms (target <2000ms, Launch 33 default)`
+}

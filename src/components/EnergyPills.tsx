@@ -1,5 +1,5 @@
 import { ENERGY_CONFIG, type EnergyRating } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { FilterPill } from '@/components/ux/FilterPill'
 
 const LEVELS: EnergyRating[] = ['dead', 'chill', 'buzzing', 'electric']
 
@@ -15,21 +15,13 @@ export function EnergyPills({ value, onChange }: EnergyPillsProps) {
         const config = ENERGY_CONFIG[level]
         const selected = value === level
         return (
-          <button
+          <FilterPill
             key={level}
-            type="button"
+            pressed={selected}
             onClick={() => onChange(level)}
-            aria-pressed={selected}
-            className={cn(
-              'min-h-11 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors touch-manipulation',
-              selected
-                ? 'border border-transparent text-white'
-                : 'border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD]',
-            )}
-            style={selected ? { backgroundColor: config.color } : undefined}
           >
             {config.label}
-          </button>
+          </FilterPill>
         )
       })}
     </div>

@@ -7,6 +7,9 @@ import {
   dismissColdStartTip,
   shouldShowColdStartTip,
   START_EXPLORING_LABEL,
+  formatColdStartDebug,
+  markMapInteractive,
+  markNavigationStart,
 } from '../cold-start'
 
 function memoryStore(initial: Record<string, string> = {}): Storage {
@@ -35,5 +38,21 @@ describe('cold start', () => {
     dismissColdStartTip(store)
     expect(store.getItem(COLD_START_TIP_STORAGE_KEY)).toBe('1')
     expect(shouldShowColdStartTip(store)).toBe(false)
+  })
+
+  it('measures map-interactive marks for the <2s cold-start helper', () => {
+    const entries: Array<{ name: string; duration: number }> = []
+    const perf = {
+      mark() { return {} as PerformanceMark },
+      measure(name: string) {
+        entries.push({ name, duration: 840 })
+        return {} as PerformanceMeasure
+      },
+      getEntriesByName(name: string) { return entries.filter((entry) => entry.name === name) },
+    }
+    markNavigationStart(perf)
+    expect(markMapInteractive(perf)).toBe(840)
+    expect(formatColdStartDebug(840)).toContain('840ms')
+    expect(formatColdStartDebug(840)).toContain('<2000ms')
   })
 })

@@ -19,6 +19,7 @@
         "bundle-size": "node scripts/check-bundle-size.mjs",
         "seattle-osm:fetch": "node scripts/fetch-seattle-osm-venues.mjs",
         "seattle-osm:build": "node scripts/build-seattle-osm-catalog.mjs",
+        "catalog-quality": "node scripts/catalog-quality.mjs",
         "release-check": "npm run lint && npm run test && npm run build && npm run audit",
         "optimize": "vite optimize",
         "preview": "vite preview",

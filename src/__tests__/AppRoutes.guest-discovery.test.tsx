@@ -183,7 +183,7 @@ describe('guest map discovery vs auth-gated create', () => {
       expect(screen.getByRole('button', { name: /Continue with Google/i })).toBeInTheDocument()
     })
     expect(screen.queryByTestId('map-browse')).not.toBeInTheDocument()
-    expect(appState.setCreateDialogOpen).not.toHaveBeenCalled()
+    expect(appState.setCreateDialogOpen).toHaveBeenCalledWith(false)
     expect(screen.queryByText(DISCOVERY_AUTH_GATE_COPY)).not.toBeInTheDocument()
   })
 

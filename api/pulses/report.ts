@@ -85,25 +85,83 @@ export default async function handler(
   }
 
   if (req.method === 'PATCH') {
-    if (!admin) {
-      fail(res, 403, 'forbidden', 'Admin role required')
-      return
-    }
     if (!isPlainObject(req.body)) {
       fail(res, 400, 'invalid_body', 'Request body must be a JSON object')
       return
     }
-    const reportId = asString(req.body.reportId, 1, 128)
     const status = asEnum(req.body.status, REPORT_STATUSES)
-    if (!reportId || !status) {
-      fail(res, 400, 'invalid_input', 'reportId and status are required')
+    const reportId = asString(req.body.reportId, 1, 128)
+    const pulseId = asString(req.body.pulseId, 1, 128)
+    if (!status || (!reportId && !pulseId)) {
+      fail(res, 400, 'invalid_input', 'status and reportId or pulseId are required')
       return
     }
+
+    if (!admin) {
+      const targetPulseId = pulseId ?? await (async () => {
+        if (!reportId) return null
+        const { data } = await client
+          .from('pulse_reports')
+          .select('pulse_id')
+          .eq('id', reportId)
+          .maybeSingle()
+        return typeof data?.pulse_id === 'string' ? data.pulse_id : null
+      })()
+      if (!targetPulseId) {
+        fail(res, 403, 'forbidden', 'Verified owner or admin required')
+        return
+      }
+      const { data: pulse } = await client
+        .from('pulses')
+        .select('venue_id')
+        .eq('id', targetPulseId)
+        .maybeSingle()
+      const venueId = typeof pulse?.venue_id === 'string' ? pulse.venue_id : null
+      if (!venueId) {
+        fail(res, 403, 'forbidden', 'Verified owner or admin required')
+        return
+      }
+      const [{ data: claim }, { data: staff }] = await Promise.all([
+        client
+          .from('venue_claims')
+          .select('id')
+          .eq('venue_id', venueId)
+          .eq('user_id', auth.context.userId)
+          .eq('status', 'verified')
+          .maybeSingle(),
+        client
+          .from('venue_staff')
+          .select('user_id')
+          .eq('venue_id', venueId)
+          .eq('user_id', auth.context.userId)
+          .maybeSingle(),
+      ])
+      if (!claim && !staff) {
+        fail(res, 403, 'forbidden', 'Verified claim required to dismiss reports')
+        return
+      }
+    }
+
+    const reviewedAt = new Date().toISOString()
+    if (pulseId && !reportId) {
+      const { data, error } = await client
+        .from('pulse_reports')
+        .update({ status, reviewed_at: reviewedAt })
+        .eq('pulse_id', pulseId)
+        .select('id, pulse_id, status, reviewed_at')
+      if (error) {
+        fail(res, 500, 'report_update_failed', error.message)
+        return
+      }
+      ok(res, { reports: data ?? [] })
+      return
+    }
+
     const { data, error } = await client
       .from('pulse_reports')
       .update({
         status,
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: reviewedAt,
       })
       .eq('id', reportId)
       .select('id, pulse_id, status, reviewed_at')

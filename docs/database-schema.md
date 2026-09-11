@@ -36,6 +36,7 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260909120000_seattle_launch_venue_catalog.sql` | Idempotent 33-venue Seattle catalog upsert |
 | `20260909180000_seattle_osm_venue_catalog.sql` | Idempotent 500-venue Seattle OSM nightlife catalog |
 | `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
+| `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
 
 Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), and [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql).
 

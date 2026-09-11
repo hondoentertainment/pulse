@@ -26,6 +26,7 @@ import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
+import { UX_FAB } from '@/lib/ux-chrome'
 
 // ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
@@ -49,6 +50,9 @@ const VenueMetadataRoute = lazy(() =>
   import('@/components/venue-admin/VenueMetadataRoute').then((m) => ({
     default: m.VenueMetadataRoute,
   })),
+)
+const OpsQueuePage = lazy(() =>
+  import('@/components/OpsQueuePage').then((m) => ({ default: m.OpsQueuePage })),
 )
 
 /**
@@ -233,6 +237,16 @@ export function AppRoutes() {
             </Suspense>
           }
         />
+        <Route
+          path="/ops"
+          element={(
+            <ProtectedRoute>
+              <Suspense fallback={<PageSkeleton />}>
+                <OpsQueuePage />
+              </Suspense>
+            </ProtectedRoute>
+          )}
+        />
 
         {/* Sub-pages */}
         <Route path="/events" element={<SubPageRouter />} />
@@ -293,14 +307,14 @@ export function AppRoutes() {
 
       <motion.button
         type="button"
+        data-testid="create-pulse-fab"
         aria-label="Create Pulse"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {
           if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id)
         }}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
-        style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
+        className={UX_FAB}
       >
         <Plus size={28} weight="bold" />
       </motion.button>
