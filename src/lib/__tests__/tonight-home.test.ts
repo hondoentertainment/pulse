@@ -131,6 +131,17 @@ describe('listTonightNearVenues', () => {
     expect(near.venues.map((venue) => venue.id)).toEqual(['neumos'])
   })
 
+  it('uses the rankable catalog when nothing is marked Launch 33', () => {
+    const near = listTonightNearVenues([
+      makeVenue({
+        inventorySource: 'osm',
+        seeded: false,
+      }),
+    ], null)
+    expect(near.usedLaunch33Fallback).toBe(true)
+    expect(near.venues.map((venue) => venue.id)).toEqual(['neumos'])
+  })
+
   it('sorts by geo when a pin is available', () => {
     const far = makeVenue({
       id: 'far',

@@ -175,8 +175,9 @@ export function listTonightNearVenues(
 ): { venues: Venue[]; usedLaunch33Fallback: boolean } {
   const catalog = filterTonightCatalog(venues)
   if (!userLocation) {
+    const launch33 = catalog.filter((venue) => isCuratedVenue(venue))
     return {
-      venues: catalog.filter((venue) => isCuratedVenue(venue)).slice(0, limit),
+      venues: (launch33.length > 0 ? launch33 : catalog).slice(0, limit),
       usedLaunch33Fallback: true,
     }
   }
