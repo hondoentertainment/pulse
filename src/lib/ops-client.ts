@@ -106,8 +106,12 @@ export async function dismissReportsForPulseOnServer(pulseId: string): Promise<b
 }
 
 export function isAdminSession(session: {
-  user?: { app_metadata?: { role?: string }; role?: string }
+  user?: {
+    app_metadata?: Record<string, unknown>
+    role?: string
+  }
 } | null | undefined): boolean {
-  const role = session?.user?.app_metadata?.role ?? session?.user?.role
+  const appRole = session?.user?.app_metadata?.role
+  const role = (typeof appRole === 'string' ? appRole : undefined) ?? session?.user?.role
   return role === 'admin'
 }

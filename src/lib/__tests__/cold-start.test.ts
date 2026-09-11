@@ -43,8 +43,11 @@ describe('cold start', () => {
   it('measures map-interactive marks for the <2s cold-start helper', () => {
     const entries: Array<{ name: string; duration: number }> = []
     const perf = {
-      mark() { /* recorded */ },
-      measure(name: string) { entries.push({ name, duration: 840 }) },
+      mark() { return {} as PerformanceMark },
+      measure(name: string) {
+        entries.push({ name, duration: 840 })
+        return {} as PerformanceMeasure
+      },
       getEntriesByName(name: string) { return entries.filter((entry) => entry.name === name) },
     }
     markNavigationStart(perf)

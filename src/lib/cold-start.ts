@@ -41,8 +41,14 @@ export const MAP_INTERACTIVE_MARK = 'pulse_map_interactive'
 export const NAV_START_MARK = 'pulse_nav_start'
 export const COLD_START_MEASURE = 'pulse_cold_start'
 
+type ColdStartPerf = {
+  mark(name: string): unknown
+  measure(name: string, startMark?: string, endMark?: string): unknown
+  getEntriesByName(name: string): Array<{ name: string; duration?: number }>
+}
+
 export function markNavigationStart(
-  perf: Pick<Performance, 'mark'> | null = typeof performance === 'undefined' ? null : performance,
+  perf: ColdStartPerf | null = typeof performance === 'undefined' ? null : performance,
 ): void {
   try {
     perf?.mark(NAV_START_MARK)
@@ -52,7 +58,7 @@ export function markNavigationStart(
 }
 
 export function markMapInteractive(
-  perf: Pick<Performance, 'mark' | 'measure' | 'getEntriesByName'> | null = typeof performance === 'undefined' ? null : performance,
+  perf: ColdStartPerf | null = typeof performance === 'undefined' ? null : performance,
 ): number | null {
   if (!perf) return null
   try {
@@ -76,11 +82,12 @@ export function markMapInteractive(
 }
 
 export function readColdStartMs(
-  perf: Pick<Performance, 'getEntriesByName'> | null = typeof performance === 'undefined' ? null : performance,
+  perf: Pick<ColdStartPerf, 'getEntriesByName'> | null = typeof performance === 'undefined' ? null : performance,
 ): number | null {
   const measures = perf?.getEntriesByName(COLD_START_MEASURE) ?? []
   const last = measures[measures.length - 1]
-  return last && Number.isFinite(last.duration) ? Math.round(last.duration) : null
+  const duration = last?.duration
+  return duration !== undefined && Number.isFinite(duration) ? Math.round(duration) : null
 }
 
 export function formatColdStartDebug(ms: number | null): string {
