@@ -30,7 +30,7 @@ Ship the eight Figma frames on [Uber UX Targets](https://www.figma.com/design/ws
 2. Else Launch 33 curated pins / catalog centroid.
 3. Else `LAUNCH_33_CENTER` (Capitol Hill) — never a blank map, never invented pulses.
 
-Near me without GPS uses the same Launch 33 origin (`filterMapVenues`). The old “No Venues in View” card is `MapEmptyOverlay`: Show Seattle / Clear filters only when the catalog exists but the camera or filters hid it.
+Near me without GPS uses the same Launch 33 origin (`filterMapVenues`). The 320px heatmap uses `FIT_MIN_ZOOM` (0.04) so Launch 33 actually fits — `MIN_ZOOM` 0.6 still left pins thousands of pixels off-screen. The old “No Venues in View” card is `MapEmptyOverlay`: Show Seattle / Clear filters only when the catalog exists but the camera or filters hid it.
 
 Tonight **For you** shows an X-style catalog Start here row when nothing is surging. The teach-the-loop empty state is reserved for a truly empty catalog. Following stays honestly empty (no friends graph).
 

@@ -26,6 +26,16 @@ describe('MapEmptyOverlay', () => {
     )
     expect(screen.queryByText(/No Venues in View/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Seattle pins/)).not.toBeInTheDocument()
+
+    rerender(
+      <MapEmptyOverlay
+        catalogCount={12}
+        filteredCount={12}
+        inViewCount={-1}
+        onShowCatalog={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText(/Seattle pins/)).not.toBeInTheDocument()
   })
 
   it('offers Show Seattle when the catalog exists but the camera missed it', () => {

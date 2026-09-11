@@ -5,6 +5,7 @@ import {
   calculateBearing,
   clampCenter,
   clusterVenueRenderPoints,
+  FIT_MIN_ZOOM,
   getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
@@ -182,5 +183,16 @@ describe('getFittedViewport', () => {
     expect(viewport?.center.lng).toBeCloseTo(-122.42, 3)
     expect(viewport?.zoom).toBeGreaterThanOrEqual(0.6)
     expect(viewport?.zoom).toBeLessThanOrEqual(4.5)
+  })
+
+  it('zooms out past MIN_ZOOM so a 320px heatmap can show Launch 33', () => {
+    const venues = [
+      makeVenue({ id: 'neumos', location: { lat: 47.6145, lng: -122.3205, address: '' } }),
+      makeVenue({ id: 'croc', location: { lat: 47.6162, lng: -122.3488, address: '' } }),
+    ]
+    const viewport = getFittedViewport(venues, { width: 390, height: 320 }, { minZoom: FIT_MIN_ZOOM })
+    expect(viewport).not.toBeNull()
+    expect(viewport?.zoom).toBeLessThan(0.6)
+    expect(viewport?.zoom).toBeGreaterThanOrEqual(FIT_MIN_ZOOM)
   })
 })

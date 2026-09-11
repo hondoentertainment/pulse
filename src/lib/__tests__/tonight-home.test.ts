@@ -103,6 +103,18 @@ describe('buildTonightHome', () => {
     expect(home.startHere?.headline).toMatch(/^Start at /)
   })
 
+  it('still starts at a catalog venue that has no neighborhood tag', () => {
+    const home = buildTonightHome({
+      venues: [makeVenue({ neighborhood: undefined, pulseScore: 10 })],
+      pulses: [],
+      userLocation: { lat: 47.614, lng: -122.32 },
+      now: new Date('2026-09-11T04:40:00.000Z'),
+    })
+    expect(home.empty).toBeNull()
+    expect(home.startHere?.venue.name).toBe('Neumos')
+    expect(home.startHere?.suggested).toBe(true)
+  })
+
   it('teaches map → venue → pulse only when the catalog is empty', () => {
     const home = buildTonightHome({
       venues: [],

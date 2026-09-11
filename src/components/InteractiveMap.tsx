@@ -43,6 +43,7 @@ import {
   clampCenter,
   clampZoom,
   clusterVenueRenderPoints,
+  FIT_MIN_ZOOM,
   getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
@@ -76,6 +77,7 @@ interface InteractiveMapProps {
 const ZOOM_STEP = 1.35
 const MAP_SCALE = 500000
 const EMPTY_PULSES: Pulse[] = []
+const HEATMAP_FIT = { minZoom: FIT_MIN_ZOOM }
 
 export const InteractiveMap = memo(function InteractiveMap({
   venues,
@@ -96,7 +98,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   focusVenueId = null,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(() => resolveMapCamera().zoom)
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(() => resolveMapCamera().center)
   const [hoveredVenue, setHoveredVenue] = useState<Venue | null>(null)
@@ -622,12 +624,12 @@ export const InteractiveMap = memo(function InteractiveMap({
     setFollowUser(camera.followUser)
   }
 
+  const fitOptions = chrome === 'heatmap' ? HEATMAP_FIT : undefined
+
   const handleShowSeattle = () => {
-    const viewport = getFittedViewport(
-      filteredVenues.length > 0 ? filteredVenues : venues,
-      dimensions,
-    )
-    const camera = resolveMapCamera({ userLocation: null, venues: filteredVenues.length > 0 ? filteredVenues : venues })
+    const focus = filteredVenues.length > 0 ? filteredVenues : venues
+    const viewport = getFittedViewport(focus, dimensions, fitOptions)
+    const camera = resolveMapCamera({ userLocation: null, venues: focus })
     stopInertia()
     triggerHapticFeedback('medium')
     setExpandedClusterId(null)
@@ -827,7 +829,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   }
 
   const handleFitToVenues = () => {
-    const viewport = getFittedViewport(filteredVenues, dimensions)
+    const viewport = getFittedViewport(filteredVenues, dimensions, fitOptions)
     if (!viewport) return
     stopInertia()
     triggerHapticFeedback('medium')
@@ -836,8 +838,10 @@ export const InteractiveMap = memo(function InteractiveMap({
     setFollowUser(false)
   }
 
+  const mapMeasured = dimensions.width >= 8 && dimensions.height >= 8
+
   const venueRenderPoints = useMemo<VenueRenderPoint[]>(() => {
-    if (!center) return []
+    if (!center || !mapMeasured) return []
     return buildVenueRenderPoints({
       venues: filteredVenues,
       center,
@@ -845,22 +849,23 @@ export const InteractiveMap = memo(function InteractiveMap({
       dimensions,
       userLocation
     })
-  }, [center, filteredVenues, zoom, dimensions, userLocation])
+  }, [center, filteredVenues, zoom, dimensions, userLocation, mapMeasured])
 
   const autoFitRef = useRef(false)
   useEffect(() => {
-    if (autoFitRef.current || !center || filteredVenues.length === 0) return
+    if (!mapMeasured || !center || filteredVenues.length === 0) return
     if (venueRenderPoints.length > 0) {
       autoFitRef.current = true
       return
     }
-    const viewport = getFittedViewport(filteredVenues, dimensions)
+    if (autoFitRef.current) return
+    const viewport = getFittedViewport(filteredVenues, dimensions, fitOptions)
     if (!viewport) return
     autoFitRef.current = true
     setCenter(viewport.center)
     setZoom(viewport.zoom)
     setFollowUser(false)
-  }, [center, filteredVenues, venueRenderPoints.length, dimensions])
+  }, [center, filteredVenues, venueRenderPoints.length, dimensions, mapMeasured, fitOptions])
 
   const shouldClusterMarkers = shouldClusterMapMarkers({
     zoom,
@@ -1277,7 +1282,7 @@ export const InteractiveMap = memo(function InteractiveMap({
       <MapEmptyOverlay
         catalogCount={venues.length}
         filteredCount={filteredVenues.length}
-        inViewCount={venueRenderPoints.length}
+        inViewCount={mapMeasured ? venueRenderPoints.length : -1}
         onShowCatalog={handleShowSeattle}
         onClearFilters={handleClearMapFilters}
       />

@@ -17,7 +17,7 @@ export function MapEmptyOverlay({
   onShowCatalog,
   onClearFilters,
 }: MapEmptyOverlayProps) {
-  if (catalogCount === 0 || inViewCount > 0) return null
+  if (catalogCount === 0 || inViewCount < 0 || inViewCount > 0) return null
 
   const filteredAway = filteredCount === 0
 
