@@ -1,15 +1,20 @@
 import { useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
-import { buildTonightHome } from '@/lib/tonight-home'
-import { calculateDistance } from '@/lib/pulse-engine'
+import {
+  buildTonightHome,
+  listTonightFollowingVenues,
+  listTonightNearVenues,
+} from '@/lib/tonight-home'
 import { TonightEmptyState } from '@/components/TonightEmptyState'
 import { FeedTabBar } from '@/components/ux/FeedTabBar'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { TrustPinChips } from '@/components/TrustPinChips'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
+import { buildTrustGlance } from '@/lib/trust-glance'
 import { venueHandle } from '@/lib/venue-handle'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 
@@ -59,27 +64,15 @@ export function TonightHomeHeader({
     locationDenied,
   })
 
-  const followingVenues = useMemo(() => {
-    const saved = new Set([...savedVenueIds, ...followedVenueIds])
-    return venues.filter((venue) => saved.has(venue.id))
-  }, [followedVenueIds, savedVenueIds, venues])
+  const followingVenues = useMemo(
+    () => listTonightFollowingVenues(venues, savedVenueIds, followedVenueIds),
+    [followedVenueIds, savedVenueIds, venues],
+  )
 
-  const nearVenues = useMemo(() => {
-    if (!userLocation) return []
-    return [...venues]
-      .map((venue) => ({
-        venue,
-        miles: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.location.lat,
-          venue.location.lng,
-        ),
-      }))
-      .sort((a, b) => a.miles - b.miles)
-      .slice(0, 8)
-      .map((row) => row.venue)
-  }, [userLocation, venues])
+  const near = useMemo(
+    () => listTonightNearVenues(venues, userLocation),
+    [userLocation, venues],
+  )
 
   return (
     <section aria-labelledby="tonight-home-heading">
@@ -153,7 +146,7 @@ export function TonightHomeHeader({
               <TonightEmptyState
                 empty={{
                   headline: 'Nothing in Following yet',
-                  body: 'Save or follow a real Seattle venue from the map. We never invent a list.',
+                  body: 'No friends graph yet. Save a real Seattle venue from the map — we never invent a list.',
                   steps: ['Open the map', 'Tap a pin you care about', 'Save or follow, then come back'],
                 }}
               />
@@ -171,26 +164,33 @@ export function TonightHomeHeader({
           )}
 
           {tonightFeed === 'near' && (
-            nearVenues.length === 0 ? (
+            near.venues.length === 0 ? (
               <TonightEmptyState
                 empty={{
-                  headline: locationDenied || !userLocation
-                    ? 'Location off — showing Launch 33 instead'
-                    : 'Quiet nearby',
-                  body: 'Near uses your map pin against the real catalog. Guests can browse; posting still needs a sign-in.',
+                  headline: 'Quiet nearby',
+                  body: 'Near uses your map pin against the real catalog, or Launch 33 when location is off. Guests can browse; posting still needs a sign-in.',
                   steps: ['Allow location or stay on Launch 33', 'Tap a nearby pin', 'Post a pulse when you’re there'],
                 }}
               />
             ) : (
-              nearVenues.map((venue) => (
-                <TonightFeedRow
-                  key={venue.id}
-                  venue={venue}
-                  headline={`${venue.name} is close`}
-                  pulses={pulses}
-                  onVenueClick={onVenueClick}
-                />
-              ))
+              <>
+                {near.usedLaunch33Fallback && (
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">
+                    Launch 33 · location off
+                  </h2>
+                )}
+                {near.venues.map((venue) => (
+                  <TonightFeedRow
+                    key={venue.id}
+                    venue={venue}
+                    headline={near.usedLaunch33Fallback
+                      ? `${venue.name} is on Launch 33`
+                      : `${venue.name} is close`}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                  />
+                ))}
+              </>
             )
           )}
         </div>
@@ -211,6 +211,7 @@ function TonightFeedRow({
   onVenueClick: (venue: Venue) => void
 }) {
   const activity = getVenueMapActivity(venue, pulses)
+  const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
   if (activity.latest) {
     return (
       <LiveReviewFeedCard
@@ -221,6 +222,7 @@ function TonightFeedRow({
         unverified={activity.latest.locationVerified === false}
         displayName={venue.name}
         handle={venueHandle(venue.name)}
+        trustChips={glance.chips}
         onClick={() => onVenueClick(venue)}
       />
     )
@@ -255,6 +257,7 @@ function TonightFeedRow({
               </span>
             )}
           </div>
+          <TrustPinChips chips={glance.chips} className="mt-1.5" />
         </button>
         <PulseActionRow onReply={open} onShare={open} />
       </div>

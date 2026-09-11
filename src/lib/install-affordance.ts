@@ -9,6 +9,7 @@ export interface InstallAffordanceCopy {
   body: string
   cta: string
   iosHint: string
+  menuHint: string
 }
 
 export const INSTALL_AFFORDANCE_COPY: InstallAffordanceCopy = {
@@ -16,6 +17,7 @@ export const INSTALL_AFFORDANCE_COPY: InstallAffordanceCopy = {
   body: 'Open the map in one tap — works offline with last known energy.',
   cta: 'Install Pulse',
   iosHint: 'Share → Add to Home Screen',
+  menuHint: 'Use your browser menu to Install app or Add to Home Screen.',
 }
 
 export function shouldShowInstallAffordance(input: {
@@ -25,8 +27,16 @@ export function shouldShowInstallAffordance(input: {
   dismissed?: boolean
 }): boolean {
   if (input.isInstalled || input.dismissed) return false
-  if (input.canInstall) return true
-  return input.platform === 'ios'
+  return true
+}
+
+export function installAffordancePath(input: {
+  canInstall: boolean
+  platform: 'ios' | 'android' | 'desktop' | 'unknown'
+}): 'prompt' | 'ios' | 'menu' {
+  if (input.canInstall) return 'prompt'
+  if (input.platform === 'ios') return 'ios'
+  return 'menu'
 }
 
 export function isInstallAffordanceDismissed(

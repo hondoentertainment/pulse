@@ -6,6 +6,8 @@ import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { venueHandle } from '@/lib/venue-handle'
 import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
 import { getEnergyLabel } from '@/lib/pulse-engine'
+import { buildTrustGlance } from '@/lib/trust-glance'
+import { TrustPinChips } from '@/components/TrustPinChips'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -50,6 +52,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
           {nearby.map((venue) => {
             const activity = activityByVenueId.get(venue.id)
               ?? getVenueMapActivityFromLive(venue, undefined)
+            const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
             const open = () => onVenueClick(venue)
             if (activity.latest) {
               return (
@@ -62,6 +65,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                   unverified={activity.latest.locationVerified === false}
                   displayName={venue.name}
                   handle={venueHandle(venue.name)}
+                  trustChips={glance.chips}
                   onClick={open}
                 />
               )
@@ -85,6 +89,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                     <p className="mt-1 text-[15px] text-foreground">
                       {activity.countLabel || getEnergyLabel(venue.pulseScore)}
                     </p>
+                    <TrustPinChips chips={glance.chips} className="mt-1.5" />
                   </button>
                   <PulseActionRow onReply={open} onShare={open} />
                 </div>

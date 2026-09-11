@@ -39,7 +39,7 @@ The service worker precaches:
 
 `listenForInstallPrompt()` captures the `beforeinstallprompt` event for custom install UI.
 
-The map tab also shows `InstallAffordance` (`src/lib/install-affordance.ts`) so guests can add Pulse to the home screen without opening Settings. iOS gets Share → Add to Home Screen copy.
+The map tab also shows `InstallAffordance` (`src/lib/install-affordance.ts`) so guests can add Pulse to the home screen without opening Settings. Eligible browsers get the native prompt; iOS gets Share → Add to Home Screen; other guests get a non-blocking browser-menu path. `OfflineBanner` stays independent.
 
 | Platform | Behavior |
 |----------|----------|

@@ -1,8 +1,10 @@
 import { ENERGY_CONFIG, type EnergyRating } from '@/lib/types'
 import { relativeReviewTime, snippetCaption } from '@/lib/live-reviews'
+import type { TrustChip } from '@/lib/trust-glance'
 import { cn } from '@/lib/utils'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { TrustPinChips } from '@/components/TrustPinChips'
 
 interface LiveReviewFeedCardProps {
   energyRating: EnergyRating
@@ -19,6 +21,7 @@ interface LiveReviewFeedCardProps {
   onBoost?: () => void
   onReply?: () => void
   onShare?: () => void
+  trustChips?: TrustChip[]
 }
 
 export function LiveReviewFeedCard({
@@ -36,6 +39,7 @@ export function LiveReviewFeedCard({
   onBoost,
   onReply,
   onShare,
+  trustChips,
 }: LiveReviewFeedCardProps) {
   const energy = ENERGY_CONFIG[energyRating]
   const name = displayName || energy.label
@@ -58,6 +62,9 @@ export function LiveReviewFeedCard({
           {unverified ? 'Unverified' : 'Verified'}
         </span>
       </div>
+      {trustChips && trustChips.length > 0 && (
+        <TrustPinChips chips={trustChips} className="mt-1.5" />
+      )}
     </>
   )
 
