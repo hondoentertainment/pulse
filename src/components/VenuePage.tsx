@@ -33,6 +33,9 @@ import { track } from '@/lib/observability/analytics'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { venueHandle } from '@/lib/venue-handle'
+import { UX_CTA } from '@/lib/ux-chrome'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -338,12 +341,12 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0E] pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="mx-auto max-w-2xl space-y-3.5 px-5 pb-6 pt-8"
+        className="mx-auto max-w-2xl space-y-3 px-4 pb-6 pt-6"
       >
         <div>
           <button
@@ -354,7 +357,8 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
-          <h1 className="text-[22px] font-bold text-white">{venue.name}</h1>
+          <h1 className="text-[22px] font-bold text-foreground">{venue.name}</h1>
+          <p className="text-[13px] text-muted-foreground">{venueHandle(venue.name)}</p>
           {venueStatusLine(venue) && (
             <p className="mt-1 text-[13px] text-muted-foreground">{venueStatusLine(venue)}</p>
           )}
@@ -366,7 +370,7 @@ export function VenuePage({
           const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
           const delta = recent10m * 8
           return (
-            <Card className="rounded-[18px] border-0 bg-[#17171C] p-3.5 shadow-none">
+            <Card className="rounded-xl border border-border bg-card p-3.5 shadow-none">
               <div className="flex items-center gap-3.5">
                 <p
                   className="text-[52px] font-bold tabular-nums leading-none"
@@ -375,7 +379,7 @@ export function VenuePage({
                   {venue.pulseScore}
                 </p>
                 <div className="min-w-0">
-                  <p className="text-[17px] font-semibold text-white">{getEnergyLabel(venue.pulseScore)}</p>
+                  <p className="text-[17px] font-semibold text-foreground">{getEnergyLabel(venue.pulseScore)}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
                     {delta > 0 && <span>+{delta} / 10m ·</span>}
                     <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} inline />
@@ -388,7 +392,7 @@ export function VenuePage({
 
         <Button
           onClick={onCreatePulse}
-          className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90"
+          className={UX_CTA}
         >
           Check in · Create live review
         </Button>
@@ -396,10 +400,11 @@ export function VenuePage({
         <LiveNowStrip
           venueId={venue.id}
           pulses={venuePulses}
+          venueName={venue.name}
           onSelect={setSelectedLiveReview}
         />
 
-        <details className="rounded-[18px] bg-[#17171C] p-3.5">
+        <details className="rounded-xl border border-border bg-card p-3.5">
           <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
             More venue details
           </summary>
@@ -680,7 +685,7 @@ export function VenuePage({
 
         <Separator />
 
-        <h2 className="text-xl font-bold">History</h2>
+        <h2 className="text-[15px] font-bold">History</h2>
 
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
@@ -689,17 +694,22 @@ export function VenuePage({
             actionLabel="Post live review"
           />
         ) : historyPulses.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Older reviews will appear here after they leave the live window.</p>
+          <p className="border-y border-border py-5 text-[15px] text-muted-foreground">Older reviews will appear here after they leave the live window.</p>
         ) : (
-          <div className="space-y-4">
+          <div>
             {historyPulses.map((pulse) => (
-              <PulseCard
+              <LiveReviewFeedCard
                 key={pulse.id}
-                pulse={pulse}
-                allPulses={venuePulses}
-                onReaction={(type) => onReaction(pulse.id, type)}
-                currentUserId={currentUser?.id}
-                onReport={onReportPulse}
+                as="button"
+                energyRating={pulse.energyRating}
+                createdAt={pulse.createdAt}
+                caption={pulse.caption}
+                unverified={pulse.locationVerified === false}
+                displayName={pulse.user?.username || venue.name}
+                handle={venueHandle(venue.name)}
+                avatarUrl={pulse.user?.profilePhoto}
+                onClick={() => setSelectedLiveReview(pulse)}
+                onBoost={() => onReaction(pulse.id, 'lightning')}
               />
             ))}
             {onLoadMoreVenuePulses && hasMoreVenuePulses ? (

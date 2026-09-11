@@ -65,7 +65,7 @@ describe('LiveNowStrip', () => {
     render(<LiveNowStrip venueId="venue-1" pulses={[pulse]} onSelect={onSelect} />)
     expect(screen.getByText('Live now')).toBeInTheDocument()
     expect(screen.getByText(/Line is moving/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Line is moving/ }))
     expect(onSelect).toHaveBeenCalledWith(pulse)
   })
 

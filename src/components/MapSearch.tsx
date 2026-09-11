@@ -222,7 +222,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            'h-11 rounded-[18px] border-0 bg-[#17171C] pl-10 shadow-none focus:ring-2 focus:ring-primary/40',
+            'h-11 rounded-full border border-border bg-card pl-10 shadow-none focus:ring-2 focus:ring-primary/40',
             compact
               ? (query ? 'pr-12' : 'pr-4')
               : (query ? 'pr-20' : 'pr-12'),

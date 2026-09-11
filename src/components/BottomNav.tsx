@@ -1,5 +1,4 @@
 import { TrendUp, MapTrifold, User, Users, Pulse } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
 
 export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
 
@@ -19,8 +18,11 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
   ]
 
   return (
-    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0B0B0E]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background pb-[env(safe-area-inset-bottom,0px)]"
+    >
+      <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -33,43 +35,32 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge} unread` : tab.label}
               aria-current={isActive ? 'page' : undefined}
-              className="relative flex h-full min-h-11 flex-1 touch-manipulation flex-col items-center justify-center active:scale-[0.98]"
+              className="relative flex h-full min-h-11 flex-1 touch-manipulation flex-col items-center justify-center"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-x-1 inset-y-1 rounded-xl bg-primary/10"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-
               <div className="relative z-10 flex flex-col items-center gap-1">
                 <div className="relative">
                   <Icon
                     size={22}
                     weight={isActive ? 'fill' : 'regular'}
-                    className={`transition-colors ${
-                      isActive ? 'text-primary' : 'text-muted-foreground'
-                    }`}
+                    className={isActive ? 'text-foreground' : 'text-muted-foreground'}
                   />
                   {tab.badge !== undefined && tab.badge > 0 && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
-                    >
+                    <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                       {tab.badge > 9 ? '9+' : tab.badge}
-                    </motion.div>
+                    </div>
                   )}
                 </div>
                 <span
-                  className={`text-[11px] font-semibold leading-none transition-colors ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  className={`text-[11px] font-semibold leading-none ${
+                    isActive ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 >
                   {tab.label}
                 </span>
               </div>
+              {isActive && (
+                <span aria-hidden className="absolute inset-x-6 bottom-1 h-0.5 rounded-full bg-primary" />
+              )}
             </button>
           )
         })}

@@ -33,6 +33,8 @@ import {
   readPulseDraft,
   writePulseDraft,
 } from '@/lib/pulse-draft'
+import { ComposerVenueChip } from '@/components/ux/ComposerVenueChip'
+import { UX_CTA } from '@/lib/ux-chrome'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -332,15 +334,16 @@ export function CreatePulseDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
         fullscreen
-        className="flex flex-col gap-5 overflow-y-auto bg-[#0B0B0E]"
+        className="flex flex-col gap-5 overflow-y-auto bg-background"
       >
         <DialogHeader className="gap-1.5 text-left">
-          <DialogTitle className="text-[22px] font-bold text-white">
+          <DialogTitle className="text-[20px] font-bold text-foreground">
             Quick pulse
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          <DialogDescription className="text-[13px] text-muted-foreground">
             {venue ? `${venue.name} · from map pin` : 'What’s the vibe right now?'}
           </DialogDescription>
+          {venue && <ComposerVenueChip name={venue.name} />}
         </DialogHeader>
 
         <div className="space-y-3.5 py-1">
@@ -357,7 +360,7 @@ export function CreatePulseDialog({
             </div>
           </div>
 
-          <div className="relative rounded-[18px] bg-[#17171C] p-3.5">
+          <div className="relative border-b border-border pb-2">
             <label htmlFor="create-pulse-caption" className="sr-only">
               Caption
             </label>
@@ -367,12 +370,12 @@ export function CreatePulseDialog({
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
               maxLength={QUICK_PULSE_CAPTION_MAX}
-              rows={3}
-              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[15px] shadow-none focus-visible:ring-0"
+              rows={4}
+              className="min-h-[96px] resize-none border-0 bg-transparent p-0 text-[17px] leading-6 shadow-none focus-visible:ring-0"
               aria-required="true"
               aria-describedby="create-pulse-caption-count create-pulse-location-proof"
             />
-            <p id="create-pulse-caption-count" className="mt-2 text-[11px] text-muted-foreground">
+            <p id="create-pulse-caption-count" className="mt-2 text-[13px] text-muted-foreground">
               {caption.length} / {QUICK_PULSE_CAPTION_MAX}
             </p>
           </div>
@@ -445,19 +448,19 @@ export function CreatePulseDialog({
                   }
                   videoInputRef.current?.click()
                 }}
-                className="flex min-h-[96px] w-full flex-col items-center justify-center gap-2 rounded-[18px] border-[1.5px] border-dashed border-primary/50 bg-[#17171C] px-3.5 py-7 text-center transition-colors hover:border-primary/80"
+                className="flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-full border border-dashed border-border bg-card px-3.5 py-3 text-center transition-colors hover:border-primary/60"
               >
                 {photoCount > 0 ? (
                   <>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-foreground">
                       {photoCount} photo{photoCount === 1 ? '' : 's'} added
                     </p>
                     <p className="text-xs text-muted-foreground">Tap to add another · shows in Live now</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-semibold text-white">Add photo (optional)</p>
-                    <p className="text-xs text-muted-foreground">Shows in Live now</p>
+                    <p className="text-sm font-semibold text-foreground">Add photo (optional)</p>
+                    <p className="text-xs text-muted-foreground">Photo optional · draft never lost</p>
                   </>
                 )}
               </button>
@@ -474,7 +477,7 @@ export function CreatePulseDialog({
               </>
             ) : (
               <>
-                <span className="inline-flex items-center rounded-full border border-[#40404D] bg-[#1F1F24] px-3 py-1.5 text-xs font-semibold text-[#9E9EAD]">
+                <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">
                   Unverified
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -487,7 +490,7 @@ export function CreatePulseDialog({
           </div>
 
           {suggestedGroups.length > 0 && (
-            <details className="rounded-[18px] bg-[#17171C] p-3.5">
+            <details className="rounded-xl border border-border bg-card p-3.5">
               <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
                 Hashtags (optional)
               </summary>
@@ -544,7 +547,7 @@ export function CreatePulseDialog({
           )}
 
           <Button
-            className="h-12 w-full rounded-2xl bg-primary text-[15px] font-bold hover:bg-primary/90 disabled:bg-primary disabled:opacity-60"
+            className={UX_CTA}
             onClick={handleSubmit}
             disabled={isSubmitting || isCompressing}
           >

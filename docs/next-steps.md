@@ -2,7 +2,7 @@
 
 Maps issues **#84–#87** plus the soon stack (PWA / trust chips / ops / analytics / catalog) onto in-app surfaces. Signal stays removed.
 
-Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?node-id=6-2) (`node-id=6-2`).
+Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?node-id=6-2) (`node-id=6-2`). Visual overlay: [Uber × X UX](uber-x-ux.md).
 
 ## Issue mapping
 

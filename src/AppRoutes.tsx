@@ -312,8 +312,7 @@ export function AppRoutes() {
         onClick={() => {
           if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id)
         }}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
-        style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
+        className="fixed right-5 bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,45,120,0.35)]"
       >
         <Plus size={28} weight="bold" />
       </motion.button>

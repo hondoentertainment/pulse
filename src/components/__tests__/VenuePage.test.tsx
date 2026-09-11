@@ -62,6 +62,7 @@ vi.mock('@phosphor-icons/react', () => ({
   Car: (p: any) => <span data-testid="icon-Car" {...p} />,
   CalendarCheck: (p: any) => <span data-testid="icon-CalendarCheck" {...p} />,
   ShareNetwork: (p: any) => <span data-testid="icon-ShareNetwork" {...p} />,
+  ChatCircle: (p: any) => <span data-testid="icon-ChatCircle" {...p} />,
   Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
   SealCheck: (p: any) => <span data-testid="icon-SealCheck" {...p} />,
   Ticket: (p: any) => <span data-testid="icon-Ticket" {...p} />,

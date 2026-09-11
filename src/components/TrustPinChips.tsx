@@ -3,8 +3,8 @@ import type { TrustChip } from '@/lib/trust-glance'
 
 const TONE: Record<TrustChip['tone'], string> = {
   hot: 'bg-primary/15 text-primary',
-  ok: 'bg-[#1F1F24] text-white',
-  soft: 'bg-[#1F1F24] text-muted-foreground',
+  ok: 'bg-muted text-foreground',
+  soft: 'border border-border bg-transparent text-muted-foreground',
 }
 
 interface TrustPinChipsProps {

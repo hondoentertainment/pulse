@@ -25,13 +25,13 @@ export function InstallAffordance() {
   if (!visible) return null
 
   return (
-    <section className="rounded-[18px] bg-[#17171C] p-3.5" aria-label="Install Pulse">
-      <h2 className="text-sm font-semibold text-white">{INSTALL_AFFORDANCE_COPY.headline}</h2>
+    <section className="rounded-xl border border-border bg-card p-3.5" aria-label="Install Pulse">
+      <h2 className="text-sm font-semibold text-foreground">{INSTALL_AFFORDANCE_COPY.headline}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{INSTALL_AFFORDANCE_COPY.body}</p>
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          className="h-10 flex-1 rounded-2xl bg-primary text-sm font-semibold text-primary-foreground"
+          className="h-10 flex-1 rounded-full bg-primary text-sm font-semibold text-primary-foreground"
           onClick={() => {
             void showInstallPrompt()
             dismissInstallAffordance()
@@ -42,7 +42,7 @@ export function InstallAffordance() {
         </button>
         <button
           type="button"
-          className="h-10 rounded-2xl bg-[#1F1F24] px-3 text-sm font-semibold text-white"
+          className="h-10 rounded-full bg-muted px-3 text-sm font-semibold text-foreground"
           onClick={() => {
             dismissInstallAffordance()
             setVisible(false)

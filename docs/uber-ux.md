@@ -26,6 +26,8 @@ Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWri
 
 See [next-steps.md](next-steps.md) for #84–#87 + PWA / trust chips / ops / funnel / catalog.
 
+Visual overlay after those frames: [Uber × X UX](uber-x-ux.md) (pure black / hairline timeline + Pulse energy accent).
+
 ## Procedure
 
 1. Open `/` as a guest — map + Launch 33 / All Seattle / Near me.

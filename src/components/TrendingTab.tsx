@@ -127,7 +127,7 @@ export function TrendingTab({
     <main id="tonight-feed" aria-labelledby="tonight-heading">
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
         <div>
-          <h1 id="tonight-heading" className="text-3xl font-bold tracking-tight">Trending</h1>
+          <h1 id="tonight-heading" className="text-[20px] font-bold tracking-tight">Trending</h1>
           <p className="text-sm text-muted-foreground">Just popped · Gaining · Hot now</p>
         </div>
         {isGeoGateEnabled(launchedMarkets) && (
@@ -136,7 +136,7 @@ export function TrendingTab({
         <div
           role="tablist"
           aria-label="Tonight views"
-          className="flex gap-1 p-1 bg-card/50 rounded-lg border border-border/50"
+          className="flex border-b border-border"
           onKeyDown={(event) => {
             const tabs = ['trending', 'my-spots'] as const
             const index = tabs.indexOf(trendingSubTab)
@@ -169,13 +169,16 @@ export function TrendingTab({
             tabIndex={trendingSubTab === 'trending' ? 0 : -1}
             onClick={() => onSubTabChange('trending')}
             className={cn(
-              "flex-1 min-h-11 py-2 px-4 rounded-md text-sm font-medium transition-all",
+              "relative flex-1 min-h-11 px-2 text-[15px] font-semibold touch-manipulation",
               trendingSubTab === 'trending'
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             Tonight
+            {trendingSubTab === 'trending' && (
+              <span aria-hidden className="absolute inset-x-6 bottom-0 h-[3px] rounded-full bg-primary" />
+            )}
           </button>
           <button
             type="button"
@@ -186,13 +189,16 @@ export function TrendingTab({
             tabIndex={trendingSubTab === 'my-spots' ? 0 : -1}
             onClick={() => onSubTabChange('my-spots')}
             className={cn(
-              "flex-1 min-h-11 py-2 px-4 rounded-md text-sm font-medium transition-all relative",
+              "relative flex-1 min-h-11 px-2 text-[15px] font-semibold touch-manipulation",
               trendingSubTab === 'my-spots'
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             My Spots
+            {trendingSubTab === 'my-spots' && (
+              <span aria-hidden className="absolute inset-x-6 bottom-0 h-[3px] rounded-full bg-primary" />
+            )}
             {followedVenues.length > 0 && trendingSubTab !== 'my-spots' && (
               <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold">
                 {followedVenues.length} followed
