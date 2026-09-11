@@ -16,13 +16,13 @@ const MAP_TABS = [
   { id: 'map' as const, label: 'Map' },
 ]
 
-const TONIGHT_FEEDS = [
-  { id: 'foryou' as const, label: 'For you' },
-  { id: 'following' as const, label: 'Following' },
-  { id: 'near' as const, label: 'Near' },
-]
+type TonightFeed = 'foryou' | 'following' | 'near'
 
-type TonightFeed = (typeof TONIGHT_FEEDS)[number]['id']
+const TONIGHT_FEEDS: readonly { id: TonightFeed; label: string }[] = [
+  { id: 'foryou', label: 'For you' },
+  { id: 'following', label: 'Following' },
+  { id: 'near', label: 'Near' },
+]
 
 interface TonightHomeHeaderProps {
   venues: Venue[]
@@ -108,7 +108,7 @@ export function TonightHomeHeader({
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
-          <FeedTabBar
+          <FeedTabBar<TonightFeed>
             tabs={TONIGHT_FEEDS}
             value={tonightFeed}
             onChange={setTonightFeed}
