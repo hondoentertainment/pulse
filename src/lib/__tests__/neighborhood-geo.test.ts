@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_LAUNCH_NEIGHBORHOOD,
+  DOWNTOWN_SEATTLE,
   inferNeighborhoodFromGeo,
+  LAUNCH_33_CENTER,
   persistHomePlace,
   readSavedNeighborhood,
   resolveNeighborhoodFallback,
@@ -32,5 +34,10 @@ describe('neighborhood geo', () => {
     const store = memoryStore()
     persistHomePlace({ neighborhood: 'Belltown', city: 'Seattle' }, store)
     expect(readSavedNeighborhood(store)).toBe('Belltown')
+  })
+
+  it('ships Launch 33 and Downtown Seattle coordinates for map fallback', () => {
+    expect(LAUNCH_33_CENTER.lat).toBeCloseTo(47.6145, 3)
+    expect(DOWNTOWN_SEATTLE.lat).toBeCloseTo(47.6062, 3)
   })
 })

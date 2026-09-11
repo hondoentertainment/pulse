@@ -1,4 +1,5 @@
 import type { Venue } from './types'
+import { DOWNTOWN_SEATTLE, LAUNCH_33_CENTER } from './neighborhood-geo'
 
 export interface MapPoint {
   lat: number
@@ -26,12 +27,94 @@ export interface VenueCluster {
 }
 
 export const MIN_ZOOM = 0.6
+/** Compact 320px heatmap must zoom out past MIN_ZOOM to keep Launch 33 on screen. */
+export const FIT_MIN_ZOOM = 0.04
 export const MAX_ZOOM = 4.5
 export const ZOOM_STEP = 1.35
 export const MAP_SCALE = 500000
+/** A guest outside this radius is not "near" the Seattle catalog. */
+export const CATALOG_NEAR_MILES = 30
 
-export function clampZoom(value: number) {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value))
+export type MapCameraReason = 'user' | 'launch33' | 'catalog' | 'downtown'
+
+export interface MapCamera {
+  center: MapPoint
+  zoom: number
+  followUser: boolean
+  reason: MapCameraReason
+}
+
+export function clampZoom(value: number, min = MIN_ZOOM, max = MAX_ZOOM) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function isLaunchPin(venue: Pick<Venue, 'inventorySource' | 'seeded'>): boolean {
+  if (venue.inventorySource === 'curated-seed') return true
+  if (venue.inventorySource === 'osm') return false
+  return venue.seeded === true
+}
+
+/** True when GPS is inside the Seattle catalog (or Launch 33 if the catalog is empty). */
+export function isLocationNearCatalog(
+  location: MapPoint | null | undefined,
+  venues: Array<Pick<Venue, 'location'>> = [],
+  maxMiles = CATALOG_NEAR_MILES,
+): boolean {
+  if (!location) return false
+  const anchors = venues.length > 0
+    ? venues.slice(0, 40).map((venue) => venue.location)
+    : [LAUNCH_33_CENTER, DOWNTOWN_SEATTLE]
+  return anchors.some((anchor) => (
+    calculateDistance(location.lat, location.lng, anchor.lat, anchor.lng) <= maxMiles
+  ))
+}
+
+/**
+ * Map camera when GPS is denied, far from Seattle, or still loading.
+ * Never invents pulses — only picks a real catalog / Launch 33 / Downtown center.
+ */
+export function resolveMapCamera(input: {
+  userLocation?: MapPoint | null
+  venues?: Array<Pick<Venue, 'location' | 'inventorySource' | 'seeded'>>
+} = {}): MapCamera {
+  const venues = input.venues ?? []
+  const launch = venues.filter((venue) => isLaunchPin(venue))
+  const focus = launch.length > 0 ? launch : venues
+
+  if (input.userLocation && isLocationNearCatalog(input.userLocation, focus)) {
+    return {
+      center: clampCenter(input.userLocation),
+      zoom: 1,
+      followUser: true,
+      reason: 'user',
+    }
+  }
+
+  if (focus.length > 0) {
+    const sample = focus.slice(0, 12)
+    const lat = sample.reduce((sum, venue) => sum + venue.location.lat, 0) / sample.length
+    const lng = sample.reduce((sum, venue) => sum + venue.location.lng, 0) / sample.length
+    return {
+      center: clampCenter({ lat, lng }),
+      zoom: 1,
+      followUser: false,
+      reason: 'catalog',
+    }
+  }
+
+  return {
+    center: LAUNCH_33_CENTER,
+    zoom: 1,
+    followUser: false,
+    reason: 'launch33',
+  }
+}
+
+/** Near-me radius origin: real GPS, else Launch 33 so pins stay on screen. */
+export function resolveNearMeOrigin(
+  userLocation: MapPoint | null | undefined,
+): MapPoint {
+  return userLocation ?? LAUNCH_33_CENTER
 }
 
 export function clampCenter(value: MapPoint): MapPoint {
@@ -328,7 +411,12 @@ export function getPreviewVenuePoints(params: {
     .slice(0, limit)
 }
 
-export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
+export function getFittedViewport(
+  venues: Venue[],
+  dimensions: MapDimensions,
+  options?: { minZoom?: number },
+) {
+  const minZoom = options?.minZoom ?? MIN_ZOOM
   const focusVenues = venues.slice(0, 100)
   if (focusVenues.length === 0) return null
 
@@ -338,7 +426,7 @@ export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
         lat: focusVenues[0].location.lat,
         lng: focusVenues[0].location.lng,
       },
-      zoom: 2,
+      zoom: clampZoom(2, minZoom),
     }
   }
 
@@ -364,6 +452,6 @@ export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
       lat: (minLat + maxLat) / 2,
       lng: (minLng + maxLng) / 2,
     }),
-    zoom: clampZoom(Math.min(zoomByLat, zoomByLng)),
+    zoom: clampZoom(Math.min(zoomByLat, zoomByLng), minZoom),
   }
 }

@@ -21,8 +21,8 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName }: LiveNowSt
       </h2>
       {liveNow.length === 0 ? (
         <div className="border-y border-border py-5">
-          <p className="text-[15px] text-muted-foreground">
-            No live reviews in the last 90 minutes. Be the first to post what’s happening.
+          <p className="text-[15px] leading-5 text-muted-foreground">
+            No live reviews in the last 90 minutes. Be the first to pulse what’s happening.
           </p>
         </div>
       ) : (

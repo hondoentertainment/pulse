@@ -112,7 +112,7 @@ export function TonightHomeHeader({
             <>
               {home.startHere && (
                 <>
-                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Start here</h2>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Start here</h2>
                   <TonightFeedRow
                     venue={home.startHere.venue}
                     headline={home.startHere.headline}
@@ -124,7 +124,7 @@ export function TonightHomeHeader({
 
               {home.heatingUp.length > 0 && (
                 <div>
-                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
                   {home.heatingUp.map((pick) => (
                     <TonightFeedRow
                       key={pick.venue.id}
@@ -137,7 +137,7 @@ export function TonightHomeHeader({
                 </div>
               )}
 
-              {home.empty && <TonightEmptyState empty={home.empty} />}
+              {!home.startHere && home.empty && <TonightEmptyState empty={home.empty} />}
             </>
           )}
 
@@ -232,30 +232,34 @@ function TonightFeedRow({
   const energyLabel = getEnergyLabel(venue.pulseScore)
   const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
     .find((key) => ENERGY_CONFIG[key].label === energyLabel)
+  const verified = pulses.some((pulse) => pulse.venueId === venue.id && pulse.locationVerified)
   return (
-    <article className="flex gap-3 border-b border-border py-3.5">
+    <article className="flex gap-3 border-b border-border py-3">
       <TimelineAvatar name={venue.name} />
       <div className="min-w-0 flex-1">
-        <button type="button" onClick={open} className="block w-full text-left">
-          <div className="flex min-w-0 items-baseline gap-1.5">
+        <button
+          type="button"
+          onClick={open}
+          aria-label={`${venue.name}, ${headline}`}
+          className="block min-h-11 w-full text-left"
+        >
+          <div className="flex min-w-0 items-baseline gap-1">
             <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
-            <span className="truncate text-[14px] text-muted-foreground">{venueHandle(venue.name)}</span>
+            <span className="truncate text-[15px] text-muted-foreground">{venueHandle(venue.name)}</span>
             {venue.lastPulseAt && (
-              <span className="shrink-0 text-[14px] text-muted-foreground">
+              <span className="shrink-0 text-[15px] text-muted-foreground">
                 · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
               </span>
             )}
           </div>
-          <p className="mt-1 text-[15px] leading-5 text-foreground">{headline}</p>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
+          <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
               {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
             </span>
-            {pulses.some((pulse) => pulse.venueId === venue.id && pulse.locationVerified) && (
-              <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
-                Verified
-              </span>
-            )}
+            <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              {verified ? 'Verified' : 'Unverified'}
+            </span>
           </div>
           <TrustPinChips chips={glance.chips} className="mt-1.5" />
         </button>

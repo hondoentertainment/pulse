@@ -234,16 +234,17 @@ export function buildTonightHome(input: {
   let empty: TonightEmptyState | null = null
   let resolvedStart = startHere
   if (!startHere) {
-    empty = TONIGHT_EMPTY_LOOP
-    const nearbyCurated = catalog
-      .filter((venue) => venue.neighborhood === neighborhood || !userLocation)
-      .sort((a, b) => {
-        if (!userLocation) return 0
-        return calculateDistance(userLocation.lat, userLocation.lng, a.location.lat, a.location.lng)
-          - calculateDistance(userLocation.lat, userLocation.lng, b.location.lat, b.location.lng)
-      })
+    const inHood = catalog.filter((venue) => venue.neighborhood === neighborhood)
+    const pool = inHood.length > 0 ? inHood : catalog
+    const nearbyCurated = [...pool].sort((a, b) => {
+      if (!userLocation) return 0
+      return calculateDistance(userLocation.lat, userLocation.lng, a.location.lat, a.location.lng)
+        - calculateDistance(userLocation.lat, userLocation.lng, b.location.lat, b.location.lng)
+    })
     if (nearbyCurated[0]) {
       resolvedStart = pickLine(nearbyCurated[0], input.pulses, nowMs, undefined, true)
+    } else {
+      empty = TONIGHT_EMPTY_LOOP
     }
   }
 

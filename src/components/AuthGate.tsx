@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { track } from '@/lib/observability/analytics'
-import { Lightning, Envelope, CircleNotch } from '@phosphor-icons/react'
+import { WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { Lightning, Envelope, CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import { UX_CTA } from '@/lib/ux-chrome'
+import { UX_CTA, UX_HAIRLINE } from '@/lib/ux-chrome'
 
 export function AuthGate() {
   const { signInWithOAuth, signInWithOtp, authError, isLoading } = useSupabaseAuth()
@@ -43,18 +45,29 @@ export function AuthGate() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+    <div className="flex min-h-screen flex-col bg-background px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-8"
+        className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center space-y-6"
       >
+        <div
+          role="status"
+          className={`flex gap-3 rounded-2xl ${UX_HAIRLINE} border bg-destructive/10 px-4 py-3`}
+        >
+          <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
+          <div>
+            <p className="text-[15px] font-bold text-foreground">{WRITE_AUTH_COPY.create.title}</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">{WRITE_AUTH_COPY.create.description}</p>
+          </div>
+        </div>
+
         <div className="space-y-3 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-            <Lightning size={32} weight="fill" className="text-primary-foreground" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+            <Lightning size={22} weight="fill" className="text-primary-foreground" />
           </div>
           <h1 className="text-[28px] font-bold tracking-tight text-foreground">Welcome to Pulse</h1>
-          <p className="text-[15px] text-muted-foreground">
+          <p className="text-[15px] leading-5 text-muted-foreground">
             Sign in to create pulses, post live reviews, or manage your venue
           </p>
         </div>
@@ -69,7 +82,7 @@ export function AuthGate() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-xl border border-border bg-card px-4 py-3 text-center text-sm text-foreground"
+            className={`rounded-xl ${UX_HAIRLINE} border bg-card px-4 py-3 text-center text-sm text-foreground`}
           >
             Check your email for the magic link!
           </motion.div>
@@ -78,12 +91,12 @@ export function AuthGate() {
         <button
           onClick={handleGoogle}
           disabled={busy}
-          className={`${UX_CTA} flex items-center justify-center gap-3 disabled:pointer-events-none disabled:opacity-50`}
+          className={`${UX_CTA} flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50`}
         >
           {busy ? (
             <CircleNotch size={20} className="animate-spin" />
           ) : (
-            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+            <svg viewBox="0 0 24 24" width={20} height={20} className="h-5 w-5 shrink-0" aria-hidden>
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                 fill="#4285F4"
@@ -118,12 +131,12 @@ export function AuthGate() {
             onChange={(e) => { setEmail(e.target.value); setOtpSent(false) }}
             placeholder="your@email.com"
             disabled={busy}
-            className="w-full rounded-full border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
+            className="h-12 w-full rounded-full border border-border bg-card px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
           />
           <button
             onClick={handleMagicLink}
             disabled={busy || !email.trim()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-card text-sm font-semibold text-foreground disabled:pointer-events-none disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-card text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
           >
             {busy ? (
               <CircleNotch size={20} className="animate-spin" />
@@ -133,6 +146,13 @@ export function AuthGate() {
             Send Magic Link
           </button>
         </div>
+
+        <Link
+          to="/"
+          className="flex h-11 items-center justify-center text-[15px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Keep browsing the map
+        </Link>
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           By continuing you agree to Pulse's Terms of Service and Privacy Policy.

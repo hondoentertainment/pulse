@@ -5,11 +5,16 @@ import {
   calculateBearing,
   clampCenter,
   clusterVenueRenderPoints,
+  FIT_MIN_ZOOM,
   getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
   getTimeAwareCategoryBoost,
+  isLocationNearCatalog,
+  resolveMapCamera,
+  resolveNearMeOrigin,
 } from '../interactive-map'
+import { LAUNCH_33_CENTER } from '../neighborhood-geo'
 import type { Venue } from '../types'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
@@ -120,6 +125,50 @@ describe('getPreviewVenuePoints', () => {
   })
 })
 
+describe('resolveMapCamera', () => {
+  it('uses Launch 33 when location is denied and the catalog is empty', () => {
+    const camera = resolveMapCamera({ userLocation: null, venues: [] })
+    expect(camera.center).toEqual(LAUNCH_33_CENTER)
+    expect(camera.followUser).toBe(false)
+    expect(camera.reason).toBe('launch33')
+  })
+
+  it('centers on the Seattle catalog instead of a far GPS fix', () => {
+    const neumos = makeVenue({
+      id: 'neumos',
+      inventorySource: 'curated-seed',
+      seeded: true,
+      location: { lat: 47.6145, lng: -122.3205, address: 'Pike' },
+    })
+    const camera = resolveMapCamera({
+      userLocation: { lat: 40.7128, lng: -74.006 },
+      venues: [neumos],
+    })
+    expect(camera.followUser).toBe(false)
+    expect(camera.reason).toBe('catalog')
+    expect(camera.center.lat).toBeCloseTo(47.6145, 3)
+    expect(isLocationNearCatalog({ lat: 40.7128, lng: -74.006 }, [neumos])).toBe(false)
+  })
+
+  it('follows the user when they are actually in Seattle', () => {
+    const neumos = makeVenue({
+      id: 'neumos',
+      inventorySource: 'curated-seed',
+      location: { lat: 47.6145, lng: -122.3205, address: 'Pike' },
+    })
+    const here = { lat: 47.615, lng: -122.321 }
+    const camera = resolveMapCamera({ userLocation: here, venues: [neumos] })
+    expect(camera.followUser).toBe(true)
+    expect(camera.reason).toBe('user')
+    expect(camera.center.lat).toBeCloseTo(here.lat, 3)
+  })
+
+  it('uses Launch 33 as the Near me origin when GPS is off', () => {
+    expect(resolveNearMeOrigin(null)).toEqual(LAUNCH_33_CENTER)
+    expect(resolveNearMeOrigin({ lat: 47.6, lng: -122.3 })).toEqual({ lat: 47.6, lng: -122.3 })
+  })
+})
+
 describe('getFittedViewport', () => {
   it('returns a centered viewport for multiple venues', () => {
     const venues = [
@@ -134,5 +183,16 @@ describe('getFittedViewport', () => {
     expect(viewport?.center.lng).toBeCloseTo(-122.42, 3)
     expect(viewport?.zoom).toBeGreaterThanOrEqual(0.6)
     expect(viewport?.zoom).toBeLessThanOrEqual(4.5)
+  })
+
+  it('zooms out past MIN_ZOOM so a 320px heatmap can show Launch 33', () => {
+    const venues = [
+      makeVenue({ id: 'neumos', location: { lat: 47.6145, lng: -122.3205, address: '' } }),
+      makeVenue({ id: 'croc', location: { lat: 47.6162, lng: -122.3488, address: '' } }),
+    ]
+    const viewport = getFittedViewport(venues, { width: 390, height: 320 }, { minZoom: FIT_MIN_ZOOM })
+    expect(viewport).not.toBeNull()
+    expect(viewport?.zoom).toBeLessThan(0.6)
+    expect(viewport?.zoom).toBeGreaterThanOrEqual(FIT_MIN_ZOOM)
   })
 })
