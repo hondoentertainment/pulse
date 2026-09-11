@@ -1,11 +1,11 @@
 import { memo, useMemo } from 'react'
 import { Venue, Pulse } from '@/lib/types'
-import { EnergyBadge } from '@/components/EnergyBadge'
-import { TrustGlanceRow } from '@/components/TrustGlanceRow'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { venueHandle } from '@/lib/venue-handle'
 import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -33,7 +33,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
 
   return (
     <section aria-labelledby="surging-nearby-heading">
-      <h2 id="surging-nearby-heading" className="pb-1 text-[15px] font-bold text-foreground">
+      <h2 id="surging-nearby-heading" className="pb-2 text-[13px] font-semibold text-muted-foreground">
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
@@ -50,10 +50,24 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
           {nearby.map((venue) => {
             const activity = activityByVenueId.get(venue.id)
               ?? getVenueMapActivityFromLive(venue, undefined)
-            const energy = activity.latest?.energyRating
             const open = () => onVenueClick(venue)
+            if (activity.latest) {
+              return (
+                <LiveReviewFeedCard
+                  key={venue.id}
+                  as="button"
+                  energyRating={activity.latest.energyRating}
+                  createdAt={activity.latest.createdAt}
+                  caption={activity.latest.caption || formatSurgingRailSubline(activity)}
+                  unverified={activity.latest.locationVerified === false}
+                  displayName={venue.name}
+                  handle={venueHandle(venue.name)}
+                  onClick={open}
+                />
+              )
+            }
             return (
-              <article key={venue.id} className="flex gap-3 border-b border-border py-3">
+              <article key={venue.id} className="flex gap-3 border-b border-border py-3.5">
                 <TimelineAvatar name={venue.name} />
                 <div className="min-w-0 flex-1">
                   <button
@@ -62,22 +76,14 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                     onClick={open}
                     className="block w-full text-left"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-baseline gap-1">
-                        <h3 className="truncate text-[15px] font-bold text-foreground">{venue.name}</h3>
-                        <span className="truncate text-[13px] text-muted-foreground">
-                          {venueHandle(venue.name)}
-                        </span>
-                      </div>
-                      <EnergyBadge
-                        rating={energy}
-                        score={energy ? undefined : venue.pulseScore}
-                        className="shrink-0"
-                      />
+                    <div className="flex min-w-0 items-baseline gap-1.5">
+                      <h3 className="truncate text-[15px] font-bold text-foreground">{venue.name}</h3>
+                      <span className="truncate text-[14px] text-muted-foreground">
+                        {venueHandle(venue.name)}
+                      </span>
                     </div>
-                    <TrustGlanceRow venue={venue} pulses={pulses} activity={activity} />
-                    <p className="mt-1 text-[13px] text-muted-foreground">
-                      {activity.countLabel || formatSurgingRailSubline(activity)}
+                    <p className="mt-1 text-[15px] text-foreground">
+                      {activity.countLabel || getEnergyLabel(venue.pulseScore)}
                     </p>
                   </button>
                   <PulseActionRow onReply={open} onShare={open} />

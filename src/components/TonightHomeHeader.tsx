@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import { buildTonightHome } from '@/lib/tonight-home'
 import { calculateDistance } from '@/lib/pulse-engine'
-import { TrustGlanceRow } from '@/components/TrustGlanceRow'
 import { TonightEmptyState } from '@/components/TonightEmptyState'
 import { FeedTabBar } from '@/components/ux/FeedTabBar'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { getVenueMapActivity } from '@/lib/map-live-reviews'
+import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
+import { ENERGY_CONFIG } from '@/lib/types'
 import { venueHandle } from '@/lib/venue-handle'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 
@@ -80,30 +83,26 @@ export function TonightHomeHeader({
 
   return (
     <section aria-labelledby="tonight-home-heading">
-      {surface !== 'map' && (
-        <header className="space-y-1">
-          <h1 id="tonight-home-heading" className="text-[20px] font-bold tracking-tight text-foreground">
-            {surface === 'live' ? 'Live' : home.title}
-          </h1>
-          {surface === 'tonight' && (
-            <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
-          )}
-        </header>
-      )}
-      {surface === 'map' && (
-        <h1 id="tonight-home-heading" className="sr-only">
-          {home.title}
-        </h1>
-      )}
-
       {onSurfaceChange && (
         <FeedTabBar
           tabs={MAP_TABS}
           value={surface}
           onChange={onSurfaceChange}
           ariaLabel="Map home views"
-          className={surface === 'map' ? undefined : 'mt-3'}
         />
+      )}
+
+      {surface !== 'tonight' && (
+        <header className="space-y-1 pt-3">
+          <h1 id="tonight-home-heading" className="text-[22px] font-bold tracking-tight text-foreground">
+            {surface === 'live' ? 'Live' : home.title}
+          </h1>
+        </header>
+      )}
+      {surface === 'tonight' && (
+        <h1 id="tonight-home-heading" className="sr-only">
+          {home.title}
+        </h1>
       )}
 
       {(!onSurfaceChange || surface === 'tonight') && (
@@ -119,13 +118,15 @@ export function TonightHomeHeader({
           {tonightFeed === 'foryou' && (
             <>
               {home.startHere && (
-                <TonightFeedRow
-                  venue={home.startHere.venue}
-                  kicker={home.startHere.suggested ? 'Start here · Launch 33' : 'Start here'}
-                  headline={home.startHere.headline}
-                  pulses={pulses}
-                  onVenueClick={onVenueClick}
-                />
+                <>
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Start here</h2>
+                  <TonightFeedRow
+                    venue={home.startHere.venue}
+                    headline={home.startHere.headline}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                  />
+                </>
               )}
 
               {home.heatingUp.length > 0 && (
@@ -135,7 +136,6 @@ export function TonightHomeHeader({
                     <TonightFeedRow
                       key={pick.venue.id}
                       venue={pick.venue}
-                      kicker={pick.energyLabel}
                       headline={pick.headline}
                       pulses={pulses}
                       onVenueClick={onVenueClick}
@@ -162,7 +162,6 @@ export function TonightHomeHeader({
                 <TonightFeedRow
                   key={venue.id}
                   venue={venue}
-                  kicker="Following"
                   headline={`${venue.name} is on your list`}
                   pulses={pulses}
                   onVenueClick={onVenueClick}
@@ -187,7 +186,6 @@ export function TonightHomeHeader({
                 <TonightFeedRow
                   key={venue.id}
                   venue={venue}
-                  kicker="Near"
                   headline={`${venue.name} is close`}
                   pulses={pulses}
                   onVenueClick={onVenueClick}
@@ -203,31 +201,59 @@ export function TonightHomeHeader({
 
 function TonightFeedRow({
   venue,
-  kicker,
   headline,
   pulses,
   onVenueClick,
 }: {
   venue: Venue
-  kicker: string
   headline: string
   pulses: Pulse[]
   onVenueClick: (venue: Venue) => void
 }) {
+  const activity = getVenueMapActivity(venue, pulses)
+  if (activity.latest) {
+    return (
+      <LiveReviewFeedCard
+        as="button"
+        energyRating={activity.latest.energyRating}
+        createdAt={activity.latest.createdAt}
+        caption={activity.latest.caption || headline}
+        unverified={activity.latest.locationVerified === false}
+        displayName={venue.name}
+        handle={venueHandle(venue.name)}
+        onClick={() => onVenueClick(venue)}
+      />
+    )
+  }
+
   const open = () => onVenueClick(venue)
+  const energyLabel = getEnergyLabel(venue.pulseScore)
+  const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
+    .find((key) => ENERGY_CONFIG[key].label === energyLabel)
   return (
-    <article className="flex gap-3 border-b border-border py-3">
+    <article className="flex gap-3 border-b border-border py-3.5">
       <TimelineAvatar name={venue.name} />
       <div className="min-w-0 flex-1">
         <button type="button" onClick={open} className="block w-full text-left">
-          <div className="flex min-w-0 items-baseline gap-1">
+          <div className="flex min-w-0 items-baseline gap-1.5">
             <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
-            <span className="truncate text-[13px] text-muted-foreground">{venueHandle(venue.name)}</span>
+            <span className="truncate text-[14px] text-muted-foreground">{venueHandle(venue.name)}</span>
+            {venue.lastPulseAt && (
+              <span className="shrink-0 text-[14px] text-muted-foreground">
+                · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
+              </span>
+            )}
           </div>
-          <p className="mt-0.5 text-[13px] text-primary">{kicker}</p>
-          <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
-          <div className="mt-1.5">
-            <TrustGlanceRow venue={venue} pulses={pulses} />
+          <p className="mt-1 text-[15px] leading-5 text-foreground">{headline}</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
+              {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
+            </span>
+            {pulses.some((pulse) => pulse.venueId === venue.id && pulse.locationVerified) && (
+              <span className="inline-flex items-center rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-foreground">
+                Verified
+              </span>
+            )}
           </div>
         </button>
         <PulseActionRow onReply={open} onShare={open} />

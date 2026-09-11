@@ -5,6 +5,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { SurgingNearbyList } from '@/components/SurgingNearbyList'
 import type { Pulse, Venue } from '@/lib/types'
 
+vi.mock('@phosphor-icons/react', () => ({
+  Lightning: () => <span />,
+  ChatCircle: () => <span />,
+  ShareNetwork: () => <span />,
+}))
+
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {
     id: 'venue-1',
@@ -63,8 +69,9 @@ describe('SurgingNearbyList', () => {
     )
     expect(screen.getByText('Surging nearby')).toBeInTheDocument()
     expect(screen.getByText('Neon Lounge')).toBeInTheDocument()
-    expect(screen.getByText('2 live reviews · last hour')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Open Neon Lounge/i }))
+    expect(screen.getByText('DJ just switched — floor is packed.')).toBeInTheDocument()
+    expect(screen.getByText('Electric')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /DJ just switched/i }))
     expect(onVenueClick).toHaveBeenCalledWith(venue)
   })
 })

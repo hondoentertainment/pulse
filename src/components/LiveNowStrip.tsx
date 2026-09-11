@@ -16,7 +16,7 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName }: LiveNowSt
 
   return (
     <section aria-labelledby="live-now-heading">
-      <h2 id="live-now-heading" className="pb-1 text-[15px] font-bold text-foreground">
+      <h2 id="live-now-heading" className="pb-1 text-[13px] font-semibold text-muted-foreground">
         Live now
       </h2>
       {liveNow.length === 0 ? (

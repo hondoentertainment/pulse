@@ -32,14 +32,14 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 
 ## Screen → file / route checklist
 
-### A) Uber × X (Figma 7:2)
+### A) Uber × X (Figma 7:2) — pixel-intent
 
-| # | Frame | Route / surface | File |
-|---|-------|-----------------|------|
-| 1 | Map · Uber×X (`7:5`) | `/` map tab, default **Map** | `TonightHomeHeader`, `FeedTabBar`, `MapInventoryPills`, `MapEnergyPills`, `InteractiveMap`, `SurgingNearbyList`, `AppRoutes` FAB |
-| 2 | Tonight · For you (`7:76`) | `/` **Tonight** → For you / Following / Near | `TonightHomeHeader`, `TonightEmptyState` |
-| 3 | Venue · Live timeline (`7:155`) | `/venue/:id` | `VenuePage`, `LiveNowStrip`, `LiveReviewFeedCard` |
-| 4 | Compose · one-thumb (`7:212`) | Create Pulse dialog | `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
+| # | Frame | Pixel-intent | Route / file |
+|---|-------|--------------|--------------|
+| 1 | Map · Uber×X (`7:5`) | Start-aligned Tonight / Live / Map; **Launch 33 / All Seattle / Surging** inverted pills; full-bleed `#14171c` map (~320px); **Surging nearby** pulse rows (avatar · name · @handle · time · body · vibe chips · ⚡/💬/share); Uber FAB kept | `/` Map — `TonightHomeHeader`, `MapInventoryPills`, `InteractiveMap`, `SurgingNearbyList` |
+| 2 | Tonight · For you (`7:76`) | For you / Following / Near underline; **Start here** kicker; same X pulse rows; no invented venues | `/` Tonight — `TonightHomeHeader`, `TonightEmptyState`, `LiveReviewFeedCard` |
+| 3 | Venue · Live timeline (`7:155`) | 28px name; `{hood} · Open now · Verified`; 40px pink score; inverted **I’m here · Pulse**; muted Live now + timeline | `/venue/:id` — `VenuePage`, `LiveNowStrip` |
+| 4 | Compose · one-thumb (`7:212`) | **Cancel** + pink **Post**; hairline; avatar + `Name · near venue ✓` chip; 20px muted placeholder; vibe pills (selected inverted) | Create Pulse — `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
 
 ### B) Uber UX Targets (Figma 6:2) — same chrome, same behavior
 

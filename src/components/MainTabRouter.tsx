@@ -259,7 +259,7 @@ export function MainTabRouter() {
                   }}
                   onToggleNearMe={() => setMapNearMe((current) => !current)}
                 />
-                <div className="h-[300px] overflow-hidden rounded-2xl border border-border bg-card" role="region" aria-labelledby="tonight-home-heading">
+                <div className="-mx-4 h-[320px] overflow-hidden bg-[#14171c]" role="region" aria-labelledby="tonight-home-heading">
                   <InteractiveMap
                     venues={visibleVenues}
                     userLocation={userLocation}

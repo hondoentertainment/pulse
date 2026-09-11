@@ -32,7 +32,7 @@ export function MapInventoryPills({
         pressed={nearMeActive}
         onClick={onToggleNearMe}
       >
-        Near me
+        Surging
       </FilterPill>
     </div>
   )

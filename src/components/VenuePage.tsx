@@ -358,7 +358,7 @@ export function VenuePage({
             Map
           </button>
           <h1 className="text-[28px] font-bold tracking-tight text-foreground">{venue.name}</h1>
-          <p className="text-[13px] text-muted-foreground">{venueHandle(venue.name)}</p>
+          <p className="sr-only">{venueHandle(venue.name)}</p>
           {(() => {
             const placeStatus = venueStatusLine(venue)
             const verified = Boolean(
