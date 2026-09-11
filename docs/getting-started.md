@@ -53,7 +53,7 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 When both values are present and non-placeholder, the data layer automatically switches to Supabase. See [Data Layer](data-layer.md) for override flags.
 
-Magic-link and Google OAuth use `window.location.origin` (never a hardcoded localhost). In **Authentication → URL Configuration**, Site URL + Additional Redirect URLs must include `https://pulse-chi-nine.vercel.app/**`. See [Auth redirect URLs](runbooks/auth-redirect-urls.md).
+Magic-link and Google OAuth use `window.location.origin` (never a hardcoded localhost). In **Authentication → URL Configuration**, Site URL + Additional Redirect URLs must include `https://pulse-chi-nine.vercel.app/**` (and `http://localhost:5173/**` for `npm run dev`). Do not add `https://*.vercel.app/**`. See [Auth redirect URLs](runbooks/auth-redirect-urls.md).
 
 ### Optional client flags
 

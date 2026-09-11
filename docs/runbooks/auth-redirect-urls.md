@@ -19,10 +19,14 @@ Keep Pulse magic-link and Google OAuth emails pointing at the live app, not
 1. Open **Supabase → Authentication → URL Configuration**.
 2. Set **Site URL** to `https://pulse-chi-nine.vercel.app` (production),
    not `http://localhost:3000`.
-3. Add these **Additional Redirect URLs** (wildcards allowed):
-   - `https://pulse-chi-nine.vercel.app/**`
-   - `https://*.vercel.app/**` (optional; preview deploys)
-   - `http://localhost:3000/**` (local `npm run dev` only)
+3. Add these **Additional Redirect URLs**:
+   - `https://pulse-chi-nine.vercel.app/**` (required)
+   - `http://localhost:5173/**` and `http://127.0.0.1:5173/**` (`npm run
+     dev` — Vite default port; `vite.config.ts` does not set `server.port`)
+   - Exact preview origins only, when you need to test auth on that
+     deploy (e.g. `https://pulse-<hash>-<team>.vercel.app/**`). Do **not**
+     add `https://*.vercel.app/**` — that allowlists every Vercel app and
+     lets a lookalike collect OAuth/OTP tokens.
 4. Save. New magic links pick up the allowlist immediately; already-sent
    mail still has the old `redirect_to`.
 
