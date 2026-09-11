@@ -9,8 +9,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http.js'
-import { createAdminClient } from '../_lib/supabase-server.js'
-import { buildShareOgEnergy } from '../_lib/share-og.js'
+import { loadShareOgEnergy } from '../_lib/share-og-lookup.js'
 
 function escapeXml(value: string): string {
   return value
@@ -38,33 +37,10 @@ export default async function handler(
 
   if (venueId) {
     try {
-      const admin = createAdminClient()
-      if (admin) {
-        const { data } = await admin
-          .from('venues')
-          .select('name, neighborhood, city, category, pulse_score')
-          .eq('id', venueId)
-          .maybeSingle()
-        const { data: latest } = await admin
-          .from('pulses')
-          .select('energy_rating, created_at')
-          .eq('venue_id', venueId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (data && typeof data.name === 'string') {
-          const card = buildShareOgEnergy({
-            venueName: data.name,
-            neighborhood: typeof data.neighborhood === 'string' ? data.neighborhood : null,
-            city: typeof data.city === 'string' ? data.city : null,
-            category: typeof data.category === 'string' ? data.category : null,
-            pulseScore: typeof data.pulse_score === 'number' ? data.pulse_score : null,
-            latestEnergyRating: typeof latest?.energy_rating === 'string' ? latest.energy_rating : null,
-            latestCreatedAt: typeof latest?.created_at === 'string' ? latest.created_at : null,
-          })
-          title = card.title
-          energyLine = card.energyLine
-        }
+      const card = await loadShareOgEnergy(venueId)
+      if (card) {
+        title = card.title
+        energyLine = card.energyLine
       }
     } catch {
       /* keep generic card */

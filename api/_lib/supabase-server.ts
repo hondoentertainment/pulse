@@ -64,6 +64,22 @@ export const createUserClient = (userJwt: string): SupabaseClient => {
 }
 
 /**
+ * Anon/public catalog client. RLS stays in force — use for user-facing
+ * reads that do not have a caller JWT (share OG venue + latest pulse).
+ * Does not read or require `SUPABASE_SERVICE_ROLE_KEY`.
+ */
+export const createAnonClient = (): SupabaseClient => {
+  const { url, anonKey } = getSupabaseConfig()
+  return createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+}
+
+/**
  * Elevated client that bypasses RLS. ONLY for server-only lifecycle actions
  * that cannot round-trip through the caller's JWT — e.g. webhook handlers
  * (no user context) or workflow inserts that must happen *before* the user
