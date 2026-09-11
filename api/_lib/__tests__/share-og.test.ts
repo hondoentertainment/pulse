@@ -20,4 +20,13 @@ describe('share OG energy', () => {
     expect(energyLabelFromScore(80)).toBe('Electric')
     expect(formatShareFreshness(new Date(now - 30_000).toISOString(), now)).toBe('just now')
   })
+
+  it('falls back to pulse_score energy when no live review exists', () => {
+    const card = buildShareOgEnergy({
+      venueName: 'Neumos',
+      pulseScore: 80,
+    })
+    expect(card.title).toBe('Neumos')
+    expect(card.energyLine).toBe('Electric')
+  })
 })
