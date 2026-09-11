@@ -127,6 +127,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | Runbook | Scenario |
 |---------|----------|
 | [Auth Outage](runbooks/auth-outage.md) | Supabase Auth unavailable |
+| [Auth redirect URLs](runbooks/auth-redirect-urls.md) | Magic-link / OAuth `redirect_to` must allow `https://pulse-chi-nine.vercel.app/**` |
 | [Bad Deploy](runbooks/bad-deploy.md) | Roll back a broken release |
 | [Content Moderation Bypass](runbooks/content-moderation-bypass.md) | Moderation pipeline failure |
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |
