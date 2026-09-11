@@ -328,6 +328,7 @@ export function useAppHandlers() {
     pulses,
     session,
     setCreateDialogOpen,
+    setVenueForPulse,
     setHashtags,
     setNotifications,
     setPulses,

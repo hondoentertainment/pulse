@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 const query = {
   order: () => query,
-  limit: async () => ({ data: [{ id: 'c1', status: 'pending' }], error: null }),
+  limit: () => query,
   eq: () => query,
+  then: (resolve: (value: { data: Array<{ id: string; status: string }>; error: null }) => void) => {
+    resolve({ data: [{ id: 'c1', status: 'pending' }], error: null })
+  },
 }
 
 vi.mock('../../_lib/supabase-server.js', () => ({
