@@ -243,7 +243,7 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /^Close$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }))
     expect(onClose).toHaveBeenCalled()
     expect(onSubmit).not.toHaveBeenCalled()
   })
