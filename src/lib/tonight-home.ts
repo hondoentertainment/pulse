@@ -234,7 +234,6 @@ export function buildTonightHome(input: {
   let empty: TonightEmptyState | null = null
   let resolvedStart = startHere
   if (!startHere) {
-    empty = TONIGHT_EMPTY_LOOP
     const nearbyCurated = catalog
       .filter((venue) => venue.neighborhood === neighborhood || !userLocation)
       .sort((a, b) => {
@@ -244,6 +243,8 @@ export function buildTonightHome(input: {
       })
     if (nearbyCurated[0]) {
       resolvedStart = pickLine(nearbyCurated[0], input.pulses, nowMs, undefined, true)
+    } else {
+      empty = TONIGHT_EMPTY_LOOP
     }
   }
 

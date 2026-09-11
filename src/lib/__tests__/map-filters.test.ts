@@ -101,6 +101,17 @@ describe('filterMapVenues', () => {
     expect(result.map((v) => v.id)).toEqual(['osm-2'])
   })
 
+  it('uses Launch 33 as Near me origin when location is denied', () => {
+    const result = filterMapVenues({
+      venues,
+      filters: { ...emptyFilters, inventoryLayer: 'all' },
+      userLocation: null,
+      nearMe: true,
+      nearMeMiles: 1,
+    })
+    expect(result.map((v) => v.id)).toEqual(['curated-1'])
+  })
+
   it('applies near-me radius when location is known', () => {
     const result = filterMapVenues({
       venues,

@@ -88,7 +88,7 @@ describe('buildTonightHome', () => {
     expect(home.empty).toBeNull()
   })
 
-  it('teaches map → venue → pulse when nothing is surging', () => {
+  it('uses an X-style catalog Start here when nothing is surging', () => {
     const home = buildTonightHome({
       venues: [makeVenue({ pulseScore: 0 })],
       pulses: [],
@@ -98,9 +98,21 @@ describe('buildTonightHome', () => {
     })
     expect(home.title).toContain('Tonight ·')
     expect(home.subtitle).toContain('Launch 33 fallback')
-    expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
+    expect(home.empty).toBeNull()
     expect(home.startHere?.suggested).toBe(true)
     expect(home.startHere?.headline).toMatch(/^Start at /)
+  })
+
+  it('teaches map → venue → pulse only when the catalog is empty', () => {
+    const home = buildTonightHome({
+      venues: [],
+      pulses: [],
+      userLocation: null,
+      locationDenied: true,
+      now: new Date('2026-09-11T04:40:00.000Z'),
+    })
+    expect(home.startHere).toBeNull()
+    expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
   })
 })
 

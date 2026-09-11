@@ -36,7 +36,7 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 
 | # | Frame | Pixel-intent | Route / file |
 |---|-------|--------------|--------------|
-| 1 | Map · Uber×X (`7:5`) | Start-aligned Tonight / Live / Map; **Launch 33 / All Seattle / Surging** inverted pills; full-bleed `#14171c` map (~320px); **Surging nearby** pulse rows (avatar · name · @handle · time · body · vibe chips · ⚡/💬/share); Uber FAB kept | `/` Map — `TonightHomeHeader`, `MapInventoryPills`, `InteractiveMap`, `SurgingNearbyList` |
+| 1 | Map · Uber×X (`7:5`) | Start-aligned Tonight / Live / Map; **Launch 33 / All Seattle / Surging** inverted pills; full-bleed `#14171c` map (~320px); **Surging nearby** pulse rows (avatar · name · @handle · time · body · vibe chips · ⚡/💬/share); Uber FAB kept. Location denied still renders Seattle pins via `resolveMapCamera` / `MapEmptyOverlay`. | `/` Map — `TonightHomeHeader`, `MapInventoryPills`, `InteractiveMap`, `SurgingNearbyList` |
 | 2 | Tonight · For you (`7:76`) | For you / Following / Near underline; **Start here** kicker; same X pulse rows; Following honest-empty; Near geo or Launch 33 | `/` Tonight — `TonightHomeHeader`, `TonightEmptyState`, `LiveReviewFeedCard` |
 | 3 | Venue · Live timeline (`7:155`) | 28px name; `{hood} · Open now · Verified`; 40px pink score; inverted **I’m here · Pulse**; muted Live now + timeline | `/venue/:id` — `VenuePage`, `LiveNowStrip` |
 | 4 | Compose · one-thumb (`7:212`) | **Cancel** + pink **Post**; hairline; avatar + `Name · near venue ✓` chip; 20px muted placeholder; vibe pills (selected inverted) | Create Pulse — `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
@@ -58,7 +58,7 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 
 | Surface | Route | File |
 |---------|-------|------|
-| Auth gate / magic-link | `/auth` (guest writes) | `AuthGate`, `getWriteAuthRedirect` |
+| Auth gate / magic-link | `/auth` (guest writes) | `AuthGate` (hairline write-gate + Keep browsing), `getWriteAuthRedirect` |
 | Ops moderation | `/ops` | `OpsQueuePage` |
 | Install / PWA (#90) | Map home card | `InstallAffordance` |
 | Empty states (map → venue → pulse) | Tonight / Live / venue / generic | `TonightEmptyState`, `LivePulseTimeline`, `EmptyState` |

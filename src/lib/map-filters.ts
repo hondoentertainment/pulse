@@ -1,5 +1,6 @@
 import type { AccessibilityFeature, Venue } from './types'
 import { calculateDistance } from './pulse-engine'
+import { LAUNCH_33_CENTER } from './neighborhood-geo'
 
 export type EnergyFilter = 'all' | 'dead' | 'chill' | 'buzzing' | 'electric'
 export type DistanceFilter = 0.3 | 0.6 | 1.2 | 3.1 | typeof Infinity
@@ -68,17 +69,16 @@ export function filterMapVenues(input: FilterMapVenuesInput): Venue[] {
       if (!neighborhood || !neighborhoods.includes(neighborhood)) return false
     }
 
-    if ((filters.maxDistance !== Infinity || nearMe) && userLocation) {
+    const nearOrigin = userLocation ?? (nearMe ? LAUNCH_33_CENTER : null)
+    if ((filters.maxDistance !== Infinity || nearMe) && nearOrigin) {
       const distance = calculateDistance(
-        userLocation.lat,
-        userLocation.lng,
+        nearOrigin.lat,
+        nearOrigin.lng,
         venue.location.lat,
         venue.location.lng,
       )
       if (filters.maxDistance !== Infinity && distance > filters.maxDistance) return false
       if (nearMe && distance > nearMeMiles) return false
-    } else if (nearMe && !userLocation) {
-      return false
     }
 
     return true

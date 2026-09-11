@@ -9,6 +9,11 @@ export const LAST_CITY_STORAGE_KEY = 'pulse_last_city_v1'
 export const DEFAULT_LAUNCH_NEIGHBORHOOD = 'Capitol Hill'
 export const DEFAULT_LAUNCH_CITY = 'Seattle'
 
+/** Capitol Hill Launch 33 — Neumos / Pike-Pine. Used when GPS is off. */
+export const LAUNCH_33_CENTER = { lat: 47.6145, lng: -122.3205 }
+/** Downtown Seattle nightlife cluster — last-city fallback. */
+export const DOWNTOWN_SEATTLE = { lat: 47.6062, lng: -122.3321 }
+
 export interface GeoBox {
   name: string
   minLat: number

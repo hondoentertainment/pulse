@@ -46,8 +46,11 @@ import {
   getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
+  isLocationNearCatalog,
+  resolveMapCamera,
   type VenueRenderPoint
 } from '@/lib/interactive-map'
+import { MapEmptyOverlay } from '@/components/MapEmptyOverlay'
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -94,12 +97,12 @@ export const InteractiveMap = memo(function InteractiveMap({
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const [zoom, setZoom] = useState(1)
-  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null)
+  const [zoom, setZoom] = useState(() => resolveMapCamera().zoom)
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(() => resolveMapCamera().center)
   const [hoveredVenue, setHoveredVenue] = useState<Venue | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
-  const [followUser, setFollowUser] = useState(true)
+  const [followUser, setFollowUser] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null) // Optimization: Reuse canvas
   const [filters, setFilters] = useState<MapFiltersState>({
@@ -167,7 +170,6 @@ export const InteractiveMap = memo(function InteractiveMap({
     const venue = venues.find((item) => item.id === next.venueId)
     if (venue) onVenueClick(venue)
   }, [venues, onVenueClick])
-  const loadingTimeoutRef = useRef<number | null>(null)
   const cameraSettleTimeoutRef = useRef<number | null>(null)
   const venueSelectTimeoutRef = useRef<number | null>(null)
   const hoverClearTimeoutRef = useRef<number | null>(null)
@@ -199,25 +201,20 @@ export const InteractiveMap = memo(function InteractiveMap({
   }, [])
 
   useEffect(() => {
-    // If no location after 3s, default to first venue or SF
-    loadingTimeoutRef.current = window.setTimeout(() => {
-      if (!center && !userLocation && venues.length > 0) {
-        setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
-        setFollowUser(false)
-      }
-    }, 3000)
-
-    return () => {
-      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
+    const camera = resolveMapCamera({ userLocation, venues })
+    setCenter((current) => current ?? camera.center)
+    if (camera.followUser) {
+      setFollowUser(true)
+      setCenter(camera.center)
+      setZoom((current) => current || camera.zoom)
     }
-  }, [center, userLocation, venues])
+  }, [userLocation, venues])
 
   useEffect(() => {
-    if (userLocation && followUser) {
+    if (userLocation && followUser && isLocationNearCatalog(userLocation, venues)) {
       setCenter(userLocation)
-      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
     }
-  }, [userLocation, followUser])
+  }, [userLocation, followUser, venues])
 
   useEffect(() => {
     markMapInteractive()
@@ -234,10 +231,10 @@ export const InteractiveMap = memo(function InteractiveMap({
   }, [focusVenueId, venues])
 
   useEffect(() => {
-    if (userLocation && !center) {
+    if (userLocation && !center && isLocationNearCatalog(userLocation, venues)) {
       setCenter(userLocation)
     }
-  }, [userLocation, center])
+  }, [userLocation, center, venues])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -349,12 +346,12 @@ export const InteractiveMap = memo(function InteractiveMap({
       !nearMeActive &&
       !extraFiltersOn
     ) {
-      const nearby = userLocation
+      const nearby = userLocation && isLocationNearCatalog(userLocation, filtered)
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
           .sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
         : filtered.sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
-      return nearby.slice(0, 5)
+      return (nearby.length > 0 ? nearby : filtered).slice(0, 5)
     }
 
     return filtered
@@ -617,13 +614,39 @@ export const InteractiveMap = memo(function InteractiveMap({
   }
 
   const handleCenterOnUser = () => {
-    if (userLocation) {
-      triggerHapticFeedback('medium')
-      setExpandedClusterId(null)
-      setCenter(userLocation)
-      setZoom(1)
-      setFollowUser(true)
-    }
+    triggerHapticFeedback('medium')
+    setExpandedClusterId(null)
+    const camera = resolveMapCamera({ userLocation, venues: filteredVenues.length > 0 ? filteredVenues : venues })
+    setCenter(camera.center)
+    setZoom(camera.zoom)
+    setFollowUser(camera.followUser)
+  }
+
+  const handleShowSeattle = () => {
+    const viewport = getFittedViewport(
+      filteredVenues.length > 0 ? filteredVenues : venues,
+      dimensions,
+    )
+    const camera = resolveMapCamera({ userLocation: null, venues: filteredVenues.length > 0 ? filteredVenues : venues })
+    stopInertia()
+    triggerHapticFeedback('medium')
+    setExpandedClusterId(null)
+    setCenter(viewport?.center ?? camera.center)
+    setZoom(viewport?.zoom ?? camera.zoom)
+    setFollowUser(false)
+  }
+
+  const handleClearMapFilters = () => {
+    applyEnergyLevels([])
+    applyNearMe(false)
+    setFilters((current) => ({
+      ...current,
+      energyLevels: [],
+      categories: [],
+      neighborhoods: [],
+      maxDistance: Infinity,
+    }))
+    handleShowSeattle()
   }
 
   const handleToggleFullHeatmap = () => {
@@ -823,6 +846,21 @@ export const InteractiveMap = memo(function InteractiveMap({
       userLocation
     })
   }, [center, filteredVenues, zoom, dimensions, userLocation])
+
+  const autoFitRef = useRef(false)
+  useEffect(() => {
+    if (autoFitRef.current || !center || filteredVenues.length === 0) return
+    if (venueRenderPoints.length > 0) {
+      autoFitRef.current = true
+      return
+    }
+    const viewport = getFittedViewport(filteredVenues, dimensions)
+    if (!viewport) return
+    autoFitRef.current = true
+    setCenter(viewport.center)
+    setZoom(viewport.zoom)
+    setFollowUser(false)
+  }, [center, filteredVenues, venueRenderPoints.length, dimensions])
 
   const shouldClusterMarkers = shouldClusterMapMarkers({
     zoom,
@@ -1236,31 +1274,13 @@ export const InteractiveMap = memo(function InteractiveMap({
         })()}
       </svg>
 
-      {/* Empty State Message */}
-      {venueRenderPoints.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
-            <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Zoom out or pan to discover nearby spots
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="pointer-events-auto"
-              onClick={handleCenterOnUser}
-            >
-              <NavigationArrow size={14} weight="fill" className="mr-1.5" />
-              Center on Me
-            </Button>
-          </Card>
-        </motion.div>
-      )}
+      <MapEmptyOverlay
+        catalogCount={venues.length}
+        filteredCount={filteredVenues.length}
+        inViewCount={venueRenderPoints.length}
+        onShowCatalog={handleShowSeattle}
+        onClearFilters={handleClearMapFilters}
+      />
 
       {clusteredMapData.clusters.map((cluster) => (
         <div

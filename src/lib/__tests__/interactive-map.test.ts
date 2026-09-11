@@ -9,7 +9,11 @@ import {
   getHeadingDelta,
   getPreviewVenuePoints,
   getTimeAwareCategoryBoost,
+  isLocationNearCatalog,
+  resolveMapCamera,
+  resolveNearMeOrigin,
 } from '../interactive-map'
+import { LAUNCH_33_CENTER } from '../neighborhood-geo'
 import type { Venue } from '../types'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
@@ -117,6 +121,50 @@ describe('getPreviewVenuePoints', () => {
     })
 
     expect(preview[0].venue.id).toBe('ahead-club')
+  })
+})
+
+describe('resolveMapCamera', () => {
+  it('uses Launch 33 when location is denied and the catalog is empty', () => {
+    const camera = resolveMapCamera({ userLocation: null, venues: [] })
+    expect(camera.center).toEqual(LAUNCH_33_CENTER)
+    expect(camera.followUser).toBe(false)
+    expect(camera.reason).toBe('launch33')
+  })
+
+  it('centers on the Seattle catalog instead of a far GPS fix', () => {
+    const neumos = makeVenue({
+      id: 'neumos',
+      inventorySource: 'curated-seed',
+      seeded: true,
+      location: { lat: 47.6145, lng: -122.3205, address: 'Pike' },
+    })
+    const camera = resolveMapCamera({
+      userLocation: { lat: 40.7128, lng: -74.006 },
+      venues: [neumos],
+    })
+    expect(camera.followUser).toBe(false)
+    expect(camera.reason).toBe('catalog')
+    expect(camera.center.lat).toBeCloseTo(47.6145, 3)
+    expect(isLocationNearCatalog({ lat: 40.7128, lng: -74.006 }, [neumos])).toBe(false)
+  })
+
+  it('follows the user when they are actually in Seattle', () => {
+    const neumos = makeVenue({
+      id: 'neumos',
+      inventorySource: 'curated-seed',
+      location: { lat: 47.6145, lng: -122.3205, address: 'Pike' },
+    })
+    const here = { lat: 47.615, lng: -122.321 }
+    const camera = resolveMapCamera({ userLocation: here, venues: [neumos] })
+    expect(camera.followUser).toBe(true)
+    expect(camera.reason).toBe('user')
+    expect(camera.center.lat).toBeCloseTo(here.lat, 3)
+  })
+
+  it('uses Launch 33 as the Near me origin when GPS is off', () => {
+    expect(resolveNearMeOrigin(null)).toEqual(LAUNCH_33_CENTER)
+    expect(resolveNearMeOrigin({ lat: 47.6, lng: -122.3 })).toEqual({ lat: 47.6, lng: -122.3 })
   })
 })
 
