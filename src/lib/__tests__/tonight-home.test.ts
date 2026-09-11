@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
-import { buildTonightHome, resolveHomeNeighborhood, TONIGHT_EMPTY_LOOP, timeOfDayBoost } from '../tonight-home'
+import {
+  buildTonightHome,
+  listTonightFollowingVenues,
+  listTonightNearVenues,
+  resolveHomeNeighborhood,
+  TONIGHT_EMPTY_LOOP,
+  timeOfDayBoost,
+} from '../tonight-home'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {
@@ -9,6 +16,8 @@ function makeVenue(overrides: Partial<Venue> = {}): Venue {
     neighborhood: 'Capitol Hill',
     location: { lat: 47.614, lng: -122.32, address: '1 Pike' },
     pulseScore: 90,
+    inventorySource: 'curated-seed',
+    seeded: true,
     ...overrides,
   }
 }
@@ -92,6 +101,45 @@ describe('buildTonightHome', () => {
     expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
     expect(home.startHere?.suggested).toBe(true)
     expect(home.startHere?.headline).toMatch(/^Start at /)
+  })
+})
+
+describe('listTonightFollowingVenues', () => {
+  it('is honestly empty without saves or follows', () => {
+    expect(listTonightFollowingVenues([makeVenue()], [], [])).toEqual([])
+  })
+
+  it('returns saved venues without inventing a friends graph', () => {
+    const saved = makeVenue({ id: 'saved', name: 'Barrio' })
+    expect(listTonightFollowingVenues([makeVenue(), saved], ['saved'], []).map((v) => v.id))
+      .toEqual(['saved'])
+  })
+})
+
+describe('listTonightNearVenues', () => {
+  it('falls back to Launch 33 when location is off', () => {
+    const near = listTonightNearVenues([
+      makeVenue(),
+      makeVenue({
+        id: 'osm',
+        name: 'Random OSM',
+        inventorySource: 'osm',
+        seeded: false,
+      }),
+    ], null)
+    expect(near.usedLaunch33Fallback).toBe(true)
+    expect(near.venues.map((venue) => venue.id)).toEqual(['neumos'])
+  })
+
+  it('sorts by geo when a pin is available', () => {
+    const far = makeVenue({
+      id: 'far',
+      name: 'Far Bar',
+      location: { lat: 47.668, lng: -122.38, address: 'Ballard' },
+    })
+    const near = listTonightNearVenues([makeVenue(), far], { lat: 47.614, lng: -122.32 })
+    expect(near.usedLaunch33Fallback).toBe(false)
+    expect(near.venues[0]?.id).toBe('neumos')
   })
 })
 

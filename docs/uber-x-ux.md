@@ -37,7 +37,7 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 | # | Frame | Pixel-intent | Route / file |
 |---|-------|--------------|--------------|
 | 1 | Map · Uber×X (`7:5`) | Start-aligned Tonight / Live / Map; **Launch 33 / All Seattle / Surging** inverted pills; full-bleed `#14171c` map (~320px); **Surging nearby** pulse rows (avatar · name · @handle · time · body · vibe chips · ⚡/💬/share); Uber FAB kept | `/` Map — `TonightHomeHeader`, `MapInventoryPills`, `InteractiveMap`, `SurgingNearbyList` |
-| 2 | Tonight · For you (`7:76`) | For you / Following / Near underline; **Start here** kicker; same X pulse rows; no invented venues | `/` Tonight — `TonightHomeHeader`, `TonightEmptyState`, `LiveReviewFeedCard` |
+| 2 | Tonight · For you (`7:76`) | For you / Following / Near underline; **Start here** kicker; same X pulse rows; Following honest-empty; Near geo or Launch 33 | `/` Tonight — `TonightHomeHeader`, `TonightEmptyState`, `LiveReviewFeedCard` |
 | 3 | Venue · Live timeline (`7:155`) | 28px name; `{hood} · Open now · Verified`; 40px pink score; inverted **I’m here · Pulse**; muted Live now + timeline | `/venue/:id` — `VenuePage`, `LiveNowStrip` |
 | 4 | Compose · one-thumb (`7:212`) | **Cancel** + pink **Post**; hairline; avatar + `Name · near venue ✓` chip; 20px muted placeholder; vibe pills (selected inverted) | Create Pulse — `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
 
@@ -45,7 +45,7 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 
 | # | Frame | Route / surface | File |
 |---|-------|-----------------|------|
-| 5 | Trust at a glance | Map hover + Surging rows | `TrustPinChips`, `TrustGlanceRow`, `SurgingNearbyList` |
+| 5 | Trust at a glance (#89) | Map hover + Surging rows | `TrustPinChips`, `TrustGlanceRow`, `SurgingNearbyList` |
 | 6 | One-thumb create | Pin / FAB / I’m here · Pulse | `CreatePulseDialog` |
 | 7 | Live presence | `/` **Live** + map toast | `LivePulseTimeline`, `MapLiveReviewToast` |
 | 8 | For tonight (personal) | `/` **Tonight** | `TonightHomeHeader` + `buildTonightHome` |
@@ -60,7 +60,7 @@ Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off he
 |---------|-------|------|
 | Auth gate / magic-link | `/auth` (guest writes) | `AuthGate`, `getWriteAuthRedirect` |
 | Ops moderation | `/ops` | `OpsQueuePage` |
-| Install / PWA | Map home card | `InstallAffordance` |
+| Install / PWA (#90) | Map home card | `InstallAffordance` |
 | Empty states (map → venue → pulse) | Tonight / Live / venue / generic | `TonightEmptyState`, `LivePulseTimeline`, `EmptyState` |
 
 ## Interaction rules

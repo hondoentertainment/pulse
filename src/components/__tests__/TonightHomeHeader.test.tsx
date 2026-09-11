@@ -18,6 +18,8 @@ function makeVenue(overrides: Partial<Venue> = {}): Venue {
     location: { lat: 47.614, lng: -122.32, address: '1 Pike' },
     pulseScore: 80,
     neighborhood: 'Capitol Hill',
+    inventorySource: 'curated-seed',
+    seeded: true,
     ...overrides,
   }
 }
@@ -47,6 +49,26 @@ describe('TonightHomeHeader', () => {
     expect(screen.getByText('@neumos')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: 'Live' }))
     expect(onSurfaceChange).toHaveBeenCalledWith('live')
+  })
+
+  it('keeps Following honestly empty and Near on Launch 33 without geo', () => {
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        locationDenied
+        onVenueClick={vi.fn()}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Following' }))
+    expect(screen.getByText('Nothing in Following yet')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Near' }))
+    expect(screen.getByText('Launch 33 · location off')).toBeInTheDocument()
+    expect(screen.getByText('Neumos')).toBeInTheDocument()
+    expect(screen.getByText('@neumos')).toBeInTheDocument()
   })
 
   it('hides For you cards on the Map surface', () => {

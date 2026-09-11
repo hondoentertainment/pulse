@@ -13,6 +13,7 @@ import {
 } from './map-live-reviews'
 import { ENERGY_CONFIG, type EnergyRating } from './types'
 import { filterTonightCatalog } from './catalog-quality'
+import { isCuratedVenue } from './map-filters'
 import {
   DEFAULT_LAUNCH_NEIGHBORHOOD,
   inferNeighborhoodFromGeo,
@@ -154,6 +155,47 @@ function rankScore(
     : 2
   const recencyBoost = activity.latest ? 20 : 0
   return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4
+}
+
+export function listTonightFollowingVenues(
+  venues: Venue[],
+  savedVenueIds: readonly string[] = [],
+  followedVenueIds: readonly string[] = [],
+): Venue[] {
+  const saved = new Set([...savedVenueIds, ...followedVenueIds])
+  if (saved.size === 0) return []
+  return venues.filter((venue) => saved.has(venue.id))
+}
+
+/** Geo-sorted catalog, or Launch 33 when location is off. Never invents venues. */
+export function listTonightNearVenues(
+  venues: Venue[],
+  userLocation: { lat: number; lng: number } | null,
+  limit = 8,
+): { venues: Venue[]; usedLaunch33Fallback: boolean } {
+  const catalog = filterTonightCatalog(venues)
+  if (!userLocation) {
+    return {
+      venues: catalog.filter((venue) => isCuratedVenue(venue)).slice(0, limit),
+      usedLaunch33Fallback: true,
+    }
+  }
+  return {
+    venues: [...catalog]
+      .map((venue) => ({
+        venue,
+        miles: calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng,
+        ),
+      }))
+      .sort((a, b) => a.miles - b.miles)
+      .slice(0, limit)
+      .map((row) => row.venue),
+    usedLaunch33Fallback: false,
+  }
 }
 
 export function buildTonightHome(input: {
