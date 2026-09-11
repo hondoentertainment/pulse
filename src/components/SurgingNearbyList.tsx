@@ -34,9 +34,14 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
-        <p className="rounded-[18px] bg-[#17171C] p-3.5 text-sm text-muted-foreground">
-          Quiet nearby — no live reviews in the last hour.
-        </p>
+        <div className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Quiet nearby — no live reviews in the last hour.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Map → venue → pulse. Browse the real Seattle catalog, then post when you’re there.
+          </p>
+        </div>
       ) : (
         <div className="space-y-3">
           {nearby.map((venue) => {

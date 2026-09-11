@@ -51,3 +51,12 @@ export const WRITE_AUTH_COPY = {
   intel: { title: 'Sign in required', description: 'Sign in to report live intel.' },
   create: { title: 'Sign in required', description: 'Sign in to create a Pulse.' },
 } as const
+
+/** Close the composer whenever a write action redirects to /auth. */
+export function closeComposerForAuthRedirect(setters: {
+  setCreateDialogOpen?: (open: boolean) => void
+  setVenueForPulse?: (venue: null) => void
+}): void {
+  setters.setCreateDialogOpen?.(false)
+  setters.setVenueForPulse?.(null)
+}

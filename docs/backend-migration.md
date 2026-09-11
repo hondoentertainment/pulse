@@ -54,6 +54,7 @@ historical migrations once they're in staging/prod.
 | `20260417000001_core_tables_and_soft_delete.sql` | **new** reactions/check_ins/follows + soft-delete + updated_at |
 | `20260417000002_rls_policies_enforcement.sql` | **new** full RLS policy set + admin bypass |
 | `20260910140000_venue_claims_and_report_queue.sql` | **new** venue_claims + pulse_reports.status |
+| `20260911000000_owner_report_triage.sql` | optional owner/staff report dismiss RLS |
 
 ## 3. Seeding data
 

@@ -1,12 +1,14 @@
 import type { Pulse, Venue } from '@/lib/types'
 import { buildTonightHome } from '@/lib/tonight-home'
 import { TrustGlanceRow } from '@/components/TrustGlanceRow'
+import { TonightEmptyState } from '@/components/TonightEmptyState'
 
 interface TonightHomeHeaderProps {
   venues: Venue[]
   pulses: Pulse[]
   userLocation: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
+  locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
 }
 
@@ -15,6 +17,7 @@ export function TonightHomeHeader({
   pulses,
   userLocation,
   savedVenueIds = [],
+  locationDenied,
   onVenueClick,
 }: TonightHomeHeaderProps) {
   const home = buildTonightHome({
@@ -22,6 +25,7 @@ export function TonightHomeHeader({
     pulses,
     userLocation,
     savedVenueIds,
+    locationDenied,
   })
 
   return (
@@ -39,7 +43,9 @@ export function TonightHomeHeader({
           onClick={() => onVenueClick(home.startHere!.venue)}
           className="w-full rounded-[18px] bg-[#17171C] p-3.5 text-left"
         >
-          <p className="text-xs font-medium text-primary">Start here</p>
+          <p className="text-xs font-medium text-primary">
+            {home.startHere.suggested ? 'Start here · Launch 33' : 'Start here'}
+          </p>
           <p className="mt-1 text-lg font-bold text-white">{home.startHere.headline}</p>
           <div className="mt-1">
             <TrustGlanceRow venue={home.startHere.venue} pulses={pulses} />
@@ -62,6 +68,8 @@ export function TonightHomeHeader({
           ))}
         </div>
       )}
+
+      {home.empty && <TonightEmptyState empty={home.empty} />}
     </section>
   )
 }

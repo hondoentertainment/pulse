@@ -103,7 +103,8 @@ describe('handleCreatePulse auth gate', () => {
     result.current.handleCreatePulse('venue-1')
 
     expect(setters.navigate).toHaveBeenCalledWith('/auth')
-    expect(setters.setCreateDialogOpen).not.toHaveBeenCalled()
+    expect(setters.setCreateDialogOpen).toHaveBeenCalledWith(false)
+    expect(setters.setVenueForPulse).toHaveBeenCalledWith(null)
     expect(toast.error).toHaveBeenCalledWith('Sign in required', {
       description: 'Sign in to create a Pulse.',
     })

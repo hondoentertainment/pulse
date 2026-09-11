@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { track } from '@/lib/observability/analytics'
 import { Lightning, Envelope, CircleNotch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
@@ -12,8 +13,14 @@ export function AuthGate() {
 
   const busy = isLoading || localLoading
 
+  useEffect(() => {
+    track('funnel_step', { step: 'auth', guest: true })
+    track('auth_started', { method: 'redirect' })
+  }, [])
+
   const handleGoogle = async () => {
     setLocalLoading(true)
+    track('auth_started', { method: 'google' })
     try {
       await signInWithOAuth('google')
     } finally {

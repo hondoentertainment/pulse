@@ -44,6 +44,9 @@ describe('buildTrustGlance', () => {
     expect(glance.whySurging).toBe('Why surging: +8 reviews / 20m')
     expect(glance.line).toContain('GPS ✓')
     expect(glance.line).toContain('Why surging')
+    expect(glance.chips.map((chip) => chip.id)).toEqual(['freshness', 'verified', 'density'])
+    expect(glance.chips[1].label).toBe('Verified')
+    expect(glance.chips[2].tone).toBe('hot')
   })
 
   it('marks unverified soft signals', () => {

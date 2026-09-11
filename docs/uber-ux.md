@@ -22,7 +22,9 @@ Ship the eight Figma frames on [Uber UX Targets](https://www.figma.com/design/ws
 | 7 | Reliability · Empty + offline | `OfflineBanner` + `MapHomeSkeleton` + queued draft | Offline copy, Keep browsing, skeleton matches map, draft never lost |
 | 8 | First session · Cold start | Onboarding + `ColdStartTip` | Launch 33 first; All Seattle tip; Start Exploring; map skeleton under 2s path |
 
-Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWriteAuthRedirect`). Toast-only is a production gap after #83.
+Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWriteAuthRedirect` + `closeComposerForAuthRedirect`). Toast-only is not acceptable — the composer must close.
+
+See [next-steps.md](next-steps.md) for #84–#87 + PWA / trust chips / ops / funnel / catalog.
 
 ## Procedure
 
@@ -42,4 +44,4 @@ Plus: guest check-in / live review / live intel **redirect to `/auth`** (`getWri
 ## Ownership
 
 - Owner: Pulse product / map + live reviews
-- Last reviewed: 2026-09-10
+- Last reviewed: 2026-09-11

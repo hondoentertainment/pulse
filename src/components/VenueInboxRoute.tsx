@@ -6,6 +6,7 @@ import { VenueInboxPage } from '@/components/VenueInboxPage'
 import { listMyVenueStaffRoles, type VenueStaffMembership } from '@/lib/data/venue-staff'
 import { listMyVenueClaims, submitVenueClaim } from '@/lib/data/venue-claims'
 import { dismissReportsForPulse } from '@/lib/owner-inbox'
+import { dismissReportsForPulseOnServer } from '@/lib/ops-client'
 import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
 import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
 import type { Venue } from '@/lib/types'
@@ -117,6 +118,7 @@ export function VenueInboxRoute() {
       reports={contentReports ?? []}
       onDismissReports={(pulseId) => {
         setContentReports((current) => dismissReportsForPulse(current ?? [], pulseId))
+        void dismissReportsForPulseOnServer(pulseId)
       }}
     />
   )

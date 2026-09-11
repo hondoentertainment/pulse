@@ -26,7 +26,7 @@ import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/
 import type { TabId } from '@/components/BottomNav'
 import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 
 import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
@@ -82,6 +82,7 @@ export function useAppHandlers() {
       hasSession: Boolean(session),
     })
     if (authRedirect) {
+      closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
       toast.error(WRITE_AUTH_COPY.create.title, { description: WRITE_AUTH_COPY.create.description })
       navigate(authRedirect)
       return
@@ -115,6 +116,7 @@ export function useAppHandlers() {
       hasSession: Boolean(session),
     })
     if (writeRedirect) {
+      closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
       toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
       navigate(writeRedirect)
       return
@@ -134,6 +136,7 @@ export function useAppHandlers() {
     if (USE_SUPABASE_BACKEND) {
       const userId = await getUserIdOrNull()
       if (!userId) {
+        closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
         toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
         navigate(writeRedirect ?? '/auth')
         return
@@ -243,6 +246,8 @@ export function useAppHandlers() {
     announce(`Live review posted at ${venueForPulse.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
     trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: true, hashtagCount: data.hashtags?.length || 0 })
+    const priorCount = (pulses || []).filter((pulse) => pulse.userId === currentUser.id).length
+    const isFirstPulse = priorCount === 0
     track('pulse_created', {
       pulseId: newPulse.id,
       venueId: venueForPulse.id,
@@ -252,7 +257,11 @@ export function useAppHandlers() {
       energyRating: data.energyRating,
       kind: newPulse.kind,
       locationVerified,
+      isFirstPulse,
     })
+    if (isFirstPulse) {
+      track('funnel_step', { step: 'first_pulse', venueId: venueForPulse.id, guest: false })
+    }
 
     const syncOnline = await uploadPulseToSupabase(newPulse)
     if (!syncOnline) {

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,9 +11,13 @@ import { MapEnergyPills } from '@/components/MapEnergyPills'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { ColdStartTip } from '@/components/ColdStartTip'
+import { InstallAffordance } from '@/components/InstallAffordance'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
-import { dismissColdStartTip, shouldShowColdStartTip } from '@/lib/cold-start'
+import { dismissColdStartTip, markNavigationStart, shouldShowColdStartTip } from '@/lib/cold-start'
+import { parseHereVenueId } from '@/lib/im-here'
+import { track } from '@/lib/observability/analytics'
 import type { MapInventoryLayer } from '@/lib/map-filters'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -78,6 +82,9 @@ export function MainTabRouter() {
   // detail page. AppRoutes renders VenuePage only via the /venue/:id route, so
   // navigation — not just state — is what opens the page.
   const navigate = useNavigate()
+  const location = useLocation()
+  const { session, isPlaceholder } = useSupabaseAuth()
+  const hereVenueId = parseHereVenueId(location.search)
   const handleVenueClick = useCallback(
     (venue: Venue) => {
       setSelectedVenue(venue)
@@ -103,6 +110,38 @@ export function MainTabRouter() {
   const [mapNearMe, setMapNearMe] = useState(false)
   const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
   const [showColdStart, setShowColdStart] = useState(() => shouldShowColdStartTip())
+  const [surgingReady, setSurgingReady] = useState(false)
+
+  useEffect(() => {
+    markNavigationStart()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'map') return
+    track('funnel_step', { step: 'guest_map', guest: !session && !isPlaceholder })
+  }, [activeTab, isPlaceholder, session])
+
+  const openedHereRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!hereVenueId || openedHereRef.current === hereVenueId) return
+    openedHereRef.current = hereVenueId
+    const venue = visibleVenues.find((item) => item.id === hereVenueId)
+    if (venue) setSelectedVenue(venue)
+    if (session || isPlaceholder) {
+      handleCreatePulse(hereVenueId)
+    }
+  }, [handleCreatePulse, hereVenueId, isPlaceholder, session, setSelectedVenue, visibleVenues])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const idle = window.requestIdleCallback
+      ?? ((cb: () => void) => window.setTimeout(cb, 400))
+    const id = idle(() => setSurgingReady(true))
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id as number)
+      else window.clearTimeout(id as number)
+    }
+  }, [])
 
   const handleMapPinClick = useCallback((venue: Venue) => {
     handleCreatePulse(venue.id)
@@ -169,6 +208,7 @@ export function MainTabRouter() {
               pulses={visiblePulses}
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
+              locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
             />
             {showColdStart && (
@@ -179,6 +219,7 @@ export function MainTabRouter() {
                 }}
               />
             )}
+            <InstallAffordance />
             <MapSearch
               venues={visibleVenues}
               onVenueSelect={handleVenueClick}
@@ -219,15 +260,20 @@ export function MainTabRouter() {
                 onNearMeChange={setMapNearMe}
                 inventoryLayer={inventoryLayer}
                 onInventoryLayerChange={setInventoryLayer}
+                focusVenueId={hereVenueId}
               />
             </div>
-            <SurgingNearbyList
-              venues={visibleVenues}
-              pulses={visiblePulses}
-              userLocation={userLocation}
-              unitSystem={unitSystem}
-              onVenueClick={handleVenueClick}
-            />
+            {surgingReady ? (
+              <SurgingNearbyList
+                venues={visibleVenues}
+                pulses={visiblePulses}
+                userLocation={userLocation}
+                unitSystem={unitSystem}
+                onVenueClick={handleVenueClick}
+              />
+            ) : (
+              <div className="h-16 animate-pulse rounded-[18px] bg-[#1F1F24]" aria-hidden />
+            )}
           </motion.div>
         )}
 

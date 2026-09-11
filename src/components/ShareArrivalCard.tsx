@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import type { Pulse, Venue } from '@/lib/types'
-import { buildShareOgCard } from '@/lib/sharing'
+import { buildShareOgCard, getImHereMapPath } from '@/lib/sharing'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
-import { getImHereMapPath } from '@/lib/sharing'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { resolveImHereAction } from '@/lib/im-here'
 
 interface ShareArrivalCardProps {
   venue: Venue
@@ -13,6 +14,7 @@ interface ShareArrivalCardProps {
 
 export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
   const navigate = useNavigate()
+  const { session, isPlaceholder } = useSupabaseAuth()
   const activity = getVenueMapActivity(venue, pulses)
   const energyLabel = activity.latest
     ? ENERGY_CONFIG[activity.latest.energyRating].label
@@ -37,12 +39,21 @@ export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
       </div>
       <button
         type="button"
-        onClick={() => navigate(getImHereMapPath(venue.id))}
+        onClick={() => {
+          const action = resolveImHereAction({
+            venueId: venue.id,
+            isPlaceholder,
+            hasSession: Boolean(session),
+          })
+          navigate(action.openCreate ? getImHereMapPath(venue.id, { create: true }) : action.mapPath)
+        }}
         className="h-12 w-full rounded-2xl bg-primary text-[15px] font-semibold text-primary-foreground"
       >
         {card.cta}
       </button>
-      <p className="text-xs text-muted-foreground">OG preview matches this card</p>
+      <p className="text-xs text-muted-foreground">
+        OG preview matches this card · guests can view the pin, writes go to /auth
+      </p>
     </section>
   )
 }

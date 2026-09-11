@@ -200,6 +200,12 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 | `InteractiveMap` | Main map with clustering, live-review heatmap, and live toast |
 | `MapLiveReviewToast` | Floating `Live · venue · snippet` overlay on the map |
 | `SurgingNearbyList` | Last-hour live review cards under the map |
+| `TonightHomeHeader` | Tonight · neighborhood + start here / empty loop |
+| `TonightEmptyState` | Teach map → venue → pulse |
+| `TrustPinChips` | Freshness / verified / density chips |
+| `InstallAffordance` | Add to home screen on the map tab |
+| `ShareArrivalCard` | Shared-link landing + I’m here |
+| `OpsQueuePage` | `/ops` claim verify + report dismiss |
 | `MapboxBaseLayer` | Mapbox tile layer |
 | `MapFilters` | Energy/category filters |
 | `MapSearch` | Map-integrated search |

@@ -93,9 +93,7 @@ export function getVenueShareLandingPath(venueId: string): string {
 }
 
 /** “I'm here · open map” — focuses the home map on this pin. */
-export function getImHereMapPath(venueId: string): string {
-  return `/?here=${encodeURIComponent(venueId)}`
-}
+export { getImHereMapPath, parseHereVenueId, resolveImHereAction } from './im-here'
 
 export interface ShareOgCard {
   title: string

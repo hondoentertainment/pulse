@@ -51,6 +51,8 @@ How users move through Pulse. The app is venue + map only.
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
 | `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` (read-only tonight’s live reviews) |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
+| `/ops` | `OpsQueuePage` (admin claims + report triage; ProtectedRoute) |
+| `/?here=:venueId` | Map tab focuses that pin (I’m here). Signed-in may open create. |
 
 ### Deep links (native)
 

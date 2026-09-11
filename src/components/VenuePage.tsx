@@ -191,8 +191,9 @@ export function VenuePage({
   }, [arrivalWatch, showArrivalPrompt])
 
   useEffect(() => {
-    track('venue_viewed', { venueId: venue.id, source: 'deeplink' })
-  }, [venue.id])
+    track('venue_viewed', { venueId: venue.id, source: fromShare ? 'share' : 'deeplink' })
+    track('funnel_step', { step: 'venue', venueId: venue.id })
+  }, [fromShare, venue.id])
 
   const liveNowReviews = useMemo(
     () => getLiveNowReviews(venuePulses, venue.id),

@@ -60,6 +60,10 @@ export function OfflineBanner() {
               <p className="text-sm text-muted-foreground">
                 Map shows last known energy. Pulses queue until you’re back.
               </p>
+              <div className="space-y-2" aria-hidden>
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#1F1F24]" />
+                <div className="h-3 w-full animate-pulse rounded bg-[#1F1F24]" />
+              </div>
               {draftLine && (
                 <div className="rounded-[18px] bg-[#17171C] p-3.5">
                   <p className="text-sm font-semibold text-white">Draft saved</p>

@@ -12,6 +12,7 @@ import {
   type ResponseLike,
 } from '../_lib/http.js'
 import { createAdminClient } from '../_lib/supabase-server.js'
+import { buildShareOgEnergy } from '../_lib/share-og.js'
 
 function escapeHtml(value: string): string {
   return value
@@ -68,15 +69,28 @@ export default async function handler(
       if (admin) {
         const { data } = await admin
           .from('venues')
-          .select('name, neighborhood, city, category')
+          .select('name, neighborhood, city, category, pulse_score')
           .eq('id', venueId)
           .maybeSingle()
+        const { data: latest } = await admin
+          .from('pulses')
+          .select('energy_rating, created_at')
+          .eq('venue_id', venueId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
         if (data && typeof data.name === 'string') {
-          title = data.name
-          const place = [data.neighborhood, data.city].filter(Boolean).join(', ')
-          description = [data.category, place, 'Live reviews on Pulse']
-            .filter(Boolean)
-            .join(' · ')
+          const card = buildShareOgEnergy({
+            venueName: data.name,
+            neighborhood: typeof data.neighborhood === 'string' ? data.neighborhood : null,
+            city: typeof data.city === 'string' ? data.city : null,
+            category: typeof data.category === 'string' ? data.category : null,
+            pulseScore: typeof data.pulse_score === 'number' ? data.pulse_score : null,
+            latestEnergyRating: typeof latest?.energy_rating === 'string' ? latest.energy_rating : null,
+            latestCreatedAt: typeof latest?.created_at === 'string' ? latest.created_at : null,
+          })
+          title = card.title
+          description = card.description
         }
       }
     } catch {

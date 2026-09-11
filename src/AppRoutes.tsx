@@ -50,6 +50,9 @@ const VenueMetadataRoute = lazy(() =>
     default: m.VenueMetadataRoute,
   })),
 )
+const OpsQueuePage = lazy(() =>
+  import('@/components/OpsQueuePage').then((m) => ({ default: m.OpsQueuePage })),
+)
 
 /**
  * AppRoutes — the tab / sub-page / modal switcher.
@@ -232,6 +235,16 @@ export function AppRoutes() {
               <VenueMetadataRoute />
             </Suspense>
           }
+        />
+        <Route
+          path="/ops"
+          element={(
+            <ProtectedRoute>
+              <Suspense fallback={<PageSkeleton />}>
+                <OpsQueuePage />
+              </Suspense>
+            </ProtectedRoute>
+          )}
         />
 
         {/* Sub-pages */}

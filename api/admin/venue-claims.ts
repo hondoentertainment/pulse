@@ -1,4 +1,5 @@
 /**
+ * GET   /api/admin/venue-claims?status=pending — list claims for ops triage
  * PATCH /api/admin/venue-claims
  *
  * Admin-only verify / reject. Body: { claimId, status, notes? }
@@ -34,8 +35,8 @@ export default async function handler(
   res: ResponseLike,
 ): Promise<void> {
   if (handlePreflight(req, res)) return
-  if (req.method !== 'PATCH') {
-    methodNotAllowed(res, ['PATCH'])
+  if (req.method !== 'PATCH' && req.method !== 'GET') {
+    methodNotAllowed(res, ['GET', 'PATCH'])
     return
   }
 
@@ -46,6 +47,28 @@ export default async function handler(
   }
   if (!isAdminToken(auth.context.token)) {
     fail(res, 403, 'forbidden', 'Admin role required')
+    return
+  }
+
+  const client = createUserClient(auth.context.token)
+
+  if (req.method === 'GET') {
+    const raw = req.query?.status
+    const status = Array.isArray(raw) ? raw[0] : raw
+    let query = client
+      .from('venue_claims')
+      .select('id, venue_id, user_id, status, evidence, notes, created_at, reviewed_at')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (status && status !== 'all') {
+      query = query.eq('status', status)
+    }
+    const { data, error } = await query
+    if (error) {
+      fail(res, 500, 'claim_list_failed', error.message)
+      return
+    }
+    ok(res, { claims: data ?? [] })
     return
   }
 
@@ -70,7 +93,6 @@ export default async function handler(
     notes = req.body.notes.trim()
   }
 
-  const client = createUserClient(auth.context.token)
   const update: Record<string, unknown> = {
     status,
     reviewed_at: new Date().toISOString(),
