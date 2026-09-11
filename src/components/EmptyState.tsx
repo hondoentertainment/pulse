@@ -17,8 +17,8 @@ const variants: Record<EmptyStateVariant, EmptyStateConfig> = {
     'no-pulses': {
         icon: <Lightning size={48} weight="duotone" className="text-primary" />,
         title: "No pulses yet",
-        description: "Be the first to share the vibe! Post a pulse and let others know what's happening.",
-        ctaText: "Drop a Pulse"
+        description: "Map → venue → pulse. Browse a real Seattle pin, then post when you’re there.",
+        ctaText: "Open the map"
     },
     'no-notifications': {
         icon: <Bell size={48} weight="duotone" className="text-muted-foreground" />,
@@ -34,7 +34,7 @@ const variants: Record<EmptyStateVariant, EmptyStateConfig> = {
     'no-nearby': {
         icon: <MapPin size={48} weight="duotone" className="text-muted-foreground" />,
         title: "No venues nearby",
-        description: "We couldn't find any venues in your area. Try expanding your search."
+        description: "Open the map, zoom to All Seattle, tap a real pin, then pulse when you’re there."
     },
     'offline': {
         icon: <Lightning size={48} weight="duotone" className="text-destructive" />,

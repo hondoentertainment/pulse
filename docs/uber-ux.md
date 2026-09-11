@@ -31,7 +31,7 @@ Visual overlay after those frames: [Uber × X UX](uber-x-ux.md) (pure black / ha
 ## Procedure
 
 1. Open `/` as a guest — map + Launch 33 / All Seattle / Near me.
-2. Tap a pin → Quick pulse (sign-in redirect if no session).
+2. Tap a pin → Cancel + Post composer (sign-in redirect if no session).
 3. Share a venue URL → crawler hits `/api/share/venue` (OG + image) → human lands on `?from=share`.
 4. Verified owner opens inbox → reply / dismiss tonight’s queue.
 5. Toggle offline → banner + Keep browsing; drafts persist.

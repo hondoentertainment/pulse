@@ -18,7 +18,6 @@ export function EnergyPills({ value, onChange }: EnergyPillsProps) {
           <FilterPill
             key={level}
             pressed={selected}
-            activeColor={config.color}
             onClick={() => onChange(level)}
           >
             {config.label}

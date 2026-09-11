@@ -1,7 +1,7 @@
 import { type PulseWithUser } from '@/lib/types'
 import { getLiveNowReviews } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
-import { venueHandle } from '@/lib/venue-handle'
+import { authorHandle } from '@/lib/venue-handle'
 import { track } from '@/lib/observability/analytics'
 
 interface LiveNowStripProps {
@@ -13,7 +13,6 @@ interface LiveNowStripProps {
 
 export function LiveNowStrip({ venueId, pulses, onSelect, venueName }: LiveNowStripProps) {
   const liveNow = getLiveNowReviews(pulses, venueId)
-  const handle = venueName ? venueHandle(venueName) : undefined
 
   return (
     <section aria-labelledby="live-now-heading">
@@ -37,7 +36,7 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName }: LiveNowSt
               caption={pulse.caption}
               unverified={pulse.locationVerified === false}
               displayName={pulse.user?.username || venueName}
-              handle={handle}
+              handle={authorHandle(pulse.user?.username, venueName)}
               avatarUrl={pulse.user?.profilePhoto}
               onClick={() => {
                 track('pulse_viewed', {

@@ -4,7 +4,10 @@
 
 Map Pulse’s venue + map shell to a hybrid of **Uber product UX** (map-first discovery, one-thumb CTAs) and **X (Twitter) feed UX** (timeline density, hairline chrome). Guests still browse. Writes stay auth-gated. Signal is not restored. Realtime live updates stay on.
 
-Figma Uber frames remain the discovery baseline: [Uber UX Targets](uber-ux.md). This doc is the visual/interaction overlay shipped after #88 / #94.
+Figma pages:
+
+- **Uber × X** — [node 7:2](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?node-id=7-2)
+- **Uber UX Targets** — [node 6:2](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?node-id=6-2) restyled into the same chrome (behavior unchanged)
 
 ## Preconditions
 
@@ -22,37 +25,60 @@ Figma Uber frames remain the discovery baseline: [Uber UX Targets](uber-ux.md). 
 | `--foreground` | `#E7E9EA` | Primary text |
 | `--muted-foreground` | `#71767B` | Meta (@handle, time) |
 | `--primary` | `#FF2D78` | Pulse energy accent (not Twitter blue) |
-| Energy Dead / Chill / Buzzing / Electric | existing | Used sparingly on pills + chips |
+| Selected pills / venue CTA | inverted white / black | Figma 7 Launch 33 + I’m here · Pulse |
+| Energy Dead / Chill / Buzzing / Electric | existing | Outline chips on timeline; inverted when selected |
 
 Shared class groups live in `src/lib/ux-chrome.ts`. Prefer those over one-off hex.
 
-## Mapping
+## Screen → file / route checklist
 
-| Surface | Uber keep | X add | Components |
-|---------|-----------|-------|------------|
-| Map home | Floating Launch 33 / All Seattle / energy pills, map canvas, Surging rail, FAB, cold-start | `Tonight · {hood}` header + underline **Tonight / Live / Map** tabs; default **Map** for Launch 33 first paint | `TonightHomeHeader`, `FeedTabBar`, `FilterPill`, `MapInventoryPills`, `MapEnergyPills`, `InteractiveMap`, `SurgingNearbyList` |
-| Tonight / For you | Start here + heating up from real catalog | Timeline rows: avatar · **name** · `@venue` · kicker; trust chips stay | `TonightHomeHeader`, `TonightEmptyState`, `TrustPinChips` |
-| Live now | Realtime last-90-min reviews only | X timeline of venue pulses + Boost / Reply / Share icon row | `LivePulseTimeline`, `LiveNowStrip`, `LiveReviewFeedCard`, `PulseActionRow` |
-| Venue page | Mid-energy score, **Check in · Create live review** CTA | `@handle` under title; Live now + History as timeline; full `PulseCard` still opens on tap | `VenuePage`, `LiveNowStrip`, `LiveReviewFeedCard` |
-| Create pulse | One-thumb **Post · 1 tap**, energy pills, draft never lost | Focused composer, venue chip as attachment, character count, hairline caption | `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
-| Auth / empty / offline | Guest browse; writes → `/auth`; Keep browsing | Same black chrome + hairline; pink CTA, no gradient wall | `AuthGate`, `OfflineBanner`, `EmptyState`, `MapHomeSkeleton` |
-| Bottom nav / FAB | Large tap targets, one-thumb compose | Hairline top, white active + pink underline (no filled pink pill); FAB pink shadow only | `BottomNav`, `AppRoutes` FAB |
+### A) Uber × X (Figma 7:2)
+
+| # | Frame | Route / surface | File |
+|---|-------|-----------------|------|
+| 1 | Map · Uber×X (`7:5`) | `/` map tab, default **Map** | `TonightHomeHeader`, `FeedTabBar`, `MapInventoryPills`, `MapEnergyPills`, `InteractiveMap`, `SurgingNearbyList`, `AppRoutes` FAB |
+| 2 | Tonight · For you (`7:76`) | `/` **Tonight** → For you / Following / Near | `TonightHomeHeader`, `TonightEmptyState` |
+| 3 | Venue · Live timeline (`7:155`) | `/venue/:id` | `VenuePage`, `LiveNowStrip`, `LiveReviewFeedCard` |
+| 4 | Compose · one-thumb (`7:212`) | Create Pulse dialog | `CreatePulseDialog`, `ComposerVenueChip`, `EnergyPills` |
+
+### B) Uber UX Targets (Figma 6:2) — same chrome, same behavior
+
+| # | Frame | Route / surface | File |
+|---|-------|-----------------|------|
+| 5 | Trust at a glance | Map hover + Surging rows | `TrustPinChips`, `TrustGlanceRow`, `SurgingNearbyList` |
+| 6 | One-thumb create | Pin / FAB / I’m here · Pulse | `CreatePulseDialog` |
+| 7 | Live presence | `/` **Live** + map toast | `LivePulseTimeline`, `MapLiveReviewToast` |
+| 8 | For tonight (personal) | `/` **Tonight** | `TonightHomeHeader` + `buildTonightHome` |
+| 9 | Share that converts | `/venue/:id?from=share` | `ShareArrivalCard`, `/api/share/venue`, `/api/share/og` |
+| 10 | Owner inbox v2 | `/venue/:id/inbox` | `VenueInboxPage`, `VenueInboxRoute` |
+| 11 | Offline / reliability | App shell | `OfflineBanner`, `MapHomeSkeleton`, `pulse-draft` |
+| 12 | First-session cold start | Onboarding + map tip | `OnboardingFlow`, `ColdStartTip` |
+
+### C) Wired app routes
+
+| Surface | Route | File |
+|---------|-------|------|
+| Auth gate / magic-link | `/auth` (guest writes) | `AuthGate`, `getWriteAuthRedirect` |
+| Ops moderation | `/ops` | `OpsQueuePage` |
+| Install / PWA | Map home card | `InstallAffordance` |
+| Empty states (map → venue → pulse) | Tonight / Live / venue / generic | `TonightEmptyState`, `LivePulseTimeline`, `EmptyState` |
 
 ## Interaction rules
 
 1. Guests browse `/` and `/venue/:id`. Guest create / check-in / intel still `getWriteAuthRedirect` → `/auth` and `closeComposerForAuthRedirect`.
 2. Map tab default surface is **Map** so cold-start stays Launch 33 / map-first.
-3. Tonight and Live never invent venues — they rank or list the existing Seattle catalog + live pulses.
-4. Action row (Boost / Reply / Share) is icon-only. Reply/Share open the same venue or review the card already opened.
-5. Realtime: map toast, pin bloom, Surging rail, Live now still subscribe to existing pulse channels.
+3. Tonight **For you / Following / Near** never invent venues — they rank, filter saves, or sort the existing Seattle catalog.
+4. Venue primary CTA is **I’m here · Pulse** (inverted). Composer is **Cancel + Post** with **Post · 1 tap** still one-thumb at the bottom.
+5. Action row (Boost / Reply / Share) is icon-only. Reply/Share open the same venue or review the card already opened.
+6. Realtime: map toast, pin bloom, Surging rail, Live now still subscribe to existing pulse channels.
 
 ## Procedure
 
 1. Open `/` as a guest — black chrome, Tonight / Live / Map underline, Launch 33 pills, FAB.
-2. Map (default) → pin → Quick pulse (sign-in redirect if no session; composer closes).
-3. Tonight → For you cards with `@handle` + trust chips.
+2. Map (default) → pin → Cancel + Post composer (sign-in redirect if no session; composer closes).
+3. Tonight → For you / Following / Near with `@handle` + trust chips.
 4. Live → city timeline of last-90-min reviews, or honest empty copy.
-5. Venue → Uber score + CTA, X Live now / History.
+5. Venue → 28px name, score card, I’m here · Pulse, Live now timeline.
 6. Toggle offline → banner + Keep browsing; drafts persist.
 
 ## Verification

@@ -70,7 +70,7 @@ describe('OnboardingFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Continue/i }))
 
     // Ready step
-    expect(screen.getByText(/You're all set/i)).toBeInTheDocument()
+    expect(screen.getByText(/Where the energy is/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Start Exploring/i }))
 
     expect(onComplete).toHaveBeenCalledTimes(1)

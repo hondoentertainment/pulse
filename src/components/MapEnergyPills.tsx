@@ -24,14 +24,12 @@ export function MapEnergyPills({
       </FilterPill>
       <FilterPill
         pressed={energyLevels.includes('buzzing')}
-        activeColor="var(--energy-buzzing)"
         onClick={() => onToggleEnergy('buzzing')}
       >
         Buzzing
       </FilterPill>
       <FilterPill
         pressed={nearMeActive}
-        activeColor="var(--accent)"
         onClick={onToggleNearMe}
       >
         Near me

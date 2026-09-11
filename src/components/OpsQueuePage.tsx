@@ -46,7 +46,7 @@ export function OpsQueuePage() {
   }, [admin, isPlaceholder])
 
   return (
-    <div className="min-h-screen bg-[#0B0B0E] px-5 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-8">
+    <div className="min-h-screen bg-background px-5 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-8">
       <div className="mx-auto max-w-2xl space-y-4">
         <button
           type="button"
@@ -56,7 +56,7 @@ export function OpsQueuePage() {
           <CaretLeft size={18} />
           Home
         </button>
-        <h1 className="text-[22px] font-bold text-white">Tonight’s ops queue</h1>
+        <h1 className="text-[22px] font-bold text-foreground">Tonight’s ops queue</h1>
         <p className="text-sm text-muted-foreground">
           Verify venue claims and triage pulse reports. No admin UI credentials are invented here —
           you need <code>app_metadata.role = admin</code>. SQL fallback lives in
@@ -66,7 +66,7 @@ export function OpsQueuePage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Checking admin role…</p>
         ) : !admin || isPlaceholder ? (
-          <div className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2">
+          <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
             <h2 className="text-base font-semibold">Admin role required</h2>
             <p className="text-sm text-muted-foreground">
               Signed-in users without the admin role stay on this runbook path. Paste the verify SQL
@@ -85,12 +85,12 @@ export function OpsQueuePage() {
                 </Button>
               </div>
               {claims.length === 0 ? (
-                <p className="rounded-[18px] bg-[#17171C] p-3.5 text-sm text-muted-foreground">
+                <p className="rounded-xl border border-border bg-card p-3.5 text-sm text-muted-foreground">
                   No pending claims.
                 </p>
               ) : claims.map((claim) => (
-                <article key={claim.id} className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2">
-                  <p className="text-sm font-semibold text-white">Venue {claim.venue_id}</p>
+                <article key={claim.id} className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Venue {claim.venue_id}</p>
                   <p className="text-xs text-muted-foreground">{claim.evidence}</p>
                   <div className="flex gap-2">
                     <Button
@@ -131,12 +131,12 @@ export function OpsQueuePage() {
             <section className="space-y-2">
               <h2 className="text-base font-semibold">Pending reports</h2>
               {reports.length === 0 ? (
-                <p className="rounded-[18px] bg-[#17171C] p-3.5 text-sm text-muted-foreground">
+                <p className="rounded-xl border border-border bg-card p-3.5 text-sm text-muted-foreground">
                   No pending reports.
                 </p>
               ) : reports.map((report) => (
-                <article key={report.id} className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2">
-                  <p className="text-sm font-semibold text-white">{report.reason}</p>
+                <article key={report.id} className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">{report.reason}</p>
                   <p className="text-xs text-muted-foreground">Pulse {report.pulse_id}</p>
                   <Button
                     type="button"

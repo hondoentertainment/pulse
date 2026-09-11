@@ -11,11 +11,15 @@ export const UX_NAME = 'font-bold tracking-tight text-foreground'
 export const UX_BODY = 'text-[15px] leading-5 text-foreground'
 export const UX_PILL_IDLE =
   'border border-border bg-muted text-muted-foreground'
-export const UX_PILL_ACTIVE = 'border border-transparent bg-primary text-primary-foreground'
+/** Figma 7 selected pills are inverted white / black, not pink. */
+export const UX_PILL_ACTIVE = 'border border-transparent bg-foreground text-background'
 export const UX_CTA =
   'h-12 w-full rounded-full bg-primary text-[15px] font-bold text-primary-foreground hover:bg-primary/90'
+export const UX_CTA_INVERT =
+  'h-12 w-full rounded-full bg-foreground text-[15px] font-bold text-background hover:bg-foreground/90'
+export const UX_CARD = 'rounded-xl border border-border bg-card shadow-none'
 export const UX_FAB =
-  'fixed right-5 bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,45,120,0.35)]'
+  'fixed right-5 bottom-24 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,45,120,0.35)]'
 export const UX_TIMELINE_ROW =
   'flex w-full gap-3 border-b border-border px-0 py-3 text-left'
 

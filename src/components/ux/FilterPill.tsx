@@ -8,12 +8,12 @@ interface FilterPillProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   activeColor?: string
 }
 
-/** Uber floating filter chip — large tap target, selected = Pulse energy pink (or energy color). */
+/** Uber floating filter chip — large tap target; selected is inverted white / black. */
 export function FilterPill({
   pressed = false,
   children,
   className,
-  activeColor,
+  activeColor: _activeColor,
   type = 'button',
   ...props
 }: FilterPillProps) {
@@ -26,7 +26,6 @@ export function FilterPill({
         pressed ? UX_PILL_ACTIVE : UX_PILL_IDLE,
         className,
       )}
-      style={pressed && activeColor ? { backgroundColor: activeColor, color: '#fff' } : undefined}
       {...props}
     >
       {children}

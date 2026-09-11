@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayInitials, venueHandle } from '../venue-handle'
+import { authorHandle, displayInitials, venueHandle } from '../venue-handle'
 
 describe('venueHandle', () => {
   it('slugs a venue name as an X-style handle', () => {
@@ -11,6 +11,18 @@ describe('venueHandle', () => {
   it('falls back without inventing a venue', () => {
     expect(venueHandle('')).toBe('@venue')
     expect(venueHandle(undefined)).toBe('@venue')
+  })
+})
+
+describe('authorHandle', () => {
+  it('uses the pulse author when present', () => {
+    expect(authorHandle('kyle', 'Neumos')).toBe('@kyle')
+    expect(authorHandle('@you', 'Neumos')).toBe('@you')
+  })
+
+  it('falls back to the venue handle', () => {
+    expect(authorHandle('', 'Neumos')).toBe('@neumos')
+    expect(authorHandle(undefined, 'Neumos')).toBe('@neumos')
   })
 })
 

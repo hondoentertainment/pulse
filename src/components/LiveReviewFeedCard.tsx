@@ -51,15 +51,12 @@ export function LiveReviewFeedCard({
       </div>
       <p className="mt-0.5 text-[15px] leading-5 text-foreground">{body}</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-          style={{ backgroundColor: energy.color }}
-        >
+        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-foreground">
           {energy.label}
         </span>
-        {unverified && (
-          <span className="text-[11px] font-medium text-muted-foreground">Unverified</span>
-        )}
+        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+          {unverified ? 'Unverified' : 'Verified'}
+        </span>
       </div>
     </>
   )

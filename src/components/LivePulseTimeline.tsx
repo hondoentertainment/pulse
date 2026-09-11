@@ -1,7 +1,7 @@
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import type { PulseWithUser, Venue } from '@/lib/types'
 import { getLiveNowReviews } from '@/lib/live-reviews'
-import { venueHandle } from '@/lib/venue-handle'
+import { authorHandle } from '@/lib/venue-handle'
 
 interface LivePulseTimelineProps {
   pulses: PulseWithUser[]
@@ -41,7 +41,7 @@ export function LivePulseTimeline({ pulses, venues, onVenueClick }: LivePulseTim
                 caption={pulse.caption}
                 unverified={pulse.locationVerified === false}
                 displayName={name}
-                handle={venueHandle(venue.name)}
+                handle={authorHandle(pulse.user?.username, venue.name)}
                 avatarUrl={pulse.user?.profilePhoto}
                 onClick={() => onVenueClick(venue)}
                 onReply={() => onVenueClick(venue)}

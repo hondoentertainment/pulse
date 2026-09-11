@@ -142,6 +142,8 @@ describe('CreatePulseDialog', () => {
       />
     )
     expect(screen.getByRole('heading', { name: /Quick pulse/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Cancel$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Post$/i })).toBeInTheDocument()
     expect(screen.getByText(/The Buzzy Bar · from map pin/)).toBeInTheDocument()
     expect(screen.getByText('Add photo (optional)')).toBeInTheDocument()
     expect(screen.getByText(/draft never lost/i)).toBeInTheDocument()

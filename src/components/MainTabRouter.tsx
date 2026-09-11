@@ -211,6 +211,7 @@ export function MainTabRouter() {
               pulses={visiblePulses}
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
+              followedVenueIds={followedVenues.map((venue) => venue.id)}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
               surface={mapSurface}

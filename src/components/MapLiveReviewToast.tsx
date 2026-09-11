@@ -37,11 +37,11 @@ export const MapLiveReviewToast = memo(function MapLiveReviewToast({ toast, onDi
           triggerHapticFeedback('medium')
           onOpen(toast)
         }}
-        className="w-full rounded-[16px] border border-[#FF2D78]/40 bg-[#101014]/95 px-3.5 py-3 text-left shadow-2xl backdrop-blur-md"
+        className="w-full rounded-xl border border-border bg-card/95 px-3.5 py-3 text-left shadow-2xl backdrop-blur-md"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-foreground">
               {toast.headline}
             </p>
             <p className="mt-1 line-clamp-2 text-sm text-foreground">

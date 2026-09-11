@@ -1,5 +1,7 @@
+import { useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import { buildTonightHome } from '@/lib/tonight-home'
+import { calculateDistance } from '@/lib/pulse-engine'
 import { TrustGlanceRow } from '@/components/TrustGlanceRow'
 import { TonightEmptyState } from '@/components/TonightEmptyState'
 import { FeedTabBar } from '@/components/ux/FeedTabBar'
@@ -14,11 +16,20 @@ const MAP_TABS = [
   { id: 'map' as const, label: 'Map' },
 ]
 
+const TONIGHT_FEEDS = [
+  { id: 'foryou' as const, label: 'For you' },
+  { id: 'following' as const, label: 'Following' },
+  { id: 'near' as const, label: 'Near' },
+]
+
+type TonightFeed = (typeof TONIGHT_FEEDS)[number]['id']
+
 interface TonightHomeHeaderProps {
   venues: Venue[]
   pulses: Pulse[]
   userLocation: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
+  followedVenueIds?: readonly string[]
   locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
   surface?: MapHomeSurface
@@ -30,11 +41,13 @@ export function TonightHomeHeader({
   pulses,
   userLocation,
   savedVenueIds = [],
+  followedVenueIds = [],
   locationDenied,
   onVenueClick,
   surface = 'map',
   onSurfaceChange,
 }: TonightHomeHeaderProps) {
+  const [tonightFeed, setTonightFeed] = useState<TonightFeed>('foryou')
   const home = buildTonightHome({
     venues,
     pulses,
@@ -43,14 +56,45 @@ export function TonightHomeHeader({
     locationDenied,
   })
 
+  const followingVenues = useMemo(() => {
+    const saved = new Set([...savedVenueIds, ...followedVenueIds])
+    return venues.filter((venue) => saved.has(venue.id))
+  }, [followedVenueIds, savedVenueIds, venues])
+
+  const nearVenues = useMemo(() => {
+    if (!userLocation) return []
+    return [...venues]
+      .map((venue) => ({
+        venue,
+        miles: calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          venue.location.lat,
+          venue.location.lng,
+        ),
+      }))
+      .sort((a, b) => a.miles - b.miles)
+      .slice(0, 8)
+      .map((row) => row.venue)
+  }, [userLocation, venues])
+
   return (
     <section aria-labelledby="tonight-home-heading">
-      <header className="space-y-1">
-        <h1 id="tonight-home-heading" className="text-[20px] font-bold tracking-tight text-foreground">
+      {surface !== 'map' && (
+        <header className="space-y-1">
+          <h1 id="tonight-home-heading" className="text-[20px] font-bold tracking-tight text-foreground">
+            {surface === 'live' ? 'Live' : home.title}
+          </h1>
+          {surface === 'tonight' && (
+            <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
+          )}
+        </header>
+      )}
+      {surface === 'map' && (
+        <h1 id="tonight-home-heading" className="sr-only">
           {home.title}
         </h1>
-        <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
-      </header>
+      )}
 
       {onSurfaceChange && (
         <FeedTabBar
@@ -58,39 +102,99 @@ export function TonightHomeHeader({
           value={surface}
           onChange={onSurfaceChange}
           ariaLabel="Map home views"
-          className="mt-3"
+          className={surface === 'map' ? undefined : 'mt-3'}
         />
       )}
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
-          {home.startHere && (
-            <TonightFeedRow
-              venue={home.startHere.venue}
-              kicker={home.startHere.suggested ? 'Start here · Launch 33' : 'Start here'}
-              headline={home.startHere.headline}
-              pulses={pulses}
-              onVenueClick={onVenueClick}
-            />
-          )}
+          <FeedTabBar
+            tabs={TONIGHT_FEEDS}
+            value={tonightFeed}
+            onChange={setTonightFeed}
+            ariaLabel="Tonight feeds"
+            className="mt-1"
+          />
 
-          {home.heatingUp.length > 0 && (
-            <div>
-              <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
-              {home.heatingUp.map((pick) => (
+          {tonightFeed === 'foryou' && (
+            <>
+              {home.startHere && (
                 <TonightFeedRow
-                  key={pick.venue.id}
-                  venue={pick.venue}
-                  kicker={pick.energyLabel}
-                  headline={pick.headline}
+                  venue={home.startHere.venue}
+                  kicker={home.startHere.suggested ? 'Start here · Launch 33' : 'Start here'}
+                  headline={home.startHere.headline}
                   pulses={pulses}
                   onVenueClick={onVenueClick}
                 />
-              ))}
-            </div>
+              )}
+
+              {home.heatingUp.length > 0 && (
+                <div>
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
+                  {home.heatingUp.map((pick) => (
+                    <TonightFeedRow
+                      key={pick.venue.id}
+                      venue={pick.venue}
+                      kicker={pick.energyLabel}
+                      headline={pick.headline}
+                      pulses={pulses}
+                      onVenueClick={onVenueClick}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {home.empty && <TonightEmptyState empty={home.empty} />}
+            </>
           )}
 
-          {home.empty && <TonightEmptyState empty={home.empty} />}
+          {tonightFeed === 'following' && (
+            followingVenues.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: 'Nothing in Following yet',
+                  body: 'Save or follow a real Seattle venue from the map. We never invent a list.',
+                  steps: ['Open the map', 'Tap a pin you care about', 'Save or follow, then come back'],
+                }}
+              />
+            ) : (
+              followingVenues.map((venue) => (
+                <TonightFeedRow
+                  key={venue.id}
+                  venue={venue}
+                  kicker="Following"
+                  headline={`${venue.name} is on your list`}
+                  pulses={pulses}
+                  onVenueClick={onVenueClick}
+                />
+              ))
+            )
+          )}
+
+          {tonightFeed === 'near' && (
+            nearVenues.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: locationDenied || !userLocation
+                    ? 'Location off — showing Launch 33 instead'
+                    : 'Quiet nearby',
+                  body: 'Near uses your map pin against the real catalog. Guests can browse; posting still needs a sign-in.',
+                  steps: ['Allow location or stay on Launch 33', 'Tap a nearby pin', 'Post a pulse when you’re there'],
+                }}
+              />
+            ) : (
+              nearVenues.map((venue) => (
+                <TonightFeedRow
+                  key={venue.id}
+                  venue={venue}
+                  kicker="Near"
+                  headline={`${venue.name} is close`}
+                  pulses={pulses}
+                  onVenueClick={onVenueClick}
+                />
+              ))
+            )
+          )}
         </div>
       )}
     </section>

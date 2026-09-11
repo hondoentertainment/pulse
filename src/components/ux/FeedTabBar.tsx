@@ -11,6 +11,8 @@ interface FeedTabBarProps<T extends string> {
   onChange: (id: T) => void
   ariaLabel: string
   className?: string
+  /** Figma 7 tabs are start-aligned with a 24px gap. */
+  align?: 'start' | 'stretch'
 }
 
 /** X-style underline tab row. Accent is Pulse energy pink, not Twitter blue. */
@@ -20,12 +22,17 @@ export function FeedTabBar<T extends string>({
   onChange,
   ariaLabel,
   className,
+  align = 'start',
 }: FeedTabBarProps<T>) {
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('flex border-b border-border', className)}
+      className={cn(
+        'flex border-b border-border',
+        align === 'start' ? 'justify-start gap-6' : undefined,
+        className,
+      )}
     >
       {tabs.map((tab) => {
         const selected = tab.id === value
@@ -39,7 +46,8 @@ export function FeedTabBar<T extends string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative min-h-11 flex-1 touch-manipulation px-2 text-[15px] font-semibold',
+              'relative min-h-11 touch-manipulation px-0.5 text-[15px] font-semibold',
+              align === 'stretch' ? 'flex-1 px-2' : undefined,
               selected ? 'text-foreground' : 'text-muted-foreground',
             )}
           >
@@ -47,7 +55,7 @@ export function FeedTabBar<T extends string>({
             {selected && (
               <span
                 aria-hidden
-                className="absolute inset-x-6 bottom-0 h-[3px] rounded-full bg-primary"
+                className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-primary"
               />
             )}
           </button>

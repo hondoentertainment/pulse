@@ -86,7 +86,7 @@ export function VenueInboxPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0E] pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
       <div className="mx-auto max-w-2xl space-y-3.5 px-5 pb-6 pt-8">
         <div>
           <button
@@ -98,24 +98,24 @@ export function VenueInboxPage({
             <CaretLeft size={18} />
             Venue
           </button>
-          <h1 className="text-[22px] font-bold text-white">Tonight’s queue</h1>
+          <h1 className="text-[22px] font-bold text-foreground">Tonight’s queue</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {venue.name} · {allowed ? 'verified claim' : 'owner inbox'}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          <div className="rounded-[18px] bg-[#17171C] p-3.5">
-            <p className="text-[22px] font-bold leading-none text-white">{allowed ? summary.reviewCount : 0}</p>
+          <div className="rounded-xl border border-border bg-card p-3.5">
+            <p className="text-[22px] font-bold leading-none text-foreground">{allowed ? summary.reviewCount : 0}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">Reviews</p>
           </div>
-          <div className="rounded-[18px] bg-[#17171C] p-3.5">
-            <p className="text-[22px] font-bold leading-none text-[#F2BF40]">{allowed ? summary.reportCount : 0}</p>
+          <div className="rounded-xl border border-border bg-card p-3.5">
+            <p className="text-[22px] font-bold leading-none text-amber-300">{allowed ? summary.reportCount : 0}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">Reports</p>
           </div>
         </div>
 
         {!allowed ? (
-          <div className="rounded-[18px] bg-[#17171C] p-3.5 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
             <h2 className="text-base font-semibold">Claim needed</h2>
             <p className="text-sm text-muted-foreground">
               Tonight’s reviews stay hidden until a verified venue claim or a
@@ -166,7 +166,7 @@ export function VenueInboxPage({
             )}
           </div>
         ) : tonight.length === 0 ? (
-          <div className="rounded-[18px] bg-[#17171C] p-3.5">
+          <div className="rounded-xl border border-border bg-card p-3.5">
             <h2 className="text-base font-semibold">No live reviews tonight</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               When patrons post energy + caption reviews after 4pm, they will
@@ -181,7 +181,7 @@ export function VenueInboxPage({
               return (
                 <li
                   key={pulse.id}
-                  className="rounded-[18px] bg-[#17171C] p-3.5 space-y-2"
+                  className="rounded-xl border border-border bg-card p-3.5 space-y-2"
                   onClick={() => {
                     track('pulse_viewed', {
                       pulseId: pulse.id,
@@ -191,16 +191,16 @@ export function VenueInboxPage({
                     })
                   }}
                 >
-                  <p className="text-[13px] font-semibold text-white">
+                  <p className="text-[13px] font-semibold text-foreground">
                     {ENERGY_CONFIG[pulse.energyRating].label} · {formatTimeAgo(pulse.createdAt).replace(' ago', '')}
                   </p>
                   {pulse.caption && (
-                    <p className="text-sm text-white">{pulse.caption}</p>
+                    <p className="text-sm text-foreground">{pulse.caption}</p>
                   )}
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-full bg-[#1F1F24] px-3 py-1.5 text-xs font-medium text-[#9E9EAD]"
+                      className="rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
                       onClick={(event) => {
                         event.stopPropagation()
                         setReplyingId(pulse.id)
@@ -212,7 +212,7 @@ export function VenueInboxPage({
                     {pulseReports.length > 0 && (
                       <button
                         type="button"
-                        className="rounded-full bg-[#1F1F24] px-3 py-1.5 text-xs font-medium text-[#9E9EAD]"
+                        className="rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
                         onClick={(event) => {
                           event.stopPropagation()
                           onDismissReports?.(pulse.id)

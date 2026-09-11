@@ -51,7 +51,7 @@ describe('LivePulseTimeline', () => {
     }
     render(<LivePulseTimeline pulses={[pulse]} venues={[venue]} onVenueClick={onVenueClick} />)
     expect(screen.getByText('tester')).toBeInTheDocument()
-    expect(screen.getByText('@neumos')).toBeInTheDocument()
+    expect(screen.getByText('@tester')).toBeInTheDocument()
     expect(screen.getByText(/Floor is packed/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Floor is packed/ }))
     expect(onVenueClick).toHaveBeenCalledWith(venue)

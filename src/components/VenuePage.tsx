@@ -34,8 +34,8 @@ import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
-import { venueHandle } from '@/lib/venue-handle'
-import { UX_CTA } from '@/lib/ux-chrome'
+import { authorHandle, venueHandle } from '@/lib/venue-handle'
+import { UX_CARD, UX_CTA_INVERT } from '@/lib/ux-chrome'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -357,11 +357,19 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
-          <h1 className="text-[22px] font-bold text-foreground">{venue.name}</h1>
+          <h1 className="text-[28px] font-bold tracking-tight text-foreground">{venue.name}</h1>
           <p className="text-[13px] text-muted-foreground">{venueHandle(venue.name)}</p>
-          {venueStatusLine(venue) && (
-            <p className="mt-1 text-[13px] text-muted-foreground">{venueStatusLine(venue)}</p>
-          )}
+          {(() => {
+            const placeStatus = venueStatusLine(venue)
+            const verified = Boolean(
+              venue.verifiedCheckInCount ||
+              venuePulses.some((pulse) => pulse.locationVerified),
+            )
+            const line = [placeStatus, verified ? 'Verified' : null].filter(Boolean).join(' · ')
+            return line ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">{line}</p>
+            ) : null
+          })()}
         </div>
         {fromShare && (
           <ShareArrivalCard venue={venue} pulses={venuePulses} />
@@ -370,10 +378,10 @@ export function VenuePage({
           const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
           const delta = recent10m * 8
           return (
-            <Card className="rounded-xl border border-border bg-card p-3.5 shadow-none">
+            <Card className={`${UX_CARD} p-3.5`}>
               <div className="flex items-center gap-3.5">
                 <p
-                  className="text-[52px] font-bold tabular-nums leading-none"
+                  className="text-[40px] font-bold tabular-nums leading-none text-primary"
                   style={{ color: energyScoreColor(venue.pulseScore) }}
                 >
                   {venue.pulseScore}
@@ -392,9 +400,9 @@ export function VenuePage({
 
         <Button
           onClick={onCreatePulse}
-          className={UX_CTA}
+          className={UX_CTA_INVERT}
         >
-          Check in · Create live review
+          I’m here · Pulse
         </Button>
 
         <LiveNowStrip
@@ -706,7 +714,7 @@ export function VenuePage({
                 caption={pulse.caption}
                 unverified={pulse.locationVerified === false}
                 displayName={pulse.user?.username || venue.name}
-                handle={venueHandle(venue.name)}
+                handle={authorHandle(pulse.user?.username, venue.name)}
                 avatarUrl={pulse.user?.profilePhoto}
                 onClick={() => setSelectedLiveReview(pulse)}
                 onBoost={() => onReaction(pulse.id, 'lightning')}

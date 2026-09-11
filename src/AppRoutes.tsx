@@ -26,6 +26,7 @@ import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
+import { UX_FAB } from '@/lib/ux-chrome'
 
 // ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
@@ -306,13 +307,14 @@ export function AppRoutes() {
 
       <motion.button
         type="button"
+        data-testid="create-pulse-fab"
         aria-label="Create Pulse"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {
           if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id)
         }}
-        className="fixed right-5 bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,45,120,0.35)]"
+        className={UX_FAB}
       >
         <Plus size={28} weight="bold" />
       </motion.button>

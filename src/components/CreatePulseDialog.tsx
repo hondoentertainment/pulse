@@ -334,32 +334,42 @@ export function CreatePulseDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
         fullscreen
-        className="flex flex-col gap-5 overflow-y-auto bg-background"
+        hideClose
+        className="flex flex-col gap-5 overflow-y-auto bg-background pt-5"
       >
-        <DialogHeader className="gap-1.5 text-left">
-          <DialogTitle className="text-[20px] font-bold text-foreground">
-            Quick pulse
-          </DialogTitle>
-          <DialogDescription className="text-[13px] text-muted-foreground">
+        <DialogHeader className="gap-0 text-left">
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-11 text-[15px] font-semibold text-muted-foreground touch-manipulation"
+            >
+              Cancel
+            </button>
+            <DialogTitle className="sr-only">Quick pulse</DialogTitle>
+            <button
+              type="button"
+              onClick={() => { void handleSubmit() }}
+              disabled={isSubmitting || isCompressing}
+              className="min-h-11 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground touch-manipulation disabled:opacity-50"
+            >
+              {isSubmitting ? 'Posting...' : 'Post'}
+            </button>
+          </div>
+          <DialogDescription className="pt-3 text-[13px] text-muted-foreground">
             {venue ? `${venue.name} · from map pin` : 'What’s the vibe right now?'}
           </DialogDescription>
-          {venue && <ComposerVenueChip name={venue.name} />}
+          {venue && (
+            <div className="pt-3">
+              <ComposerVenueChip
+                name={venue.name}
+                nearVenue={locationProof.reason === 'verified'}
+              />
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-3.5 py-1">
-          <div>
-            <EnergyPills value={energyRating} onChange={setEnergyRating} />
-            <div className="hidden">
-              <EnergySlider
-                value={energyRating}
-                onChange={setEnergyRating}
-                energyPhotos={energyPhotos}
-                onAddPhoto={handlePhotoUpload}
-                onRemovePhoto={removePhoto}
-              />
-            </div>
-          </div>
-
           <div className="relative border-b border-border pb-2">
             <label htmlFor="create-pulse-caption" className="sr-only">
               Caption
@@ -371,13 +381,26 @@ export function CreatePulseDialog({
               onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
               maxLength={QUICK_PULSE_CAPTION_MAX}
               rows={4}
-              className="min-h-[96px] resize-none border-0 bg-transparent p-0 text-[17px] leading-6 shadow-none focus-visible:ring-0"
+              className="min-h-[120px] resize-none border-0 bg-transparent p-0 text-[20px] leading-7 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
               aria-required="true"
               aria-describedby="create-pulse-caption-count create-pulse-location-proof"
             />
             <p id="create-pulse-caption-count" className="mt-2 text-[13px] text-muted-foreground">
               {caption.length} / {QUICK_PULSE_CAPTION_MAX}
             </p>
+          </div>
+
+          <div>
+            <EnergyPills value={energyRating} onChange={setEnergyRating} />
+            <div className="hidden">
+              <EnergySlider
+                value={energyRating}
+                onChange={setEnergyRating}
+                energyPhotos={energyPhotos}
+                onAddPhoto={handlePhotoUpload}
+                onRemovePhoto={removePhoto}
+              />
+            </div>
           </div>
 
           {video && (

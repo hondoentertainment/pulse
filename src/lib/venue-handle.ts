@@ -8,6 +8,16 @@ export function venueHandle(name: string | null | undefined): string {
   return `@${slug || 'venue'}`
 }
 
+/** X-style @handle for a pulse author. Falls back to the venue handle. */
+export function authorHandle(
+  username: string | null | undefined,
+  venueName?: string | null,
+): string {
+  const raw = (username ?? '').trim()
+  if (raw) return raw.startsWith('@') ? raw : `@${raw}`
+  return venueHandle(venueName)
+}
+
 export function displayInitials(name: string | null | undefined): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
