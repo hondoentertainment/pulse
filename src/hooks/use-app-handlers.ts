@@ -28,7 +28,10 @@ import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 
-import { CheckInData, PulseData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { CheckInData, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { nextFollowedVenueIds, VENUE_FOLLOW_COPY } from '@/lib/venue-follows'
+import { checkPulseRateLimit, pulseRateLimitFromUnknown } from '@/lib/pulse-rate-limit'
+import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
 import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
 import { getVenueDeepLink } from '@/lib/sharing'
@@ -120,10 +123,10 @@ export function useAppHandlers() {
       closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
       toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
       navigate(writeRedirect)
-      return
+      return { error: WRITE_AUTH_COPY.review.description }
     }
 
-    if (!venueForPulse || !currentUser || !venues) return
+    if (!venueForPulse || !currentUser || !venues) return { error: 'Pick a venue first' }
 
     const wantsReview = (data.kind ?? 'review') === 'review' && data.caption.trim().length > 0
     const captionCheck = wantsReview
@@ -131,7 +134,7 @@ export function useAppHandlers() {
       : { ok: true as const, caption: (data.caption ?? '').trim() }
     if (!captionCheck.ok) {
       toast.error(captionCheck.error ?? 'Caption is required for a live review')
-      return
+      return { error: captionCheck.error ?? 'Caption is required for a live review' }
     }
 
     if (USE_SUPABASE_BACKEND) {
@@ -140,7 +143,7 @@ export function useAppHandlers() {
         closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
         toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
         navigate(writeRedirect ?? '/auth')
-        return
+        return { error: WRITE_AUTH_COPY.review.description }
       }
     }
 
@@ -151,11 +154,26 @@ export function useAppHandlers() {
 
     const abuseSignals = detectAbuse(currentUser.id, recentActions)
     const highSeverity = abuseSignals.find(s => s.severity === 'high')
-    if (highSeverity) { toast.error('Pulse blocked for safety checks', { description: highSeverity.description }); return }
+    if (highSeverity) {
+      toast.error('Pulse blocked for safety checks', { description: highSeverity.description })
+      return { error: highSeverity.description }
+    }
     if (abuseSignals.some(s => s.severity === 'medium')) toast.warning('Unusual posting pattern detected', { description: 'Please keep pulses authentic to avoid temporary restrictions' })
 
     const rateCheck = checkUserRateLimit(currentUser.id, 'pulse_create')
-    if (!rateCheck.allowed) { toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` }); return }
+    if (!rateCheck.allowed) {
+      toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` })
+      return { error: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` }
+    }
+    const windowCheck = checkPulseRateLimit({
+      userId: currentUser.id,
+      venueId: venueForPulse.id,
+      pulses: pulses || [],
+    })
+    if (!windowCheck.allowed) {
+      toast.error(windowCheck.message)
+      return { error: windowCheck.message }
+    }
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000)
@@ -264,8 +282,33 @@ export function useAppHandlers() {
       trackFunnel('first_pulse_create', { venueId: venueForPulse.id, guest: false })
     }
 
-    const syncOnline = await uploadPulseToSupabase(newPulse)
-    if (!syncOnline) {
+    let syncOnline = false
+    try {
+      syncOnline = await uploadPulseToSupabase(newPulse)
+      if (!syncOnline) {
+        toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
+      } else {
+        void fetch('/api/push/notify-live', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            venueId: venueForPulse.id,
+            venueName: venueForPulse.name,
+            caption: captionCheck.caption,
+            lat: venueForPulse.location.lat,
+            lng: venueForPulse.location.lng,
+          }),
+        }).catch(() => undefined)
+      }
+    } catch (err) {
+      const limit = pulseRateLimitFromUnknown(err)
+      if (limit) {
+        toast.error(limit)
+        return { error: limit }
+      }
       toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
     }
 
@@ -459,20 +502,36 @@ export function useAppHandlers() {
   }, [currentUser, updateProfile])
 
   const handleToggleFollow = useCallback((venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect) {
+      toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
     if (!currentUser) return
     const followed = currentUser.followedVenues || []
-    if (followed.includes(venueId)) { 
-      toast.success('Unfollowed venue')
-      updateProfile({ followedVenues: followed.filter(id => id !== venueId) })
-    } else {
-      if (followed.length >= 10) { 
-        toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' })
-        return 
-      }
-      toast.success('Following venue')
-      updateProfile({ followedVenues: [...followed, venueId] })
+    const next = nextFollowedVenueIds(followed, venueId)
+    if ('error' in next) {
+      toast.error(VENUE_FOLLOW_COPY.limitTitle, { description: VENUE_FOLLOW_COPY.limitDescription })
+      return
     }
-  }, [currentUser, updateProfile])
+    updateProfile({ followedVenues: next.ids })
+    if (USE_SUPABASE_BACKEND) {
+      void VenueFollowData.setVenueFollow(venueId, next.didFollow).catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'Could not update follow')
+        updateProfile({ followedVenues: followed })
+      })
+    }
+    if (next.didFollow) {
+      toast.success(VENUE_FOLLOW_COPY.followed)
+      offerPushNotifyAfter('follow')
+    } else {
+      toast.success(VENUE_FOLLOW_COPY.unfollowed)
+    }
+  }, [currentUser, isPlaceholder, navigate, session, updateProfile])
 
   return useMemo(() => ({
     handleCreatePulse,

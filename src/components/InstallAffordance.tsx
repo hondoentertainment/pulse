@@ -7,8 +7,13 @@ import {
   shouldShowInstallAffordance,
 } from '@/lib/install-affordance'
 import { getInstallState, listenForInstallPrompt, showInstallPrompt } from '@/lib/pwa'
+import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 
-export function InstallAffordance() {
+interface InstallAffordanceProps {
+  onInstalled?: () => void
+}
+
+export function InstallAffordance({ onInstalled }: InstallAffordanceProps = {}) {
   const [visible, setVisible] = useState(false)
   const [path, setPath] = useState<'prompt' | 'ios' | 'menu'>('menu')
 
@@ -47,6 +52,8 @@ export function InstallAffordance() {
             className="h-10 flex-1 rounded-full bg-primary text-sm font-semibold text-primary-foreground"
             onClick={() => {
               void showInstallPrompt()
+              offerPushNotifyAfter('install')
+              onInstalled?.()
               hide()
             }}
           >

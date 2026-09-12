@@ -2,7 +2,7 @@
  * POST /api/pulses/create
  *
  * Authenticated pulse-creation endpoint. Runs the caption through server-side
- * moderation, rate-limits to 10/hour/user, and inserts via Supabase using the
+ * moderation, rate-limits to 5/10min/user (SQL trigger is source of truth), and inserts via Supabase using the
  * caller's JWT so RLS policies are the source of truth for authorization.
  *
  * Distinct from the legacy `api/pulses.ts` (offline replay storage). New
@@ -23,6 +23,7 @@ import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
 import { checkContent } from '../_lib/moderation.js'
 import { createUserClient } from '../_lib/supabase-server.js'
 import { resolvePostedLocationVerified } from '../_lib/location-proof.js'
+import { notifyLivePulse } from '../_lib/web-push-live.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
@@ -31,7 +32,7 @@ type PulseKind = (typeof PULSE_KINDS)[number]
 
 const LIVE_REVIEW_CAPTION_MIN = 1
 const LIVE_REVIEW_CAPTION_MAX = 280
-const VENUE_COOLDOWN_MS = 120 * 60 * 1000
+  const VENUE_COOLDOWN_MS = 2 * 60 * 1000
 
 type PulseCreateBody = {
   venueId: string
@@ -205,6 +206,16 @@ export default async function handler(
   try {
     const client = createUserClient(auth.context.token)
 
+    const gate = await client.rpc('assert_pulse_rate_limit', {
+      p_user_id: auth.context.userId,
+      p_venue_id: validated.value.venueId,
+    })
+    if (gate.error) {
+      const message = gate.error.message || 'Too many pulses'
+      fail(res, 429, 'rate_limited', message)
+      return
+    }
+
     const cooldownCutoff = new Date(now.getTime() - VENUE_COOLDOWN_MS).toISOString()
     const { data: recentAtVenue, error: cooldownError } = await client
       .from('pulses')
@@ -222,7 +233,7 @@ export default async function handler(
       return
     }
     if (Array.isArray(recentAtVenue) && recentAtVenue.length > 0) {
-      fail(res, 429, 'venue_cooldown', 'Wait before posting another live review at this venue')
+      fail(res, 429, 'venue_cooldown', 'Wait 2 minutes before another pulse at this venue')
       return
     }
 
@@ -233,7 +244,7 @@ export default async function handler(
         : null
     const { data: venueRow } = await client
       .from('venues')
-      .select('location_lat, location_lng')
+      .select('name, location_lat, location_lng')
       .eq('id', validated.value.venueId)
       .maybeSingle()
     const venueLocation =
@@ -262,6 +273,17 @@ export default async function handler(
       })
       return
     }
+
+    void notifyLivePulse({
+      venueId: validated.value.venueId,
+      venueName: typeof venueRow?.name === 'string' ? venueRow.name : 'Pulse',
+      caption: pulseRow.caption,
+      pulseId: typeof data?.id === 'string' ? data.id : id,
+      authorUserId: auth.context.userId,
+      venueLocation,
+    }).catch((err) => {
+      console.warn('[push] notify-live failed', err)
+    })
 
     res.setHeader('X-RateLimit-Limit', String(rl.limit))
     res.setHeader('X-RateLimit-Remaining', String(rl.remaining))

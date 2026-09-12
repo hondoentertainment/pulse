@@ -180,6 +180,16 @@ export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
 }
 
 export async function uploadPulseToSupabase(pulse: Pulse): Promise<boolean> {
+  if (typeof supabase.rpc === 'function') {
+    const gate = await supabase.rpc('assert_pulse_rate_limit', {
+      p_user_id: pulse.userId,
+      p_venue_id: pulse.venueId,
+    })
+    if (gate.error) {
+      throw Object.assign(new Error(gate.error.message), { cause: gate.error })
+    }
+  }
+
   const { error } = await supabase.from('pulses').insert({
     id: pulse.id,
     user_id: pulse.userId,

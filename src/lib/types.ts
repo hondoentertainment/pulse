@@ -93,6 +93,7 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  ownerEmailDomain?: string
   preTrending?: boolean
   preTrendingLabel?: string
   seeded?: boolean

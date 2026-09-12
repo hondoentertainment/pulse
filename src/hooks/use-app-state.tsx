@@ -46,7 +46,7 @@ import {
   type UsMarket,
 } from '@/lib/us-markets'
 import { fetchProfilesByIds } from '@/lib/auth-profile'
-import { hasSupabaseEnv } from '@/lib/data'
+import { hasSupabaseEnv, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
 
 export type SubPage =
   | 'events'
@@ -249,7 +249,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     distanceFilter: 0.001,
   })
 
-  const { profile: supabaseProfile } = useSupabaseAuth()
+  const { profile: supabaseProfile, session } = useSupabaseAuth()
 
   const [currentUser, setCurrentUser] = useState<User | undefined>(() => createGuestBrowseUser())
   const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
@@ -260,6 +260,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setCurrentUser(resolveAppUser(supabaseProfile))
   }, [supabaseProfile])
+
+  useEffect(() => {
+    const userId = supabaseProfile?.id
+    if (!USE_SUPABASE_BACKEND || !session || !userId) return
+    let cancelled = false
+    void VenueFollowData.listMyVenueFollows(userId).then((ids) => {
+      if (cancelled) return
+      setCurrentUser((current) => current ? { ...current, followedVenues: ids } : current)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session, supabaseProfile?.id])
 
   const launchedCitiesRaw = import.meta.env.VITE_LAUNCHED_CITIES ?? ''
   const launchedCities = useMemo(

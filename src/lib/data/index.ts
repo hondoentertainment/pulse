@@ -12,6 +12,8 @@ export * as CheckInData from './check-ins'
 export * as FollowData from './follows'
 export * as NotificationData from './notifications'
 export * as VenueClaimData from './venue-claims'
+export * as VenueFollowData from './venue-follows'
+export * as WebPushData from './web-push-subscriptions'
 export {
   USE_SUPABASE_BACKEND,
   hasSupabaseEnv,

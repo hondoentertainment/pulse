@@ -50,6 +50,8 @@ export const WRITE_AUTH_COPY = {
   review: { title: 'Sign in required', description: 'Sign in to post a live review.' },
   intel: { title: 'Sign in required', description: 'Sign in to report live intel.' },
   create: { title: 'Sign in required', description: 'Sign in to create a Pulse.' },
+  follow: { title: 'Sign in to follow', description: 'Follow a venue to see its latest live pulses tonight.' },
+  claim: { title: 'Sign in required', description: 'Sign in to claim this venue.' },
 } as const
 
 /** Close the composer whenever a write action redirects to /auth. */

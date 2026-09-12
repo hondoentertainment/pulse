@@ -54,8 +54,9 @@ historical migrations once they're in staging/prod.
 | `20260417000001_core_tables_and_soft_delete.sql` | **new** reactions/check_ins/follows + soft-delete + updated_at |
 | `20260417000002_rls_policies_enforcement.sql` | **new** full RLS policy set + admin bypass |
 | `20260910140000_venue_claims_and_report_queue.sql` | **new** venue_claims + pulse_reports.status |
-| `20260912000000_venue_claim_verified_badge.sql` | optional Claimed chip (`venues.claim_verified` + view) |
+| `20260912000000_venue_claim_verified_badge.sql` | already on prod (`venues.claim_verified` + `venue_claim_badges`) |
 | `20260911000000_owner_report_triage.sql` | optional owner/staff report dismiss RLS |
+| `20260912120000_venue_follows_push_claim_rate.sql` | reuse follows/push_tokens/notifications; web-push columns; domain claim; pulse rate-limit |
 
 ## 3. Seeding data
 
@@ -68,7 +69,7 @@ nightlife venues).
 
 For production project `xeldqwhztcnnvazmshzh`, paste those migrations into the
 SQL editor (migration history versions there do not match repo filenames).
-Then run `supabase/verify/seattle_launch_venues.sql`. Paste `20260910140000_venue_claims_and_report_queue.sql` the same way and run `supabase/verify/venue_claims.sql`.
+Then run `supabase/verify/seattle_launch_venues.sql`. Paste `20260910140000_venue_claims_and_report_queue.sql` the same way and run `supabase/verify/venue_claims.sql`. For Following / Web Push / domain claim / pulse rate-limit, paste only `20260912120000_venue_follows_push_claim_rate.sql` (do **not** recreate `venues.claim_verified`) and run `supabase/verify/follows.sql`, `push_tokens.sql`, `notifications.sql`, `venue_claim_domain.sql`, `pulse_rate_limit.sql`.
 
 For a CLI-linked project whose history matches the repo:
 

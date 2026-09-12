@@ -31,6 +31,10 @@ client bundle and defeat the whole point.
 | `SUPABASE_ANON_KEY` | server only | `api/_lib/auth.ts` (preferred) | Optional server-only override of `VITE_SUPABASE_ANON_KEY`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | migrations, privileged writes | **Never** expose. Not used by the Edge Functions in this PR. |
 | `SUPABASE_ADMIN_EMAILS` | server only | `api/keys/generate.ts` | Comma-separated allowlist of admin emails. Callers outside this list get `403`. |
+| `VITE_VAPID_PUBLIC_KEY` | client + server | `src/lib/web-push-client.ts` | Public Web Push key. Safe to expose. Empty = honest no-op. |
+| `VAPID_PUBLIC_KEY` | server only | `api/_lib/web-push-live.ts` | Same public key for send. |
+| `VAPID_PRIVATE_KEY` | server only | `api/_lib/web-push-live.ts`, edge `notify-live-pulse` | **Never** expose. Do not invent production values. |
+| `VAPID_SUBJECT` | server only | Web Push VAPID | Optional contact URL / mailto. |
 
 ### Spotify (`api/integrations/spotify.ts`)
 

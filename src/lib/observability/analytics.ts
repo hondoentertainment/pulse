@@ -375,24 +375,22 @@ const PII_PROP_KEYS = new Set([
   'username',
 ])
 
-function omitPiiProps(props: Record<string, unknown>): Record<string, unknown> {
+function omitPiiProps<T extends object>(props: T): T {
   const next: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(props)) {
     if (PII_PROP_KEYS.has(key)) continue
     if (key === 'extra' && value && typeof value === 'object' && !Array.isArray(value)) {
-      next.extra = omitPiiProps(value as Record<string, unknown>)
+      next.extra = omitPiiProps(value)
       continue
     }
     next[key] = value
   }
-  return next
+  return next as unknown as T
 }
 
 export function track<E extends EventName>(name: E, props: EventProps<E>): void {
   const merged = { ...superProps, ...props } as EventProps<E>
-  const safe = FUNNEL_NO_PII.has(name)
-    ? omitPiiProps(merged as Record<string, unknown>) as EventProps<E>
-    : merged
+  const safe = FUNNEL_NO_PII.has(name) ? omitPiiProps(merged) : merged
   const event: TrackedEvent<E> = {
     name,
     props: safe,

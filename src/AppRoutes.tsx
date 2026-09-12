@@ -148,7 +148,9 @@ export function AppRoutes() {
     if (authLoading) {
       return <PageSkeleton />
     }
-    if (isPlaceholder || session) {
+    // Real sessions can leave /auth. Guests — including local placeholder
+    // mode — must stay here when Follow / write sends them to sign in.
+    if (session) {
       return <Navigate to="/" replace />
     }
     return (

@@ -13,6 +13,15 @@ import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
 import { ColdStartTip } from '@/components/ColdStartTip'
 import { InstallAffordance } from '@/components/InstallAffordance'
+import { PushNotifyAffordance } from '@/components/PushNotifyAffordance'
+import {
+  isPushNotifyDismissed,
+  readPushNotifyTrigger,
+  shouldShowPushNotifyAffordance,
+  clearPushNotifyTrigger,
+} from '@/lib/push-notify-affordance'
+import { readViteVapidPublicKey } from '@/lib/web-push-client'
+import { AUTH_PATH, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 import { dismissColdStartTip, markNavigationStart, shouldShowColdStartTip } from '@/lib/cold-start'
@@ -91,6 +100,17 @@ export function MainTabRouter() {
   const navigate = useNavigate()
   const location = useLocation()
   const { session, isPlaceholder } = useSupabaseAuth()
+  const signedIn = Boolean(session) && !isPlaceholder
+  const [showPushNotify, setShowPushNotify] = useState(false)
+
+  useEffect(() => {
+    setShowPushNotify(shouldShowPushNotifyAffordance({
+      signedIn,
+      vapidPublicKey: readViteVapidPublicKey(),
+      dismissed: isPushNotifyDismissed(),
+      trigger: readPushNotifyTrigger(),
+    }))
+  }, [followedVenues, signedIn])
   const hereVenueId = parseHereVenueId(location.search)
   const handleVenueClick = useCallback(
     (venue: Venue) => {
@@ -225,8 +245,13 @@ export function MainTabRouter() {
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
               followedVenueIds={followedVenues.map((venue) => venue.id)}
+              signedIn={signedIn}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
+              onFollowAuth={() => {
+                toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
+                navigate(AUTH_PATH)
+              }}
               surface={mapSurface}
               onSurfaceChange={setMapSurface}
             />
@@ -247,7 +272,20 @@ export function MainTabRouter() {
                     }}
                   />
                 )}
-                <InstallAffordance />
+                <InstallAffordance
+                  onInstalled={() => {
+                    if (signedIn) setShowPushNotify(true)
+                  }}
+                />
+                {showPushNotify && signedIn && (
+                  <PushNotifyAffordance
+                    userLocation={userLocation}
+                    onDone={() => {
+                      clearPushNotifyTrigger()
+                      setShowPushNotify(false)
+                    }}
+                  />
+                )}
                 <MapSearch
                   venues={visibleVenues}
                   onVenueSelect={handleVenueClick}

@@ -111,11 +111,48 @@ describe('VenueInboxPage', () => {
         currentUser={makeUser()}
         claims={claims}
         onBack={vi.fn()}
+        onSubmitClaim={vi.fn()}
       />,
     )
     expect(screen.getByText(/Your claim is pending review/)).toBeInTheDocument()
     expect(screen.queryByText(/DJ just started/)).not.toBeInTheDocument()
     expect(screen.getAllByText('0').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText(/Work email/i)).toBeInTheDocument()
+  })
+
+  it('lets a pending claimant confirm a work email without unlocking inbox', () => {
+    const onSubmitClaim = vi.fn()
+    const claims: VenueClaim[] = [{
+      id: 'c1',
+      venueId: 'venue-1',
+      claimantUserId: 'owner-1',
+      businessName: 'Showbox',
+      businessEmail: '',
+      verificationMethod: 'email',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      evidence: 'I manage the door Friday nights',
+    }]
+    render(
+      <VenueInboxPage
+        venue={makeVenue()}
+        pulses={[makePulse()]}
+        currentUser={makeUser()}
+        claims={claims}
+        onBack={vi.fn()}
+        onSubmitClaim={onSubmitClaim}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText(/Work email/i), {
+      target: { value: 'gm@showboxpresents.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Confirm work email/i }))
+    expect(onSubmitClaim).toHaveBeenCalledWith({
+      evidence: 'I manage the door Friday nights',
+      notes: '',
+      workEmail: 'gm@showboxpresents.com',
+    })
+    expect(screen.queryByText(/DJ just started/)).not.toBeInTheDocument()
   })
 
   it('lets a signed-in user submit a claim from the empty state', () => {
@@ -132,8 +169,15 @@ describe('VenueInboxPage', () => {
     fireEvent.change(screen.getByLabelText(/How are you connected/i), {
       target: { value: 'I manage the door Friday nights' },
     })
+    fireEvent.change(screen.getByLabelText(/Work email/i), {
+      target: { value: 'door@neumos.com' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /Submit claim/i }))
-    expect(onSubmitClaim).toHaveBeenCalled()
+    expect(onSubmitClaim).toHaveBeenCalledWith({
+      evidence: 'I manage the door Friday nights',
+      notes: '',
+      workEmail: 'door@neumos.com',
+    })
   })
 
   it('lets a verified owner reply and dismiss a report', () => {

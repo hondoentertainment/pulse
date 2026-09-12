@@ -19,6 +19,7 @@ vi.mock('../../_lib/supabase-server.js', () => ({
         }),
       }),
     }),
+    rpc: async () => ({ data: null, error: null }),
   }),
 }))
 

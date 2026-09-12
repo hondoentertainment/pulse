@@ -184,6 +184,41 @@ export function listTonightFollowingVenues(
   return venues.filter((venue) => saved.has(venue.id))
 }
 
+export const TONIGHT_FOLLOWING_GUEST_EMPTY: TonightEmptyState = {
+  headline: 'Follow a venue for tonight',
+  body: 'Guests can browse the map. Follow sends you to sign in — we never invent a list.',
+  steps: ['Open the map', 'Tap a pin you care about', 'Follow — we’ll send you to /auth'],
+}
+
+export const TONIGHT_FOLLOWING_SIGNED_IN_EMPTY: TonightEmptyState = {
+  headline: 'Nothing in Following yet',
+  body: 'Follow a real Seattle venue. Tonight will show that pin plus its latest live pulse.',
+  steps: ['Open the map', 'Tap a pin you care about', 'Tap Follow'],
+}
+
+export interface TonightFollowingRow {
+  venue: Venue
+  latestPulse: Pulse | null
+}
+
+/** Signed-in Following: `follows.target_venue_id` rows + each venue’s latest live pulse. */
+export function listTonightFollowingFeed(
+  venues: Venue[],
+  pulses: readonly Pulse[],
+  followedVenueIds: readonly string[],
+): TonightFollowingRow[] {
+  const followed = new Set(followedVenueIds)
+  if (followed.size === 0) return []
+  return venues
+    .filter((venue) => followed.has(venue.id))
+    .map((venue) => {
+      const latestPulse = pulses
+        .filter((pulse) => pulse.venueId === venue.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
+      return { venue, latestPulse }
+    })
+}
+
 /** Geo-sorted catalog, or Launch 33 when location is off. Never invents venues. */
 export function listTonightNearVenues(
   venues: Venue[],
