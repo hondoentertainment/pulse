@@ -5,6 +5,8 @@ import {
   countTonightReports,
   createOwnerReply,
   dismissReportsForPulse,
+  mapPulseReportsToContentReports,
+  mergeInboxReports,
   summarizeOwnerInbox,
 } from '../owner-inbox'
 
@@ -68,5 +70,32 @@ describe('owner inbox v2', () => {
       [makeReport({ status: 'dismissed' })],
       [makePulse()],
     )).toBe(0)
+  })
+
+  it('maps server pulse_reports onto inbox ContentReport rows', () => {
+    const mapped = mapPulseReportsToContentReports([{
+      id: 'r-server',
+      pulse_id: 'p1',
+      reporter_id: 'u9',
+      reason: 'spam',
+      details: 'bot',
+      created_at: '2026-09-12T01:00:00.000Z',
+      status: 'pending',
+    }])
+    expect(mapped).toEqual([expect.objectContaining({
+      id: 'r-server',
+      targetType: 'pulse',
+      targetId: 'p1',
+      reason: 'spam',
+      status: 'pending',
+    })])
+  })
+
+  it('merges server reports with a local dismiss', () => {
+    const server = [makeReport({ id: 'r1', status: 'pending' })]
+    const local = [makeReport({ id: 'r1', status: 'dismissed' }), makeReport({ id: 'r2', targetId: 'p2' })]
+    const merged = mergeInboxReports(server, local)
+    expect(merged.find((row) => row.id === 'r1')?.status).toBe('dismissed')
+    expect(merged.find((row) => row.id === 'r2')?.targetId).toBe('p2')
   })
 })

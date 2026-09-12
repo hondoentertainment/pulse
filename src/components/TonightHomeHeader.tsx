@@ -92,18 +92,14 @@ export function TonightHomeHeader({
         />
       )}
 
-      {surface !== 'tonight' && (
-        <header className="space-y-1 pt-3">
-          <h1 id="tonight-home-heading" className="text-[22px] font-bold tracking-tight text-foreground">
-            {surface === 'live' ? 'Live' : home.title}
-          </h1>
-        </header>
-      )}
-      {surface === 'tonight' && (
-        <h1 id="tonight-home-heading" className="sr-only">
-          {home.title}
+      <header className="space-y-1 pt-3">
+        <h1 id="tonight-home-heading" className="text-[22px] font-bold tracking-tight text-foreground">
+          {surface === 'live' ? 'Live' : home.title}
         </h1>
-      )}
+        {surface === 'tonight' && (
+          <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
+        )}
+      </header>
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
@@ -117,6 +113,7 @@ export function TonightHomeHeader({
 
           {tonightFeed === 'foryou' && (
             <>
+              {home.empty && <TonightEmptyState empty={home.empty} />}
               {home.startHere && (
                 <>
                   <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Start here</h2>
@@ -144,7 +141,6 @@ export function TonightHomeHeader({
                 </div>
               )}
 
-              {!home.startHere && home.empty && <TonightEmptyState empty={home.empty} />}
             </>
           )}
 

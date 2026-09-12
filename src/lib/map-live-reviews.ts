@@ -14,6 +14,7 @@ import {
   snippetCaption,
 } from './live-reviews'
 import { calculateDistance } from './pulse-engine'
+import { isCuratedVenue } from './map-filters'
 
 export const MAP_SURGE_RADIUS_MI = 50
 export const MAP_FRESH_REVIEW_MINUTES = 10
@@ -207,10 +208,16 @@ export function getSurgingNearbyVenues(
       }
       return (activityByVenue.get(venue.id)?.liveReviewCount ?? 0) > 0
     })
-    .sort((a, b) => compareVenueMapActivity(
-      activityByVenue.get(a.id) ?? getVenueMapActivityFromLive(a, undefined, nowMs),
-      activityByVenue.get(b.id) ?? getVenueMapActivityFromLive(b, undefined, nowMs),
-    ))
+    .sort((a, b) => {
+      const activityDiff = compareVenueMapActivity(
+        activityByVenue.get(a.id) ?? getVenueMapActivityFromLive(a, undefined, nowMs),
+        activityByVenue.get(b.id) ?? getVenueMapActivityFromLive(b, undefined, nowMs),
+      )
+      if (activityDiff !== 0) return activityDiff
+      const curatedDiff = Number(isCuratedVenue(b)) - Number(isCuratedVenue(a))
+      if (curatedDiff !== 0) return curatedDiff
+      return Number(Boolean(b.claimVerified)) - Number(Boolean(a.claimVerified))
+    })
     .slice(0, limit)
 }
 

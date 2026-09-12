@@ -8,8 +8,13 @@ import { listMyVenueClaims, submitVenueClaim, tryVerifyVenueClaimByEmailDomain }
 import { CLAIM_DOMAIN_COPY, workEmailMatchesVenue } from '@/lib/claim-email-domain'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
-import { dismissReportsForPulse } from '@/lib/owner-inbox'
-import { dismissReportsForPulseOnServer } from '@/lib/ops-client'
+import {
+  dismissReportsForPulse,
+  mapPulseReportsToContentReports,
+  mergeInboxReports,
+} from '@/lib/owner-inbox'
+import { dismissReportsForPulseOnServer, listVenueReportsOnServer } from '@/lib/ops-client'
+import type { ContentReport } from '@/lib/content-moderation'
 import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
 import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
 import type { Venue } from '@/lib/types'
@@ -26,6 +31,7 @@ export function VenueInboxRoute() {
   const [staffRoles, setStaffRoles] = useState<VenueStaffMembership[]>([])
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
   const [claimBusy, setClaimBusy] = useState(false)
+  const [serverReports, setServerReports] = useState<ContentReport[]>([])
 
   const cached = venues?.find((venue) => venue.id === venueId) ?? null
   const venue = freshVenue ?? cached
@@ -57,31 +63,50 @@ export function VenueInboxRoute() {
   useEffect(() => {
     if (!currentUser?.id || !isFeatureEnabled('venueInbox')) return
     let cancelled = false
-    void listMyVenueStaffRoles(currentUser.id).then((roles) => {
-      if (!cancelled) setStaffRoles(roles)
-    })
-    if (USE_SUPABASE_BACKEND) {
-      void listMyVenueClaims(currentUser.id).then(async (rows) => {
-        const sessionEmail = user?.email?.trim().toLowerCase()
-        const next = await Promise.all(rows.map(async (claim) => {
-          if (
-            claim.status === 'pending'
-            && sessionEmail
-            && claim.businessEmail
-            && sessionEmail === claim.businessEmail.toLowerCase()
-          ) {
-            const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
-            return verified ?? claim
-          }
-          return claim
-        }))
-        if (!cancelled) setServerClaims(next)
+    const loadClaims = () => {
+      void listMyVenueStaffRoles(currentUser.id).then((roles) => {
+        if (!cancelled) setStaffRoles(roles)
       })
+      if (USE_SUPABASE_BACKEND) {
+        void listMyVenueClaims(currentUser.id).then(async (rows) => {
+          const sessionEmail = user?.email?.trim().toLowerCase()
+          const next = await Promise.all(rows.map(async (claim) => {
+            if (
+              claim.status === 'pending'
+              && sessionEmail
+              && claim.businessEmail
+              && sessionEmail === claim.businessEmail.toLowerCase()
+            ) {
+              const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
+              return verified ?? claim
+            }
+            return claim
+          }))
+          if (!cancelled) setServerClaims(next)
+        })
+      }
     }
+    loadClaims()
+    const onFocus = () => {
+      if (!cancelled) loadClaims()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [currentUser?.id, user?.email])
+
+  useEffect(() => {
+    if (!venueId || !currentUser?.id || !isFeatureEnabled('venueInbox')) return
+    let cancelled = false
+    void listVenueReportsOnServer(venueId).then((rows) => {
+      if (!cancelled) setServerReports(mapPulseReportsToContentReports(rows))
+    })
     return () => {
       cancelled = true
     }
-  }, [currentUser?.id, user?.email])
+  }, [currentUser?.id, venueId])
 
   if (!venueId || !venue) {
     return (
@@ -167,10 +192,17 @@ export function VenueInboxRoute() {
       onBack={() => navigate(`/venue/${venue.id}`)}
       onSubmitClaim={handleSubmitClaim}
       claimBusy={claimBusy}
-      reports={contentReports ?? []}
+      reports={mergeInboxReports(serverReports, contentReports ?? [])}
       onDismissReports={(pulseId) => {
+        setServerReports((current) => dismissReportsForPulse(current, pulseId))
         setContentReports((current) => dismissReportsForPulse(current ?? [], pulseId))
-        void dismissReportsForPulseOnServer(pulseId)
+        void dismissReportsForPulseOnServer(pulseId).then((ok) => {
+          if (!ok) {
+            toast.error('Could not dismiss on the server', {
+              description: 'Local dismiss still applied. Apply owner report RLS or retry.',
+            })
+          }
+        })
       }}
     />
   )

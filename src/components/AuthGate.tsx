@@ -36,6 +36,8 @@ export function AuthGate() {
   const handleMagicLink = async () => {
     if (!email.trim()) return
     setLocalLoading(true)
+    trackFunnel('auth_start', { guest: true, method: 'otp' })
+    track('auth_started', { method: 'otp' })
     try {
       await signInWithOtp(email.trim())
       setOtpSent(true)

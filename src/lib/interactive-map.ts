@@ -1,5 +1,6 @@
 import type { Venue } from './types'
 import { DOWNTOWN_SEATTLE, LAUNCH_33_CENTER } from './neighborhood-geo'
+import { isCuratedVenue } from './map-filters'
 
 export interface MapPoint {
   lat: number
@@ -34,6 +35,30 @@ export const ZOOM_STEP = 1.35
 export const MAP_SCALE = 500000
 /** A guest outside this radius is not "near" the Seattle catalog. */
 export const CATALOG_NEAR_MILES = 30
+
+export const PIN_STROKE = {
+  highlighted: 'white',
+  claimed: '#5EEAD4',
+  curated: '#F7D774',
+  default: 'oklch(0.15 0 0)',
+} as const
+
+/** Claimed venues are visually distinct from curated gold rings. */
+export function pinStrokeForVenue(
+  venue: Pick<Venue, 'claimVerified' | 'inventorySource' | 'seeded'>,
+  highlighted = false,
+): { stroke: string; strokeWidth: number; claimed: boolean } {
+  if (highlighted) {
+    return { stroke: PIN_STROKE.highlighted, strokeWidth: 3, claimed: venue.claimVerified === true }
+  }
+  if (venue.claimVerified) {
+    return { stroke: PIN_STROKE.claimed, strokeWidth: 2.6, claimed: true }
+  }
+  if (isCuratedVenue(venue)) {
+    return { stroke: PIN_STROKE.curated, strokeWidth: 2.4, claimed: false }
+  }
+  return { stroke: PIN_STROKE.default, strokeWidth: 1.5, claimed: false }
+}
 
 export type MapCameraReason = 'user' | 'launch33' | 'catalog' | 'downtown'
 

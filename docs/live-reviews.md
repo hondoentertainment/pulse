@@ -22,7 +22,7 @@ Reviews reuse `pulses` instead of a parallel table.
 - **Map / Surging / Trending** — Live review counts from real pulses. Trending secondary-sorts by fresh review volume in the existing 15-minute window. No fabricated data.
 - **Map realtime** — `useRealtimeSubscription` (`pulse-realtime`) already listens for `pulses` INSERT. `kind=review` flushes the pulse batch immediately, merges into the `['pulses']` query cache, and stamps `lastActivity` / `lastPulseAt` on the matching `['venues']` row. `InteractiveMap` and `SurgingNearbyList` read that cache (via `visiblePulses` / `visibleVenues`), so heatmap intensity, marker live counts, Surging cards, and a brief `Live · {venue} · {snippet}` toast update without a reload. Reviews for venues outside launch/geo `visibleVenues` are ignored. Quiet nearby = honest empty state, not invented cards.
 - **Venue inbox** — `/venue/:venueId/inbox`, gated by `venueInbox` flag plus a **verified** server `venue_claims` row and/or `venue_staff`. Client `venue-claims` KV is only a mock/offline fallback. Pending claims do not unlock reviews. Honest “Claim needed” empty state + submit form.
-- **Share** — `/venue/:id` is the stable deep link. Copy/share on the venue page; OG HTML at `/api/share/venue?venueId=`. After a live review, the success toast can copy that URL.
+- **Share** — `/venue/:id` is the in-app deep link. Copy/share uses `/api/share/venue?venueId=` so crawlers get venue name + freshness OG; humans redirect to `/venue/:id?from=share`. After a live review, the success toast copies the OG URL.
 
 ## Trust
 

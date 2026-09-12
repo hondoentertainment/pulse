@@ -2,7 +2,8 @@
  * POST /api/pulses/report — persist a hide/report (3/hour).
  * GET  /api/pulses/report — list the caller's reports.
  * GET  /api/pulses/report?scope=all — admin triage list.
- * PATCH /api/pulses/report — admin status update { reportId, status }.
+ * GET  /api/pulses/report?venueId= — verified owner / staff / admin venue reports.
+ * PATCH /api/pulses/report — admin or verified owner status update { reportId|pulseId, status }.
  */
 
 import {
@@ -61,6 +62,58 @@ export default async function handler(
   const admin = isAdminToken(auth.context.token)
 
   if (req.method === 'GET') {
+    const venueId = typeof req.query?.venueId === 'string' ? req.query.venueId.trim() : ''
+    if (venueId) {
+      if (!admin) {
+        const [{ data: claim }, { data: staff }] = await Promise.all([
+          client
+            .from('venue_claims')
+            .select('id')
+            .eq('venue_id', venueId)
+            .eq('user_id', auth.context.userId)
+            .eq('status', 'verified')
+            .maybeSingle(),
+          client
+            .from('venue_staff')
+            .select('user_id')
+            .eq('venue_id', venueId)
+            .eq('user_id', auth.context.userId)
+            .maybeSingle(),
+        ])
+        if (!claim && !staff) {
+          fail(res, 403, 'forbidden', 'Verified owner or admin required')
+          return
+        }
+      }
+      const { data: pulses, error: pulseError } = await client
+        .from('pulses')
+        .select('id')
+        .eq('venue_id', venueId)
+        .limit(100)
+      if (pulseError) {
+        fail(res, 500, 'report_list_failed', pulseError.message)
+        return
+      }
+      const pulseIds = (pulses ?? [])
+        .map((row) => (typeof row.id === 'string' ? row.id : null))
+        .filter((id): id is string => Boolean(id))
+      if (pulseIds.length === 0) {
+        ok(res, { reports: [] })
+        return
+      }
+      const { data, error } = await client
+        .from('pulse_reports')
+        .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+        .in('pulse_id', pulseIds)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (error) {
+        fail(res, 500, 'report_list_failed', error.message)
+        return
+      }
+      ok(res, { reports: data ?? [] })
+      return
+    }
     const scope = typeof req.query?.scope === 'string' ? req.query.scope : 'mine'
     let query = client
       .from('pulse_reports')

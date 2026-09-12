@@ -107,6 +107,7 @@ vi.mock('@/lib/time-contextual-scoring', () => ({
 vi.mock('@/lib/sharing', () => ({
   generateVenueShareCard: () => ({ title: 'Share', description: 'desc' }),
   getPulseDeepLink: () => 'https://pulse.app/p/1',
+  getVenueSharePreviewUrl: () => 'https://pulse.app/api/share/venue?venueId=1',
 }))
 vi.mock('@/lib/live-intelligence', () => ({
   getVenueLiveData: () => null,

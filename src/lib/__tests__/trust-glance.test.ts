@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
-import { buildTrustGlance, formatWhySurging, shouldShowMapTrustHover } from '../trust-glance'
+import { buildTrustGlance, compactTrustPinChips, formatWhySurging, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '../trust-glance'
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
   return {
@@ -76,6 +76,21 @@ describe('shouldShowMapTrustHover', () => {
     expect(shouldShowMapTrustHover({ hasHoveredVenue: true })).toBe(true)
     expect(shouldShowMapTrustHover({ hasHoveredVenue: true, isDragging: true })).toBe(false)
     expect(shouldShowMapTrustHover({ hasHoveredVenue: false })).toBe(false)
+  })
+})
+
+describe('surging pin chips', () => {
+  it('shows compact freshness + claimed chips on live pins', () => {
+    expect(shouldShowSurgingPinChips({ liveReviewCount: 2 })).toBe(true)
+    expect(shouldShowSurgingPinChips({ liveReviewCount: 2, isCameraMoving: true })).toBe(false)
+    const chips = compactTrustPinChips(buildTrustGlance(
+      makeVenue({ claimVerified: true }),
+      [makePulse()],
+      Date.now(),
+    ).chips)
+    expect(chips.some((chip) => chip.label === 'Claimed')).toBe(true)
+    expect(chips.some((chip) => chip.id === 'freshness')).toBe(true)
+    expect(chips.length).toBeLessThanOrEqual(2)
   })
 })
 

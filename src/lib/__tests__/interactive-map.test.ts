@@ -11,6 +11,8 @@ import {
   getPreviewVenuePoints,
   getTimeAwareCategoryBoost,
   isLocationNearCatalog,
+  PIN_STROKE,
+  pinStrokeForVenue,
   resolveMapCamera,
   resolveNearMeOrigin,
 } from '../interactive-map'
@@ -194,5 +196,15 @@ describe('getFittedViewport', () => {
     expect(viewport).not.toBeNull()
     expect(viewport?.zoom).toBeLessThan(0.6)
     expect(viewport?.zoom).toBeGreaterThanOrEqual(FIT_MIN_ZOOM)
+  })
+})
+
+describe('pinStrokeForVenue', () => {
+  it('uses a claimed stroke distinct from curated gold', () => {
+    expect(pinStrokeForVenue({ claimVerified: true, inventorySource: 'curated-seed' }).stroke)
+      .toBe(PIN_STROKE.claimed)
+    expect(pinStrokeForVenue({ inventorySource: 'curated-seed' }).stroke).toBe(PIN_STROKE.curated)
+    expect(pinStrokeForVenue({ inventorySource: 'osm', seeded: false }).stroke).toBe(PIN_STROKE.default)
+    expect(pinStrokeForVenue({ claimVerified: true }, true).stroke).toBe(PIN_STROKE.highlighted)
   })
 })

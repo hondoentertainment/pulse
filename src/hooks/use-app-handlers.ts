@@ -34,7 +34,7 @@ import { checkPulseRateLimit, pulseRateLimitFromUnknown } from '@/lib/pulse-rate
 import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
 import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
-import { getVenueDeepLink } from '@/lib/sharing'
+import { getVenueSharePreviewUrl } from '@/lib/sharing'
 import { track } from '@/lib/observability/analytics'
 import { trackFunnel } from '@/lib/funnel-events'
 
@@ -257,7 +257,7 @@ export function useAppHandlers() {
       action: {
         label: 'Copy link',
         onClick: () => {
-          const url = getVenueDeepLink(venueForPulse.id)
+          const url = getVenueSharePreviewUrl(venueForPulse.id)
           void navigator.clipboard?.writeText(url)
         },
       },

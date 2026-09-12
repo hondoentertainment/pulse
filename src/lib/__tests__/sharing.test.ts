@@ -9,6 +9,7 @@ import {
   getPublicAppOrigin,
   getVenueShareLandingPath,
   getImHereMapPath,
+  getVenueSharePreviewUrl,
   getVenueShareOgImageUrl,
   buildShareOgCard,
   generateEnergyCardData,
@@ -60,6 +61,9 @@ describe('deep links', () => {
   it('builds I’m-here map path and share landing that match the OG card', () => {
     expect(getVenueShareLandingPath('v1')).toBe('/venue/v1?from=share')
     expect(getImHereMapPath('v1')).toBe('/?here=v1')
+    expect(getVenueSharePreviewUrl('v1', 'https://pulse.example')).toBe(
+      'https://pulse.example/api/share/venue?venueId=v1',
+    )
     expect(getVenueShareOgImageUrl('v1', 'https://pulse.example')).toBe(
       'https://pulse.example/api/share/og?venueId=v1',
     )
@@ -83,7 +87,7 @@ describe('generateVenueShareCard', () => {
     expect(card.title).toBe('Test Bar')
     expect(card.energyLabel).toBe('Electric')
     expect(card.score).toBe(80)
-    expect(card.url).toContain('/venue/v1')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
     expect(card.description).toContain('Bar')
     expect(card.description).toContain('New York')
   })
@@ -94,14 +98,14 @@ describe('generatePulseShareCard', () => {
     const card = generatePulseShareCard(pulse, venue, 'alice')
     expect(card.title).toContain('alice')
     expect(card.title).toContain('Test Bar')
-    expect(card.url).toContain('/venue/v1')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
   })
 
   it('builds a just-reviewed card', () => {
     const card = generateJustReviewedShareCard(venue, 'DJ just started')
     expect(card.title).toContain('Just reviewed')
     expect(card.description).toContain('DJ just started')
-    expect(card.url).toContain('/venue/v1')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
   })
 })
 

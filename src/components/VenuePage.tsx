@@ -13,7 +13,7 @@ import { VenueActionPanel } from '@/components/VenueActionPanel'
 import { MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
-import { generateVenueShareCard, getVenueDeepLink, type ShareCard } from '@/lib/sharing'
+import { generateVenueShareCard, getVenueSharePreviewUrl, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -221,7 +221,7 @@ export function VenuePage({
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(getVenueDeepLink(venue.id))
+      await navigator.clipboard.writeText(getVenueSharePreviewUrl(venue.id))
       toast.success('Venue link copied')
     } catch {
       toast.error('Could not copy link')

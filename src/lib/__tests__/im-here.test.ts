@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findImHereVenue, getImHereMapPath, inventoryLayerForImHere, parseHereVenueId, resolveImHereAction, wantsImHereCreate } from '../im-here'
+import { findImHereVenue, getImHereMapPath, inventoryLayerForImHere, parseHereVenueId, resolveImHereAction, resolveImHereOpen, wantsImHereCreate } from '../im-here'
 
 describe('im-here deep link', () => {
   it('parses here and create query params', () => {
@@ -36,5 +36,26 @@ describe('im-here deep link', () => {
     ], 'neumos')?.id).toBe('neumos')
     expect(inventoryLayerForImHere({ inventorySource: 'osm' }, 'curated')).toBe('all')
     expect(inventoryLayerForImHere({ inventorySource: 'curated-seed' }, 'curated')).toBe('curated')
+  })
+
+  it('retries create after a guest pass hydrates into a signed-in session', () => {
+    expect(resolveImHereOpen({
+      alreadyOpenedVenueId: 'neumos',
+      alreadyOpenedCreate: false,
+      venueId: 'neumos',
+      openCreate: true,
+    })).toEqual({ focus: false, create: true })
+    expect(resolveImHereOpen({
+      alreadyOpenedVenueId: 'neumos',
+      alreadyOpenedCreate: true,
+      venueId: 'neumos',
+      openCreate: true,
+    })).toEqual({ focus: false, create: false })
+    expect(resolveImHereOpen({
+      alreadyOpenedVenueId: null,
+      alreadyOpenedCreate: false,
+      venueId: 'neumos',
+      openCreate: false,
+    })).toEqual({ focus: true, create: false })
   })
 })
