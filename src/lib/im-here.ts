@@ -78,3 +78,22 @@ export function inventoryLayerForImHere(
   if (!isCuratedVenue(venue)) return 'all'
   return current
 }
+
+/**
+ * Focus the pin on first match. If the first pass was guest (no create)
+ * and a session later hydrates, open create without losing the pin.
+ */
+export function resolveImHereOpen(input: {
+  alreadyOpenedVenueId: string | null
+  alreadyOpenedCreate: boolean
+  venueId: string
+  openCreate: boolean
+}): { focus: boolean; create: boolean } {
+  if (input.alreadyOpenedVenueId !== input.venueId) {
+    return { focus: true, create: input.openCreate }
+  }
+  if (input.openCreate && !input.alreadyOpenedCreate) {
+    return { focus: false, create: true }
+  }
+  return { focus: false, create: false }
+}

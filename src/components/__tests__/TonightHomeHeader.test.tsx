@@ -39,6 +39,7 @@ describe('TonightHomeHeader', () => {
       />,
     )
     expect(screen.getByRole('heading', { name: /Tonight ·/ })).toBeInTheDocument()
+    expect(screen.getByText(/Launch 33 fallback/)).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'Map home views' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Tonight' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tablist', { name: 'Tonight feeds' })).toBeInTheDocument()
@@ -48,7 +49,8 @@ describe('TonightHomeHeader', () => {
     expect(screen.getByText('Start here')).toBeInTheDocument()
     expect(screen.getByText('Neumos')).toBeInTheDocument()
     expect(screen.getByText('@neumos')).toBeInTheDocument()
-    expect(screen.queryByText('Quiet nearby — no live reviews in the last hour.')).not.toBeInTheDocument()
+    expect(screen.getByText('Quiet nearby — no live reviews in the last hour.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Teach the Pulse loop')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: 'Live' }))
     expect(onSurfaceChange).toHaveBeenCalledWith('live')
   })

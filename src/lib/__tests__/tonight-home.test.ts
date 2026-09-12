@@ -90,17 +90,19 @@ describe('buildTonightHome', () => {
     expect(home.empty).toBeNull()
   })
 
-  it('uses an X-style catalog Start here when nothing is surging', () => {
+  it('teaches the loop when nothing is surging and still suggests a catalog start', () => {
     const home = buildTonightHome({
       venues: [makeVenue({ pulseScore: 0 })],
       pulses: [],
       userLocation: null,
       locationDenied: true,
+      savedCity: 'Seattle',
       now: new Date('2026-09-11T04:40:00.000Z'),
     })
     expect(home.title).toContain('Tonight ·')
     expect(home.subtitle).toContain('Launch 33 fallback')
-    expect(home.empty).toBeNull()
+    expect(home.subtitle).toContain('Seattle')
+    expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
     expect(home.startHere?.suggested).toBe(true)
     expect(home.startHere?.headline).toMatch(/^Start at /)
   })
@@ -112,12 +114,12 @@ describe('buildTonightHome', () => {
       userLocation: { lat: 47.614, lng: -122.32 },
       now: new Date('2026-09-11T04:40:00.000Z'),
     })
-    expect(home.empty).toBeNull()
+    expect(home.empty?.headline).toBe(TONIGHT_EMPTY_LOOP.headline)
     expect(home.startHere?.venue.name).toBe('Neumos')
     expect(home.startHere?.suggested).toBe(true)
   })
 
-  it('teaches map → venue → pulse only when the catalog is empty', () => {
+  it('teaches map → venue → pulse when the catalog is empty', () => {
     const home = buildTonightHome({
       venues: [],
       pulses: [],

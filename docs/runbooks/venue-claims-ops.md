@@ -25,7 +25,7 @@ mismatch. Never auto-verify from pending alone. Never invent admin.
 1. Sign in as an admin user.
 2. Open `/ops`.
 3. **Pending claims:** Verify or Reject. Rows show venue **name** when the join is available. Verified claimants can open `/venue/:id/inbox`. Pending never unlocks inbox.
-4. **Pending reports:** Dismiss or Resolve (`actioned`). Owners can also dismiss from the inbox after the optional RLS migration.
+4. **Pending reports:** Dismiss or Resolve (`actioned`). Owners load venue reports via `GET /api/pulses/report?venueId=` and dismiss from the inbox (`PATCH` by `pulseId`). Optional RLS migration still helps direct Supabase reads.
 
 Stop if you are not admin — do not paste service-role keys into the browser.
 

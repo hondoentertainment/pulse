@@ -108,6 +108,23 @@ export function shouldShowMapTrustHover(input: {
   return input.hasHoveredVenue && !input.isDragging && !input.isCameraMoving
 }
 
+/** Compact freshness / claimed chip on surging pins, including heatmap chrome. */
+export function shouldShowSurgingPinChips(input: {
+  liveReviewCount: number
+  isCameraMoving?: boolean
+}): boolean {
+  return input.liveReviewCount > 0 && !input.isCameraMoving
+}
+
+export function compactTrustPinChips(chips: TrustChip[], limit = 2): TrustChip[] {
+  const claimed = chips.find((chip) => chip.id === 'verified' && chip.label === 'Claimed')
+  const freshness = chips.find((chip) => chip.id === 'freshness' && chip.label !== 'No pulses yet')
+  const density = chips.find((chip) => chip.id === 'density' && chip.tone === 'hot')
+  const picked = [freshness, claimed, density].filter((chip): chip is TrustChip => Boolean(chip))
+  if (picked.length > 0) return picked.slice(0, limit)
+  return chips.slice(0, 1)
+}
+
 export function buildTrustChips(input: {
   freshness: string
   verification: TrustGlance['verification']

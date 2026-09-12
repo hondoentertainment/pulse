@@ -60,3 +60,15 @@ describe('GET /api/admin/venue-claims', () => {
     expect(res.statusCode).toBe(200)
   })
 })
+
+describe('PATCH /api/admin/venue-claims', () => {
+  it('verifies a claim without table-editor guesswork', async () => {
+    const res = mockRes()
+    await handler({
+      method: 'PATCH',
+      headers: {},
+      body: { claimId: 'c1', status: 'verified' },
+    } as never, res as never)
+    expect(res.statusCode).toBe(200)
+  })
+})

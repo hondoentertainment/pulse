@@ -3,7 +3,7 @@
  * Actions persist locally (and via callbacks) so owners can work tonight's queue.
  */
 
-import type { ContentReport } from './content-moderation'
+import type { ContentReport, ReportReason } from './content-moderation'
 import type { Pulse } from './types'
 import { getTonightLiveReviews } from './live-reviews'
 
@@ -134,4 +134,69 @@ export function isPulseDismissed(
   venueId: string,
 ): boolean {
   return dismissals.some((row) => row.pulseId === pulseId && row.venueId === venueId)
+}
+
+const REPORT_REASONS: readonly ReportReason[] = [
+  'spam',
+  'inappropriate',
+  'harassment',
+  'misinformation',
+  'fake_location',
+  'other',
+]
+
+export interface PulseReportLike {
+  id: string
+  pulse_id: string
+  reporter_id: string
+  reason: string
+  details?: string | null
+  created_at: string
+  status?: string | null
+  reviewed_at?: string | null
+}
+
+export function mapPulseReportsToContentReports(
+  rows: readonly PulseReportLike[],
+): ContentReport[] {
+  return rows.map((row) => {
+    const reason = REPORT_REASONS.includes(row.reason as ReportReason)
+      ? (row.reason as ReportReason)
+      : 'other'
+    const status = row.status === 'reviewed'
+      || row.status === 'actioned'
+      || row.status === 'dismissed'
+      ? row.status
+      : 'pending'
+    return {
+      id: row.id,
+      reporterId: row.reporter_id,
+      targetType: 'pulse',
+      targetId: row.pulse_id,
+      reason,
+      description: row.details?.trim() || undefined,
+      createdAt: row.created_at,
+      status,
+      reviewedAt: row.reviewed_at ?? undefined,
+    }
+  })
+}
+
+/** Server rows win on id; dismissed status wins so a local dismiss stays visible. */
+export function mergeInboxReports(
+  server: readonly ContentReport[],
+  local: readonly ContentReport[],
+): ContentReport[] {
+  const byId = new Map<string, ContentReport>()
+  for (const row of [...server, ...local]) {
+    const existing = byId.get(row.id)
+    if (!existing) {
+      byId.set(row.id, row)
+      continue
+    }
+    if (row.status === 'dismissed' && existing.status !== 'dismissed') {
+      byId.set(row.id, row)
+    }
+  }
+  return [...byId.values()]
 }

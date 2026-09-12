@@ -3,7 +3,7 @@ import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
 import { TrustPinChips } from '@/components/TrustPinChips'
-import { buildTrustGlance, shouldShowMapTrustHover } from '@/lib/trust-glance'
+import { buildTrustGlance, compactTrustPinChips, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '@/lib/trust-glance'
 import { markMapInteractive } from '@/lib/cold-start'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
@@ -18,7 +18,6 @@ import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/component
 import {
   collectNeighborhoods,
   filterMapVenues,
-  isCuratedVenue,
   shouldClusterMapMarkers,
 } from '@/lib/map-filters'
 import { MapSearch } from '@/components/MapSearch'
@@ -48,6 +47,7 @@ import {
   getHeadingDelta,
   getPreviewVenuePoints,
   isLocationNearCatalog,
+  pinStrokeForVenue,
   resolveMapCamera,
   type VenueRenderPoint
 } from '@/lib/interactive-map'
@@ -1169,9 +1169,10 @@ export const InteractiveMap = memo(function InteractiveMap({
                 cy={y}
                 r={markerSize}
                 fill={activity.heatScore > 0 ? getEnergyColor(activity.heatScore) : 'oklch(0.25 0.05 260)'}
-                stroke={isHighlighted ? 'white' : isCuratedVenue(venue) ? '#F7D774' : 'oklch(0.15 0 0)'}
-                strokeWidth={isHighlighted ? 3 : isCuratedVenue(venue) ? 2.4 : 1.5}
+                stroke={pinStrokeForVenue(venue, isHighlighted).stroke}
+                strokeWidth={pinStrokeForVenue(venue, isHighlighted).strokeWidth}
                 className="transition-all duration-300"
+                data-claimed={venue.claimVerified ? 'true' : undefined}
                 filter={activity.heatScore >= 30 ? `drop-shadow(0 0 ${activity.heatScore >= 80 ? '8px' : '4px'} ${activity.heatScore >= 80 ? 'rgba(255, 45, 120, 0.6)' : activity.heatScore >= 60 ? 'rgba(255, 138, 0, 0.5)' : 'rgba(0, 209, 255, 0.4)'})` : undefined}
               />
 
@@ -1372,6 +1373,8 @@ export const InteractiveMap = memo(function InteractiveMap({
               aria-label={getEnergyAriaLabel(venue.pulseScore, getEnergyLabel(venue.pulseScore), venue.name)}
               onMouseEnter={() => setHoveredVenue(venue)}
               onMouseLeave={() => setHoveredVenue(null)}
+              onFocus={() => setHoveredVenue(venue)}
+              onBlur={() => setHoveredVenue(null)}
               onClick={() => {
                 triggerHapticFeedback('medium')
                 onVenueClick(venue)
@@ -1379,6 +1382,19 @@ export const InteractiveMap = memo(function InteractiveMap({
             >
               <div className="w-10 h-10" />
             </button>
+            {shouldShowSurgingPinChips({
+              liveReviewCount: activity.liveReviewCount,
+              isCameraMoving,
+            }) && (
+              <div
+                className="absolute top-full mt-1 left-1/2 -translate-x-1/2 pointer-events-none z-10"
+                data-testid={`trust-pin-chips-${venue.id}`}
+              >
+                <TrustPinChips
+                  chips={compactTrustPinChips(buildTrustGlance(venue, pulses, Date.now(), activity).chips)}
+                />
+              </div>
+            )}
             <AnimatePresence>
               {chrome === 'full' && showLabel && (
                 <motion.div

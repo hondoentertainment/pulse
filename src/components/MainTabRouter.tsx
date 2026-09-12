@@ -30,6 +30,8 @@ import {
   inventoryLayerForImHere,
   parseHereVenueId,
   resolveImHereAction,
+  resolveImHereOpen,
+  wantsImHereCreate,
 } from '@/lib/im-here'
 import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import type { MapInventoryLayer } from '@/lib/map-filters'
@@ -42,7 +44,7 @@ const ProfileTab = lazy(() => import('@/components/ProfileTab').then(m => ({ def
 const DiscoverTab = lazy(() => import('@/components/DiscoverTab').then(m => ({ default: m.DiscoverTab })))
 const SurgingNearbyList = lazy(() => import('@/components/SurgingNearbyList').then(m => ({ default: m.SurgingNearbyList })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <MapHomeSkeleton />
 
 const tabMotion = {
   initial: { opacity: 0, y: 20 },
@@ -150,23 +152,39 @@ export function MainTabRouter() {
     trackFunnel('guest_map_view', { guest })
   }, [activeTab, isPlaceholder, session])
 
-  const openedHereRef = useRef<string | null>(null)
+  const openedHereRef = useRef<{ venueId: string; created: boolean } | null>(null)
   useEffect(() => {
     if (!hereVenueId) return
     if (!venues?.length) return
     const venue = findImHereVenue(venues, hereVenueId)
     if (!venue) return
-    if (openedHereRef.current === hereVenueId) return
-    openedHereRef.current = hereVenueId
-    setInventoryLayer((current) => inventoryLayerForImHere(venue, current))
-    setSelectedVenue(venue)
     const action = resolveImHereAction({
       venueId: hereVenueId,
       isPlaceholder,
       hasSession: Boolean(session),
     })
-    if (action.openCreate) handleCreatePulse(hereVenueId)
-  }, [handleCreatePulse, hereVenueId, isPlaceholder, session, setSelectedVenue, venues])
+    const openCreate = action.openCreate || (
+      wantsImHereCreate(location.search) && action.authRedirect === null
+    )
+    const already = openedHereRef.current
+    const next = resolveImHereOpen({
+      alreadyOpenedVenueId: already?.venueId ?? null,
+      alreadyOpenedCreate: already?.created ?? false,
+      venueId: hereVenueId,
+      openCreate,
+    })
+    if (next.focus) {
+      setInventoryLayer((current) => inventoryLayerForImHere(venue, current))
+      setSelectedVenue(venue)
+    }
+    if (next.create) handleCreatePulse(hereVenueId)
+    if (next.focus || next.create) {
+      openedHereRef.current = {
+        venueId: hereVenueId,
+        created: Boolean(already?.created || next.create),
+      }
+    }
+  }, [handleCreatePulse, hereVenueId, isPlaceholder, location.search, session, setSelectedVenue, venues])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

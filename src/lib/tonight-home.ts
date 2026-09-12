@@ -259,17 +259,19 @@ export function buildTonightHome(input: {
   now?: Date
   locationDenied?: boolean
   savedNeighborhood?: string | null
+  savedCity?: string | null
 }): TonightHome {
   const now = input.now ?? new Date()
   const nowMs = now.getTime()
   const userLocation = input.userLocation ?? null
   const locationDenied = input.locationDenied ?? userLocation === null
   const catalog = filterTonightCatalog(input.venues)
+  const lastCity = (input.savedCity ?? readSavedCity() ?? 'Seattle').trim() || 'Seattle'
   const neighborhood = resolveHomeNeighborhood(
     catalog,
     userLocation,
     input.savedVenueIds ?? [],
-    { savedNeighborhood: input.savedNeighborhood },
+    { savedNeighborhood: input.savedNeighborhood, savedCity: lastCity },
   )
   const surging = getSurgingNearbyVenues(catalog, input.pulses, {
     userLocation,
@@ -286,6 +288,7 @@ export function buildTonightHome(input: {
   let empty: TonightEmptyState | null = null
   let resolvedStart = startHere
   if (!startHere) {
+    empty = TONIGHT_EMPTY_LOOP
     const inHood = catalog.filter((venue) => venue.neighborhood === neighborhood)
     const pool = inHood.length > 0 ? inHood : catalog
     const nearbyCurated = [...pool].sort((a, b) => {
@@ -295,15 +298,13 @@ export function buildTonightHome(input: {
     })
     if (nearbyCurated[0]) {
       resolvedStart = pickLine(nearbyCurated[0], input.pulses, nowMs, undefined, true)
-    } else {
-      empty = TONIGHT_EMPTY_LOOP
     }
   }
 
   return {
     title: `Tonight · ${neighborhood}`,
     subtitle: locationDenied
-      ? `${formatTonightClock(now)} · Launch 33 fallback · based on time + saves`
+      ? `${formatTonightClock(now)} · Launch 33 fallback · ${lastCity} · based on time + saves`
       : `${formatTonightClock(now)} · based on time + saves`,
     neighborhood,
     startHere: resolvedStart,

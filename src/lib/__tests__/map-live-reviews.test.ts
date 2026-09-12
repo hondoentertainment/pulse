@@ -93,6 +93,33 @@ describe('getSurgingNearbyVenues', () => {
     expect(surging.map((venue) => venue.id)).toEqual(['barrio'])
   })
 
+  it('prefers curated over OSM when live activity is tied', () => {
+    const osm = makeVenue({
+      id: 'osm',
+      name: 'Nearby Bar',
+      inventorySource: 'osm',
+      seeded: false,
+      location: { lat: 47.615, lng: -122.321, address: '2 Pike' },
+    })
+    const curated = makeVenue({
+      id: 'curated',
+      name: 'Neumos',
+      inventorySource: 'curated-seed',
+      seeded: true,
+    })
+    const nowMs = Date.parse('2026-09-12T04:00:00.000Z')
+    const createdAt = new Date(nowMs - 3 * 60 * 1000).toISOString()
+    const surging = getSurgingNearbyVenues(
+      [osm, curated],
+      [
+        makePulse({ id: 'r1', venueId: 'osm', createdAt }),
+        makePulse({ id: 'r2', venueId: 'curated', createdAt }),
+      ],
+      { nowMs },
+    )
+    expect(surging.map((venue) => venue.id)).toEqual(['curated', 'osm'])
+  })
+
   it('drops venues outside the nearby radius', () => {
     const far = makeVenue({
       id: 'far',

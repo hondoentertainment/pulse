@@ -141,7 +141,7 @@ export function generateVenueShareCard(venue: Venue): ShareCard {
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getVenueDeepLink(venue.id),
+    url: getVenueSharePreviewUrl(venue.id),
   }
 }
 
@@ -157,7 +157,7 @@ export function generatePulseShareCard(pulse: Pulse, venue: Venue, username: str
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getVenueDeepLink(venue.id),
+    url: getVenueSharePreviewUrl(venue.id),
   }
 }
 
@@ -171,7 +171,7 @@ export function generateJustReviewedShareCard(venue: Venue, caption: string): Sh
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getVenueDeepLink(venue.id),
+    url: getVenueSharePreviewUrl(venue.id),
   }
 }
 

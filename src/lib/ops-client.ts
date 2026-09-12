@@ -107,6 +107,19 @@ export async function dismissReportsForPulseOnServer(pulseId: string): Promise<b
   }
 }
 
+/** Owner inbox: reports for pulses at this venue (403 → []). */
+export async function listVenueReportsOnServer(venueId: string): Promise<OpsReportRow[]> {
+  try {
+    const headers = await authHeader()
+    const res = await fetch(`/api/pulses/report?venueId=${encodeURIComponent(venueId)}`, { headers })
+    if (!res.ok) return []
+    const json = (await res.json()) as { data?: { reports?: OpsReportRow[] } }
+    return json.data?.reports ?? []
+  } catch {
+    return []
+  }
+}
+
 export function isAdminSession(session: {
   user?: {
     app_metadata?: Record<string, unknown>
