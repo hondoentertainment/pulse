@@ -31,23 +31,22 @@ export function funnelActor(input: {
   return { guest: !input.hasSession && !input.isPlaceholder }
 }
 
-export function stripAnalyticsPii<T extends Record<string, unknown>>(props: T): T {
+export function stripAnalyticsPii<T extends object>(props: T): T {
   const next: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(props)) {
     if (PII_KEYS.has(key)) continue
     if (key === 'extra' && value && typeof value === 'object' && !Array.isArray(value)) {
-      next.extra = stripAnalyticsPii(value as Record<string, unknown>)
+      next.extra = stripAnalyticsPii(value)
       continue
     }
     next[key] = value
   }
-  return next as T
+  return next as unknown as T
 }
 
 export function trackFunnel<E extends FunnelEventName>(
   name: E,
   props: EventProps<E>,
 ): void {
-  const safe = stripAnalyticsPii(props as unknown as Record<string, unknown>) as unknown as EventProps<E>
-  track(name, safe)
+  track(name, stripAnalyticsPii(props))
 }
