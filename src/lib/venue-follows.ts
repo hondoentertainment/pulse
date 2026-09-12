@@ -1,18 +1,22 @@
 /**
  * Venue follow rules + RLS intent.
  *
- * Persistence lives in `venue_follows` (user_id + venue_id). Guests never
- * write — Follow sends them to /auth. Soft cap of 10 matches existing copy.
+ * Persistence lives in existing `follows`:
+ *   target_kind = 'venue', target_venue_id, soft-delete via deleted_at.
+ * Prod RLS (unchanged): public SELECT of live rows; writes are follower-owned.
+ * Guests never write — Follow sends them to /auth.
  */
 
 export const VENUE_FOLLOW_LIMIT = 10
 
 export const VENUE_FOLLOWS_RLS = {
-  table: 'venue_follows',
-  select: 'auth.uid() = user_id',
-  insert: 'auth.uid() = user_id',
-  delete: 'auth.uid() = user_id',
-  anon: 'none',
+  table: 'follows',
+  select: 'deleted_at IS NULL OR is_admin()',
+  insert: 'auth.uid() = follower_id',
+  update: 'auth.uid() = follower_id OR is_admin()',
+  delete: 'auth.uid() = follower_id OR is_admin()',
+  venueRow: 'target_kind = venue AND target_venue_id IS NOT NULL',
+  anon: 'no writes',
 } as const
 
 export const VENUE_FOLLOW_COPY = {

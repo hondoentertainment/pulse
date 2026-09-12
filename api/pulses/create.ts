@@ -278,6 +278,7 @@ export default async function handler(
       venueId: validated.value.venueId,
       venueName: typeof venueRow?.name === 'string' ? venueRow.name : 'Pulse',
       caption: pulseRow.caption,
+      pulseId: typeof data?.id === 'string' ? data.id : id,
       authorUserId: auth.context.userId,
       venueLocation,
     }).catch((err) => {

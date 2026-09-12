@@ -201,7 +201,7 @@ export interface TonightFollowingRow {
   latestPulse: Pulse | null
 }
 
-/** Signed-in Following: persisted follows + each venue’s latest live pulse. */
+/** Signed-in Following: `follows.target_venue_id` rows + each venue’s latest live pulse. */
 export function listTonightFollowingFeed(
   venues: Venue[],
   pulses: readonly Pulse[],

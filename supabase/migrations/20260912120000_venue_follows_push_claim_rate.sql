@@ -1,102 +1,79 @@
--- Venue follows, web-push subscriptions, domain-match claim verify,
--- and server-enforced pulse rate limits.
+-- Reuse prod follows + push_tokens + notifications.
+-- Additive web-push columns, domain-match claim verify, pulse rate limits.
 --
--- Additive / idempotent. Safe if 20260912000000_venue_claim_verified_badge.sql
--- is already applied on xeldqwhztcnnvazmshzh.
+-- Do NOT create venue_follows or web_push_subscriptions.
+-- Do NOT touch venues.claim_verified / venue_claim_badges (already on prod).
+-- Do NOT touch spatial_ref_sys.
+--
+-- Venue follow = follows.target_kind = 'venue' + target_venue_id
+--   (soft-delete via deleted_at). Existing follows RLS is unchanged.
+-- Web Push = push_tokens.platform = 'web', token = endpoint.
+-- In-app fan-out = existing notifications (friend_pulse).
 --
 -- Verify with:
---   supabase/verify/venue_follows.sql
---   supabase/verify/web_push_subscriptions.sql
+--   supabase/verify/follows.sql
+--   supabase/verify/push_tokens.sql
 --   supabase/verify/venue_claim_domain.sql
 --   supabase/verify/pulse_rate_limit.sql
 
 -- ============================================================
--- 1. venue_follows (user_id + venue_id, owner-only RLS)
+-- 1. follows — already on prod. No new table. No new policies.
+--    Inspected RLS (leave as-is):
+--      SELECT: deleted_at IS NULL OR is_admin()
+--      INSERT: auth.uid() = follower_id
+--      UPDATE/DELETE: auth.uid() = follower_id OR is_admin()
+--    Anon: no writes (REVOKEd). Soft-delete via deleted_at.
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.venue_follows (
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    venue_id UUID NOT NULL REFERENCES public.venues(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
-    PRIMARY KEY (user_id, venue_id)
-);
-
-CREATE INDEX IF NOT EXISTS venue_follows_user_idx
-    ON public.venue_follows (user_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS venue_follows_venue_idx
-    ON public.venue_follows (venue_id);
-
-ALTER TABLE public.venue_follows ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "venue_follows_select_own" ON public.venue_follows;
-CREATE POLICY "venue_follows_select_own"
-    ON public.venue_follows FOR SELECT
-    USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "venue_follows_insert_own" ON public.venue_follows;
-CREATE POLICY "venue_follows_insert_own"
-    ON public.venue_follows FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "venue_follows_delete_own" ON public.venue_follows;
-CREATE POLICY "venue_follows_delete_own"
-    ON public.venue_follows FOR DELETE
-    USING (auth.uid() = user_id);
-
-GRANT SELECT, INSERT, DELETE ON public.venue_follows TO authenticated;
-REVOKE ALL ON public.venue_follows FROM anon;
 
 -- ============================================================
--- 2. web_push_subscriptions (endpoint + keys, optional geo scope)
+-- 2. push_tokens — add web-push columns; keep owner-only RLS
+--    Inspected RLS (leave as-is):
+--      SELECT/INSERT/UPDATE/DELETE: auth.uid() = user_id
+--    notifications (inspected, leave as-is):
+--      SELECT/UPDATE/DELETE: auth.uid() = user_id OR is_admin()
+--      INSERT: service_role only (friend_pulse fan-out)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.web_push_subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    endpoint TEXT NOT NULL,
-    p256dh TEXT NOT NULL,
-    auth TEXT NOT NULL,
-    lat DOUBLE PRECISION,
-    lng DOUBLE PRECISION,
-    scope TEXT NOT NULL DEFAULT 'followed_or_nearby'
-        CHECK (scope IN ('followed', 'nearby', 'followed_or_nearby')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
-    UNIQUE (user_id, endpoint)
-);
+DO $$
+DECLARE
+    cname TEXT;
+BEGIN
+    FOR cname IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.push_tokens'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%platform%'
+    LOOP
+        EXECUTE format('ALTER TABLE public.push_tokens DROP CONSTRAINT %I', cname);
+    END LOOP;
 
-CREATE INDEX IF NOT EXISTS web_push_subscriptions_user_idx
-    ON public.web_push_subscriptions (user_id);
+    ALTER TABLE public.push_tokens
+        ADD CONSTRAINT push_tokens_platform_check
+        CHECK (platform IN ('ios', 'android', 'web'));
+END
+$$;
 
-ALTER TABLE public.web_push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_tokens ADD COLUMN IF NOT EXISTS p256dh TEXT;
+ALTER TABLE public.push_tokens ADD COLUMN IF NOT EXISTS auth TEXT;
+ALTER TABLE public.push_tokens ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE public.push_tokens ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+ALTER TABLE public.push_tokens ADD COLUMN IF NOT EXISTS scope TEXT;
 
-DROP POLICY IF EXISTS "web_push_subscriptions_select_own" ON public.web_push_subscriptions;
-CREATE POLICY "web_push_subscriptions_select_own"
-    ON public.web_push_subscriptions FOR SELECT
-    USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "web_push_subscriptions_insert_own" ON public.web_push_subscriptions;
-CREATE POLICY "web_push_subscriptions_insert_own"
-    ON public.web_push_subscriptions FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "web_push_subscriptions_update_own" ON public.web_push_subscriptions;
-CREATE POLICY "web_push_subscriptions_update_own"
-    ON public.web_push_subscriptions FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "web_push_subscriptions_delete_own" ON public.web_push_subscriptions;
-CREATE POLICY "web_push_subscriptions_delete_own"
-    ON public.web_push_subscriptions FOR DELETE
-    USING (auth.uid() = user_id);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.web_push_subscriptions TO authenticated;
-REVOKE ALL ON public.web_push_subscriptions FROM anon;
-
-DROP TRIGGER IF EXISTS web_push_subscriptions_set_updated_at ON public.web_push_subscriptions;
-CREATE TRIGGER web_push_subscriptions_set_updated_at
-    BEFORE UPDATE ON public.web_push_subscriptions
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'push_tokens_scope_check'
+    ) THEN
+        ALTER TABLE public.push_tokens
+            ADD CONSTRAINT push_tokens_scope_check
+            CHECK (
+                scope IS NULL
+                OR scope IN ('followed', 'nearby', 'followed_or_nearby')
+            );
+    END IF;
+END
+$$;
 
 -- ============================================================
 -- 3. Self-serve domain-match claim (no invented admin)

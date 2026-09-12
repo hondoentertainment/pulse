@@ -71,6 +71,22 @@ export function selectLivePulseNotifyTargets(input: {
   return targets
 }
 
+/** In-app notifications go to every follower, even without a Web Push token. */
+export function collectLivePulseNotifyUserIds(input: {
+  authorUserId?: string | null
+  followedUserIds: readonly string[]
+  subscriberTargets: readonly { userId: string }[]
+}): string[] {
+  const ids = new Set<string>()
+  for (const id of input.followedUserIds) {
+    if (id && id !== input.authorUserId) ids.add(id)
+  }
+  for (const target of input.subscriberTargets) {
+    if (target.userId && target.userId !== input.authorUserId) ids.add(target.userId)
+  }
+  return [...ids]
+}
+
 export function livePulseNotifyPayload(input: {
   venueId: string
   venueName: string

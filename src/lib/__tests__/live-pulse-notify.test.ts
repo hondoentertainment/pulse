@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { livePulseNotifyPayload, selectLivePulseNotifyTargets } from '../live-pulse-notify'
+import {
+  collectLivePulseNotifyUserIds,
+  livePulseNotifyPayload,
+  selectLivePulseNotifyTargets,
+} from '../live-pulse-notify'
 
 describe('live pulse notify targeting', () => {
   it('notifies followers and nearby subscribers, never the author', () => {
@@ -15,6 +19,14 @@ describe('live pulse notify targeting', () => {
       ],
     })
     expect(targets.map((t) => t.userId).sort()).toEqual(['fan', 'nearby'])
+  })
+
+  it('writes in-app notifications for followers without a Web Push token', () => {
+    expect(collectLivePulseNotifyUserIds({
+      authorUserId: 'author',
+      followedUserIds: ['fan', 'author', 'quiet-follower'],
+      subscriberTargets: [{ userId: 'fan' }, { userId: 'nearby' }],
+    }).sort()).toEqual(['fan', 'nearby', 'quiet-follower'])
   })
 
   it('builds venue-name title and venue deep link', () => {

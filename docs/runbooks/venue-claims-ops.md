@@ -17,8 +17,8 @@ mismatch. Never auto-verify from pending alone. Never invent admin.
 - Migrations:
   - `20260910140000_venue_claims_and_report_queue.sql` (already on prod from #82)
   - Optional: `20260911000000_owner_report_triage.sql` (owner dismiss via RLS)
-  - Optional: `20260912000000_venue_claim_verified_badge.sql` (public Claimed chip; pending still hidden)
-  - Additive: `20260912120000_venue_follows_push_claim_rate.sql` (`owner_email_domain`, `work_email`, domain-match RPC)
+  - Already on prod: `20260912000000_venue_claim_verified_badge.sql` (`venues.claim_verified` + `venue_claim_badges`)
+  - Additive: `20260912120000_venue_follows_push_claim_rate.sql` (`owner_email_domain`, `work_email`, domain-match RPC). Reuses `follows` / `push_tokens` / `notifications`.
 
 ## Procedure — UI (`/ops`)
 

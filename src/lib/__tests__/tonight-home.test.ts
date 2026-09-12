@@ -143,7 +143,7 @@ describe('listTonightFollowingVenues', () => {
 })
 
 describe('listTonightFollowingFeed', () => {
-  it('lists only persisted follows plus the latest live pulse', () => {
+  it('lists only persisted follows (follows.target_venue_id) plus the latest live pulse', () => {
     const followed = makeVenue({ id: 'followed', name: 'Barrio' })
     const other = makeVenue()
     const older: Pulse = {

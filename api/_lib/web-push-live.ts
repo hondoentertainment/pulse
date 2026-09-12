@@ -3,76 +3,13 @@
  * Missing VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY is an honest no-op.
  */
 
+import {
+  collectLivePulseNotifyUserIds,
+  livePulseNotifyPayload,
+  selectLivePulseNotifyTargets,
+  type NotifySubscriber,
+} from '../../src/lib/live-pulse-notify.js'
 import { createAdminClient } from './supabase-server.js'
-
-type NotifySubscriber = {
-  userId: string
-  lat?: number | null
-  lng?: number | null
-  scope?: 'followed' | 'nearby' | 'followed_or_nearby'
-}
-
-function livePulseNotifyPayload(input: {
-  venueId: string
-  venueName: string
-  caption?: string | null
-}): { title: string; body: string; url: string } {
-  const snippet = (input.caption ?? '').trim()
-  return {
-    title: input.venueName,
-    body: snippet || 'New live pulse',
-    url: `/venue/${input.venueId}`,
-  }
-}
-
-function haversineMiles(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
-  const R = 3958.8
-  const toRad = (x: number) => (x * Math.PI) / 180
-  const dLat = toRad(b.lat - a.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const h =
-    Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)))
-}
-
-function selectLivePulseNotifyTargets(input: {
-  authorUserId?: string | null
-  followedUserIds: readonly string[]
-  subscribers: readonly NotifySubscriber[]
-  venueLocation?: { lat: number; lng: number } | null
-}): Array<{ userId: string }> {
-  const followed = new Set(input.followedUserIds)
-  const seen = new Set<string>()
-  const targets: Array<{ userId: string }> = []
-  for (const sub of input.subscribers) {
-    if (!sub.userId || seen.has(sub.userId)) continue
-    if (input.authorUserId && sub.userId === input.authorUserId) continue
-    const scope = sub.scope ?? 'followed_or_nearby'
-    if ((scope === 'followed' || scope === 'followed_or_nearby') && followed.has(sub.userId)) {
-      seen.add(sub.userId)
-      targets.push({ userId: sub.userId })
-      continue
-    }
-    const canNearby = scope === 'nearby' || scope === 'followed_or_nearby'
-    if (
-      canNearby
-      && input.venueLocation
-      && typeof sub.lat === 'number'
-      && typeof sub.lng === 'number'
-    ) {
-      const miles = haversineMiles(input.venueLocation, { lat: sub.lat, lng: sub.lng })
-      if (miles <= 1.5) {
-        seen.add(sub.userId)
-        targets.push({ userId: sub.userId })
-      }
-    }
-  }
-  return targets
-}
 
 export interface WebPushEnv {
   VAPID_PUBLIC_KEY?: string
@@ -84,6 +21,7 @@ export interface LivePulseNotifyInput {
   venueId: string
   venueName: string
   caption?: string | null
+  pulseId?: string | null
   authorUserId?: string | null
   venueLocation?: { lat: number; lng: number } | null
 }
@@ -151,12 +89,20 @@ export async function notifyLivePulse(
   }
 
   const [{ data: followRows }, { data: subRows }] = await Promise.all([
-    admin.from('venue_follows').select('user_id').eq('venue_id', input.venueId),
-    admin.from('web_push_subscriptions').select('user_id, endpoint, p256dh, auth, lat, lng, scope'),
+    admin
+      .from('follows')
+      .select('follower_id')
+      .eq('target_kind', 'venue')
+      .eq('target_venue_id', input.venueId)
+      .is('deleted_at', null),
+    admin
+      .from('push_tokens')
+      .select('user_id, token, p256dh, auth, lat, lng, scope, platform')
+      .eq('platform', 'web'),
   ])
 
   const followedUserIds = (followRows ?? [])
-    .map((row) => (typeof row.user_id === 'string' ? row.user_id : ''))
+    .map((row) => (typeof row.follower_id === 'string' ? row.follower_id : ''))
     .filter(Boolean)
 
   const subscribers: NotifySubscriber[] = (subRows ?? []).map((row) => ({
@@ -174,19 +120,37 @@ export async function notifyLivePulse(
     subscribers,
     venueLocation: input.venueLocation,
   })
-  const targetIds = new Set(targets.map((t) => t.userId))
+  const webPushUserIds = new Set(targets.map((t) => t.userId))
+  const notifyUserIds = collectLivePulseNotifyUserIds({
+    authorUserId: input.authorUserId,
+    followedUserIds,
+    subscriberTargets: targets,
+  })
   const payload = livePulseNotifyPayload(input)
+
+  if (notifyUserIds.length > 0) {
+    const rows = notifyUserIds.map((userId) => ({
+      user_id: userId,
+      type: 'friend_pulse',
+      venue_id: input.venueId,
+      pulse_id: input.pulseId ?? null,
+      read: false,
+    }))
+    await admin.from('notifications').insert(rows).then(({ error }) => {
+      if (error) console.warn('[web-push] notification insert failed', error)
+    })
+  }
 
   let sent = 0
   let skipped = 0
   for (const row of subRows ?? []) {
-    if (typeof row.user_id !== 'string' || !targetIds.has(row.user_id)) continue
-    if (typeof row.endpoint !== 'string' || typeof row.p256dh !== 'string' || typeof row.auth !== 'string') {
+    if (typeof row.user_id !== 'string' || !webPushUserIds.has(row.user_id)) continue
+    if (typeof row.token !== 'string' || typeof row.p256dh !== 'string' || typeof row.auth !== 'string') {
       skipped += 1
       continue
     }
     const ok = await sendOne(
-      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+      { endpoint: row.token, keys: { p256dh: row.p256dh, auth: row.auth } },
       payload,
       vapid,
     )
