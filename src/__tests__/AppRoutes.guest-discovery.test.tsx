@@ -174,6 +174,13 @@ describe('guest map discovery vs auth-gated create', () => {
     expect(screen.queryByRole('button', { name: /Continue with Google/i })).not.toBeInTheDocument()
   })
 
+  it('keeps Follow / write /auth on AuthGate even in placeholder mode', async () => {
+    authState.isPlaceholder = true
+    renderAt('/auth')
+    expect(await screen.findByRole('button', { name: /Continue with Google/i })).toBeInTheDocument()
+    expect(screen.queryByTestId('map-browse')).not.toBeInTheDocument()
+  })
+
   it('sends a guest to /auth when they tap Create Pulse and does not open the composer', async () => {
     renderAt('/')
 
