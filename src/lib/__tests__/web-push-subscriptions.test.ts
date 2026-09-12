@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const upsert = vi.fn(async () => ({ error: null }))
-const del = vi.fn(async () => ({ error: null }))
-const eq = vi.fn(() => ({ eq }))
-const from = vi.fn()
+const eq = vi.fn<(column: string, value: unknown) => unknown>()
+const from = vi.fn<(table: string) => unknown>()
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: (...args: unknown[]) => from(...args) },
+  supabase: { from: (table: string) => from(table) },
 }))
 
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -41,15 +40,14 @@ describe('push_tokens RLS intent (reused Web Push)', () => {
 describe('persistWebPushSubscription', () => {
   beforeEach(() => {
     upsert.mockClear()
-    del.mockClear()
     eq.mockClear()
     from.mockReset()
     from.mockImplementation(() => {
       const query = {
         upsert,
         delete: () => query,
-        eq: (...args: unknown[]) => {
-          eq(...args)
+        eq: (column: string, value: unknown) => {
+          eq(column, value)
           return query
         },
       }
