@@ -2,18 +2,18 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const listMyVenueFollows = vi.fn(async () => ['neumos'])
-const followVenue = vi.fn(async () => undefined)
-const unfollowVenue = vi.fn(async () => undefined)
+const listMyVenueFollows = vi.fn<(userId: string) => Promise<string[]>>(async () => ['neumos'])
+const followVenue = vi.fn<(venueId: string) => Promise<void>>(async () => undefined)
+const unfollowVenue = vi.fn<(venueId: string) => Promise<void>>(async () => undefined)
 
 vi.mock('@/lib/data', () => ({
   USE_SUPABASE_BACKEND: true,
 }))
 
 vi.mock('@/lib/data/venue-follows', () => ({
-  listMyVenueFollows: (...args: unknown[]) => listMyVenueFollows(...args),
-  followVenue: (...args: unknown[]) => followVenue(...args),
-  unfollowVenue: (...args: unknown[]) => unfollowVenue(...args),
+  listMyVenueFollows: (userId: string) => listMyVenueFollows(userId),
+  followVenue: (venueId: string) => followVenue(venueId),
+  unfollowVenue: (venueId: string) => unfollowVenue(venueId),
 }))
 
 import { useVenueFollows } from '../use-venue-follows'

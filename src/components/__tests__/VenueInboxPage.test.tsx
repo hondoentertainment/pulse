@@ -111,6 +111,7 @@ describe('VenueInboxPage', () => {
         currentUser={makeUser()}
         claims={claims}
         onBack={vi.fn()}
+        onSubmitClaim={vi.fn()}
       />,
     )
     expect(screen.getByText(/Your claim is pending review/)).toBeInTheDocument()

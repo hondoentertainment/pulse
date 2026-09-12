@@ -391,7 +391,7 @@ function omitPiiProps(props: Record<string, unknown>): Record<string, unknown> {
 export function track<E extends EventName>(name: E, props: EventProps<E>): void {
   const merged = { ...superProps, ...props } as EventProps<E>
   const safe = FUNNEL_NO_PII.has(name)
-    ? omitPiiProps(merged as Record<string, unknown>) as EventProps<E>
+    ? omitPiiProps(merged as unknown as Record<string, unknown>) as unknown as EventProps<E>
     : merged
   const event: TrackedEvent<E> = {
     name,

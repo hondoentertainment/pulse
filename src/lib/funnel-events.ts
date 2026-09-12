@@ -48,6 +48,6 @@ export function trackFunnel<E extends FunnelEventName>(
   name: E,
   props: EventProps<E>,
 ): void {
-  const safe = stripAnalyticsPii(props as Record<string, unknown>) as EventProps<E>
+  const safe = stripAnalyticsPii(props as unknown as Record<string, unknown>) as unknown as EventProps<E>
   track(name, safe)
 }
