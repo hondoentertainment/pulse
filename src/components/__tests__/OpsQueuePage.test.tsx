@@ -30,7 +30,7 @@ describe('OpsQueuePage', () => {
     render(<OpsQueuePage />)
     expect(screen.getByRole('heading', { name: /Tonight’s ops queue/ })).toBeInTheDocument()
     expect(screen.getByText(/Admin role required/)).toBeInTheDocument()
-    expect(screen.getByText(/app_metadata.role = admin/)).toBeInTheDocument()
+    expect(screen.getAllByText(/app_metadata.role = admin/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Verify' })).not.toBeInTheDocument()
   })
 })
