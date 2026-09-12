@@ -139,8 +139,8 @@ type TokenBucket = {
 export const RATE_LIMITS = {
   // 60 moderation checks per minute per user (1/s sustained, burst to 60).
   moderation_check: { maxTokens: 60, refillRate: 1, windowMs: 60_000 },
-  // 10 pulse creations per hour per user.
-  pulse_create: { maxTokens: 10, refillRate: 10 / 3600, windowMs: 3_600_000 },
+  // 5 pulse creations per 10 minutes per user (SQL trigger is the source of truth).
+  pulse_create: { maxTokens: 5, refillRate: 5 / 600, windowMs: 600_000 },
   // 3 pulse reports per hour per user.
   pulse_report: { maxTokens: 3, refillRate: 3 / 3600, windowMs: 3_600_000 },
   // 5 venue claim submissions per hour per user.

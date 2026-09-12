@@ -75,6 +75,19 @@ Additional env vars:
 - `VITE_AMPLITUDE_API_KEY` — required for the Amplitude adapter.
 - `VITE_POSTHOG_API_KEY` / `VITE_POSTHOG_HOST` — required for PostHog.
 
+### Guest → first-pulse funnel (#92)
+
+Exact event names (also listed in `REGISTERED_EVENTS`). Payloads are `guest` + optional `venueId` / `method` only — no email, name, or `userId`.
+
+| Event | When | Props |
+|-------|------|-------|
+| `guest_map_view` | Map tab opens | `guest: boolean` |
+| `venue_open` | `/venue/:id` mounts | `guest`, `venueId`, `fromShare?` |
+| `auth_start` | `/auth` shown or Google tapped | `guest: true`, `method` |
+| `first_pulse_create` | First successful pulse for this user | `guest: false`, `venueId` |
+
+`guest` is `true` when there is no session (placeholder/demo mode counts as signed-in for local). Helper: `src/lib/funnel-events.ts` (`trackFunnel`).
+
 ---
 
 ## 3. Logging

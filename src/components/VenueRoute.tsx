@@ -12,10 +12,11 @@ import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import type { Pulse, PulseWithUser, Venue } from '@/lib/types'
 import { toast } from 'sonner'
 import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <MapHomeSkeleton />
 
 export function VenueRoute() {
   const { venueId } = useParams<{ venueId: string }>()
@@ -92,7 +93,7 @@ export function VenueRoute() {
     }
   }, [venueId])
 
-  if (!venues || !currentUser || !venueId) return null
+  if (!venues || !currentUser || !venueId) return <MapHomeSkeleton />
 
   const cachedVenue = venues.find(v => v.id === venueId) ?? null
   const venue = freshVenue ?? cachedVenue

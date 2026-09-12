@@ -4,6 +4,12 @@
 
 Verify a `venue_claims` row (unlocks `/venue/:id/inbox`) and dismiss `pulse_reports` without inventing an admin UI login. Prefer `/ops` when the signed-in user already has `app_metadata.role = admin`.
 
+Self-serve path: claimant enters a **work email**. After they confirm the
+magic-link / OTP for that address, `try_verify_venue_claim_by_email_domain`
+verifies the claim **only** when the email domain matches the venue
+`website` host or `venues.owner_email_domain`. Pending stays pending on
+mismatch. Never auto-verify from pending alone. Never invent admin.
+
 ## Preconditions
 
 - Supabase project `xeldqwhztcnnvazmshzh`
@@ -11,15 +17,42 @@ Verify a `venue_claims` row (unlocks `/venue/:id/inbox`) and dismiss `pulse_repo
 - Migrations:
   - `20260910140000_venue_claims_and_report_queue.sql` (already on prod from #82)
   - Optional: `20260911000000_owner_report_triage.sql` (owner dismiss via RLS)
+  - Already on prod: `20260912000000_venue_claim_verified_badge.sql` (`venues.claim_verified` + `venue_claim_badges`)
+  - Additive: `20260912120000_venue_follows_push_claim_rate.sql` (`owner_email_domain`, `work_email`, domain-match RPC). Reuses `follows` / `push_tokens` / `notifications`.
 
 ## Procedure — UI (`/ops`)
 
 1. Sign in as an admin user.
 2. Open `/ops`.
-3. **Pending claims:** Verify or Reject. Verified claimants can open `/venue/:id/inbox`.
-4. **Pending reports:** Dismiss. Owners can also dismiss from the inbox after the optional RLS migration.
+3. **Pending claims:** Verify or Reject. Rows show venue **name** when the join is available. Verified claimants can open `/venue/:id/inbox`. Pending never unlocks inbox.
+4. **Pending reports:** Dismiss or Resolve (`actioned`). Owners can also dismiss from the inbox after the optional RLS migration.
 
 Stop if you are not admin — do not paste service-role keys into the browser.
+
+## Procedure — self-serve domain match (no admin)
+
+1. Claimant signs in and opens `/venue/:id/inbox` (guests → `/auth`).
+2. They submit evidence plus a **work email**.
+3. If the session email is not that work address, Pulse sends a magic-link / OTP for it.
+4. After they confirm, the client calls `try_verify_venue_claim_by_email_domain(claim_id)`.
+5. SQL verifies only when:
+   - `auth.uid()` owns the claim
+   - session email equals stored `work_email`
+   - `normalize_owner_domain(email)` is in `website` host or `owner_email_domain`
+6. Otherwise the row stays `pending`. Inbox stays locked.
+
+Optional: set `venues.owner_email_domain` when the public website host is
+wrong or missing (SQL editor). Do not invent venues.
+
+```sql
+-- After 20260912120000 — inspect stored domains
+SELECT id, name, website, owner_email_domain,
+       public.normalize_owner_domain(website) AS website_host
+FROM venues
+WHERE id = '<venue-uuid>';
+
+-- Verify snippet: supabase/verify/venue_claim_domain.sql
+```
 
 ## Procedure — SQL (no admin UI)
 
@@ -77,6 +110,8 @@ Grant `/ops` to a trusted user (Auth → user → raw `app_metadata`):
 ## Verification
 
 - [ ] Claimant with `pending` still sees “Claim needed” and **0** tonight reviews
+- [ ] Work email whose domain does **not** match stays `pending`
+- [ ] Matching work email + confirmed OTP can reach `verified` without `/ops`
 - [ ] After `verified`, `/venue/:id/inbox` lists tonight’s live reviews
 - [ ] Guest hitting `/venue/:id/inbox` redirects to `/auth`
 - [ ] Owner Reply persists locally; Dismiss updates local queue (and server if RLS applied)
@@ -90,4 +125,4 @@ Grant `/ops` to a trusted user (Auth → user → raw `app_metadata`):
 ## Ownership
 
 - Owner: Pulse ops / trust
-- Last reviewed: 2026-09-11
+- Last reviewed: 2026-09-12

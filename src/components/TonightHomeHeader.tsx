@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import {
   buildTonightHome,
-  listTonightFollowingVenues,
+  listTonightFollowingFeed,
   listTonightNearVenues,
+  TONIGHT_FOLLOWING_GUEST_EMPTY,
+  TONIGHT_FOLLOWING_SIGNED_IN_EMPTY,
 } from '@/lib/tonight-home'
 import { TonightEmptyState } from '@/components/TonightEmptyState'
 import { FeedTabBar } from '@/components/ux/FeedTabBar'
@@ -16,6 +18,7 @@ import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { venueHandle } from '@/lib/venue-handle'
+import { catalogQualityLine } from '@/lib/catalog-quality'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 
 const MAP_TABS = [
@@ -38,8 +41,10 @@ interface TonightHomeHeaderProps {
   userLocation: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
   followedVenueIds?: readonly string[]
+  signedIn?: boolean
   locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
+  onFollowAuth?: () => void
   surface?: MapHomeSurface
   onSurfaceChange?: (surface: MapHomeSurface) => void
 }
@@ -50,8 +55,10 @@ export function TonightHomeHeader({
   userLocation,
   savedVenueIds = [],
   followedVenueIds = [],
+  signedIn = false,
   locationDenied,
   onVenueClick,
+  onFollowAuth,
   surface = 'map',
   onSurfaceChange,
 }: TonightHomeHeaderProps) {
@@ -64,9 +71,9 @@ export function TonightHomeHeader({
     locationDenied,
   })
 
-  const followingVenues = useMemo(
-    () => listTonightFollowingVenues(venues, savedVenueIds, followedVenueIds),
-    [followedVenueIds, savedVenueIds, venues],
+  const followingFeed = useMemo(
+    () => listTonightFollowingFeed(venues, pulses, followedVenueIds),
+    [followedVenueIds, pulses, venues],
   )
 
   const near = useMemo(
@@ -142,20 +149,29 @@ export function TonightHomeHeader({
           )}
 
           {tonightFeed === 'following' && (
-            followingVenues.length === 0 ? (
-              <TonightEmptyState
-                empty={{
-                  headline: 'Nothing in Following yet',
-                  body: 'No friends graph yet. Save a real Seattle venue from the map — we never invent a list.',
-                  steps: ['Open the map', 'Tap a pin you care about', 'Save or follow, then come back'],
-                }}
-              />
+            !signedIn ? (
+              <div>
+                <TonightEmptyState empty={TONIGHT_FOLLOWING_GUEST_EMPTY} />
+                {onFollowAuth && (
+                  <button
+                    type="button"
+                    className="mt-3 h-12 w-full rounded-full border border-border bg-muted text-[15px] font-bold text-foreground"
+                    onClick={onFollowAuth}
+                  >
+                    Follow
+                  </button>
+                )}
+              </div>
+            ) : followingFeed.length === 0 ? (
+              <TonightEmptyState empty={TONIGHT_FOLLOWING_SIGNED_IN_EMPTY} />
             ) : (
-              followingVenues.map((venue) => (
+              followingFeed.map(({ venue, latestPulse }) => (
                 <TonightFeedRow
                   key={venue.id}
                   venue={venue}
-                  headline={`${venue.name} is on your list`}
+                  headline={latestPulse?.caption
+                    ? latestPulse.caption
+                    : `${venue.name} is on your Following list`}
                   pulses={pulses}
                   onVenueClick={onVenueClick}
                 />
@@ -214,17 +230,22 @@ function TonightFeedRow({
   const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
   if (activity.latest) {
     return (
-      <LiveReviewFeedCard
-        as="button"
-        energyRating={activity.latest.energyRating}
-        createdAt={activity.latest.createdAt}
-        caption={activity.latest.caption || headline}
-        unverified={activity.latest.locationVerified === false}
-        displayName={venue.name}
-        handle={venueHandle(venue.name)}
-        trustChips={glance.chips}
-        onClick={() => onVenueClick(venue)}
-      />
+      <div>
+        <LiveReviewFeedCard
+          as="button"
+          energyRating={activity.latest.energyRating}
+          createdAt={activity.latest.createdAt}
+          caption={activity.latest.caption || headline}
+          unverified={activity.latest.locationVerified === false}
+          displayName={venue.name}
+          handle={venueHandle(venue.name)}
+          trustChips={glance.chips}
+          onClick={() => onVenueClick(venue)}
+        />
+        {catalogQualityLine(venue) && (
+          <p className="pb-2 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
+        )}
+      </div>
     )
   }
 
@@ -253,6 +274,9 @@ function TonightFeedRow({
             )}
           </div>
           <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
+          {catalogQualityLine(venue) && (
+            <p className="mt-0.5 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
               {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}

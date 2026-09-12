@@ -23,7 +23,7 @@ export interface RateLimitResult {
 
 /** Pre-configured limits for different actions */
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
-  pulse_create: { maxTokens: 5, refillRate: 0.0028, windowMs: 1800000 },    // 5 per 30 min
+  pulse_create: { maxTokens: 5, refillRate: 5 / 600, windowMs: 600000 },    // 5 per 10 min
   reaction: { maxTokens: 30, refillRate: 0.5, windowMs: 60000 },            // 30 per min
   venue_search: { maxTokens: 20, refillRate: 1, windowMs: 60000 },          // 20 per min
   friend_request: { maxTokens: 10, refillRate: 0.017, windowMs: 600000 },   // 10 per 10 min

@@ -30,12 +30,14 @@ import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import { trackEvent } from '@/lib/analytics'
 import { track } from '@/lib/observability/analytics'
+import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { authorHandle, venueHandle } from '@/lib/venue-handle'
 import { UX_CARD, UX_CTA_INVERT } from '@/lib/ux-chrome'
+import { FollowVenueButton } from '@/components/FollowVenueButton'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -195,8 +197,12 @@ export function VenuePage({
 
   useEffect(() => {
     track('venue_viewed', { venueId: venue.id, source: fromShare ? 'share' : 'deeplink' })
-    track('funnel_step', { step: 'venue', venueId: venue.id })
-  }, [fromShare, venue.id])
+    trackFunnel('venue_open', {
+      venueId: venue.id,
+      guest: funnelActor({ hasSession: Boolean(session), isPlaceholder }).guest,
+      fromShare,
+    })
+  }, [fromShare, isPlaceholder, session, venue.id])
 
   const liveNowReviews = useMemo(
     () => getLiveNowReviews(venuePulses, venue.id),
@@ -362,10 +368,14 @@ export function VenuePage({
           {(() => {
             const placeStatus = venueStatusLine(venue)
             const verified = Boolean(
+              venue.claimVerified ||
               venue.verifiedCheckInCount ||
               venuePulses.some((pulse) => pulse.locationVerified),
             )
-            const line = [placeStatus, verified ? 'Verified' : null].filter(Boolean).join(' · ')
+            const line = [
+              placeStatus,
+              venue.claimVerified ? 'Claimed' : verified ? 'Verified' : null,
+            ].filter(Boolean).join(' · ')
             return line ? (
               <p className="mt-1 text-[13px] text-muted-foreground">{line}</p>
             ) : null
@@ -398,12 +408,20 @@ export function VenuePage({
           )
         })()}
 
-        <Button
-          onClick={onCreatePulse}
-          className={UX_CTA_INVERT}
-        >
-          I’m here · Pulse
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={onCreatePulse}
+            className={`${UX_CTA_INVERT} flex-1`}
+          >
+            I’m here · Pulse
+          </Button>
+          {onToggleFollow && (
+            <FollowVenueButton
+              following={Boolean(isFollowed)}
+              onClick={onToggleFollow}
+            />
+          )}
+        </div>
 
         <LiveNowStrip
           venueId={venue.id}

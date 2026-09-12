@@ -45,7 +45,7 @@ async function loadTokens(userId: string): Promise<PushTokenRow[]> {
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/push_tokens?user_id=eq.${encodeURIComponent(userId)}&select=token,platform`,
+      `${url}/rest/v1/push_tokens?user_id=eq.${encodeURIComponent(userId)}&platform=in.(ios,android)&select=token,platform`,
       {
         headers: {
           apikey: key,

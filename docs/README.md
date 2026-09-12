@@ -47,7 +47,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | [Bundle Budget](bundle-budget.md) | Chunk size limits and CI enforcement |
 | [Bundle Optimization](bundle-optimization.md) | Strategies for reducing client bundle weight |
 | [CI Gates](ci-gates.md) | Required checks and quality thresholds |
-| [Observability](observability.md) | Logging, analytics adapters, Sentry |
+| [Observability](observability.md) | Logging, analytics adapters, Sentry, #92 funnel events |
 | [Glossary](glossary.md) | Product and technical term definitions |
 
 ---
@@ -128,6 +128,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 |---------|----------|
 | [Auth Outage](runbooks/auth-outage.md) | Supabase Auth unavailable |
 | [Auth redirect URLs](runbooks/auth-redirect-urls.md) | Magic-link / OAuth `redirect_to` must allow `https://pulse-chi-nine.vercel.app/**` |
+| [Custom domain](runbooks/custom-domain.md) | Future first-party origin + branded auth mail (do not buy/change DNS here) |
 | [Bad Deploy](runbooks/bad-deploy.md) | Roll back a broken release |
 | [Content Moderation Bypass](runbooks/content-moderation-bypass.md) | Moderation pipeline failure |
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |

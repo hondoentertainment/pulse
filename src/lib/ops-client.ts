@@ -14,6 +14,8 @@ export interface OpsClaimRow {
   notes: string | null
   created_at: string
   reviewed_at: string | null
+  venue_name?: string | null
+  neighborhood?: string | null
 }
 
 export interface OpsReportRow {

@@ -57,7 +57,7 @@ export default async function handler(
     const status = Array.isArray(raw) ? raw[0] : raw
     let query = client
       .from('venue_claims')
-      .select('id, venue_id, user_id, status, evidence, notes, created_at, reviewed_at')
+      .select('id, venue_id, user_id, status, evidence, notes, created_at, reviewed_at, venues(name, neighborhood)')
       .order('created_at', { ascending: false })
       .limit(100)
     if (status && status !== 'all') {
@@ -68,7 +68,15 @@ export default async function handler(
       fail(res, 500, 'claim_list_failed', error.message)
       return
     }
-    ok(res, { claims: data ?? [] })
+    const claims = (data ?? []).map((row) => {
+      const joined = (row as { venues?: { name?: string; neighborhood?: string } | null }).venues
+      return {
+        ...row,
+        venue_name: joined?.name ?? null,
+        neighborhood: joined?.neighborhood ?? null,
+      }
+    })
+    ok(res, { claims })
     return
   }
 

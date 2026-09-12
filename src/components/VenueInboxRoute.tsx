@@ -4,7 +4,10 @@ import { useKV } from '@github/spark/hooks'
 import { useAppState } from '@/hooks/use-app-state'
 import { VenueInboxPage } from '@/components/VenueInboxPage'
 import { listMyVenueStaffRoles, type VenueStaffMembership } from '@/lib/data/venue-staff'
-import { listMyVenueClaims, submitVenueClaim } from '@/lib/data/venue-claims'
+import { listMyVenueClaims, submitVenueClaim, tryVerifyVenueClaimByEmailDomain } from '@/lib/data/venue-claims'
+import { CLAIM_DOMAIN_COPY, workEmailMatchesVenue } from '@/lib/claim-email-domain'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { dismissReportsForPulse } from '@/lib/owner-inbox'
 import { dismissReportsForPulseOnServer } from '@/lib/ops-client'
 import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
@@ -17,6 +20,7 @@ export function VenueInboxRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
   const { venues, currentUser, moderatedPulses, contentReports, setContentReports } = useAppState()
+  const { session, isPlaceholder, signInWithOtp, user } = useSupabaseAuth()
   const [localClaims, setLocalClaims] = useKV<VenueClaim[]>('venue-claims', [])
   const [serverClaims, setServerClaims] = useState<VenueClaim[]>([])
   const [staffRoles, setStaffRoles] = useState<VenueStaffMembership[]>([])
@@ -41,20 +45,43 @@ export function VenueInboxRoute() {
   }, [venueId])
 
   useEffect(() => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect) {
+      navigate(authRedirect)
+    }
+  }, [isPlaceholder, navigate, session])
+
+  useEffect(() => {
     if (!currentUser?.id || !isFeatureEnabled('venueInbox')) return
     let cancelled = false
     void listMyVenueStaffRoles(currentUser.id).then((roles) => {
       if (!cancelled) setStaffRoles(roles)
     })
     if (USE_SUPABASE_BACKEND) {
-      void listMyVenueClaims(currentUser.id).then((rows) => {
-        if (!cancelled) setServerClaims(rows)
+      void listMyVenueClaims(currentUser.id).then(async (rows) => {
+        const sessionEmail = user?.email?.trim().toLowerCase()
+        const next = await Promise.all(rows.map(async (claim) => {
+          if (
+            claim.status === 'pending'
+            && sessionEmail
+            && claim.businessEmail
+            && sessionEmail === claim.businessEmail.toLowerCase()
+          ) {
+            const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
+            return verified ?? claim
+          }
+          return claim
+        }))
+        if (!cancelled) setServerClaims(next)
       })
     }
     return () => {
       cancelled = true
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, user?.email])
 
   if (!venueId || !venue) {
     return (
@@ -67,9 +94,14 @@ export function VenueInboxRoute() {
     )
   }
 
-  const handleSubmitClaim = async (input: { evidence: string; notes?: string }) => {
-    if (!currentUser) {
-      toast.error('Sign in to claim this venue')
+  const handleSubmitClaim = async (input: { evidence: string; notes?: string; workEmail?: string }) => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.claim.title, { description: WRITE_AUTH_COPY.claim.description })
+      navigate(authRedirect ?? AUTH_PATH)
       return
     }
     setClaimBusy(true)
@@ -79,25 +111,45 @@ export function VenueInboxRoute() {
           venueId: venue.id,
           evidence: input.evidence,
           notes: input.notes,
+          workEmail: input.workEmail,
+          venue,
         })
         setServerClaims((current) => [
           claim,
           ...current.filter((row) => !(row.venueId === claim.venueId && row.claimantUserId === claim.claimantUserId)),
         ])
+        const sessionEmail = user?.email?.trim().toLowerCase()
+        const workEmail = input.workEmail?.trim().toLowerCase()
+        if (workEmail && sessionEmail !== workEmail) {
+          await signInWithOtp(workEmail)
+          toast.success('Confirm your work email', {
+            description: CLAIM_DOMAIN_COPY.verifyAfterConfirm,
+          })
+        } else if (claim.status === 'verified') {
+          toast.success(CLAIM_DOMAIN_COPY.verified)
+        } else if (workEmail && !workEmailMatchesVenue(workEmail, venue)) {
+          toast.success('Claim submitted', {
+            description: CLAIM_DOMAIN_COPY.pendingNoMatch,
+          })
+        } else {
+          toast.success('Claim submitted', {
+            description: 'Inbox stays locked until a verified claim or staff role is on file.',
+          })
+        }
       } else {
         const claim = createVenueClaim(
           venue.id,
           currentUser.id,
           input.notes || venue.name,
-          '',
-          'document',
+          input.workEmail || '',
+          'email',
           input.evidence,
         )
         setLocalClaims((current) => [claim, ...(current ?? [])])
+        toast.success('Claim submitted', {
+          description: 'Inbox stays locked until a verified claim or staff role is on file.',
+        })
       }
-      toast.success('Claim submitted', {
-        description: 'Inbox stays locked until a verified claim or staff role is on file.',
-      })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not submit claim')
     } finally {

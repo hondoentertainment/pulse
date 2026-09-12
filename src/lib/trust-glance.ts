@@ -86,6 +86,7 @@ export function buildTrustGlance(
     whySurging,
     recentCount,
     locationVerified,
+    claimVerified: venue.claimVerified === true,
   })
   return {
     freshness,
@@ -113,6 +114,7 @@ export function buildTrustChips(input: {
   whySurging: string
   recentCount: number
   locationVerified: boolean
+  claimVerified?: boolean
 }): TrustChip[] {
   const densityLabel = input.recentCount >= SURGE_WHY_MIN_REVIEWS
     ? `+${input.recentCount} / ${SURGE_WHY_WINDOW_MINUTES}m`
@@ -125,8 +127,12 @@ export function buildTrustChips(input: {
     },
     {
       id: 'verified',
-      label: input.locationVerified ? 'Verified' : 'Unverified',
-      tone: input.locationVerified ? 'hot' : 'soft',
+      label: input.claimVerified
+        ? 'Claimed'
+        : input.locationVerified
+          ? 'Verified'
+          : 'Unverified',
+      tone: input.claimVerified || input.locationVerified ? 'hot' : 'soft',
     },
     {
       id: 'density',

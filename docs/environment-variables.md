@@ -112,10 +112,19 @@ Full detail: [Feature Flags](feature-flags.md).
 
 | Variable | Scope | Description |
 |----------|-------|-------------|
+| `VITE_VAPID_PUBLIC_KEY` | client | Web Push application server key. Empty = subscribe UI no-ops honestly. |
+| `VAPID_PUBLIC_KEY` | server | Same public key for `web-push` / edge notify. |
+| `VAPID_PRIVATE_KEY` | server | Web Push private key. **Never** prefix `VITE_`. Do not invent prod values. |
+| `VAPID_SUBJECT` | server | Optional `mailto:` or site URL for VAPID (default `mailto:ops@pulse.local`) |
 | `FCM_SERVER_KEY` | server | Firebase Cloud Messaging (Android) |
 | `APNS_KEY_ID` | server | Apple Push Notification key |
 | `APNS_TEAM_ID` | server | Apple team ID |
 | `APNS_BUNDLE_ID` | server | iOS bundle identifier |
+
+Generate a local pair with `npx web-push generate-vapid-keys`. Set the
+public key on both `VITE_VAPID_PUBLIC_KEY` and `VAPID_PUBLIC_KEY`. If
+either server key is missing, `notifyLivePulse` returns
+`{ attempted: false, reason: 'missing_vapid' }` and never fakes a send.
 
 ---
 

@@ -159,6 +159,7 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 | `trust-glance.ts` | Freshness / verified / density chips |
 | `install-affordance.ts` | Home-screen PWA prompt |
 | `ops-client.ts` | `/ops` claims + report triage |
+| `funnel-events.ts` | `guest_map_view`, `venue_open`, `auth_start`, `first_pulse_create` (no PII) |
 
 ## Config flags
 

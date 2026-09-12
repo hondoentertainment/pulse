@@ -53,7 +53,8 @@ describe('TonightHomeHeader', () => {
     expect(onSurfaceChange).toHaveBeenCalledWith('live')
   })
 
-  it('keeps Following honestly empty and Near on Launch 33 without geo', () => {
+  it('keeps guest Following as teach-the-loop and Near on Launch 33 without geo', () => {
+    const onFollowAuth = vi.fn()
     render(
       <TonightHomeHeader
         venues={[makeVenue()]}
@@ -61,16 +62,51 @@ describe('TonightHomeHeader', () => {
         userLocation={null}
         locationDenied
         onVenueClick={vi.fn()}
+        onFollowAuth={onFollowAuth}
         surface="tonight"
         onSurfaceChange={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByRole('tab', { name: 'Following' }))
-    expect(screen.getByText('Nothing in Following yet')).toBeInTheDocument()
+    expect(screen.getByText('Follow a venue for tonight')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Follow' }))
+    expect(onFollowAuth).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('tab', { name: 'Near' }))
     expect(screen.getByText('Launch 33 · location off')).toBeInTheDocument()
     expect(screen.getByText('Neumos')).toBeInTheDocument()
     expect(screen.getByText('@neumos')).toBeInTheDocument()
+  })
+
+  it('lists followed venues and their latest live pulse when signed in', () => {
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[{
+          id: 'p1',
+          userId: 'u1',
+          venueId: 'venue-1',
+          photos: [],
+          energyRating: 'electric',
+          caption: 'Room is packed',
+          kind: 'review',
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
+          reactions: { fire: [], eyes: [], skull: [], lightning: [] },
+          views: 0,
+        }]}
+        userLocation={null}
+        followedVenueIds={['venue-1']}
+        signedIn
+        onVenueClick={vi.fn()}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Following' }))
+    expect(screen.getByText('Neumos')).toBeInTheDocument()
+    expect(screen.getByText('Room is packed')).toBeInTheDocument()
+    expect(screen.queryByText('Follow a venue for tonight')).not.toBeInTheDocument()
+    expect(screen.queryByText('Nothing in Following yet')).not.toBeInTheDocument()
   })
 
   it('hides For you cards on the Map surface', () => {

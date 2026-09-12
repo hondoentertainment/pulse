@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Venue } from '../types'
 import {
+  catalogQualityLine,
   filterTonightCatalog,
   inventoryLabel,
   isObviouslyBadPin,
@@ -40,6 +41,8 @@ describe('catalog quality', () => {
     expect(filterTonightCatalog([curated, osmDup, bad])).toEqual([curated])
     expect(inventoryLabel(curated)).toBe('Launch 33')
     expect(inventoryLabel(osmDup)).toBe('All Seattle')
+    expect(catalogQualityLine(curated)).toBe('Capitol Hill · Launch 33')
+    expect(catalogQualityLine(osmDup)).toBe('Capitol Hill · All Seattle')
     expect(reportCatalogQuality([curated, osmDup, bad]).hiddenOsmDupes).toBe(1)
   })
 })

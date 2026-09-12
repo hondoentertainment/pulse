@@ -157,6 +157,23 @@ function rankScore(
   return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4
 }
 
+/** Prefer curated / quality pins when energy + distance are tied. */
+export function compareTonightRank(
+  a: Venue,
+  b: Venue,
+  pulses: Pulse[],
+  now: Date,
+  userLocation: { lat: number; lng: number } | null,
+): number {
+  const scoreDiff = rankScore(b, pulses, now, userLocation) - rankScore(a, pulses, now, userLocation)
+  if (scoreDiff !== 0) return scoreDiff
+  const curatedDiff = Number(isCuratedVenue(b)) - Number(isCuratedVenue(a))
+  if (curatedDiff !== 0) return curatedDiff
+  const claimDiff = Number(Boolean(b.claimVerified)) - Number(Boolean(a.claimVerified))
+  if (claimDiff !== 0) return claimDiff
+  return (a.name ?? '').localeCompare(b.name ?? '')
+}
+
 export function listTonightFollowingVenues(
   venues: Venue[],
   savedVenueIds: readonly string[] = [],
@@ -165,6 +182,41 @@ export function listTonightFollowingVenues(
   const saved = new Set([...savedVenueIds, ...followedVenueIds])
   if (saved.size === 0) return []
   return venues.filter((venue) => saved.has(venue.id))
+}
+
+export const TONIGHT_FOLLOWING_GUEST_EMPTY: TonightEmptyState = {
+  headline: 'Follow a venue for tonight',
+  body: 'Guests can browse the map. Follow sends you to sign in — we never invent a list.',
+  steps: ['Open the map', 'Tap a pin you care about', 'Follow — we’ll send you to /auth'],
+}
+
+export const TONIGHT_FOLLOWING_SIGNED_IN_EMPTY: TonightEmptyState = {
+  headline: 'Nothing in Following yet',
+  body: 'Follow a real Seattle venue. Tonight will show that pin plus its latest live pulse.',
+  steps: ['Open the map', 'Tap a pin you care about', 'Tap Follow'],
+}
+
+export interface TonightFollowingRow {
+  venue: Venue
+  latestPulse: Pulse | null
+}
+
+/** Signed-in Following: `follows.target_venue_id` rows + each venue’s latest live pulse. */
+export function listTonightFollowingFeed(
+  venues: Venue[],
+  pulses: readonly Pulse[],
+  followedVenueIds: readonly string[],
+): TonightFollowingRow[] {
+  const followed = new Set(followedVenueIds)
+  if (followed.size === 0) return []
+  return venues
+    .filter((venue) => followed.has(venue.id))
+    .map((venue) => {
+      const latestPulse = pulses
+        .filter((pulse) => pulse.venueId === venue.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
+      return { venue, latestPulse }
+    })
 }
 
 /** Geo-sorted catalog, or Launch 33 when location is off. Never invents venues. */
@@ -226,7 +278,7 @@ export function buildTonightHome(input: {
   })
   const inHood = surging.filter((venue) => venue.neighborhood === neighborhood)
   const ranked = [...(inHood.length > 0 ? inHood : surging)].sort((a, b) => (
-    rankScore(b, input.pulses, now, userLocation) - rankScore(a, input.pulses, now, userLocation)
+    compareTonightRank(a, b, input.pulses, now, userLocation)
   ))
   const startHere = ranked[0] ? pickLine(ranked[0], input.pulses, nowMs) : null
   const heatingUp = ranked.slice(1, 4).map((venue) => pickLine(venue, input.pulses, nowMs))

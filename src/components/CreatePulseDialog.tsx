@@ -50,7 +50,7 @@ interface CreatePulseDialogProps {
     hashtags?: string[]
     kind: 'review' | 'pulse'
     locationVerified: boolean
-  }) => void
+  }) => void | Promise<void | { error?: string }>
 }
 
 export function CreatePulseDialog({
@@ -72,6 +72,7 @@ export function CreatePulseDialog({
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isCompressing, setIsCompressing] = useState(false)
   const [compressionProgress, setCompressionProgress] = useState(0)
   const [originalSize, setOriginalSize] = useState<number>(0)
@@ -154,6 +155,7 @@ export function CreatePulseDialog({
     }
 
     setIsSubmitting(true)
+    setSubmitError(null)
 
     // Authoritative server-side moderation check before persisting.
     if (caption && caption.trim().length > 0) {
@@ -168,7 +170,7 @@ export function CreatePulseDialog({
       }
     }
 
-    await onSubmit({
+    const result = await onSubmit({
       energyRating,
       caption: captionCheck.caption,
       photos,
@@ -177,6 +179,12 @@ export function CreatePulseDialog({
       kind: wantsReview ? 'review' : 'pulse',
       locationVerified: locationProof.locationVerified,
     })
+    if (result && typeof result === 'object' && result.error) {
+      setIsSubmitting(false)
+      setSubmitError(result.error)
+      toast.error(result.error)
+      return
+    }
     clearPulseDraft()
 
     track('pulse_created', {
@@ -572,6 +580,9 @@ export function CreatePulseDialog({
             </details>
           )}
 
+          {submitError && (
+            <p role="alert" className="text-sm font-semibold text-destructive">{submitError}</p>
+          )}
           <Button
             className={UX_CTA}
             onClick={handleSubmit}

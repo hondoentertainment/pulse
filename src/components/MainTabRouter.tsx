@@ -13,11 +13,25 @@ import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
 import { ColdStartTip } from '@/components/ColdStartTip'
 import { InstallAffordance } from '@/components/InstallAffordance'
+import { PushNotifyAffordance } from '@/components/PushNotifyAffordance'
+import {
+  isPushNotifyDismissed,
+  readPushNotifyTrigger,
+  shouldShowPushNotifyAffordance,
+  clearPushNotifyTrigger,
+} from '@/lib/push-notify-affordance'
+import { readViteVapidPublicKey } from '@/lib/web-push-client'
+import { AUTH_PATH, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 import { dismissColdStartTip, markNavigationStart, shouldShowColdStartTip } from '@/lib/cold-start'
-import { parseHereVenueId } from '@/lib/im-here'
-import { track } from '@/lib/observability/analytics'
+import {
+  findImHereVenue,
+  inventoryLayerForImHere,
+  parseHereVenueId,
+  resolveImHereAction,
+} from '@/lib/im-here'
+import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import type { MapInventoryLayer } from '@/lib/map-filters'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 
@@ -86,6 +100,17 @@ export function MainTabRouter() {
   const navigate = useNavigate()
   const location = useLocation()
   const { session, isPlaceholder } = useSupabaseAuth()
+  const signedIn = Boolean(session) && !isPlaceholder
+  const [showPushNotify, setShowPushNotify] = useState(false)
+
+  useEffect(() => {
+    setShowPushNotify(shouldShowPushNotifyAffordance({
+      signedIn,
+      vapidPublicKey: readViteVapidPublicKey(),
+      dismissed: isPushNotifyDismissed(),
+      trigger: readPushNotifyTrigger(),
+    }))
+  }, [followedVenues, signedIn])
   const hereVenueId = parseHereVenueId(location.search)
   const handleVenueClick = useCallback(
     (venue: Venue) => {
@@ -121,19 +146,27 @@ export function MainTabRouter() {
 
   useEffect(() => {
     if (activeTab !== 'map') return
-    track('funnel_step', { step: 'guest_map', guest: !session && !isPlaceholder })
+    const { guest } = funnelActor({ hasSession: Boolean(session), isPlaceholder })
+    trackFunnel('guest_map_view', { guest })
   }, [activeTab, isPlaceholder, session])
 
   const openedHereRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!hereVenueId || openedHereRef.current === hereVenueId) return
+    if (!hereVenueId) return
+    if (!venues?.length) return
+    const venue = findImHereVenue(venues, hereVenueId)
+    if (!venue) return
+    if (openedHereRef.current === hereVenueId) return
     openedHereRef.current = hereVenueId
-    const venue = visibleVenues.find((item) => item.id === hereVenueId)
-    if (venue) setSelectedVenue(venue)
-    if (session || isPlaceholder) {
-      handleCreatePulse(hereVenueId)
-    }
-  }, [handleCreatePulse, hereVenueId, isPlaceholder, session, setSelectedVenue, visibleVenues])
+    setInventoryLayer((current) => inventoryLayerForImHere(venue, current))
+    setSelectedVenue(venue)
+    const action = resolveImHereAction({
+      venueId: hereVenueId,
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (action.openCreate) handleCreatePulse(hereVenueId)
+  }, [handleCreatePulse, hereVenueId, isPlaceholder, session, setSelectedVenue, venues])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -212,8 +245,13 @@ export function MainTabRouter() {
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
               followedVenueIds={followedVenues.map((venue) => venue.id)}
+              signedIn={signedIn}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
+              onFollowAuth={() => {
+                toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
+                navigate(AUTH_PATH)
+              }}
               surface={mapSurface}
               onSurfaceChange={setMapSurface}
             />
@@ -234,7 +272,20 @@ export function MainTabRouter() {
                     }}
                   />
                 )}
-                <InstallAffordance />
+                <InstallAffordance
+                  onInstalled={() => {
+                    if (signedIn) setShowPushNotify(true)
+                  }}
+                />
+                {showPushNotify && signedIn && (
+                  <PushNotifyAffordance
+                    userLocation={userLocation}
+                    onDone={() => {
+                      clearPushNotifyTrigger()
+                      setShowPushNotify(false)
+                    }}
+                  />
+                )}
                 <MapSearch
                   venues={visibleVenues}
                   onVenueSelect={handleVenueClick}

@@ -11,6 +11,7 @@ import { CaretLeft } from '@phosphor-icons/react'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { track } from '@/lib/observability/analytics'
 import { Button } from '@/components/ui/button'
+import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import {
   createOwnerReply,
   isPulseDismissed,
@@ -31,7 +32,7 @@ interface VenueInboxPageProps {
   claims?: VenueClaim[]
   staffRoles?: Array<{ venueId: string; userId: string }>
   onBack: () => void
-  onSubmitClaim?: (input: { evidence: string; notes?: string }) => Promise<void> | void
+  onSubmitClaim?: (input: { evidence: string; notes?: string; workEmail?: string }) => Promise<void> | void
   claimBusy?: boolean
   reports?: ContentReport[]
   onDismissReports?: (pulseId: string) => void
@@ -66,6 +67,7 @@ export function VenueInboxPage({
   )
   const [evidence, setEvidence] = useState('')
   const [notes, setNotes] = useState('')
+  const [workEmail, setWorkEmail] = useState('')
   const [replyingId, setReplyingId] = useState<string | null>(null)
   const [replyBody, setReplyBody] = useState('')
   const [replies, setReplies] = useState<OwnerInboxReply[]>(() => loadOwnerReplies())
@@ -104,27 +106,61 @@ export function VenueInboxPage({
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl border border-border bg-card p-3.5">
+          <div className={`${UX_CARD} p-3.5`}>
             <p className="text-[22px] font-bold leading-none text-foreground">{allowed ? summary.reviewCount : 0}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">Reviews</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-3.5">
+          <div className={`${UX_CARD} p-3.5`}>
             <p className="text-[22px] font-bold leading-none text-amber-300">{allowed ? summary.reportCount : 0}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">Reports</p>
           </div>
         </div>
 
         {!allowed ? (
-          <div className="rounded-xl border border-border bg-card p-3.5 space-y-3">
+          <div className={`${UX_CARD} space-y-3 p-3.5`}>
             <h2 className="text-base font-semibold">Claim needed</h2>
             <p className="text-sm text-muted-foreground">
               Tonight’s reviews stay hidden until a verified venue claim or a
               venue_staff row unlocks this inbox. Pending claims do not grant access.
+              A work email on the venue’s public website domain can verify after
+              magic-link / OTP — we never invent an admin.
             </p>
             {myClaim?.status === 'pending' ? (
-              <p className="text-xs text-muted-foreground">
-                Your claim is pending review. We will not invent an approval.
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Your claim is pending review. We will not invent an approval.
+                  A matching work-email domain can still verify it after magic-link / OTP.
+                </p>
+                {currentUser && onSubmitClaim && (
+                  <form
+                    className="space-y-2"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void onSubmitClaim({
+                        evidence: evidence.trim() || myClaim.evidence || 'Work email confirmation',
+                        notes,
+                        workEmail,
+                      })
+                    }}
+                  >
+                    <label className="block text-xs text-muted-foreground" htmlFor="claim-work-email-pending">
+                      Work email
+                    </label>
+                    <input
+                      id="claim-work-email-pending"
+                      type="email"
+                      value={workEmail}
+                      onChange={(event) => setWorkEmail(event.target.value)}
+                      placeholder="you@venue-domain.com"
+                      required
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    />
+                    <Button type="submit" className={UX_CTA} disabled={claimBusy || !workEmail.trim()}>
+                      {claimBusy ? 'Submitting…' : 'Confirm work email'}
+                    </Button>
+                  </form>
+                )}
+              </div>
             ) : myClaim?.status === 'rejected' ? (
               <p className="text-xs text-muted-foreground">
                 Previous claim was rejected{myClaim.rejectedReason ? `: ${myClaim.rejectedReason}` : '.'}
@@ -135,7 +171,7 @@ export function VenueInboxPage({
                 className="space-y-2"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  void onSubmitClaim({ evidence, notes })
+                  void onSubmitClaim({ evidence, notes, workEmail })
                 }}
               >
                 <label className="block text-xs text-muted-foreground" htmlFor="claim-evidence">
@@ -156,7 +192,22 @@ export function VenueInboxPage({
                   placeholder="Business name (optional)"
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
-                <Button type="submit" disabled={claimBusy || evidence.trim().length < 8}>
+                <label className="block text-xs text-muted-foreground" htmlFor="claim-work-email">
+                  Work email
+                </label>
+                <input
+                  id="claim-work-email"
+                  type="email"
+                  value={workEmail}
+                  onChange={(event) => setWorkEmail(event.target.value)}
+                  placeholder="you@venue-domain.com"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Confirm the magic link / OTP for that address. Domain match verifies
+                  without an admin; a mismatch stays pending.
+                </p>
+                <Button type="submit" className={UX_CTA} disabled={claimBusy || evidence.trim().length < 8}>
                   {claimBusy ? 'Submitting…' : 'Submit claim'}
                 </Button>
               </form>
@@ -166,7 +217,7 @@ export function VenueInboxPage({
             )}
           </div>
         ) : tonight.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-3.5">
+          <div className={`${UX_CARD} p-3.5`}>
             <h2 className="text-base font-semibold">No live reviews tonight</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               When patrons post energy + caption reviews after 4pm, they will
@@ -181,7 +232,7 @@ export function VenueInboxPage({
               return (
                 <li
                   key={pulse.id}
-                  className="rounded-xl border border-border bg-card p-3.5 space-y-2"
+                  className={`${UX_CARD} space-y-2 p-3.5`}
                   onClick={() => {
                     track('pulse_viewed', {
                       pulseId: pulse.id,

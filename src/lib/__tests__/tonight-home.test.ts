@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
 import {
   buildTonightHome,
+  compareTonightRank,
+  listTonightFollowingFeed,
   listTonightFollowingVenues,
   listTonightNearVenues,
   resolveHomeNeighborhood,
@@ -140,6 +142,44 @@ describe('listTonightFollowingVenues', () => {
   })
 })
 
+describe('listTonightFollowingFeed', () => {
+  it('lists only persisted follows (follows.target_venue_id) plus the latest live pulse', () => {
+    const followed = makeVenue({ id: 'followed', name: 'Barrio' })
+    const other = makeVenue()
+    const older: Pulse = {
+      id: 'old',
+      userId: 'u1',
+      venueId: 'followed',
+      photos: [],
+      energyRating: 'chill',
+      caption: 'Earlier',
+      kind: 'review',
+      createdAt: '2026-09-12T01:00:00.000Z',
+      expiresAt: '2026-09-12T02:30:00.000Z',
+      reactions: { fire: [], eyes: [], skull: [], lightning: [] },
+      views: 0,
+    }
+    const latest: Pulse = {
+      ...older,
+      id: 'new',
+      caption: 'Room is packed',
+      createdAt: '2026-09-12T01:40:00.000Z',
+    }
+    const feed = listTonightFollowingFeed(
+      [other, followed],
+      [older, latest],
+      ['followed'],
+    )
+    expect(feed).toHaveLength(1)
+    expect(feed[0]?.venue.id).toBe('followed')
+    expect(feed[0]?.latestPulse?.caption).toBe('Room is packed')
+  })
+
+  it('stays empty when the user follows nobody', () => {
+    expect(listTonightFollowingFeed([makeVenue()], [], [])).toEqual([])
+  })
+})
+
 describe('listTonightNearVenues', () => {
   it('falls back to Launch 33 when location is off', () => {
     const near = listTonightNearVenues([
@@ -175,6 +215,20 @@ describe('listTonightNearVenues', () => {
     const near = listTonightNearVenues([makeVenue(), far], { lat: 47.614, lng: -122.32 })
     expect(near.usedLaunch33Fallback).toBe(false)
     expect(near.venues[0]?.id).toBe('neumos')
+  })
+})
+
+describe('compareTonightRank', () => {
+  it('prefers curated over OSM when energy is tied', () => {
+    const now = new Date('2026-09-11T04:40:00.000Z')
+    const curated = makeVenue({ id: 'curated', name: 'Neumos', inventorySource: 'curated-seed' })
+    const osm = makeVenue({
+      id: 'osm',
+      name: 'Nearby Bar',
+      inventorySource: 'osm',
+      seeded: false,
+    })
+    expect(compareTonightRank(curated, osm, [], now, { lat: 47.614, lng: -122.32 })).toBeLessThan(0)
   })
 })
 

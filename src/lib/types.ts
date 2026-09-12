@@ -78,6 +78,7 @@ export interface Venue {
   state?: string
   neighborhood?: string
   inventorySource?: 'curated-seed' | 'user' | 'import' | 'osm'
+  claimVerified?: boolean
   pulseScore: number
   lastPulseAt?: string
   category?: string
@@ -92,6 +93,7 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  ownerEmailDomain?: string
   preTrending?: boolean
   preTrendingLabel?: string
   seeded?: boolean

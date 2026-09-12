@@ -192,6 +192,14 @@ export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
   const createdAt = new Date()
   const expiresAt = new Date(createdAt.getTime() + PULSE_DECAY_MINUTES * 60 * 1000)
 
+  const gate = await supabase.rpc('assert_pulse_rate_limit', {
+    p_user_id: userId,
+    p_venue_id: input.venueId,
+  })
+  if (gate.error) {
+    throw Object.assign(new Error(gate.error.message), { cause: gate.error })
+  }
+
   const result = await supabase
     .from('pulses')
     .insert({

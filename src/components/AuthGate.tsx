@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { track } from '@/lib/observability/analytics'
+import { trackFunnel } from '@/lib/funnel-events'
 import { WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { Lightning, Envelope, CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
@@ -17,12 +18,13 @@ export function AuthGate() {
   const busy = isLoading || localLoading
 
   useEffect(() => {
-    track('funnel_step', { step: 'auth', guest: true })
+    trackFunnel('auth_start', { guest: true, method: 'redirect' })
     track('auth_started', { method: 'redirect' })
   }, [])
 
   const handleGoogle = async () => {
     setLocalLoading(true)
+    trackFunnel('auth_start', { guest: true, method: 'google' })
     track('auth_started', { method: 'google' })
     try {
       await signInWithOAuth('google')

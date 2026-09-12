@@ -11,7 +11,7 @@ How Pulse works as a Progressive Web App — installability, service worker, and
 | Installable | `public/manifest.json` + `beforeinstallprompt` handler |
 | App shell caching | Service worker (`public/sw.js`) |
 | Offline writes | `src/lib/offline-queue.ts` |
-| Push notifications | `src/lib/pwa.ts` + `use-push-registration` |
+| Push notifications | Native + PWA both persist on `push_tokens` (web = `platform='web'`, `token` = endpoint). Client: `src/lib/web-push-client.ts` + `use-push-registration`. Fan-out: `api/_lib/web-push-live.ts` + in-app `notifications`. Requires `VITE_VAPID_PUBLIC_KEY` + server `VAPID_*`. Missing keys = honest no-op. Do not add `web_push_subscriptions`. |
 | Native wrapper | Capacitor (iOS/Android) — see [Native Setup](native/setup.md) |
 
 Vite PWA plugin configured in `vite.config.ts` (`vite-plugin-pwa`).
@@ -87,7 +87,8 @@ Video pulses use a separate queue: `src/lib/video-offline-queue.ts`.
 
 ### UI indicators
 
-- `OfflineBanner.tsx` — network status
+- `OfflineBanner.tsx` — network status + draft snippet + Keep browsing
+- `MapHomeSkeleton` / `PageSkeleton` — hairline placeholders so map/venue shells do not flash a broken empty
 - `queuedPulseCount` in app state — badge on create button
 - Toast on sync success/failure
 
@@ -106,7 +107,7 @@ Video pulses use a separate queue: `src/lib/video-offline-queue.ts`.
 
 ### Web (limited)
 
-Service worker push requires VAPID keys and user permission. Native push is the primary path.
+Service worker push requires VAPID keys and user permission. Both native and Web Push rows live on `push_tokens`. Leftover `signal_push_subscriptions` is unused.
 
 ### Native (Capacitor)
 

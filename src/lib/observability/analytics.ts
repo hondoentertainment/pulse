@@ -95,6 +95,22 @@ export interface EventRegistry {
     venueId?: string
     guest?: boolean
   }
+  guest_map_view: {
+    guest: boolean
+  }
+  venue_open: {
+    venueId: string
+    guest: boolean
+    fromShare?: boolean
+  }
+  auth_start: {
+    guest: boolean
+    method?: 'google' | 'otp' | 'redirect'
+  }
+  first_pulse_create: {
+    venueId: string
+    guest: false
+  }
   auth_started: {
     method?: 'google' | 'otp' | 'redirect'
   }
@@ -342,11 +358,44 @@ export function clearSuperProps(): void {
  * @example
  * track('pulse_created', { pulseId, venueId, hasPhoto: true })
  */
+const FUNNEL_NO_PII = new Set([
+  'guest_map_view',
+  'venue_open',
+  'auth_start',
+  'first_pulse_create',
+])
+
+const PII_PROP_KEYS = new Set([
+  'userId',
+  'email',
+  'name',
+  'phone',
+  'displayName',
+  'fullName',
+  'username',
+])
+
+function omitPiiProps(props: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(props)) {
+    if (PII_PROP_KEYS.has(key)) continue
+    if (key === 'extra' && value && typeof value === 'object' && !Array.isArray(value)) {
+      next.extra = omitPiiProps(value as Record<string, unknown>)
+      continue
+    }
+    next[key] = value
+  }
+  return next
+}
+
 export function track<E extends EventName>(name: E, props: EventProps<E>): void {
   const merged = { ...superProps, ...props } as EventProps<E>
+  const safe = FUNNEL_NO_PII.has(name)
+    ? omitPiiProps(merged as unknown as Record<string, unknown>) as unknown as EventProps<E>
+    : merged
   const event: TrackedEvent<E> = {
     name,
-    props: merged,
+    props: safe,
     timestamp: Date.now(),
   }
   try {
@@ -359,10 +408,10 @@ export function track<E extends EventName>(name: E, props: EventProps<E>): void 
   logger.debug(`analytics:${name}`, {
     action: name,
     component: 'analytics',
-    userId: merged.userId,
-    sessionId: merged.sessionId,
-    route: merged.route,
-    extra: merged as unknown as Record<string, unknown>,
+    userId: FUNNEL_NO_PII.has(name) ? undefined : safe.userId,
+    sessionId: safe.sessionId,
+    route: safe.route,
+    extra: safe as unknown as Record<string, unknown>,
   })
 }
 
@@ -392,6 +441,12 @@ export const REGISTERED_EVENTS: EventName[] = [
   'pulse_viewed',
   'reaction_added',
   'venue_viewed',
+  'funnel_step',
+  'guest_map_view',
+  'venue_open',
+  'auth_start',
+  'first_pulse_create',
+  'auth_started',
   'check_in_completed',
   'search_performed',
   'friend_added',

@@ -49,6 +49,12 @@ describe('buildTrustGlance', () => {
     expect(glance.chips[2].tone).toBe('hot')
   })
 
+  it('marks claimed venues as Claimed without inventing pulses', () => {
+    const glance = buildTrustGlance(makeVenue({ claimVerified: true }), [], Date.now())
+    expect(glance.chips[0].label).toBe('No pulses yet')
+    expect(glance.chips[1].label).toBe('Claimed')
+  })
+
   it('marks unverified soft signals', () => {
     const nowMs = Date.parse('2026-09-10T21:00:00.000Z')
     const glance = buildTrustGlance(

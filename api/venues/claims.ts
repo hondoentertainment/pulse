@@ -20,7 +20,7 @@ import { consume } from '../_lib/rate-limit.js'
 import { createUserClient } from '../_lib/supabase-server.js'
 
 const CLAIM_COLUMNS =
-  'id, venue_id, user_id, status, evidence, notes, created_at, updated_at, reviewed_at'
+  'id, venue_id, user_id, status, evidence, notes, created_at, updated_at, reviewed_at, work_email, work_email_confirmed_at'
 
 export default async function handler(
   req: RequestLike,
@@ -93,6 +93,15 @@ export default async function handler(
     notes = req.body.notes.trim() || null
   }
 
+  let workEmail: string | null = null
+  if (req.body.workEmail !== undefined && req.body.workEmail !== null) {
+    if (typeof req.body.workEmail !== 'string' || req.body.workEmail.length > 254) {
+      fail(res, 400, 'invalid_input', 'workEmail must be a valid email')
+      return
+    }
+    workEmail = req.body.workEmail.trim().toLowerCase() || null
+  }
+
   const { data, error } = await client
     .from('venue_claims')
     .upsert(
@@ -103,6 +112,7 @@ export default async function handler(
         evidence,
         notes,
         reviewed_at: null,
+        work_email: workEmail,
       },
       { onConflict: 'venue_id,user_id' },
     )
@@ -116,5 +126,13 @@ export default async function handler(
     return
   }
 
-  ok(res, { claim: data }, 201)
+  let claim = data
+  if (workEmail && data?.id) {
+    const verified = await client.rpc('try_verify_venue_claim_by_email_domain', {
+      p_claim_id: data.id,
+    })
+    if (!verified.error && verified.data) claim = verified.data
+  }
+
+  ok(res, { claim }, 201)
 }
