@@ -29,8 +29,11 @@ Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?nod
 - Signing in on prod to prove the live-review loop (no credentials invented here).
 - Applying `20260911000000_owner_report_triage.sql` on `xeldqwhztcnnvazmshzh` if owner dismiss should persist beyond localStorage.
 - Applying `20260912000000_venue_claim_verified_badge.sql` so Tonight/map can show **Claimed** chips (pending still does not unlock inbox).
-- Setting `app_metadata.role = admin` for `/ops`.
+- Applying `20260912120000_venue_follows_push_claim_rate.sql` (follows, web push table, domain-match claim, pulse rate-limit). Verify with `supabase/verify/venue_follows.sql`, `web_push_subscriptions.sql`, `venue_claim_domain.sql`, `pulse_rate_limit.sql`.
+- Setting Vercel env `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (generate locally; do not invent prod secrets). Missing keys = honest no-op.
+- Setting `app_metadata.role = admin` for `/ops` (domain-match claims can verify without this).
 - Confirming OG cards on a real iMessage/Slack crawl (needs production deploy).
+- Custom domain attach + branded magic-link: [custom-domain.md](runbooks/custom-domain.md). Live URL stays `https://pulse-chi-nine.vercel.app/` until a human attaches DNS.
 
 ## Ownership
 

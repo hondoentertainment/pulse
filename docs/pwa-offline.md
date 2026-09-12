@@ -11,7 +11,7 @@ How Pulse works as a Progressive Web App — installability, service worker, and
 | Installable | `public/manifest.json` + `beforeinstallprompt` handler |
 | App shell caching | Service worker (`public/sw.js`) |
 | Offline writes | `src/lib/offline-queue.ts` |
-| Push notifications | `src/lib/pwa.ts` + `use-push-registration` |
+| Push notifications | Native: `src/lib/pwa.ts` + `use-push-registration`. PWA Web Push: `src/lib/web-push-client.ts`, `public/push-sw.js`, `api/_lib/web-push-live.ts`. Requires `VITE_VAPID_PUBLIC_KEY` + server `VAPID_*`. Missing keys = honest no-op. |
 | Native wrapper | Capacitor (iOS/Android) — see [Native Setup](native/setup.md) |
 
 Vite PWA plugin configured in `vite.config.ts` (`vite-plugin-pwa`).

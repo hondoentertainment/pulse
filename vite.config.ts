@@ -84,6 +84,7 @@ export default defineConfig(({ command }) => {
         injectRegister: 'auto',
         manifest: false, // Utilizing existing public/manifest.json
         workbox: {
+          importScripts: ['/push-sw.js'],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           globIgnores: [
             '**/proxy.js',

@@ -56,6 +56,7 @@ historical migrations once they're in staging/prod.
 | `20260910140000_venue_claims_and_report_queue.sql` | **new** venue_claims + pulse_reports.status |
 | `20260912000000_venue_claim_verified_badge.sql` | optional Claimed chip (`venues.claim_verified` + view) |
 | `20260911000000_owner_report_triage.sql` | optional owner/staff report dismiss RLS |
+| `20260912120000_venue_follows_push_claim_rate.sql` | venue follows, web push, domain-match claim, pulse rate-limit |
 
 ## 3. Seeding data
 

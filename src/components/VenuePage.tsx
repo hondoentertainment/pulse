@@ -37,6 +37,7 @@ import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { authorHandle, venueHandle } from '@/lib/venue-handle'
 import { UX_CARD, UX_CTA_INVERT } from '@/lib/ux-chrome'
+import { FollowVenueButton } from '@/components/FollowVenueButton'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -407,12 +408,20 @@ export function VenuePage({
           )
         })()}
 
-        <Button
-          onClick={onCreatePulse}
-          className={UX_CTA_INVERT}
-        >
-          I’m here · Pulse
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={onCreatePulse}
+            className={`${UX_CTA_INVERT} flex-1`}
+          >
+            I’m here · Pulse
+          </Button>
+          {onToggleFollow && (
+            <FollowVenueButton
+              following={Boolean(isFollowed)}
+              onClick={onToggleFollow}
+            />
+          )}
+        </div>
 
         <LiveNowStrip
           venueId={venue.id}

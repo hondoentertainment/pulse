@@ -11,7 +11,10 @@ vi.mock('../../_lib/supabase-server.js', () => ({
     chain.maybeSingle = async () => ({ data: null, error: null })
     chain.insert = () => chain
     chain.single = async () => ({ data: { id: 'pulse-1' }, error: null })
-    return { from: () => chain }
+    return {
+      from: () => chain,
+      rpc: async () => ({ data: true, error: null }),
+    }
   },
 }))
 
@@ -28,6 +31,10 @@ vi.mock('../../_lib/rate-limit.js', () => ({
 
 vi.mock('../../_lib/moderation.js', () => ({
   checkContent: () => ({ allowed: true, reasons: [], severity: 'low', sanitized: 'ok' }),
+}))
+
+vi.mock('../../_lib/web-push-live.js', () => ({
+  notifyLivePulse: async () => ({ attempted: false, sent: 0, skipped: 0, reason: 'missing_vapid' }),
 }))
 
 import handler from '../create.ts'

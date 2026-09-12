@@ -35,6 +35,7 @@ interface VenueRow {
   hours: Venue['hours'] | null
   phone: string | null
   website: string | null
+  owner_email_domain?: string | null
   integrations: Venue['integrations'] | null
   neighborhood: string | null
   inventory_source: Venue['inventorySource'] | null
@@ -69,6 +70,7 @@ function rowToVenue(row: VenueRow): Venue {
     hours: row.hours ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
+    ownerEmailDomain: row.owner_email_domain ?? undefined,
     integrations: row.integrations ?? undefined,
   }
 }
@@ -78,7 +80,7 @@ const SELECT_COLUMNS = `
   city, state, neighborhood, inventory_source, category, pulse_score, score_velocity,
   last_pulse_at, last_activity, pre_trending, pre_trending_label,
   seeded, verified_check_in_count, first_real_check_in_at,
-  hours, phone, website, integrations, deleted_at
+  hours, phone, website, owner_email_domain, integrations, deleted_at
 `.trim()
 
 // ── Queries ──────────────────────────────────────────────────────────────

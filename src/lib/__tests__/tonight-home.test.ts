@@ -3,6 +3,7 @@ import type { Pulse, Venue } from '../types'
 import {
   buildTonightHome,
   compareTonightRank,
+  listTonightFollowingFeed,
   listTonightFollowingVenues,
   listTonightNearVenues,
   resolveHomeNeighborhood,
@@ -138,6 +139,44 @@ describe('listTonightFollowingVenues', () => {
     const saved = makeVenue({ id: 'saved', name: 'Barrio' })
     expect(listTonightFollowingVenues([makeVenue(), saved], ['saved'], []).map((v) => v.id))
       .toEqual(['saved'])
+  })
+})
+
+describe('listTonightFollowingFeed', () => {
+  it('lists only persisted follows plus the latest live pulse', () => {
+    const followed = makeVenue({ id: 'followed', name: 'Barrio' })
+    const other = makeVenue()
+    const older: Pulse = {
+      id: 'old',
+      userId: 'u1',
+      venueId: 'followed',
+      photos: [],
+      energyRating: 'chill',
+      caption: 'Earlier',
+      kind: 'review',
+      createdAt: '2026-09-12T01:00:00.000Z',
+      expiresAt: '2026-09-12T02:30:00.000Z',
+      reactions: { fire: [], eyes: [], skull: [], lightning: [] },
+      views: 0,
+    }
+    const latest: Pulse = {
+      ...older,
+      id: 'new',
+      caption: 'Room is packed',
+      createdAt: '2026-09-12T01:40:00.000Z',
+    }
+    const feed = listTonightFollowingFeed(
+      [other, followed],
+      [older, latest],
+      ['followed'],
+    )
+    expect(feed).toHaveLength(1)
+    expect(feed[0]?.venue.id).toBe('followed')
+    expect(feed[0]?.latestPulse?.caption).toBe('Room is packed')
+  })
+
+  it('stays empty when the user follows nobody', () => {
+    expect(listTonightFollowingFeed([makeVenue()], [], [])).toEqual([])
   })
 })
 

@@ -38,8 +38,9 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
 | `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
 | `20260912000000_venue_claim_verified_badge.sql` | `venues.claim_verified` + public `venue_claim_badges` |
+| `20260912120000_venue_follows_push_claim_rate.sql` | `venue_follows`, `web_push_subscriptions`, domain-match claim RPC, pulse rate-limit trigger |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), and [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/venue_follows.sql](../supabase/verify/venue_follows.sql), [supabase/verify/web_push_subscriptions.sql](../supabase/verify/web_push_subscriptions.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql).
 
 ---
 
@@ -117,6 +118,8 @@ Venue catalog with live intelligence fields.
 | `neighborhood` | TEXT | Launch neighborhood (Capitol Hill, Belltown, …) |
 | `inventory_source` | TEXT | `curated-seed` (launch 33) or `osm` (comprehensive Seattle catalog) |
 | `claim_verified` | BOOL | True only when a `venue_claims` row is `verified` (optional `20260912000000`) |
+| `owner_email_domain` | TEXT | Optional host for self-serve claim verify (`20260912120000`) |
+| `website` | TEXT | Public site; host used for domain-match claims |
 | `dress_code` | ENUM | casual, smart_casual, upscale, formal, etc. |
 | `cover_charge_cents` | INT | |
 | `accessibility_features` | TEXT[] | GIN-indexed |
@@ -323,9 +326,40 @@ Server source of truth for venue inbox access (`20260910140000`). Unique `(venue
 | `user_id` | FK → profiles |
 | `status` | `pending` \| `verified` \| `rejected` |
 | `evidence`, `notes` | Claimant text; admin notes on reject |
+| `work_email` | Optional work address for domain-match verify |
+| `work_email_confirmed_at` | Set when domain-match RPC verifies |
 | `reviewed_at` | Set when verified/rejected |
 
 RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row. Guests read claimed venue ids only via `venue_claim_badges` (no evidence / user ids).
+
+Self-serve verify: `try_verify_venue_claim_by_email_domain(claim_id)` — session email must equal `work_email` and the domain must match `website` host or `owner_email_domain`. Mismatch stays `pending`. Never verifies from pending alone.
+
+### `venue_follows`
+
+Persisted Follow (`20260912120000`). PK `(user_id, venue_id)`.
+
+| Column | Notes |
+|--------|-------|
+| `user_id` | FK → profiles |
+| `venue_id` | FK → venues |
+| `created_at` | Follow time |
+
+RLS: user reads/writes **own** rows only. Anon none. Guest Follow → `/auth`.
+
+### `web_push_subscriptions`
+
+PWA Web Push (`20260912120000`). Unique `(user_id, endpoint)`.
+
+| Column | Notes |
+|--------|-------|
+| `user_id` | FK → profiles |
+| `endpoint`, `p256dh`, `auth` | Push subscription |
+| `lat`, `lng` | Optional nearby scope |
+| `scope` | `followed` \| `nearby` \| `followed_or_nearby` |
+
+RLS: user owns their rows. Fan-out uses the service role from `api/_lib/web-push-live.ts` or `supabase/functions/notify-live-pulse`. Missing `VAPID_*` is an honest no-op.
+
+Pulse create rate limits (same migration): max **5** pulses per user per **10 minutes**, and **1** per user+venue per **2 minutes**. Enforced by `pulses_enforce_rate_limit` + `assert_pulse_rate_limit`. Clients cannot bypass.
 
 ### `pulse_reports` (queue columns)
 
@@ -514,7 +548,7 @@ Full policies live in `20260329000002_rls_policies.sql` and `20260417000002_rls_
 |---------|---------|
 | Public read | `venues`, `pulses` (non-deleted) |
 | Owner write | `profiles`, `pulses`, `check_ins` |
-| Owner read/write | `notifications`, `push_tokens`, `safety_sessions` |
+| Owner read/write | `notifications`, `push_tokens`, `venue_follows`, `web_push_subscriptions`, `safety_sessions` |
 | Staff read | `tickets` (via events join), `reservations` |
 | Admin bypass | `is_admin()` function checks `SUPABASE_ADMIN_EMAILS` |
 | Service role only | `stripe_webhook_events`, referral writes, cron jobs |
