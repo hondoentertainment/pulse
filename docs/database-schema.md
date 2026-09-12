@@ -37,6 +37,7 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260909180000_seattle_osm_venue_catalog.sql` | Idempotent 500-venue Seattle OSM nightlife catalog |
 | `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
 | `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
+| `20260912000000_venue_claim_verified_badge.sql` | `venues.claim_verified` + public `venue_claim_badges` |
 
 Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), and [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql).
 
@@ -115,6 +116,7 @@ Venue catalog with live intelligence fields.
 | `seeded` | BOOL | Seed vs real venue |
 | `neighborhood` | TEXT | Launch neighborhood (Capitol Hill, Belltown, …) |
 | `inventory_source` | TEXT | `curated-seed` (launch 33) or `osm` (comprehensive Seattle catalog) |
+| `claim_verified` | BOOL | True only when a `venue_claims` row is `verified` (optional `20260912000000`) |
 | `dress_code` | ENUM | casual, smart_casual, upscale, formal, etc. |
 | `cover_charge_cents` | INT | |
 | `accessibility_features` | TEXT[] | GIN-indexed |
@@ -323,7 +325,7 @@ Server source of truth for venue inbox access (`20260910140000`). Unique `(venue
 | `evidence`, `notes` | Claimant text; admin notes on reject |
 | `reviewed_at` | Set when verified/rejected |
 
-RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row.
+RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row. Guests read claimed venue ids only via `venue_claim_badges` (no evidence / user ids).
 
 ### `pulse_reports` (queue columns)
 

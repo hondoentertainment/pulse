@@ -7,6 +7,8 @@
  */
 
 import { getCreatePulseAuthRedirect } from './guest-discovery'
+import { isCuratedVenue, type MapInventoryLayer } from './map-filters'
+import type { Venue } from './types'
 
 export const HERE_QUERY_PARAM = 'here'
 export const CREATE_QUERY_PARAM = 'create'
@@ -58,4 +60,21 @@ export function resolveImHereAction(input: {
     openCreate: authRedirect === null,
     authRedirect,
   }
+}
+
+export function findImHereVenue(
+  venues: readonly Venue[] | undefined,
+  hereVenueId: string | null,
+): Venue | null {
+  if (!hereVenueId || !venues?.length) return null
+  return venues.find((venue) => venue.id === hereVenueId) ?? null
+}
+
+export function inventoryLayerForImHere(
+  venue: Pick<Venue, 'inventorySource' | 'seeded'> | null,
+  current: MapInventoryLayer,
+): MapInventoryLayer {
+  if (!venue) return current
+  if (!isCuratedVenue(venue)) return 'all'
+  return current
 }

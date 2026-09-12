@@ -47,7 +47,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | [Bundle Budget](bundle-budget.md) | Chunk size limits and CI enforcement |
 | [Bundle Optimization](bundle-optimization.md) | Strategies for reducing client bundle weight |
 | [CI Gates](ci-gates.md) | Required checks and quality thresholds |
-| [Observability](observability.md) | Logging, analytics adapters, Sentry |
+| [Observability](observability.md) | Logging, analytics adapters, Sentry, #92 funnel events |
 | [Glossary](glossary.md) | Product and technical term definitions |
 
 ---

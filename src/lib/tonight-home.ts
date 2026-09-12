@@ -157,6 +157,23 @@ function rankScore(
   return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4
 }
 
+/** Prefer curated / quality pins when energy + distance are tied. */
+export function compareTonightRank(
+  a: Venue,
+  b: Venue,
+  pulses: Pulse[],
+  now: Date,
+  userLocation: { lat: number; lng: number } | null,
+): number {
+  const scoreDiff = rankScore(b, pulses, now, userLocation) - rankScore(a, pulses, now, userLocation)
+  if (scoreDiff !== 0) return scoreDiff
+  const curatedDiff = Number(isCuratedVenue(b)) - Number(isCuratedVenue(a))
+  if (curatedDiff !== 0) return curatedDiff
+  const claimDiff = Number(Boolean(b.claimVerified)) - Number(Boolean(a.claimVerified))
+  if (claimDiff !== 0) return claimDiff
+  return (a.name ?? '').localeCompare(b.name ?? '')
+}
+
 export function listTonightFollowingVenues(
   venues: Venue[],
   savedVenueIds: readonly string[] = [],
@@ -226,7 +243,7 @@ export function buildTonightHome(input: {
   })
   const inHood = surging.filter((venue) => venue.neighborhood === neighborhood)
   const ranked = [...(inHood.length > 0 ? inHood : surging)].sort((a, b) => (
-    rankScore(b, input.pulses, now, userLocation) - rankScore(a, input.pulses, now, userLocation)
+    compareTonightRank(a, b, input.pulses, now, userLocation)
   ))
   const startHere = ranked[0] ? pickLine(ranked[0], input.pulses, nowMs) : null
   const heatingUp = ranked.slice(1, 4).map((venue) => pickLine(venue, input.pulses, nowMs))

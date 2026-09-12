@@ -93,6 +93,31 @@ describe('VenueInboxPage', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument()
   })
 
+  it('keeps tonight reviews hidden while a claim is only pending', () => {
+    const claims: VenueClaim[] = [{
+      id: 'c1',
+      venueId: 'venue-1',
+      claimantUserId: 'owner-1',
+      businessName: 'Showbox',
+      businessEmail: 'a@b.com',
+      verificationMethod: 'email',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }]
+    render(
+      <VenueInboxPage
+        venue={makeVenue()}
+        pulses={[makePulse()]}
+        currentUser={makeUser()}
+        claims={claims}
+        onBack={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/Your claim is pending review/)).toBeInTheDocument()
+    expect(screen.queryByText(/DJ just started/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0)
+  })
+
   it('lets a signed-in user submit a claim from the empty state', () => {
     const onSubmitClaim = vi.fn()
     render(

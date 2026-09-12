@@ -33,6 +33,7 @@ import { getUserIdOrNull } from '@/lib/auth/require-auth'
 import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
 import { getVenueDeepLink } from '@/lib/sharing'
 import { track } from '@/lib/observability/analytics'
+import { trackFunnel } from '@/lib/funnel-events'
 
 function milesBetween(
   a: { lat: number; lng: number },
@@ -260,7 +261,7 @@ export function useAppHandlers() {
       isFirstPulse,
     })
     if (isFirstPulse) {
-      track('funnel_step', { step: 'first_pulse', venueId: venueForPulse.id, guest: false })
+      trackFunnel('first_pulse_create', { venueId: venueForPulse.id, guest: false })
     }
 
     const syncOnline = await uploadPulseToSupabase(newPulse)

@@ -1,3 +1,4 @@
+import { overlayClaimVerified } from './data/venue-claims'
 import { supabase } from './supabase'
 import type { Venue, Pulse, EnergyRating, ReactionType, VenueLiveSummary } from './types'
 import type { LiveReport } from './live-intelligence'
@@ -52,6 +53,7 @@ type LiveVenueIntelligenceRow = {
   latest_activity_at: string | null
   neighborhood?: string | null
   inventory_source?: Venue['inventorySource'] | null
+  claim_verified?: boolean | null
 }
 
 function getJoinedLiveAggregate(value: unknown): VenueLiveAggregateRow | null {
@@ -83,6 +85,7 @@ function mapVenueRow(row: {
   latest_activity_at?: string | null
   neighborhood?: string | null
   inventory_source?: Venue['inventorySource'] | null
+  claim_verified?: boolean | null
 }, liveAggregate: VenueLiveAggregateRow | null): Venue {
   return {
     id: row.id,
@@ -96,6 +99,7 @@ function mapVenueRow(row: {
     state: row.state ?? undefined,
     neighborhood: row.neighborhood ?? undefined,
     inventorySource: row.inventory_source ?? undefined,
+    claimVerified: row.claim_verified ?? false,
     category: row.category ?? undefined,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,
@@ -119,9 +123,9 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
     .rpc('get_live_venue_intelligence', { max_pulses: 1000 })
 
   if (!intelligenceError && Array.isArray(intelligenceData)) {
-    return (intelligenceData as LiveVenueIntelligenceRow[]).map(row =>
+    return overlayClaimVerified((intelligenceData as LiveVenueIntelligenceRow[]).map(row =>
       mapVenueRow(row, row.live_summary)
-    )
+    ))
   }
 
   const { data, error } = await supabase
@@ -133,10 +137,10 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
     return null
   }
   
-  return data.map(row => {
+  return overlayClaimVerified(data.map(row => {
     const liveAggregate = getJoinedLiveAggregate(row.venue_live_aggregates)
     return mapVenueRow(row, liveAggregate)
-  })
+  }))
 }
 
 export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {

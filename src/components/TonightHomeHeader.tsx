@@ -16,6 +16,7 @@ import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { venueHandle } from '@/lib/venue-handle'
+import { catalogQualityLine } from '@/lib/catalog-quality'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 
 const MAP_TABS = [
@@ -214,17 +215,22 @@ function TonightFeedRow({
   const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
   if (activity.latest) {
     return (
-      <LiveReviewFeedCard
-        as="button"
-        energyRating={activity.latest.energyRating}
-        createdAt={activity.latest.createdAt}
-        caption={activity.latest.caption || headline}
-        unverified={activity.latest.locationVerified === false}
-        displayName={venue.name}
-        handle={venueHandle(venue.name)}
-        trustChips={glance.chips}
-        onClick={() => onVenueClick(venue)}
-      />
+      <div>
+        <LiveReviewFeedCard
+          as="button"
+          energyRating={activity.latest.energyRating}
+          createdAt={activity.latest.createdAt}
+          caption={activity.latest.caption || headline}
+          unverified={activity.latest.locationVerified === false}
+          displayName={venue.name}
+          handle={venueHandle(venue.name)}
+          trustChips={glance.chips}
+          onClick={() => onVenueClick(venue)}
+        />
+        {catalogQualityLine(venue) && (
+          <p className="pb-2 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
+        )}
+      </div>
     )
   }
 
@@ -253,6 +259,9 @@ function TonightFeedRow({
             )}
           </div>
           <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
+          {catalogQualityLine(venue) && (
+            <p className="mt-0.5 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
               {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}

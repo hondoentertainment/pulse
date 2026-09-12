@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canAccessVenueInbox } from '../live-reviews'
-import { rowToVenueClaim, type VenueClaimRow } from '../data/venue-claims'
+import { applyClaimVerifiedFlags, rowToVenueClaim, type VenueClaimRow } from '../data/venue-claims'
 
 function makeRow(overrides: Partial<VenueClaimRow> = {}): VenueClaimRow {
   return {
@@ -62,5 +62,18 @@ describe('claims access', () => {
       venueId: 'venue-1',
       staffRoles: [{ venueId: 'venue-1', userId: 'staff-1' }],
     })).toBe(true)
+  })
+})
+
+describe('applyClaimVerifiedFlags', () => {
+  it('marks only verified claim venue ids', () => {
+    const venues = [
+      { id: 'neumos', claimVerified: false },
+      { id: 'barrio' },
+    ]
+    expect(applyClaimVerifiedFlags(venues, ['neumos'])).toEqual([
+      { id: 'neumos', claimVerified: true },
+      { id: 'barrio' },
+    ])
   })
 })

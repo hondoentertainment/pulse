@@ -44,6 +44,12 @@ export function inventoryLabel(venue: Pick<Venue, 'inventorySource' | 'seeded'>)
   return isCuratedVenue(venue) ? 'Launch 33' : 'All Seattle'
 }
 
+export function catalogQualityLine(venue: Pick<Venue, 'neighborhood' | 'city' | 'inventorySource' | 'seeded'>): string | null {
+  const hood = neighborhoodTag(venue)
+  const source = inventoryLabel(venue)
+  return [hood, source].filter(Boolean).join(' · ') || null
+}
+
 export function neighborhoodTag(venue: Pick<Venue, 'neighborhood' | 'city'>): string | null {
   const hood = venue.neighborhood?.trim()
   if (hood) return hood

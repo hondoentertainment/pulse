@@ -27,8 +27,9 @@ for (const [hood, count] of Object.entries(counts).sort()) {
   console.log(`  ${hood}: ${count}`)
 }
 console.log('')
-console.log('Tonight ranking hides:')
+console.log('Tonight ranking hides (UI only — no prod deletes):')
 console.log('  - pins outside Seattle bounds or 0,0')
 console.log('  - generic names (bar/pub/club)')
 console.log('  - OSM rows within ~40m of a curated Launch 33 name')
-console.log('See src/lib/catalog-quality.ts and docs/next-steps.md.')
+console.log('Tied ranks prefer curated-seed, then claim_verified.')
+console.log('See src/lib/catalog-quality.ts, compareTonightRank, and docs/next-steps.md.')

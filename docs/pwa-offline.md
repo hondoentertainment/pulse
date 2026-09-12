@@ -87,7 +87,8 @@ Video pulses use a separate queue: `src/lib/video-offline-queue.ts`.
 
 ### UI indicators
 
-- `OfflineBanner.tsx` — network status
+- `OfflineBanner.tsx` — network status + draft snippet + Keep browsing
+- `MapHomeSkeleton` / `PageSkeleton` — hairline placeholders so map/venue shells do not flash a broken empty
 - `queuedPulseCount` in app state — badge on create button
 - Toast on sync success/failure
 

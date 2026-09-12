@@ -11,13 +11,14 @@ Verify a `venue_claims` row (unlocks `/venue/:id/inbox`) and dismiss `pulse_repo
 - Migrations:
   - `20260910140000_venue_claims_and_report_queue.sql` (already on prod from #82)
   - Optional: `20260911000000_owner_report_triage.sql` (owner dismiss via RLS)
+  - Optional: `20260912000000_venue_claim_verified_badge.sql` (public Claimed chip; pending still hidden)
 
 ## Procedure — UI (`/ops`)
 
 1. Sign in as an admin user.
 2. Open `/ops`.
-3. **Pending claims:** Verify or Reject. Verified claimants can open `/venue/:id/inbox`.
-4. **Pending reports:** Dismiss. Owners can also dismiss from the inbox after the optional RLS migration.
+3. **Pending claims:** Verify or Reject. Rows show venue **name** when the join is available. Verified claimants can open `/venue/:id/inbox`. Pending never unlocks inbox.
+4. **Pending reports:** Dismiss or Resolve (`actioned`). Owners can also dismiss from the inbox after the optional RLS migration.
 
 Stop if you are not admin — do not paste service-role keys into the browser.
 
@@ -90,4 +91,4 @@ Grant `/ops` to a trusted user (Auth → user → raw `app_metadata`):
 ## Ownership
 
 - Owner: Pulse ops / trust
-- Last reviewed: 2026-09-11
+- Last reviewed: 2026-09-12

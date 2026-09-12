@@ -65,6 +65,39 @@ export interface SubmitVenueClaimInput {
   notes?: string
 }
 
+/** Public claimed-venue ids. Empty until the claim-badge view/column is applied. */
+export async function listVerifiedClaimVenueIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('venue_claim_badges')
+    .select('venue_id')
+  if (error || !data) return []
+  return data
+    .map((row) => (typeof row.venue_id === 'string' ? row.venue_id : ''))
+    .filter(Boolean)
+}
+
+export function applyClaimVerifiedFlags<T extends { id: string; claimVerified?: boolean }>(
+  venues: T[],
+  claimedIds: Iterable<string>,
+): T[] {
+  const claimed = claimedIds instanceof Set ? claimedIds : new Set(claimedIds)
+  if (claimed.size === 0) return venues
+  return venues.map((venue) => (
+    claimed.has(venue.id) ? { ...venue, claimVerified: true } : venue
+  ))
+}
+
+export async function overlayClaimVerified<T extends { id: string; claimVerified?: boolean }>(
+  venues: T[],
+): Promise<T[]> {
+  if (venues.length === 0) return venues
+  try {
+    return applyClaimVerifiedFlags(venues, await listVerifiedClaimVenueIds())
+  } catch {
+    return venues
+  }
+}
+
 export async function submitVenueClaim(input: SubmitVenueClaimInput): Promise<VenueClaim> {
   const userId = await requireUserId({ action: 'claim this venue' })
   const evidence = input.evidence.trim()

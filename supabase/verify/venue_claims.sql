@@ -22,3 +22,13 @@ WHERE table_schema = 'public'
   AND table_name = 'pulse_reports'
   AND column_name IN ('status', 'reviewed_at')
 ORDER BY column_name;
+
+SELECT
+  EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'venues'
+      AND column_name = 'claim_verified'
+  ) AS venues_claim_verified,
+  to_regclass('public.venue_claim_badges') IS NOT NULL AS claim_badges_view;

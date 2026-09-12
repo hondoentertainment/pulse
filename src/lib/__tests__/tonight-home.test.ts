@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Pulse, Venue } from '../types'
 import {
   buildTonightHome,
+  compareTonightRank,
   listTonightFollowingVenues,
   listTonightNearVenues,
   resolveHomeNeighborhood,
@@ -175,6 +176,20 @@ describe('listTonightNearVenues', () => {
     const near = listTonightNearVenues([makeVenue(), far], { lat: 47.614, lng: -122.32 })
     expect(near.usedLaunch33Fallback).toBe(false)
     expect(near.venues[0]?.id).toBe('neumos')
+  })
+})
+
+describe('compareTonightRank', () => {
+  it('prefers curated over OSM when energy is tied', () => {
+    const now = new Date('2026-09-11T04:40:00.000Z')
+    const curated = makeVenue({ id: 'curated', name: 'Neumos', inventorySource: 'curated-seed' })
+    const osm = makeVenue({
+      id: 'osm',
+      name: 'Nearby Bar',
+      inventorySource: 'osm',
+      seeded: false,
+    })
+    expect(compareTonightRank(curated, osm, [], now, { lat: 47.614, lng: -122.32 })).toBeLessThan(0)
   })
 })
 

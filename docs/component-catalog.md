@@ -203,10 +203,10 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 | `TonightHomeHeader` | Tonight · neighborhood + X tabs (Tonight / Live / Map) + For you rows |
 | `TonightEmptyState` | Teach map → venue → pulse |
 | `LivePulseTimeline` | City-wide X timeline of last-90-min venue pulses |
-| `TrustPinChips` | Freshness / verified / density chips |
+| `TrustPinChips` | Freshness / Verified or Claimed / density chips |
 | `InstallAffordance` | Add to home screen on the map tab |
 | `ShareArrivalCard` | Shared-link landing + I’m here |
-| `OpsQueuePage` | `/ops` claim verify + report dismiss |
+| `OpsQueuePage` | `/ops` claim verify/reject + report dismiss/resolve |
 | `MapboxBaseLayer` | Mapbox tile layer |
 | `MapFilters` | Energy/category filters |
 | `MapSearch` | Map-integrated search |

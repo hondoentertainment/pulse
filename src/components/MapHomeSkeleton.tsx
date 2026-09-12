@@ -20,7 +20,7 @@ export function MapHomeSkeleton() {
         <div className="h-11 w-20 animate-pulse rounded-full bg-muted" />
       </div>
       <div className="h-[240px] w-full animate-pulse rounded-2xl bg-card" />
-      <p className="text-[13px] text-muted-foreground">Skeleton matches map layout</p>
+      <p className="sr-only">Map shell is loading — last known pins stay in place when the network flaps.</p>
       <div className="h-16 w-full animate-pulse border-b border-border bg-muted/40" />
       <div className="h-16 w-full animate-pulse border-b border-border bg-muted/40" />
     </div>

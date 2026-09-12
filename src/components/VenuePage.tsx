@@ -30,6 +30,7 @@ import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import { trackEvent } from '@/lib/analytics'
 import { track } from '@/lib/observability/analytics'
+import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
@@ -195,8 +196,12 @@ export function VenuePage({
 
   useEffect(() => {
     track('venue_viewed', { venueId: venue.id, source: fromShare ? 'share' : 'deeplink' })
-    track('funnel_step', { step: 'venue', venueId: venue.id })
-  }, [fromShare, venue.id])
+    trackFunnel('venue_open', {
+      venueId: venue.id,
+      guest: funnelActor({ hasSession: Boolean(session), isPlaceholder }).guest,
+      fromShare,
+    })
+  }, [fromShare, isPlaceholder, session, venue.id])
 
   const liveNowReviews = useMemo(
     () => getLiveNowReviews(venuePulses, venue.id),
@@ -362,10 +367,14 @@ export function VenuePage({
           {(() => {
             const placeStatus = venueStatusLine(venue)
             const verified = Boolean(
+              venue.claimVerified ||
               venue.verifiedCheckInCount ||
               venuePulses.some((pulse) => pulse.locationVerified),
             )
-            const line = [placeStatus, verified ? 'Verified' : null].filter(Boolean).join(' · ')
+            const line = [
+              placeStatus,
+              venue.claimVerified ? 'Claimed' : verified ? 'Verified' : null,
+            ].filter(Boolean).join(' · ')
             return line ? (
               <p className="mt-1 text-[13px] text-muted-foreground">{line}</p>
             ) : null

@@ -9,6 +9,7 @@
 import { supabase } from '@/lib/supabase'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
 import type { Venue } from '@/lib/types'
+import { overlayClaimVerified } from './venue-claims'
 
 // ── Row <-> Domain mapping ───────────────────────────────────────────────
 // Keeping a single mapper here so the column renames live in one place.
@@ -37,6 +38,7 @@ interface VenueRow {
   integrations: Venue['integrations'] | null
   neighborhood: string | null
   inventory_source: Venue['inventorySource'] | null
+  claim_verified?: boolean | null
   deleted_at: string | null
 }
 
@@ -53,6 +55,7 @@ function rowToVenue(row: VenueRow): Venue {
     state: row.state ?? undefined,
     neighborhood: row.neighborhood ?? undefined,
     inventorySource: row.inventory_source ?? undefined,
+    claimVerified: row.claim_verified ?? false,
     category: row.category ?? undefined,
     pulseScore: row.pulse_score ?? 0,
     scoreVelocity: row.score_velocity ?? 0,
@@ -88,7 +91,7 @@ export async function listVenues(limit = 1000): Promise<Venue[]> {
     .order('pulse_score', { ascending: false })
     .limit(limit)
   const rows = unwrap<VenueRow[]>(result)
-  return rows.map(rowToVenue)
+  return overlayClaimVerified(rows.map(rowToVenue))
 }
 
 /**
@@ -99,7 +102,9 @@ export async function getVenue(id: string): Promise<Venue | null> {
     .eq('id', id)
     .maybeSingle()
   const row = unwrapMaybe<VenueRow>(result)
-  return row ? rowToVenue(row) : null
+  if (!row) return null
+  const [venue] = await overlayClaimVerified([rowToVenue(row)])
+  return venue ?? null
 }
 
 /**
@@ -112,7 +117,7 @@ export async function listTrending(limit = 50): Promise<Venue[]> {
     .order('score_velocity', { ascending: false })
     .limit(limit)
   const rows = unwrap<VenueRow[]>(result)
-  return rows.map(rowToVenue)
+  return overlayClaimVerified(rows.map(rowToVenue))
 }
 
 /**
@@ -129,7 +134,7 @@ export async function listNearby(
   // PostGIS path via an RPC the backend team can add (see runbook).
   const rpc = await supabase.rpc('venues_within_miles', { lat, lng, radius_mi: radiusMi, max_rows: limit })
   if (!rpc.error && Array.isArray(rpc.data)) {
-    return (rpc.data as VenueRow[]).map(rowToVenue)
+    return overlayClaimVerified((rpc.data as VenueRow[]).map(rowToVenue))
   }
   // Fallback: naive load + client filter. Fine for scaffolding.
   const all = await listVenues(limit * 4)
@@ -150,7 +155,7 @@ export async function searchVenues(query: string, limit = 25): Promise<Venue[]> 
     .order('pulse_score', { ascending: false })
     .limit(limit)
   const rows = unwrap<VenueRow[]>(result)
-  return rows.map(rowToVenue)
+  return overlayClaimVerified(rows.map(rowToVenue))
 }
 
 // ── Local helpers ────────────────────────────────────────────────────────
