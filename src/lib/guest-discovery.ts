@@ -45,11 +45,19 @@ export function getWriteAuthRedirect(input: {
   return getCreatePulseAuthRedirect(input)
 }
 
+export const AUTH_GATE_COPY = {
+  title: 'Sign in to Pulse',
+  why: 'Post a pulse or follow a room — about 10 seconds.',
+  emailPlaceholder: 'you@email.com',
+  magicLink: 'Send magic link',
+  browse: 'Keep browsing the map',
+} as const
+
 export const WRITE_AUTH_COPY = {
   checkIn: { title: 'Sign in required', description: 'Sign in to check in.' },
   review: { title: 'Sign in required', description: 'Sign in to post a live review.' },
   intel: { title: 'Sign in required', description: 'Sign in to report live intel.' },
-  create: { title: 'Sign in required', description: 'Sign in to create a Pulse.' },
+  create: { title: 'Sign in to Pulse', description: 'Post a pulse or follow a room — about 10 seconds.' },
   follow: { title: 'Sign in to follow', description: 'Follow a venue to see its latest live pulses tonight.' },
   claim: { title: 'Sign in required', description: 'Sign in to claim this venue.' },
 } as const

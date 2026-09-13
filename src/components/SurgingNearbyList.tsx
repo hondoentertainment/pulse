@@ -3,11 +3,14 @@ import { Venue, Pulse } from '@/lib/types'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
+import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import { venueHandle } from '@/lib/venue-handle'
 import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
 import { getEnergyLabel } from '@/lib/pulse-engine'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { TrustPinChips } from '@/components/TrustPinChips'
+import { shareVenueFromSurface } from '@/lib/sharing'
+import { toast } from 'sonner'
 
 interface SurgingNearbyListProps {
   venues: Venue[]
@@ -15,6 +18,8 @@ interface SurgingNearbyListProps {
   userLocation: { lat: number; lng: number } | null
   unitSystem: 'imperial' | 'metric'
   onVenueClick: (venue: Venue) => void
+  onBeFirstPulse?: (venue: Venue) => void
+  onShareVenue?: (venue: Venue) => void
 }
 
 export const SurgingNearbyList = memo(function SurgingNearbyList({
@@ -23,6 +28,8 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
   userLocation,
   unitSystem: _unitSystem,
   onVenueClick,
+  onBeFirstPulse,
+  onShareVenue,
 }: SurgingNearbyListProps) {
   const activityByVenueId = useMemo(
     () => buildVenueActivityMap(venues, pulses),
@@ -39,14 +46,11 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
-        <div className="border-y border-border py-5">
-          <p className="text-[15px] font-semibold text-foreground">
-            Quiet nearby — no live reviews in the last hour.
-          </p>
-          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            Map → venue → pulse. Browse the Seattle catalog, then post when you’re there. We never invent a surge.
-          </p>
-        </div>
+        <EmptySurgingStartHere
+          venues={venues}
+          onVenueClick={onVenueClick}
+          onBeFirstPulse={onBeFirstPulse ?? onVenueClick}
+        />
       ) : (
         <div>
           {nearby.map((venue) => {
@@ -54,6 +58,15 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
               ?? getVenueMapActivityFromLive(venue, undefined)
             const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
             const open = () => onVenueClick(venue)
+            const handleShare = () => {
+              if (onShareVenue) {
+                onShareVenue(venue)
+                return
+              }
+              void shareVenueFromSurface(venue).then((result) => {
+                if (result === 'copied') toast.success('Link copied')
+              })
+            }
             if (activity.latest) {
               return (
                 <LiveReviewFeedCard
@@ -67,6 +80,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                   handle={venueHandle(venue.name)}
                   trustChips={glance.chips}
                   onClick={open}
+                  onShare={handleShare}
                 />
               )
             }
@@ -91,7 +105,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
                     </p>
                     <TrustPinChips chips={glance.chips} className="mt-1.5" />
                   </button>
-                  <PulseActionRow onReply={open} onShare={open} />
+                  <PulseActionRow onReply={open} onShare={handleShare} />
                 </div>
               </article>
             )

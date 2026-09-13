@@ -13,12 +13,16 @@ import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { TrustPinChips } from '@/components/TrustPinChips'
+import { VenueTypeahead } from '@/components/VenueTypeahead'
+import { FollowVenueButton } from '@/components/FollowVenueButton'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
 import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { venueHandle } from '@/lib/venue-handle'
 import { catalogQualityLine } from '@/lib/catalog-quality'
+import { shareVenueFromSurface } from '@/lib/sharing'
+import { toast } from 'sonner'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 
 const MAP_TABS = [
@@ -45,6 +49,8 @@ interface TonightHomeHeaderProps {
   locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
   onFollowAuth?: () => void
+  onToggleFollow?: (venueId: string) => void
+  onShareVenue?: (venue: Venue) => void
   surface?: MapHomeSurface
   onSurfaceChange?: (surface: MapHomeSurface) => void
 }
@@ -59,6 +65,8 @@ export function TonightHomeHeader({
   locationDenied,
   onVenueClick,
   onFollowAuth,
+  onToggleFollow,
+  onShareVenue,
   surface = 'map',
   onSurfaceChange,
 }: TonightHomeHeaderProps) {
@@ -103,6 +111,9 @@ export function TonightHomeHeader({
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
+          <div className="pb-2">
+            <VenueTypeahead venues={venues} onVenueSelect={onVenueClick} />
+          </div>
           <FeedTabBar<TonightFeed>
             tabs={TONIGHT_FEEDS}
             value={tonightFeed}
@@ -122,6 +133,11 @@ export function TonightHomeHeader({
                     headline={home.startHere.headline}
                     pulses={pulses}
                     onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following={followedVenueIds.includes(home.startHere.venue.id)}
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
                   />
                 </>
               )}
@@ -136,6 +152,11 @@ export function TonightHomeHeader({
                       headline={pick.headline}
                       pulses={pulses}
                       onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(pick.venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
                     />
                   ))}
                 </div>
@@ -170,6 +191,11 @@ export function TonightHomeHeader({
                     : `${venue.name} is on your Following list`}
                   pulses={pulses}
                   onVenueClick={onVenueClick}
+                  signedIn={signedIn}
+                  following
+                  onFollowAuth={onFollowAuth}
+                  onToggleFollow={onToggleFollow}
+                  onShareVenue={onShareVenue}
                 />
               ))
             )
@@ -200,6 +226,11 @@ export function TonightHomeHeader({
                       : `${venue.name} is close`}
                     pulses={pulses}
                     onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following={followedVenueIds.includes(venue.id)}
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
                   />
                 ))}
               </>
@@ -216,14 +247,44 @@ function TonightFeedRow({
   headline,
   pulses,
   onVenueClick,
+  signedIn = false,
+  following = false,
+  onFollowAuth,
+  onToggleFollow,
+  onShareVenue,
 }: {
   venue: Venue
   headline: string
   pulses: Pulse[]
   onVenueClick: (venue: Venue) => void
+  signedIn?: boolean
+  following?: boolean
+  onFollowAuth?: () => void
+  onToggleFollow?: (venueId: string) => void
+  onShareVenue?: (venue: Venue) => void
 }) {
   const activity = getVenueMapActivity(venue, pulses)
   const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
+  const handleFollow = () => {
+    if (!signedIn) {
+      onFollowAuth?.()
+      return
+    }
+    onToggleFollow?.(venue.id)
+  }
+  const handleShare = () => {
+    if (onShareVenue) {
+      onShareVenue(venue)
+      return
+    }
+    void shareVenueFromSurface(venue).then((result) => {
+      if (result === 'copied') toast.success('Link copied')
+    })
+  }
+  const followControl = (
+    <FollowVenueButton following={following} onClick={handleFollow} compact />
+  )
+
   if (activity.latest) {
     return (
       <div>
@@ -237,7 +298,9 @@ function TonightFeedRow({
           handle={venueHandle(venue.name)}
           trustChips={glance.chips}
           onClick={() => onVenueClick(venue)}
+          onShare={handleShare}
         />
+        <div className="-mt-1 flex justify-end pb-2">{followControl}</div>
         {catalogQualityLine(venue) && (
           <p className="pb-2 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
         )}
@@ -254,36 +317,39 @@ function TonightFeedRow({
     <article className="flex gap-3 border-b border-border py-3">
       <TimelineAvatar name={venue.name} />
       <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={open}
-          aria-label={`${venue.name}, ${headline}`}
-          className="block min-h-11 w-full text-left"
-        >
-          <div className="flex min-w-0 items-baseline gap-1">
-            <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
-            <span className="truncate text-[15px] text-muted-foreground">{venueHandle(venue.name)}</span>
-            {venue.lastPulseAt && (
-              <span className="shrink-0 text-[15px] text-muted-foreground">
-                · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
-              </span>
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={open}
+            aria-label={`${venue.name}, ${headline}`}
+            className="block min-h-11 min-w-0 flex-1 text-left"
+          >
+            <div className="flex min-w-0 items-baseline gap-1">
+              <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
+              <span className="truncate text-[15px] text-muted-foreground">{venueHandle(venue.name)}</span>
+              {venue.lastPulseAt && (
+                <span className="shrink-0 text-[15px] text-muted-foreground">
+                  · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
+            {catalogQualityLine(venue) && (
+              <p className="mt-0.5 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
             )}
-          </div>
-          <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
-          {catalogQualityLine(venue) && (
-            <p className="mt-0.5 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
-              {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
-            </span>
-            <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
-              {verified ? 'Verified' : 'Unverified'}
-            </span>
-          </div>
-          <TrustPinChips chips={glance.chips} className="mt-1.5" />
-        </button>
-        <PulseActionRow onReply={open} onShare={open} />
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
+                {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
+              </span>
+              <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                {verified ? 'Verified' : 'Unverified'}
+              </span>
+            </div>
+            <TrustPinChips chips={glance.chips} className="mt-1.5" />
+          </button>
+          {followControl}
+        </div>
+        <PulseActionRow onReply={open} onShare={handleShare} />
       </div>
     </article>
   )

@@ -1,16 +1,27 @@
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import type { PulseWithUser, Venue } from '@/lib/types'
 import { getLiveNowReviews } from '@/lib/live-reviews'
 import { authorHandle } from '@/lib/venue-handle'
+import { shareVenueFromSurface } from '@/lib/sharing'
+import { toast } from 'sonner'
 
 interface LivePulseTimelineProps {
   pulses: PulseWithUser[]
   venues: Venue[]
   onVenueClick: (venue: Venue) => void
+  onBeFirstPulse?: (venue: Venue) => void
+  onShareVenue?: (venue: Venue) => void
 }
 
 /** City-wide Live now — X timeline of real venue pulses. No invented venues. */
-export function LivePulseTimeline({ pulses, venues, onVenueClick }: LivePulseTimelineProps) {
+export function LivePulseTimeline({
+  pulses,
+  venues,
+  onVenueClick,
+  onBeFirstPulse,
+  onShareVenue,
+}: LivePulseTimelineProps) {
   const live = getLiveNowReviews(pulses)
   const byId = new Map(venues.map((venue) => [venue.id, venue]))
 
@@ -20,12 +31,11 @@ export function LivePulseTimeline({ pulses, venues, onVenueClick }: LivePulseTim
         Live now
       </h2>
       {live.length === 0 ? (
-        <div className="border-b border-border py-6">
-          <p className="text-[15px] text-foreground">Quiet nearby — no live reviews in the last hour.</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Map → venue → pulse. Browse the real Seattle catalog, then post when you’re there.
-          </p>
-        </div>
+        <EmptySurgingStartHere
+          venues={venues}
+          onVenueClick={onVenueClick}
+          onBeFirstPulse={onBeFirstPulse ?? onVenueClick}
+        />
       ) : (
         <div>
           {live.map((pulse) => {
@@ -45,7 +55,15 @@ export function LivePulseTimeline({ pulses, venues, onVenueClick }: LivePulseTim
                 avatarUrl={pulse.user?.profilePhoto}
                 onClick={() => onVenueClick(venue)}
                 onReply={() => onVenueClick(venue)}
-                onShare={() => onVenueClick(venue)}
+                onShare={() => {
+                  if (onShareVenue) {
+                    onShareVenue(venue)
+                    return
+                  }
+                  void shareVenueFromSurface(venue).then((result) => {
+                    if (result === 'copied') toast.success('Link copied')
+                  })
+                }}
               />
             )
           })}

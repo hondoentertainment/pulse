@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getVenueDeepLink,
   getPulseDeepLink,
@@ -18,6 +18,7 @@ import {
   getReferralStats,
   buildNativeShareData,
   buildClipboardShareText,
+  shareVenueFromSurface,
 } from '../sharing'
 import type { Venue, Pulse } from '../types'
 
@@ -171,5 +172,21 @@ describe('share helpers', () => {
     const text = buildClipboardShareText(card)
     expect(text).toContain(card.title)
     expect(text).toContain(card.url)
+  })
+
+  it('shares the /api/share/venue deep link from a surface', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    const result = await shareVenueFromSurface(venue, { share, canShare: true })
+    expect(result).toBe('shared')
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('/api/share/venue?venueId=v1'),
+    }))
+  })
+
+  it('copies the share URL when native share is unavailable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const result = await shareVenueFromSurface(venue, { canShare: false, writeText })
+    expect(result).toBe('copied')
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/api/share/venue?venueId=v1'))
   })
 })

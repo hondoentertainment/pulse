@@ -11,7 +11,7 @@ import { MapEnergyPills } from '@/components/MapEnergyPills'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
-import { ColdStartTip } from '@/components/ColdStartTip'
+import { FirstOpenCoach } from '@/components/FirstOpenCoach'
 import { InstallAffordance } from '@/components/InstallAffordance'
 import { PushNotifyAffordance } from '@/components/PushNotifyAffordance'
 import {
@@ -24,7 +24,9 @@ import { readViteVapidPublicKey } from '@/lib/web-push-client'
 import { AUTH_PATH, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
-import { dismissColdStartTip, markNavigationStart, shouldShowColdStartTip } from '@/lib/cold-start'
+import { markNavigationStart } from '@/lib/cold-start'
+import { dismissFirstOpenCoach, shouldShowFirstOpenCoach } from '@/lib/first-open-coach'
+import { shareVenueFromSurface } from '@/lib/sharing'
 import {
   findImHereVenue,
   inventoryLayerForImHere,
@@ -138,7 +140,7 @@ export function MainTabRouter() {
   const [mapEnergyLevels, setMapEnergyLevels] = useState<EnergyFilter[]>([])
   const [mapNearMe, setMapNearMe] = useState(false)
   const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
-  const [showColdStart, setShowColdStart] = useState(() => shouldShowColdStartTip())
+  const [showFirstOpenCoach, setShowFirstOpenCoach] = useState(() => shouldShowFirstOpenCoach())
   const [surgingReady, setSurgingReady] = useState(false)
   const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
 
@@ -200,6 +202,16 @@ export function MainTabRouter() {
   const handleMapPinClick = useCallback((venue: Venue) => {
     handleCreatePulse(venue.id)
   }, [handleCreatePulse])
+
+  const handleBeFirstPulse = useCallback((venue: Venue) => {
+    handleCreatePulse(venue.id)
+  }, [handleCreatePulse])
+
+  const handleShareVenue = useCallback((venue: Venue) => {
+    void shareVenueFromSurface(venue).then((result) => {
+      if (result === 'copied') toast.success('Link copied')
+    })
+  }, [])
 
   if (!venues || !currentUser) return <MapHomeSkeleton />
 
@@ -266,6 +278,8 @@ export function MainTabRouter() {
               signedIn={signedIn}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
+              onToggleFollow={handleToggleFollow}
+              onShareVenue={handleShareVenue}
               onFollowAuth={() => {
                 toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
                 navigate(AUTH_PATH)
@@ -278,15 +292,17 @@ export function MainTabRouter() {
                 pulses={visiblePulsesWithUsers}
                 venues={visibleVenues}
                 onVenueClick={handleVenueClick}
+                onBeFirstPulse={handleBeFirstPulse}
+                onShareVenue={handleShareVenue}
               />
             )}
             {mapSurface === 'map' && (
               <>
-                {showColdStart && (
-                  <ColdStartTip
+                {showFirstOpenCoach && (
+                  <FirstOpenCoach
                     onDismiss={() => {
-                      dismissColdStartTip()
-                      setShowColdStart(false)
+                      dismissFirstOpenCoach()
+                      setShowFirstOpenCoach(false)
                     }}
                   />
                 )}
@@ -333,6 +349,7 @@ export function MainTabRouter() {
                     venues={visibleVenues}
                     userLocation={userLocation}
                     onVenueClick={handleMapPinClick}
+                    onShareVenue={handleShareVenue}
                     isTracking={isTracking}
                     locationAccuracy={realtimeLocation?.accuracy}
                     locationHeading={realtimeLocation?.heading}
@@ -354,6 +371,8 @@ export function MainTabRouter() {
                     userLocation={userLocation}
                     unitSystem={unitSystem}
                     onVenueClick={handleVenueClick}
+                    onBeFirstPulse={handleBeFirstPulse}
+                    onShareVenue={handleShareVenue}
                   />
                 ) : (
                   <div className="h-16 animate-pulse rounded-lg bg-muted" aria-hidden />

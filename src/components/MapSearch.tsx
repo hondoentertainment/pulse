@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useVoiceSearch } from '@/hooks/use-voice-search'
 import { toast } from 'sonner'
+import { searchVenueResults } from '@/lib/venue-search'
 import { getSmartVenueSort } from '@/lib/contextual-intelligence'
 import { getDayType, getTimeOfDay } from '@/lib/time-contextual-scoring'
 import type { User } from '@/lib/types'
@@ -58,13 +59,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
   }, [])
 
   const filteredVenues = query.trim()
-    ? venues.filter((venue) => {
-      const searchQuery = query.toLowerCase()
-      const matchesName = venue.name.toLowerCase().includes(searchQuery)
-      const matchesCategory = venue.category?.toLowerCase().includes(searchQuery)
-      const matchesNeighborhood = venue.neighborhood?.toLowerCase().includes(searchQuery)
-      return matchesName || matchesCategory || Boolean(matchesNeighborhood)
-    })
+    ? searchVenueResults(venues, query, 12)
     : []
 
   const sortedResults = userLocation
@@ -213,7 +208,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : 'Search venues'}
+          placeholder={isListening ? 'Listening...' : 'Search venues or neighborhoods'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}

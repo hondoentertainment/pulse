@@ -271,6 +271,48 @@ export function buildNativeShareData(card: ShareCard): { title: string; text: st
   }
 }
 
+export type ShareVenueResult = 'shared' | 'copied' | 'cancelled' | 'failed'
+
+/**
+ * Guest-safe share from Tonight / map / venue using `/api/share/venue` + OG.
+ */
+export async function shareVenueFromSurface(
+  venue: Venue,
+  extras: {
+    share?: (data: ShareData) => Promise<void>
+    writeText?: (text: string) => Promise<void>
+    canShare?: boolean
+  } = {},
+): Promise<ShareVenueResult> {
+  const card = generateVenueShareCard(venue)
+  const payload = buildNativeShareData(card)
+  const shareFn = extras.share
+    ?? (typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+      ? (data: ShareData) => navigator.share(data)
+      : undefined)
+  const canShare = extras.canShare
+    ?? (typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+  if (canShare && shareFn) {
+    try {
+      await shareFn(payload)
+      return 'shared'
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'
+    }
+  }
+  const writeText = extras.writeText
+    ?? (typeof navigator !== 'undefined' && navigator.clipboard
+      ? (text: string) => navigator.clipboard.writeText(text)
+      : undefined)
+  if (!writeText) return 'failed'
+  try {
+    await writeText(card.url)
+    return 'copied'
+  } catch {
+    return 'failed'
+  }
+}
+
 /**
  * Copy-to-clipboard share text.
  */
