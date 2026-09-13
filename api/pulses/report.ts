@@ -31,6 +31,29 @@ const REPORT_REASONS = [
 type ReportReason = (typeof REPORT_REASONS)[number]
 const REPORT_STATUSES = ['pending', 'reviewed', 'actioned', 'dismissed'] as const
 
+async function hasVerifiedVenueAccess(
+  client: ReturnType<typeof createUserClient>,
+  userId: string,
+  venueId: string,
+): Promise<boolean> {
+  const [{ data: claim }, { data: staff }] = await Promise.all([
+    client
+      .from('venue_claims')
+      .select('id')
+      .eq('venue_id', venueId)
+      .eq('user_id', userId)
+      .eq('status', 'verified')
+      .maybeSingle(),
+    client
+      .from('venue_staff')
+      .select('user_id')
+      .eq('venue_id', venueId)
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ])
+  return Boolean(claim || staff)
+}
+
 function isAdminToken(token: string): boolean {
   const claims = decodeJwt(token) as
     | (Record<string, unknown> & { app_metadata?: { role?: string }; role?: string })
@@ -64,26 +87,9 @@ export default async function handler(
   if (req.method === 'GET') {
     const venueId = typeof req.query?.venueId === 'string' ? req.query.venueId.trim() : ''
     if (venueId) {
-      if (!admin) {
-        const [{ data: claim }, { data: staff }] = await Promise.all([
-          client
-            .from('venue_claims')
-            .select('id')
-            .eq('venue_id', venueId)
-            .eq('user_id', auth.context.userId)
-            .eq('status', 'verified')
-            .maybeSingle(),
-          client
-            .from('venue_staff')
-            .select('user_id')
-            .eq('venue_id', venueId)
-            .eq('user_id', auth.context.userId)
-            .maybeSingle(),
-        ])
-        if (!claim && !staff) {
-          fail(res, 403, 'forbidden', 'Verified owner or admin required')
-          return
-        }
+      if (!admin && !(await hasVerifiedVenueAccess(client, auth.context.userId, venueId))) {
+        fail(res, 403, 'forbidden', 'Verified owner or admin required')
+        return
       }
       const { data: pulses, error: pulseError } = await client
         .from('pulses')
@@ -174,22 +180,7 @@ export default async function handler(
         fail(res, 403, 'forbidden', 'Verified owner or admin required')
         return
       }
-      const [{ data: claim }, { data: staff }] = await Promise.all([
-        client
-          .from('venue_claims')
-          .select('id')
-          .eq('venue_id', venueId)
-          .eq('user_id', auth.context.userId)
-          .eq('status', 'verified')
-          .maybeSingle(),
-        client
-          .from('venue_staff')
-          .select('user_id')
-          .eq('venue_id', venueId)
-          .eq('user_id', auth.context.userId)
-          .maybeSingle(),
-      ])
-      if (!claim && !staff) {
+      if (!(await hasVerifiedVenueAccess(client, auth.context.userId, venueId))) {
         fail(res, 403, 'forbidden', 'Verified claim required to dismiss reports')
         return
       }

@@ -52,6 +52,7 @@ import {
   type VenueRenderPoint
 } from '@/lib/interactive-map'
 import { MapEmptyOverlay } from '@/components/MapEmptyOverlay'
+import { resolveImHereMapZoom, retainFocusedVenue } from '@/lib/im-here'
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -230,7 +231,7 @@ export const InteractiveMap = memo(function InteractiveMap({
     if (!venue?.location) return
     setFollowUser(false)
     setCenter({ lat: venue.location.lat, lng: venue.location.lng })
-    setZoom((current) => clampZoom(Math.max(2.1, current)))
+    setZoom((current) => clampZoom(resolveImHereMapZoom(current)))
     setHoveredVenue(venue)
   }, [focusVenueId, venues])
 
@@ -355,11 +356,12 @@ export const InteractiveMap = memo(function InteractiveMap({
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
           .sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
         : filtered.sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
-      return (nearby.length > 0 ? nearby : filtered).slice(0, 5)
+      const sliced = (nearby.length > 0 ? nearby : filtered).slice(0, 5)
+      return retainFocusedVenue(sliced, venues, focusVenueId)
     }
 
-    return filtered
-  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, activityFor])
+    return retainFocusedVenue(filtered, venues, focusVenueId)
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, activityFor, focusVenueId])
 
   const availableCategories = useMemo(
     () => Array.from(

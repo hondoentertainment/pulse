@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findImHereVenue, getImHereMapPath, inventoryLayerForImHere, parseHereVenueId, resolveImHereAction, resolveImHereOpen, wantsImHereCreate } from '../im-here'
+import { findImHereVenue, getImHereMapPath, IM_HERE_PIN_ZOOM, inventoryLayerForImHere, parseHereVenueId, resolveImHereAction, resolveImHereMapZoom, resolveImHereOpen, retainFocusedVenue, wantsImHereCreate } from '../im-here'
 
 describe('im-here deep link', () => {
   it('parses here and create query params', () => {
@@ -57,5 +57,33 @@ describe('im-here deep link', () => {
       venueId: 'neumos',
       openCreate: false,
     })).toEqual({ focus: true, create: false })
+  })
+
+  it('keeps the shared pin when All Seattle slices to a top-5 preview', () => {
+    const catalog = [
+      { id: 'hot-1' },
+      { id: 'hot-2' },
+      { id: 'hot-3' },
+      { id: 'hot-4' },
+      { id: 'hot-5' },
+      { id: 'quiet-osm' },
+    ]
+    const topFive = catalog.slice(0, 5)
+    expect(retainFocusedVenue(topFive, catalog, 'quiet-osm').map((row) => row.id)).toEqual([
+      'quiet-osm',
+      'hot-1',
+      'hot-2',
+      'hot-3',
+      'hot-4',
+      'hot-5',
+    ])
+    expect(retainFocusedVenue(topFive, catalog, 'hot-2').map((row) => row.id)).toEqual(topFive.map((row) => row.id))
+    expect(retainFocusedVenue(topFive, catalog, null)).toHaveLength(5)
+  })
+
+  it('zooms the map in to the pin instead of staying city-wide', () => {
+    expect(resolveImHereMapZoom(0.8)).toBe(IM_HERE_PIN_ZOOM)
+    expect(resolveImHereMapZoom(3.1)).toBe(3.1)
+    expect(resolveImHereMapZoom(undefined)).toBe(IM_HERE_PIN_ZOOM)
   })
 })
