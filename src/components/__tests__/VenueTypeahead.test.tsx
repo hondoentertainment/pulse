@@ -43,7 +43,7 @@ describe('VenueTypeahead', () => {
     const input = screen.getByRole('combobox', { name: /Search venues or neighborhoods/i })
     fireEvent.focus(input)
     fireEvent.change(input, { target: { value: 'neum' } })
-    fireEvent.click(screen.getByRole('button', { name: /Neumos/i }))
+    fireEvent.click(screen.getByRole('option', { name: /Neumos/i }))
     expect(onVenueSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'venue-1', name: 'Neumos' }))
   })
 })

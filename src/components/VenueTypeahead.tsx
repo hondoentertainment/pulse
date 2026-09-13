@@ -129,6 +129,7 @@ export function VenueTypeahead({
                     <button
                       type="button"
                       role="option"
+                      aria-label={hit.venue.name}
                       aria-selected={selectedIndex === index}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => handleSelect(hit.venue)}
