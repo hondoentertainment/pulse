@@ -25,7 +25,7 @@ import { GPSIndicator } from '@/components/GPSIndicator'
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire, Lightning
+  Users, Fire, Lightning, ShareNetwork
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -72,6 +72,7 @@ interface InteractiveMapProps {
   bloomVenueId?: string | null
   /** Deep-link / I’m-here pin to center on. */
   focusVenueId?: string | null
+  onShareVenue?: (venue: Venue) => void
 }
 
 const ZOOM_STEP = 1.35
@@ -96,6 +97,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   onInventoryLayerChange,
   bloomVenueId = null,
   focusVenueId = null,
+  onShareVenue,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -1485,7 +1487,7 @@ export const InteractiveMap = memo(function InteractiveMap({
             : undefined
 
           const tooltipWidth = compact ? 220 : 240
-          const tooltipHeight = compact ? 72 : 100
+          const tooltipHeight = compact ? (onShareVenue ? 96 : 72) : 100
           const padding = 16
 
           let left = pos.x
@@ -1507,7 +1509,7 @@ export const InteractiveMap = memo(function InteractiveMap({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute pointer-events-none z-50"
+              className="absolute z-50 pointer-events-none"
               style={{
                 left,
                 top,
@@ -1557,6 +1559,20 @@ export const InteractiveMap = memo(function InteractiveMap({
                     {!compact && <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />}
                   </div>
                   <TrustPinChips chips={glance.chips} />
+                  {onShareVenue && (
+                    <button
+                      type="button"
+                      aria-label={`Share ${hoveredVenue.name}`}
+                      className="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-semibold text-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onShareVenue(hoveredVenue)
+                      }}
+                    >
+                      <ShareNetwork size={12} />
+                      Share
+                    </button>
+                  )}
 
                   {!compact && hoveredVenue.location.address && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">

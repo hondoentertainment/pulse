@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthGate } from '@/components/AuthGate'
-import { WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { AUTH_GATE_COPY } from '@/lib/guest-discovery'
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -13,10 +13,8 @@ vi.mock('framer-motion', () => ({
 }))
 
 vi.mock('@phosphor-icons/react', () => ({
-  Lightning: () => <span />,
   Envelope: () => <span />,
   CircleNotch: () => <span />,
-  WarningCircle: () => <span />,
 }))
 
 vi.mock('@/hooks/use-supabase-auth', () => ({
@@ -33,17 +31,20 @@ vi.mock('@/lib/observability/analytics', () => ({
 }))
 
 describe('AuthGate', () => {
-  it('keeps the write gate with hairline chrome and a map browse escape', () => {
+  it('puts email first, explains why sign in, and keeps a map browse escape', () => {
     render(
       <MemoryRouter>
         <AuthGate />
       </MemoryRouter>,
     )
-    expect(screen.getByText(WRITE_AUTH_COPY.create.title)).toBeInTheDocument()
-    expect(screen.getByText(WRITE_AUTH_COPY.create.description)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Welcome to Pulse' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Send Magic Link' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Keep browsing the map' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('heading', { name: AUTH_GATE_COPY.title })).toBeInTheDocument()
+    expect(screen.getByText(AUTH_GATE_COPY.why)).toBeInTheDocument()
+    const email = screen.getByLabelText('Email')
+    const magic = screen.getByRole('button', { name: AUTH_GATE_COPY.magicLink })
+    const google = screen.getByRole('button', { name: 'Continue with Google' })
+    expect(email.compareDocumentPosition(magic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(magic.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('link', { name: AUTH_GATE_COPY.browse })).toHaveAttribute('href', '/')
+    expect(screen.queryByText(/signal/i)).not.toBeInTheDocument()
   })
 })

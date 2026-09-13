@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
+import { EMPTY_SURGING_CTA } from '@/lib/empty-surging'
 import type { PulseWithUser, User, Venue } from '@/lib/types'
 
 vi.mock('@phosphor-icons/react', () => ({
@@ -19,15 +20,30 @@ function makeVenue(): Venue {
   return {
     id: 'venue-1',
     name: 'Neumos',
-    location: { lat: 47.6, lng: -122.3, address: '1 Pike' },
+    location: { lat: 47.614, lng: -122.32, address: '1 Pike' },
     pulseScore: 70,
+    neighborhood: 'Capitol Hill',
+    inventorySource: 'curated-seed',
+    seeded: true,
   }
 }
 
 describe('LivePulseTimeline', () => {
   it('renders an honest empty timeline', () => {
-    render(<LivePulseTimeline pulses={[]} venues={[makeVenue()]} onVenueClick={vi.fn()} />)
+    const onBeFirstPulse = vi.fn()
+    const venue = makeVenue()
+    render(
+      <LivePulseTimeline
+        pulses={[]}
+        venues={[venue]}
+        onVenueClick={vi.fn()}
+        onBeFirstPulse={onBeFirstPulse}
+      />,
+    )
     expect(screen.getByText(/Quiet nearby — no live reviews in the last hour/)).toBeInTheDocument()
+    expect(screen.getByText('Start here')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: EMPTY_SURGING_CTA }))
+    expect(onBeFirstPulse).toHaveBeenCalledWith(venue)
   })
 
   it('lists live pulses as an X timeline and opens the venue', () => {

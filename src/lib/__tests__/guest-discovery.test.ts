@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   AUTH_PATH,
+  AUTH_GATE_COPY,
   DISCOVERY_AUTH_GATE_COPY,
   getCreatePulseAuthRedirect,
   getWriteAuthRedirect,
@@ -49,6 +50,15 @@ describe('guest discovery policy', () => {
     expect(WRITE_AUTH_COPY.checkIn.description).toContain('check in')
     expect(WRITE_AUTH_COPY.review.description).toContain('live review')
     expect(WRITE_AUTH_COPY.intel.description).toContain('live intel')
+  })
+
+  it('keeps AuthGate copy to post a pulse or follow a room, email-first', () => {
+    expect(AUTH_GATE_COPY.title).toBe('Sign in to Pulse')
+    expect(AUTH_GATE_COPY.why).toMatch(/pulse/i)
+    expect(AUTH_GATE_COPY.why).toMatch(/follow a room/i)
+    expect(AUTH_GATE_COPY.magicLink).toBe('Send magic link')
+    expect(WRITE_AUTH_COPY.create.description).toContain('Post a pulse or follow a room')
+    expect(AUTH_GATE_COPY.why.toLowerCase()).not.toContain('signal')
   })
 
   it('closes the composer when redirecting a guest to /auth', () => {

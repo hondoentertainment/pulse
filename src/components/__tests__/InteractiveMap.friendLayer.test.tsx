@@ -101,6 +101,7 @@ vi.mock('@phosphor-icons/react', () => {
     'MapPin', 'NavigationArrow', 'Plus', 'Minus', 'CaretDown', 'CaretUp', 'CaretLeft', 'CaretRight',
     'BeerBottle', 'MusicNotes', 'ForkKnife', 'Coffee', 'Martini', 'Confetti',
     'Users', 'UsersThree', 'Fire', 'Lock', 'Lightning', 'Broadcast', 'Queue', 'Faders',
+    'ShareNetwork',
   ] as const
   const mod: Record<string, unknown> = {}
   for (const n of names) mod[n] = Icon

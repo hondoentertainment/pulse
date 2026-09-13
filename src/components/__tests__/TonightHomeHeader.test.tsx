@@ -5,10 +5,24 @@ import { describe, expect, it, vi } from 'vitest'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import type { Venue } from '@/lib/types'
 
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: { children?: React.ReactNode }) => <div {...props}>{children}</div>,
+  },
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}))
+
 vi.mock('@phosphor-icons/react', () => ({
   Lightning: () => <span />,
   ChatCircle: () => <span />,
   ShareNetwork: () => <span />,
+  MagnifyingGlass: () => <span />,
+  MapPin: () => <span />,
+  X: () => <span />,
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 function makeVenue(overrides: Partial<Venue> = {}): Venue {
@@ -47,12 +61,88 @@ describe('TonightHomeHeader', () => {
     expect(screen.getByRole('tab', { name: 'Following' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Near' })).toBeInTheDocument()
     expect(screen.getByText('Start here')).toBeInTheDocument()
-    expect(screen.getByText('Neumos')).toBeInTheDocument()
+    expect(screen.getAllByText('Neumos').length).toBeGreaterThan(0)
     expect(screen.getByText('@neumos')).toBeInTheDocument()
     expect(screen.getByText('Quiet nearby — no live reviews in the last hour.')).toBeInTheDocument()
     expect(screen.getByLabelText('Teach the Pulse loop')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: 'Live' }))
     expect(onSurfaceChange).toHaveBeenCalledWith('live')
+  })
+
+  it('lets a guest search Neumos from Tonight and open the venue', () => {
+    const onVenueClick = vi.fn()
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        locationDenied
+        onVenueClick={onVenueClick}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('combobox', { name: /Search venues or neighborhoods/i })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'neum' } })
+    fireEvent.click(screen.getByRole('option'))
+    expect(onVenueClick).toHaveBeenCalledWith(expect.objectContaining({ name: 'Neumos' }))
+  })
+
+  it('follows from a Tonight row and sends guests to /auth', () => {
+    const onFollowAuth = vi.fn()
+    const onToggleFollow = vi.fn()
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        locationDenied
+        onVenueClick={vi.fn()}
+        onFollowAuth={onFollowAuth}
+        onToggleFollow={onToggleFollow}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Follow venue' }))
+    expect(onFollowAuth).toHaveBeenCalled()
+    expect(onToggleFollow).not.toHaveBeenCalled()
+  })
+
+  it('toggles Follow on a Tonight row when signed in', () => {
+    const onToggleFollow = vi.fn()
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        signedIn
+        onVenueClick={vi.fn()}
+        onToggleFollow={onToggleFollow}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Follow venue' }))
+    expect(onToggleFollow).toHaveBeenCalledWith('venue-1')
+  })
+
+  it('exposes Share on Tonight rows', () => {
+    const onShareVenue = vi.fn()
+    render(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        onVenueClick={vi.fn()}
+        onShareVenue={onShareVenue}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    expect(onShareVenue).toHaveBeenCalledWith(expect.objectContaining({ id: 'venue-1' }))
   })
 
   it('keeps guest Following as teach-the-loop and Near on Launch 33 without geo', () => {
@@ -75,7 +165,7 @@ describe('TonightHomeHeader', () => {
     expect(onFollowAuth).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('tab', { name: 'Near' }))
     expect(screen.getByText('Launch 33 · location off')).toBeInTheDocument()
-    expect(screen.getByText('Neumos')).toBeInTheDocument()
+    expect(screen.getAllByText('Neumos').length).toBeGreaterThan(0)
     expect(screen.getByText('@neumos')).toBeInTheDocument()
   })
 
