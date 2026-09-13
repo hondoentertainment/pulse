@@ -163,6 +163,20 @@ describe('canAccessVenueInbox', () => {
     expect(canAccessVenueInbox({ userId: null, venueId: 'venue-1' })).toBe(false)
   })
 
+  it('denies a pending claimant', () => {
+    const claims: VenueClaim[] = [{
+      id: 'c1',
+      venueId: 'venue-1',
+      claimantUserId: 'owner-1',
+      businessName: 'Test',
+      businessEmail: 'a@b.com',
+      verificationMethod: 'email',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }]
+    expect(canAccessVenueInbox({ userId: 'owner-1', venueId: 'venue-1', claims })).toBe(false)
+  })
+
   it('allows a verified claimant', () => {
     const claims: VenueClaim[] = [{
       id: 'c1',

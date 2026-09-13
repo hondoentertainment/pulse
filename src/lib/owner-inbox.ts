@@ -5,7 +5,8 @@
 
 import type { ContentReport, ReportReason } from './content-moderation'
 import type { Pulse } from './types'
-import { getTonightLiveReviews } from './live-reviews'
+import { canAccessVenueInbox, getTonightLiveReviews } from './live-reviews'
+import type { VenueClaim } from './venue-owner'
 
 export const OWNER_INBOX_REPLY_STORAGE_KEY = 'pulse_owner_inbox_replies_v1'
 export const OWNER_INBOX_DISMISS_STORAGE_KEY = 'pulse_owner_inbox_dismissals_v1'
@@ -74,6 +75,21 @@ export function createOwnerReply(input: {
     body,
     createdAt: input.nowIso ?? new Date().toISOString(),
   }
+}
+
+/**
+ * Fetch server pulse_reports only after claims/staff are loaded and the
+ * caller is a verified owner or staff. Pending claims stay locked.
+ */
+export function shouldLoadOwnerInboxReports(input: {
+  userId: string | null | undefined
+  venueId: string
+  claims: VenueClaim[]
+  staffRoles?: Array<{ venueId: string; userId: string }>
+  claimsReady: boolean
+}): boolean {
+  if (!input.claimsReady) return false
+  return canAccessVenueInbox(input)
 }
 
 export function summarizeOwnerInbox(input: {

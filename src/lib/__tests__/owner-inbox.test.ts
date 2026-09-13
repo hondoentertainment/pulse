@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentReport } from '../content-moderation'
 import type { Pulse } from '../types'
+import type { VenueClaim } from '../venue-owner'
 import {
   countTonightReports,
   createOwnerReply,
   dismissReportsForPulse,
   mapPulseReportsToContentReports,
   mergeInboxReports,
+  shouldLoadOwnerInboxReports,
   summarizeOwnerInbox,
 } from '../owner-inbox'
 
@@ -89,6 +91,45 @@ describe('owner inbox v2', () => {
       reason: 'spam',
       status: 'pending',
     })])
+  })
+
+  it('loads reports only after a verified claim or staff role is ready', () => {
+    const pending: VenueClaim = {
+      id: 'c1',
+      venueId: 'neumos',
+      claimantUserId: 'owner-1',
+      businessName: 'Neumos',
+      businessEmail: 'gm@neumos.com',
+      verificationMethod: 'email',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    }
+    const verified = { ...pending, status: 'verified' as const }
+    expect(shouldLoadOwnerInboxReports({
+      userId: 'owner-1',
+      venueId: 'neumos',
+      claims: [verified],
+      claimsReady: false,
+    })).toBe(false)
+    expect(shouldLoadOwnerInboxReports({
+      userId: 'owner-1',
+      venueId: 'neumos',
+      claims: [pending],
+      claimsReady: true,
+    })).toBe(false)
+    expect(shouldLoadOwnerInboxReports({
+      userId: 'owner-1',
+      venueId: 'neumos',
+      claims: [verified],
+      claimsReady: true,
+    })).toBe(true)
+    expect(shouldLoadOwnerInboxReports({
+      userId: 'staff-1',
+      venueId: 'neumos',
+      claims: [],
+      staffRoles: [{ venueId: 'neumos', userId: 'staff-1' }],
+      claimsReady: true,
+    })).toBe(true)
   })
 
   it('merges server reports with a local dismiss', () => {

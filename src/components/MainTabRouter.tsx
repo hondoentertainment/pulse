@@ -33,6 +33,7 @@ import {
   parseHereVenueId,
   resolveImHereAction,
   resolveImHereOpen,
+  retainFocusedVenue,
   wantsImHereCreate,
 } from '@/lib/im-here'
 import { funnelActor, trackFunnel } from '@/lib/funnel-events'
@@ -116,6 +117,10 @@ export function MainTabRouter() {
     }))
   }, [followedVenues, signedIn])
   const hereVenueId = parseHereVenueId(location.search)
+  const mapVenues = useMemo(
+    () => retainFocusedVenue(visibleVenues, venues, hereVenueId),
+    [hereVenueId, venues, visibleVenues],
+  )
   const handleVenueClick = useCallback(
     (venue: Venue) => {
       setSelectedVenue(venue)
@@ -346,7 +351,7 @@ export function MainTabRouter() {
                 />
                 <div className="-mx-4 h-[320px] overflow-hidden bg-[#14171c]" role="region" aria-labelledby="tonight-home-heading">
                   <InteractiveMap
-                    venues={visibleVenues}
+                    venues={mapVenues}
                     userLocation={userLocation}
                     onVenueClick={handleMapPinClick}
                     onShareVenue={handleShareVenue}

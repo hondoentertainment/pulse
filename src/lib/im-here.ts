@@ -12,6 +12,8 @@ import type { Venue } from './types'
 
 export const HERE_QUERY_PARAM = 'here'
 export const CREATE_QUERY_PARAM = 'create'
+/** Neighborhood/block zoom so I’m-here is not left on the city-wide heatmap. */
+export const IM_HERE_PIN_ZOOM = 2.4
 
 export function parseHereVenueId(
   search: string | { get(name: string): string | null },
@@ -96,4 +98,26 @@ export function resolveImHereOpen(input: {
     return { focus: false, create: true }
   }
   return { focus: false, create: false }
+}
+
+export function resolveImHereMapZoom(currentZoom: number | null | undefined): number {
+  const current = typeof currentZoom === 'number' && Number.isFinite(currentZoom)
+    ? currentZoom
+    : 0
+  return Math.max(IM_HERE_PIN_ZOOM, current)
+}
+
+/**
+ * All-Seattle heatmap keeps a top-5 slice and energy/near-me filters can
+ * drop the shared pin. I’m-here must still render that venue.
+ */
+export function retainFocusedVenue<T extends { id: string }>(
+  visible: readonly T[],
+  catalog: readonly T[] | undefined,
+  focusVenueId: string | null | undefined,
+): T[] {
+  if (!focusVenueId) return [...visible]
+  if (visible.some((venue) => venue.id === focusVenueId)) return [...visible]
+  const focused = catalog?.find((venue) => venue.id === focusVenueId)
+  return focused ? [focused, ...visible] : [...visible]
 }

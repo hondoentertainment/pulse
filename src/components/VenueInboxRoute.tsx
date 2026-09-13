@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useKV } from '@github/spark/hooks'
 import { useAppState } from '@/hooks/use-app-state'
@@ -12,7 +12,9 @@ import {
   dismissReportsForPulse,
   mapPulseReportsToContentReports,
   mergeInboxReports,
+  shouldLoadOwnerInboxReports,
 } from '@/lib/owner-inbox'
+import { canAccessVenueInbox } from '@/lib/live-reviews'
 import { dismissReportsForPulseOnServer, listVenueReportsOnServer } from '@/lib/ops-client'
 import type { ContentReport } from '@/lib/content-moderation'
 import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
@@ -32,10 +34,14 @@ export function VenueInboxRoute() {
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
   const [claimBusy, setClaimBusy] = useState(false)
   const [serverReports, setServerReports] = useState<ContentReport[]>([])
+  const [claimsReady, setClaimsReady] = useState(false)
 
   const cached = venues?.find((venue) => venue.id === venueId) ?? null
   const venue = freshVenue ?? cached
-  const claims = USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])
+  const claims = useMemo(
+    () => (USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])),
+    [localClaims, serverClaims],
+  )
 
   useEffect(() => {
     if (!USE_SUPABASE_BACKEND || !venueId) return
@@ -63,32 +69,34 @@ export function VenueInboxRoute() {
   useEffect(() => {
     if (!currentUser?.id || !isFeatureEnabled('venueInbox')) return
     let cancelled = false
-    const loadClaims = () => {
-      void listMyVenueStaffRoles(currentUser.id).then((roles) => {
-        if (!cancelled) setStaffRoles(roles)
-      })
-      if (USE_SUPABASE_BACKEND) {
-        void listMyVenueClaims(currentUser.id).then(async (rows) => {
-          const sessionEmail = user?.email?.trim().toLowerCase()
-          const next = await Promise.all(rows.map(async (claim) => {
-            if (
-              claim.status === 'pending'
-              && sessionEmail
-              && claim.businessEmail
-              && sessionEmail === claim.businessEmail.toLowerCase()
-            ) {
-              const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
-              return verified ?? claim
-            }
-            return claim
-          }))
-          if (!cancelled) setServerClaims(next)
-        })
+    const loadClaims = async () => {
+      const [roles, rows] = await Promise.all([
+        listMyVenueStaffRoles(currentUser.id),
+        USE_SUPABASE_BACKEND ? listMyVenueClaims(currentUser.id) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setStaffRoles(roles)
+      if (rows) {
+        const sessionEmail = user?.email?.trim().toLowerCase()
+        const next = await Promise.all(rows.map(async (claim) => {
+          if (
+            claim.status === 'pending'
+            && sessionEmail
+            && claim.businessEmail
+            && sessionEmail === claim.businessEmail.toLowerCase()
+          ) {
+            const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
+            return verified ?? claim
+          }
+          return claim
+        }))
+        if (!cancelled) setServerClaims(next)
       }
+      if (!cancelled) setClaimsReady(true)
     }
-    loadClaims()
+    void loadClaims()
     const onFocus = () => {
-      if (!cancelled) loadClaims()
+      if (!cancelled) void loadClaims()
     }
     window.addEventListener('focus', onFocus)
     return () => {
@@ -97,8 +105,25 @@ export function VenueInboxRoute() {
     }
   }, [currentUser?.id, user?.email])
 
+  const inboxAllowed = canAccessVenueInbox({
+    userId: currentUser?.id,
+    venueId: venueId ?? '',
+    claims,
+    staffRoles,
+  })
+
   useEffect(() => {
     if (!venueId || !currentUser?.id || !isFeatureEnabled('venueInbox')) return
+    if (!shouldLoadOwnerInboxReports({
+      userId: currentUser.id,
+      venueId,
+      claims,
+      staffRoles,
+      claimsReady,
+    })) {
+      setServerReports([])
+      return
+    }
     let cancelled = false
     void listVenueReportsOnServer(venueId).then((rows) => {
       if (!cancelled) setServerReports(mapPulseReportsToContentReports(rows))
@@ -106,7 +131,7 @@ export function VenueInboxRoute() {
     return () => {
       cancelled = true
     }
-  }, [currentUser?.id, venueId])
+  }, [claims, claimsReady, currentUser?.id, staffRoles, venueId])
 
   if (!venueId || !venue) {
     return (
@@ -192,8 +217,9 @@ export function VenueInboxRoute() {
       onBack={() => navigate(`/venue/${venue.id}`)}
       onSubmitClaim={handleSubmitClaim}
       claimBusy={claimBusy}
-      reports={mergeInboxReports(serverReports, contentReports ?? [])}
+      reports={inboxAllowed ? mergeInboxReports(serverReports, contentReports ?? []) : []}
       onDismissReports={(pulseId) => {
+        if (!inboxAllowed) return
         setServerReports((current) => dismissReportsForPulse(current, pulseId))
         setContentReports((current) => dismissReportsForPulse(current ?? [], pulseId))
         void dismissReportsForPulseOnServer(pulseId).then((ok) => {
