@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useKV } from '@github/spark/hooks'
 import { useAppState } from '@/hooks/use-app-state'
@@ -38,7 +38,10 @@ export function VenueInboxRoute() {
 
   const cached = venues?.find((venue) => venue.id === venueId) ?? null
   const venue = freshVenue ?? cached
-  const claims = USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])
+  const claims = useMemo(
+    () => (USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])),
+    [localClaims, serverClaims],
+  )
 
   useEffect(() => {
     if (!USE_SUPABASE_BACKEND || !venueId) return
