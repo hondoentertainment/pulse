@@ -49,6 +49,7 @@ type LiveVenueIntelligenceRow = {
   hours: Venue['hours'] | null
   phone: string | null
   website: string | null
+  image_url?: string | null
   integrations: Venue['integrations'] | null
   live_summary: VenueLiveAggregateRow | null
   latest_activity_at: string | null
@@ -82,6 +83,7 @@ function mapVenueRow(row: {
   hours?: Venue['hours'] | null
   phone?: string | null
   website?: string | null
+  image_url?: string | null
   integrations?: Venue['integrations'] | null
   latest_activity_at?: string | null
   neighborhood?: string | null
@@ -114,6 +116,7 @@ function mapVenueRow(row: {
     hours: row.hours ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
+    imageUrl: row.image_url ?? undefined,
     integrations: row.integrations ?? undefined,
     liveSummary: liveAggregate ? mapVenueLiveAggregate(liveAggregate) : undefined
   }

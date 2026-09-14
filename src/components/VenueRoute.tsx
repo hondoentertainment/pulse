@@ -15,6 +15,11 @@ import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-di
 import { parseComposeVenueId, venueComposePath } from '@/lib/auth-return-intent'
 import { isInviteArrival } from '@/lib/invite-friend'
 import { emptyHereNow, type HereNowSummary } from '@/lib/here-now'
+import { DoorPinData, FollowData, PulseAgreeData, PulseReplyData, VenueClaimData } from '@/lib/data'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { VenueDoorPin } from '@/lib/door-pin'
+import type { VenueClaim } from '@/lib/venue-owner'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 
@@ -62,11 +67,21 @@ export function VenueRoute() {
     handleToggleFollow,
     handleToggleFriendFollow,
     handleStartCrewCheckIn,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
   } = handlers
 
   // Live venue row + paginated pulses when Supabase backend is on.
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
   const [hereNow, setHereNow] = useState<HereNowSummary>(emptyHereNow)
+  const [replies, setReplies] = useState<PulseReply[]>([])
+  const [agrees, setAgrees] = useState<PulseAgree[]>([])
+  const [doorPin, setDoorPin] = useState<VenueDoorPin | null>(null)
+  const [claims, setClaims] = useState<VenueClaim[]>([])
+  const [myNightPinned, setMyNightPinned] = useState(false)
 
   const venuePulseQuery = useVenuePulsesInfinite(
     USE_SUPABASE_BACKEND ? venueId : undefined,
@@ -105,6 +120,27 @@ export function VenueRoute() {
   useEffect(() => {
     if (!venueId) return
     let cancelled = false
+    void PulseReplyData.listRepliesForVenue(venueId).then((rows) => {
+      if (!cancelled) setReplies(rows)
+    }).catch(() => undefined)
+    void import('@/lib/data/pulses').then(({ listRecentPulsesAtVenue }) => (
+      listRecentPulsesAtVenue(venueId, 40).then((rows) => (
+        PulseAgreeData.listAgreesForPulses(rows.map((pulse) => pulse.id))
+      )).then((rows) => {
+        if (!cancelled) setAgrees(rows)
+      })
+    )).catch(() => undefined)
+    void DoorPinData.fetchVenueDoorPin(venueId).then((pin) => {
+      if (!cancelled) setDoorPin(pin)
+    }).catch(() => undefined)
+    if (session?.user?.id) {
+      void VenueClaimData.listMyVenueClaims(session.user.id).then((rows) => {
+        if (!cancelled) setClaims(rows)
+      }).catch(() => undefined)
+      void FollowData.listPinnedVenues(session.user.id).then((ids) => {
+        if (!cancelled) setMyNightPinned(ids.includes(venueId))
+      }).catch(() => undefined)
+    }
     void PresenceData.fetchHereNowSummary(venueId, Boolean(session))
       .then((summary) => {
         if (!cancelled) setHereNow(summary)
@@ -230,6 +266,21 @@ export function VenueRoute() {
           onPinMyNight={() => handlePinMyNight(venue.id)}
           onHidePulse={handleHidePulse}
           onFollowUser={handleToggleFriendFollow}
+          onPulseReply={handlePulseReply}
+          onSameAgree={handleSameAgree}
+          onBlockUser={handleBlockUser}
+          onCrewTonight={handleCrewTonight}
+          onDoorPin={async (vid, pid) => {
+            await handleDoorPin(vid, pid)
+            const pin = await DoorPinData.fetchVenueDoorPin(vid).catch(() => null)
+            setDoorPin(pin)
+          }}
+          catalogVenues={venues}
+          claims={claims}
+          doorPin={doorPin}
+          replies={replies}
+          agrees={agrees}
+          myNightPinned={myNightPinned}
           invitePrimed={isInviteArrival(location.search)}
           hereNow={hereNow}
           presenceData={{

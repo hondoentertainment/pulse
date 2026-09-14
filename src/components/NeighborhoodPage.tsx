@@ -19,6 +19,7 @@ import {
 } from '@/lib/neighborhood-share'
 import { toast } from 'sonner'
 import { CaretLeft } from '@phosphor-icons/react'
+import { InstallAffordance } from '@/components/InstallAffordance'
 
 export function NeighborhoodPage() {
   const { slug = '' } = useParams<{ slug: string }>()
@@ -57,6 +58,11 @@ export function NeighborhoodPage() {
       </button>
       <p className="text-[13px] text-muted-foreground">Tonight · Seattle</p>
       <h1 className="text-[28px] font-bold tracking-tight text-foreground">{page.name}</h1>
+      {page.slug === 'capitol-hill' && (
+        <div className="mt-3">
+          <InstallAffordance surface="capitol-hill" />
+        </div>
+      )}
       <p className="mt-1 text-[13px] text-muted-foreground">
         Guest-safe list from tagged rooms. Search works without GPS.
       </p>

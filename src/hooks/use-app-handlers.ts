@@ -30,7 +30,7 @@ import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthR
 import { venueComposePath } from '@/lib/auth-return-intent'
 import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 
-import { CheckInData, FollowData, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { CheckInData, CrewTonightData, DoorPinData, FollowData, PulseAgreeData, PulseData, PulseReplyData, USE_SUPABASE_BACKEND, UserBlockData, VenueFollowData } from '@/lib/data'
 import { createReport } from '@/lib/content-moderation'
 import { HIDE_PULSE_REASON } from '@/lib/pulse-hide'
 import { FRIEND_FOLLOW_COPY } from '@/lib/friends-follow'
@@ -77,6 +77,7 @@ export function useAppHandlers() {
     setCrewCheckIns,
     setPromotions,
     setContentReports,
+    setUserBlocks,
     venueForPulse,
     setVenueForPulse,
     setCreateDialogOpen,
@@ -599,6 +600,116 @@ export function useAppHandlers() {
     }
   }, [isPlaceholder, navigate, session])
 
+  const handlePulseReply = useCallback(async (pulseId: string, venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?reply=${encodeURIComponent(pulseId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to reply', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await PulseReplyData.createPulseReply({ pulseId, venueId })
+      toast.success('Reply posted')
+    } catch (error) {
+      const limited = pulseRateLimitFromUnknown(error)
+      toast.error(limited ?? (error instanceof Error ? error.message : 'Could not reply'))
+    }
+  }, [isPlaceholder, navigate, session])
+
+  const handleSameAgree = useCallback(async (pulseId: string, venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?same=${encodeURIComponent(pulseId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to Same', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      const result = await PulseAgreeData.togglePulseAgree(pulseId)
+      toast.success(result === 'added' ? 'Same' : 'Same removed')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not Same')
+    }
+  }, [isPlaceholder, navigate, session])
+
+  const handleBlockUser = useCallback(async (userId: string, venueId?: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: venueId ? `/venue/${encodeURIComponent(venueId)}` : '/',
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to block this person', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await UserBlockData.blockUser(userId)
+      setUserBlocks((current) => {
+        const next = current ?? []
+        if (next.some((row) => row.blockedUserId === userId)) return next
+        return [...next, {
+          id: `block-${userId}`,
+          blockerId: currentUser?.id ?? '',
+          blockedUserId: userId,
+          createdAt: new Date().toISOString(),
+        }]
+      })
+      toast.success('Blocked — their pulses leave your Tonight')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not block')
+    }
+  }, [currentUser?.id, isPlaceholder, navigate, session, setUserBlocks])
+
+  const handleCrewTonight = useCallback(async (venueId: string, memberUserIds: string[]) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?crew=1`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pick a crew', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await CrewTonightData.saveCrewTonight({
+        venueId,
+        memberUserIds,
+        followedUserIds: currentUser?.friends ?? [],
+      })
+      toast.success('Crew tonight saved')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save crew')
+    }
+  }, [currentUser?.friends, isPlaceholder, navigate, session])
+
+  const handleDoorPin = useCallback(async (venueId: string, pulseId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pin from the door', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await DoorPinData.pinVenueDoorPulse({ venueId, pulseId })
+      toast.success('Pinned from the door')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not pin')
+    }
+  }, [isPlaceholder, navigate, session])
+
   return useMemo(() => ({
     handleCreatePulse,
     handleSubmitPulse,
@@ -617,6 +728,11 @@ export function useAppHandlers() {
     handleToggleFavorite,
     handleToggleFollow,
     handleToggleFriendFollow,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
   }), [
     handleAddFriend,
     handleCreatePulse,
@@ -635,5 +751,10 @@ export function useAppHandlers() {
     handleToggleFavorite,
     handleToggleFollow,
     handleToggleFriendFollow,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
   ])
 }

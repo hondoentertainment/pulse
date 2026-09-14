@@ -3,6 +3,7 @@ import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
 import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
 import { TrustPinChips } from '@/components/TrustPinChips'
+import { OpenNowChip } from '@/components/OpenNowChip'
 import { buildTrustGlance, compactTrustPinChips, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '@/lib/trust-glance'
 import { markMapInteractive } from '@/lib/cold-start'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
@@ -1418,6 +1419,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                 <TrustPinChips
                   chips={compactTrustPinChips(buildTrustGlance(venue, pulses, Date.now(), activity).chips)}
                 />
+                <div className="mt-1 flex justify-center"><OpenNowChip venue={venue} /></div>
               </div>
             )}
             <AnimatePresence>
@@ -1582,6 +1584,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                     {!compact && <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />}
                   </div>
                   <TrustPinChips chips={glance.chips} />
+                  <OpenNowChip venue={hoveredVenue} />
                   {onShareVenue && (
                     <button
                       type="button"

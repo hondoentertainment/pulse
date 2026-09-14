@@ -11,7 +11,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http.js'
-import { loadShareNeighborhoodOg, loadShareOgEnergy } from '../_lib/share-og-lookup.js'
+import { loadShareNeighborhoodOg, loadShareOgEnergy, loadShareVenueCoverUrl } from '../_lib/share-og-lookup.js'
 import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-share.js'
 
 function escapeHtml(value: string): string {
@@ -68,7 +68,7 @@ export default async function handler(
     : neighborhoodSlug
       ? `${origin}/n/${encodeURIComponent(neighborhoodSlug)}`
       : `${origin}/?here=${encodeURIComponent(venueId ?? '')}`
-  const ogImage = venueId
+  let ogImage = venueId
     ? `${origin}/api/share/og?venueId=${encodeURIComponent(venueId)}`
     : neighborhoodSlug
       ? `${origin}/api/share/og?n=${encodeURIComponent(neighborhoodSlug)}`
@@ -84,6 +84,8 @@ export default async function handler(
         title = card.title
         description = card.description
       }
+      const cover = await loadShareVenueCoverUrl(venueId)
+      if (cover) ogImage = cover
     } catch {
       /* keep generic card */
     }

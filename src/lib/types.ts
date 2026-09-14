@@ -93,6 +93,8 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  /** Catalog photo already on the venue row. Never scraped or invented. */
+  imageUrl?: string
   ownerEmailDomain?: string
   preTrending?: boolean
   preTrendingLabel?: string

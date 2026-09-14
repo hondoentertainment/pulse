@@ -1,22 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestLike, ResponseLike } from '../../_lib/http'
 
-const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock } = vi.hoisted(() => ({
+const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock, loadShareVenueCoverUrlMock } = vi.hoisted(() => ({
   loadShareOgEnergyMock: vi.fn(),
   loadShareNeighborhoodOgMock: vi.fn(),
+  loadShareVenueCoverUrlMock: vi.fn(),
 }))
 
 vi.mock('../../_lib/share-og-lookup.js', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
+  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 vi.mock('../../_lib/share-og-lookup.ts', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
+  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 vi.mock('../../_lib/share-og-lookup', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
+  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 
 import handler from '../venue'
@@ -52,6 +56,8 @@ describe('GET /api/share/venue', () => {
   beforeEach(() => {
     loadShareOgEnergyMock.mockReset()
     loadShareNeighborhoodOgMock.mockReset()
+    loadShareVenueCoverUrlMock.mockReset()
+    loadShareVenueCoverUrlMock.mockResolvedValue(null)
   })
 
   it('sets og:title to Neumos when the venue fetch returns', async () => {

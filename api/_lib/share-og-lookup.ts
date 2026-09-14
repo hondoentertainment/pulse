@@ -10,7 +10,7 @@ import { resolveNeighborhoodPage } from '../../src/lib/neighborhood-pages.js'
 
 export type ShareCatalogClient = Pick<SupabaseClient, 'from'>
 
-const VENUE_OG_COLUMNS = 'name, neighborhood, city, category, pulse_score'
+const VENUE_OG_COLUMNS = 'name, neighborhood, city, category, pulse_score, image_url'
 const PULSE_OG_COLUMNS = 'energy_rating, created_at'
 
 export function resolveShareCatalogClient(): ShareCatalogClient {
@@ -47,6 +47,27 @@ export async function loadShareOgEnergy(
     latestCreatedAt: typeof latest?.created_at === 'string' ? latest.created_at : null,
     nowMs: options.nowMs,
   })
+}
+
+export async function loadShareVenueCoverUrl(
+  venueId: string,
+  options: { client?: ShareCatalogClient } = {},
+): Promise<string | null> {
+  const client = options.client ?? resolveShareCatalogClient()
+  const { data } = await client
+    .from('venues')
+    .select('image_url')
+    .eq('id', venueId)
+    .maybeSingle()
+  const url = typeof data?.image_url === 'string' ? data.image_url.trim() : ''
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+    return url
+  } catch {
+    return null
+  }
 }
 
 export async function loadShareNeighborhoodOg(

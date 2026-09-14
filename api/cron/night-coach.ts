@@ -18,6 +18,10 @@ import {
   hasCronVapid,
   planNightCoachJob,
 } from '../../src/lib/cron-night-coach.js'
+import {
+  buildOwnerWeeklyNote,
+  isSundayInSeattle,
+} from '../../src/lib/owner-weekly.js'
 
 interface RequestLike {
   method?: string
@@ -158,6 +162,47 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         read: false,
       })
       if (!error) inApp += 1
+    }
+  }
+
+  if (isSundayInSeattle(now)) {
+    const { data: claimRows } = await admin
+      .from('venue_claims')
+      .select('venue_id, user_id, status')
+      .eq('status', 'verified')
+    const { data: presenceRows } = await admin
+      .from('presence')
+      .select('venue_id')
+      .is('left_at', null)
+      .gt('checked_in_at', new Date(now.getTime() - 90 * 60 * 1000).toISOString())
+    const hereByVenue = new Map<string, number>()
+    for (const row of presenceRows ?? []) {
+      const id = (row as { venue_id?: string }).venue_id
+      if (!id) continue
+      hereByVenue.set(id, (hereByVenue.get(id) ?? 0) + 1)
+    }
+    for (const claim of claimRows ?? []) {
+      const venueId = (claim as { venue_id?: string }).venue_id
+      const ownerId = (claim as { user_id?: string }).user_id
+      if (!venueId || !ownerId) continue
+      const venue = venues.find((row) => row.id === venueId)
+      if (!venue) continue
+      const note = buildOwnerWeeklyNote({
+        venueId,
+        venueName: venue.name,
+        pulses,
+        hereNowCount: hereByVenue.get(venueId) ?? 0,
+        now,
+      })
+      const { error } = await admin.from('notifications').insert({
+        user_id: ownerId,
+        type: 'impact',
+        venue_id: venueId,
+        recommended_venue_id: venueId,
+        read: false,
+      })
+      if (!error) inApp += 1
+      void note
     }
   }
 

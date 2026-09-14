@@ -58,3 +58,15 @@ export function dismissInstallAffordance(
     /* ignore quota */
   }
 }
+
+/** Tonight home + /n/capitol-hill only. One local dismiss — don’t nag. */
+export function shouldShowInstallOnSurface(input: {
+  surface: 'tonight' | 'capitol-hill' | 'map' | 'other'
+  canInstall: boolean
+  isInstalled: boolean
+  platform: 'ios' | 'android' | 'desktop' | 'unknown'
+  dismissed?: boolean
+}): boolean {
+  if (input.surface !== 'tonight' && input.surface !== 'capitol-hill') return false
+  return shouldShowInstallAffordance(input)
+}

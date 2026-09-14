@@ -31,6 +31,15 @@ import { listEventsTonight, EVENTS_TONIGHT_EMPTY, EVENTS_TONIGHT_EMPTY_BODY, typ
 import { listNeighborhoodPages, neighborhoodPath } from '@/lib/neighborhood-pages'
 import { Link } from 'react-router-dom'
 import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
+import { InstallAffordance } from '@/components/InstallAffordance'
+import { LastNightRecap } from '@/components/LastNightRecap'
+import { AddToCalendarButton } from '@/components/AddToCalendarButton'
+import { PulseThreadActions } from '@/components/PulseThreadActions'
+import { OpenNowChip } from '@/components/OpenNowChip'
+import { doorRollupLabel } from '@/lib/door-rollup'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { LastNightRoom } from '@/lib/last-night'
 
 const MAP_TABS = [
   { id: 'tonight' as const, label: 'Tonight' },
@@ -67,6 +76,14 @@ interface TonightHomeHeaderProps {
   onShareVenue?: (venue: Venue) => void
   surface?: MapHomeSurface
   onSurfaceChange?: (surface: MapHomeSurface) => void
+  viewerId?: string | null
+  replies?: readonly PulseReply[]
+  agrees?: readonly PulseAgree[]
+  lastNightRooms?: LastNightRoom[]
+  onLastNightAuth?: () => void
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
 }
 
 export function TonightHomeHeader({
@@ -90,6 +107,14 @@ export function TonightHomeHeader({
   onShareVenue,
   surface = 'map',
   onSurfaceChange,
+  viewerId,
+  replies = [],
+  agrees = [],
+  lastNightRooms = [],
+  onLastNightAuth,
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
 }: TonightHomeHeaderProps) {
   const [tonightFeed, setTonightFeed] = useState<TonightFeed>('foryou')
   const home = buildTonightHome({
@@ -159,6 +184,13 @@ export function TonightHomeHeader({
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
+          {surface === 'tonight' && <div className="pb-3"><InstallAffordance surface="tonight" /></div>}
+          <LastNightRecap
+            rooms={lastNightRooms}
+            signedIn={signedIn}
+            onAuth={onLastNightAuth}
+            onVenueClick={onVenueClick}
+          />
           <div className="pb-2">
             <VenueTypeahead venues={venues} onVenueSelect={onVenueClick} />
           </div>
@@ -191,11 +223,15 @@ export function TonightHomeHeader({
               </div>
             ) : (
               <ul className="pt-2">
-                {tonightEvents.map((event) => (
-                  <li key={event.id} className="py-1.5 text-[15px] text-foreground">
-                    {event.title}
-                  </li>
-                ))}
+                {tonightEvents.map((event) => {
+                  const venue = venues.find((row) => row.id === event.venueId)
+                  return (
+                    <li key={event.id} className="flex items-center justify-between gap-2 py-1.5 text-[15px] text-foreground">
+                      <span>{event.title}</span>
+                      <AddToCalendarButton event={event} venueName={venue?.name} />
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
@@ -223,6 +259,12 @@ export function TonightHomeHeader({
                     onFollowAuth={onFollowAuth}
                     onToggleFollow={onToggleFollow}
                     onShareVenue={onShareVenue}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
                   />
                 </>
               )}
@@ -242,6 +284,12 @@ export function TonightHomeHeader({
                       onFollowAuth={onFollowAuth}
                       onToggleFollow={onToggleFollow}
                       onShareVenue={onShareVenue}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
                     />
                   ))}
                 </div>
@@ -286,6 +334,12 @@ export function TonightHomeHeader({
                       onHidePulse={onHidePulse}
                       onPinMyNight={onPinMyNight}
                       pinned={pinnedVenueIds.includes(venue.id)}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
                     />
                   )
                 }
@@ -306,6 +360,12 @@ export function TonightHomeHeader({
                     onHidePulse={onHidePulse}
                     onPinMyNight={onPinMyNight}
                     pinned={pinnedVenueIds.includes(row.venue.id)}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
                   />
                 )
               })
@@ -342,6 +402,12 @@ export function TonightHomeHeader({
                     onFollowAuth={onFollowAuth}
                     onToggleFollow={onToggleFollow}
                     onShareVenue={onShareVenue}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
                   />
                 ))}
               </>
@@ -366,6 +432,12 @@ function TonightFeedRow({
   onHidePulse,
   onPinMyNight,
   pinned = false,
+  viewerId,
+  replies = [],
+  agrees = [],
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
 }: {
   venue: Venue
   headline: string
@@ -379,6 +451,12 @@ function TonightFeedRow({
   onHidePulse?: (pulseId: string) => void
   onPinMyNight?: (venueId: string) => void
   pinned?: boolean
+  viewerId?: string | null
+  replies?: readonly PulseReply[]
+  agrees?: readonly PulseAgree[]
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
 }) {
   const activity = getVenueMapActivity(venue, pulses)
   const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
@@ -427,6 +505,24 @@ function TonightFeedRow({
         </div>
         {activity.latest?.doorChips && activity.latest.doorChips.length > 0 && (
           <div className="pb-2"><DoorChipRow value={activity.latest.doorChips} readOnly /></div>
+        )}
+        {doorRollupLabel(pulses, venue.id) && (
+          <p className="pb-1 text-[12px] font-semibold text-foreground">{doorRollupLabel(pulses, venue.id)}</p>
+        )}
+        <div className="pb-1"><OpenNowChip venue={venue} /></div>
+        {activity.latest && (
+          <PulseThreadActions
+            pulseId={activity.latest.id}
+            venueId={venue.id}
+            authorUserId={activity.latest.userId}
+            viewerId={viewerId}
+            doorChips={activity.latest.doorChips}
+            replies={replies}
+            agrees={agrees}
+            onReply={(id) => onPulseReply?.(id, venue.id)}
+            onSame={(id) => onSameAgree?.(id, venue.id)}
+            onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
+          />
         )}
         {onHidePulse && activity.latest && (
           <button type="button" className="pb-2 text-[12px] text-muted-foreground" onClick={() => onHidePulse(activity.latest!.id)}>

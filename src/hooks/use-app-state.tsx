@@ -119,6 +119,7 @@ export interface AppState {
   contentReports: ContentReport[] | undefined
   setContentReports: (fn: ((r: ContentReport[] | undefined) => ContentReport[]) | ContentReport[]) => void
   userBlocks: UserBlock[] | undefined
+  setUserBlocks: (fn: ((b: UserBlock[] | undefined) => UserBlock[]) | UserBlock[]) => void
   userMutes: UserMute[] | undefined
 
   // User
@@ -280,6 +281,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         current,
       ))
     }).catch(() => undefined)
+    void import('@/lib/data').then(({ UserBlockData }) => (
+      UserBlockData.listMyBlocks().then((rows) => {
+        if (!cancelled) setUserBlocks(rows)
+      }).catch(() => undefined)
+    ))
     return () => {
       cancelled = true
     }
@@ -302,7 +308,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [playlists, setPlaylists] = useState<PulsePlaylist[]>([])
   const [promotions, setPromotions] = useState<PromotedVenue[]>([])
   const [contentReports, setContentReports] = useState<ContentReport[]>([])
-  const [userBlocks] = useState<UserBlock[]>([])
+  const [userBlocks, setUserBlocks] = useState<UserBlock[]>([])
   const [userMutes] = useState<UserMute[]>([])
 
   // ── Side-effects ─────────────────────────────────────────
@@ -752,7 +758,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     playlists, setPlaylists,
     promotions, setPromotions,
     contentReports, setContentReports,
-    userBlocks, userMutes,
+    userBlocks, setUserBlocks, userMutes,
     currentUser, setCurrentUser,
     userLocation, locationName, locationError: locationError ?? undefined, isTracking,
     realtimeLocation: realtimeLocationValue, locationPermissionDenied, setLocationPermissionDenied,
@@ -791,6 +797,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     promotions,
     contentReports,
     userBlocks,
+    setUserBlocks,
     userMutes,
     currentUser,
     userLocation,

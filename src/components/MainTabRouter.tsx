@@ -30,7 +30,11 @@ import { shareVenueFromSurface } from '@/lib/sharing'
 import { evaluateLocalNightCoach } from '@/lib/local-night-coach'
 import { listCatalogEvents } from '@/lib/data/events'
 import type { CatalogEvent } from '@/lib/events-tonight'
-import { FollowData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { DoorPinData, FollowData, PulseAgreeData, PulseReplyData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { listLastNightRooms } from '@/lib/last-night'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import { lastNightAuthPath } from '@/lib/last-night'
 import { buildAuthPath } from '@/lib/auth-return-intent'
 import { venueComposePath } from '@/lib/auth-return-intent'
 import { listRecentVenues, readRecentVenueIds } from '@/lib/recent-venues'
@@ -106,6 +110,9 @@ export function MainTabRouter() {
     handleCreatePulse,
     handleHidePulse,
     handlePinMyNight,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
   } = handlers
 
   // Card taps set selectedVenue (for state consumers) and route to the venue
@@ -119,6 +126,9 @@ export function MainTabRouter() {
   const [catalogEvents, setCatalogEvents] = useState<CatalogEvent[]>([])
   const [pinnedVenueIds, setPinnedVenueIds] = useState<string[]>([])
   const [recentVenueIds, setRecentVenueIds] = useState<string[]>(() => readRecentVenueIds())
+  const [tonightReplies, setTonightReplies] = useState<PulseReply[]>([])
+  const [tonightAgrees, setTonightAgrees] = useState<PulseAgree[]>([])
+  const [lastNightPresence, setLastNightPresence] = useState<{ venueId: string; userId: string; checkedInAt: string }[]>([])
 
   useEffect(() => {
     setShowPushNotify(shouldShowPushNotifyAffordance({
@@ -134,8 +144,18 @@ export function MainTabRouter() {
     void listCatalogEvents().then(setCatalogEvents).catch(() => setCatalogEvents([]))
     if (signedIn && currentUser?.id) {
       void FollowData.listPinnedVenues(currentUser.id).then(setPinnedVenueIds).catch(() => setPinnedVenueIds([]))
+      const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      void DoorPinData.listMyPresenceLastNight(currentUser.id, since)
+        .then(setLastNightPresence)
+        .catch(() => setLastNightPresence([]))
     }
-  }, [currentUser?.id, signedIn])
+    const pulseIds = moderatedPulses.slice(0, 40).map((pulse) => pulse.id)
+    void PulseAgreeData.listAgreesForPulses(pulseIds).then(setTonightAgrees).catch(() => setTonightAgrees([]))
+    const venueIds = [...new Set(visibleVenues.slice(0, 12).map((venue) => venue.id))]
+    void Promise.all(venueIds.map((id) => PulseReplyData.listRepliesForVenue(id)))
+      .then((rows) => setTonightReplies(rows.flat()))
+      .catch(() => setTonightReplies([]))
+  }, [currentUser?.id, moderatedPulses, signedIn, visibleVenues])
 
   useEffect(() => {
     if (!signedIn) return
@@ -150,6 +170,19 @@ export function MainTabRouter() {
   useEffect(() => {
     setRecentVenueIds(readRecentVenueIds())
   }, [location.pathname])
+
+  const lastNight = useMemo(
+    () => signedIn && currentUser
+      ? listLastNightRooms({
+        venues: venues ?? [],
+        pulses: moderatedPulses,
+        userId: currentUser.id,
+        pinnedVenueIds,
+        presence: lastNightPresence,
+      })
+      : [],
+    [currentUser, lastNightPresence, moderatedPulses, pinnedVenueIds, signedIn, venues],
+  )
 
   const recentVenues = useMemo(
     () => listRecentVenues(venues ?? [], recentVenueIds),
@@ -344,6 +377,14 @@ export function MainTabRouter() {
               }}
               surface={mapSurface}
               onSurfaceChange={setMapSurface}
+              viewerId={currentUser.id}
+              replies={tonightReplies}
+              agrees={tonightAgrees}
+              lastNightRooms={lastNight}
+              onLastNightAuth={() => navigate(lastNightAuthPath())}
+              onPulseReply={handlePulseReply}
+              onSameAgree={handleSameAgree}
+              onBlockUser={handleBlockUser}
             />
             {mapSurface === 'live' && (
               <LivePulseTimeline

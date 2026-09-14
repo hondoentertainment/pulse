@@ -3,16 +3,18 @@ import { getLiveNowReviews } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { authorHandle } from '@/lib/venue-handle'
 import { track } from '@/lib/observability/analytics'
+import { orderPulsesDoorPinnedFirst, type VenueDoorPin } from '@/lib/door-pin'
 
 interface LiveNowStripProps {
   venueId: string
   pulses: PulseWithUser[]
   onSelect: (pulse: PulseWithUser) => void
   venueName?: string
+  doorPin?: VenueDoorPin | null
 }
 
-export function LiveNowStrip({ venueId, pulses, onSelect, venueName }: LiveNowStripProps) {
-  const liveNow = getLiveNowReviews(pulses, venueId)
+export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin }: LiveNowStripProps) {
+  const liveNow = orderPulsesDoorPinnedFirst(getLiveNowReviews(pulses, venueId), doorPin)
 
   return (
     <section aria-labelledby="live-now-heading">
