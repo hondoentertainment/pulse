@@ -221,4 +221,71 @@ describe('TonightHomeHeader', () => {
     expect(screen.getByRole('tab', { name: 'Map' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByText('@neumos')).not.toBeInTheDocument()
   })
+
+  it('links every tagged Seattle hood, not only Capitol Hill / Ballard / Georgetown / SoDo', () => {
+    renderTonight(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        onVenueClick={vi.fn()}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('link', { name: 'Fremont' })).toHaveAttribute('href', '/n/fremont')
+    expect(screen.getByRole('link', { name: 'Belltown' })).toHaveAttribute('href', '/n/belltown')
+    expect(screen.getByRole('link', { name: 'West Seattle' })).toHaveAttribute('href', '/n/west-seattle')
+    expect(screen.getByRole('link', { name: 'Queen Anne' })).toHaveAttribute('href', '/n/queen-anne')
+    expect(screen.getByRole('link', { name: 'Capitol Hill' })).toHaveAttribute('href', '/n/capitol-hill')
+  })
+
+  it('shows a compact recents row on Tonight and Map, not Live', () => {
+    const onVenueClick = vi.fn()
+    const recents = [makeVenue({ id: 'venue-sunset', name: 'Sunset' })]
+    const { rerender } = renderTonight(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        recentVenues={recents}
+        onVenueClick={onVenueClick}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Recent')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Sunset' }))
+    expect(onVenueClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'venue-sunset' }))
+
+    rerender(
+      <MemoryRouter>
+        <TonightHomeHeader
+          venues={[makeVenue()]}
+          pulses={[]}
+          userLocation={null}
+          recentVenues={recents}
+          onVenueClick={onVenueClick}
+          surface="map"
+          onSurfaceChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Recent')).toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter>
+        <TonightHomeHeader
+          venues={[makeVenue()]}
+          pulses={[]}
+          userLocation={null}
+          recentVenues={recents}
+          onVenueClick={onVenueClick}
+          surface="live"
+          onSurfaceChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByText('Recent')).not.toBeInTheDocument()
+  })
 })

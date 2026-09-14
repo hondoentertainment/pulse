@@ -36,6 +36,17 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/n/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(Slackbot|Twitterbot|facebookexternalhit|Facebot|WhatsApp|TelegramBot|Discordbot|LinkedInBot|SkypeUriPreview|Iframely|embedly|Pinterest|Redditbot|Applebot).*"
+        }
+      ],
+      "destination": "/api/share/venue?n=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -19,7 +19,7 @@ vi.mock('../supabase-server', () => ({
   createAnonClient: () => mocks.createAnonClient(),
 }))
 
-import { loadShareOgEnergy, resolveShareCatalogClient } from '../share-og-lookup'
+import { loadShareNeighborhoodOg, loadShareOgEnergy, resolveShareCatalogClient } from '../share-og-lookup'
 
 const NEUMOS_ID = 'a0000000-0000-4000-8000-000000000018'
 
@@ -95,5 +95,13 @@ describe('share OG catalog lookup', () => {
       client: stubCatalogClient({ venue: null, pulse: null }),
     })
     expect(card).toBeNull()
+  })
+
+  it('builds neighborhood OG from tagged Seattle slugs without a venue row', async () => {
+    const card = await loadShareNeighborhoodOg('capitol-hill')
+    expect(card?.title).toBe('Capitol Hill')
+    expect(card?.energyLine).toBe('Tonight · Seattle')
+    expect(await loadShareNeighborhoodOg('fremont')).toMatchObject({ title: 'Fremont' })
+    expect(await loadShareNeighborhoodOg('portland')).toBeNull()
   })
 })

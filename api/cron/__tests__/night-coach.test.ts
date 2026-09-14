@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   authorizeCronNightCoach,
@@ -53,6 +55,18 @@ describe('authorizeCronNightCoach', () => {
   it('does not treat missing VAPID as a reason to invent keys', () => {
     expect(hasCronVapid({})).toBe(false)
     expect(hasCronVapid({ VAPID_PUBLIC_KEY: 'pub', VAPID_PRIVATE_KEY: 'priv' })).toBe(true)
+  })
+
+  it('wires /api/cron/night-coach in vercel.json without inventing CRON_SECRET', () => {
+    const vercel = JSON.parse(readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
+      crons?: Array<{ path?: string; schedule?: string }>
+    }
+    expect(vercel.crons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: '/api/cron/night-coach', schedule: '0 * * * *' }),
+      ]),
+    )
+    expect(readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8')).not.toMatch(/CRON_SECRET\s*=/)
   })
 })
 

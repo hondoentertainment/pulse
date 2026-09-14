@@ -15,6 +15,7 @@ import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-di
 import { parseComposeVenueId, venueComposePath } from '@/lib/auth-return-intent'
 import { isInviteArrival } from '@/lib/invite-friend'
 import { emptyHereNow, type HereNowSummary } from '@/lib/here-now'
+import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
@@ -125,6 +126,10 @@ export function VenueRoute() {
     openedComposeFor.current = venueId
     handleCreatePulse(venueId)
   }, [handleCreatePulse, isPlaceholder, location.pathname, location.search, session, venueId])
+
+  useEffect(() => {
+    if (venueId) rememberOpenedVenue(venueId)
+  }, [venueId])
 
   if (!venues || !currentUser || !venueId) return <MapHomeSkeleton />
 

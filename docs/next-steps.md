@@ -39,7 +39,7 @@ Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?nod
 
 ## Next-15 usage (this PR)
 
-Return-to-intent, tonight digest / quiet-night (VAPID optional), here-now count, one photo, door chips, invite link, `/n/:slug` density pages, My night pins, owner one-tap reply, hide pulse, friends follow, events overlay from existing `events` only. No new keys, no custom domain, no fake events.
+Return-to-intent, tonight digest / quiet-night (VAPID optional), here-now count, one photo, door chips, invite link, `/n/:slug` for **every** hood already tagged on Seattle venues (not only Capitol Hill / Ballard / Georgetown / SoDo), neighborhood share + OG via existing `/api/share/venue?n=` + crawler rewrite on `/n/:slug`, last-5 recents on Tonight/map, My night pins, owner one-tap reply, hide pulse, friends follow, events overlay from existing `events` only. Hourly Vercel cron for `/api/cron/night-coach` uses existing `CRON_SECRET` (missing = honest no-op). No new keys, no custom domain, no fake events. Prod SQL for `door_chips` / `pinned_at` / `venue_here_now_*` is already applied — do not recreate that migration.
 
 ## Ownership
 

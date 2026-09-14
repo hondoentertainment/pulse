@@ -12,6 +12,12 @@ import {
 } from '@/lib/neighborhood-pages'
 import { emptySurgingPulseHref } from '@/lib/empty-surging'
 import { buildAuthPath } from '@/lib/auth-return-intent'
+import {
+  getNeighborhoodPrettyShareUrl,
+  getNeighborhoodSharePreviewUrl,
+  NEIGHBORHOOD_SHARE_COPY,
+} from '@/lib/neighborhood-share'
+import { toast } from 'sonner'
 import { CaretLeft } from '@phosphor-icons/react'
 
 export function NeighborhoodPage() {
@@ -54,6 +60,19 @@ export function NeighborhoodPage() {
       <p className="mt-1 text-[13px] text-muted-foreground">
         Guest-safe list from tagged rooms. Search works without GPS.
       </p>
+      <button
+        type="button"
+        className="mt-3 h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+        onClick={() => {
+          const pretty = getNeighborhoodPrettyShareUrl(page.slug)
+          void getNeighborhoodSharePreviewUrl(page.slug)
+          void navigator.clipboard?.writeText(pretty).then(() => {
+            toast.success('Neighborhood link copied')
+          }).catch(() => undefined)
+        }}
+      >
+        {NEIGHBORHOOD_SHARE_COPY.cta}
+      </button>
       <div className="mt-4">
         <VenueTypeahead
           venues={hoodVenues}

@@ -33,6 +33,7 @@ import type { CatalogEvent } from '@/lib/events-tonight'
 import { FollowData, USE_SUPABASE_BACKEND } from '@/lib/data'
 import { buildAuthPath } from '@/lib/auth-return-intent'
 import { venueComposePath } from '@/lib/auth-return-intent'
+import { listRecentVenues, readRecentVenueIds } from '@/lib/recent-venues'
 import {
   findImHereVenue,
   inventoryLayerForImHere,
@@ -117,6 +118,7 @@ export function MainTabRouter() {
   const [showPushNotify, setShowPushNotify] = useState(false)
   const [catalogEvents, setCatalogEvents] = useState<CatalogEvent[]>([])
   const [pinnedVenueIds, setPinnedVenueIds] = useState<string[]>([])
+  const [recentVenueIds, setRecentVenueIds] = useState<string[]>(() => readRecentVenueIds())
 
   useEffect(() => {
     setShowPushNotify(shouldShowPushNotifyAffordance({
@@ -145,6 +147,15 @@ export function MainTabRouter() {
     if (!note) return
     toast.message(note.title, { description: note.body })
   }, [followedVenues, moderatedPulses, signedIn, venues])
+  useEffect(() => {
+    setRecentVenueIds(readRecentVenueIds())
+  }, [location.pathname])
+
+  const recentVenues = useMemo(
+    () => listRecentVenues(venues ?? [], recentVenueIds),
+    [recentVenueIds, venues],
+  )
+
   const hereVenueId = parseHereVenueId(location.search)
   const mapVenues = useMemo(
     () => retainFocusedVenue(visibleVenues, venues, hereVenueId),
@@ -312,6 +323,7 @@ export function MainTabRouter() {
               pinnedVenueIds={pinnedVenueIds}
               followedUserIds={currentUser.friends ?? []}
               catalogEvents={catalogEvents}
+              recentVenues={recentVenues}
               signedIn={signedIn}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}

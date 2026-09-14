@@ -55,6 +55,7 @@ interface TonightHomeHeaderProps {
   pinnedVenueIds?: readonly string[]
   followedUserIds?: readonly string[]
   catalogEvents?: readonly CatalogEvent[]
+  recentVenues?: Venue[]
   signedIn?: boolean
   onHidePulse?: (pulseId: string) => void
   onPinMyNight?: (venueId: string) => void
@@ -77,6 +78,7 @@ export function TonightHomeHeader({
   pinnedVenueIds = [],
   followedUserIds = [],
   catalogEvents = [],
+  recentVenues = [],
   signedIn = false,
   onHidePulse,
   onPinMyNight,
@@ -110,7 +112,7 @@ export function TonightHomeHeader({
   }, [followedUserIds, followedVenueIds, pinnedVenueIds, pulses, venues])
 
   const tonightEvents = useMemo(() => listEventsTonight(catalogEvents), [catalogEvents])
-  const hoodLinks = useMemo(() => listNeighborhoodPages(venues).slice(0, 8), [venues])
+  const hoodLinks = useMemo(() => listNeighborhoodPages(venues), [venues])
 
   const near = useMemo(
     () => listTonightNearVenues(venues, userLocation),
@@ -136,6 +138,24 @@ export function TonightHomeHeader({
           <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
         )}
       </header>
+
+      {surface !== 'live' && recentVenues.length > 0 && (
+        <div className="pt-2 pb-1">
+          <p className="text-[13px] font-semibold text-muted-foreground">Recent</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recentVenues.map((venue) => (
+              <button
+                key={venue.id}
+                type="button"
+                onClick={() => onVenueClick(venue)}
+                className="h-8 rounded-full border border-border px-3 text-[12px] font-semibold text-foreground"
+              >
+                {venue.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
