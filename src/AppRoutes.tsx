@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
@@ -122,10 +122,13 @@ export function AppRoutes() {
   }, [pathname, setActiveTab, setSubPage])
 
   // Magic-link / Google land on Site URL (origin `/`), not /auth.
-  // Consume persisted next= there so compose/venue intent survives.
+  // Consume persisted next= only when a session newly hydrates.
+  const hadSessionRef = useRef(false)
   useEffect(() => {
-    if (authLoading || !session) return
-    if (pathname === AUTH_PATH) return
+    if (authLoading) return
+    const justSignedIn = Boolean(session) && !hadSessionRef.current
+    hadSessionRef.current = Boolean(session)
+    if (!justSignedIn || pathname === AUTH_PATH) return
     if (!readPersistedAuthNext()) return
     const next = consumeAuthReturnPath({ search: location.search })
     const current = `${pathname}${location.search}`

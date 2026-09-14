@@ -81,7 +81,7 @@ describe('planNightCoachJob', () => {
     const busy = planNightCoachJob({
       now,
       venues: [venue()],
-      pulses: [pulse()],
+      pulses: [pulse({ createdAt: '2026-09-14T03:50:00.000Z' })],
       followedVenueIds: ['neumos'],
     })
     expect(busy.quiet).toBeNull()

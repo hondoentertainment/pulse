@@ -162,6 +162,7 @@ describe('guest map discovery vs auth-gated create', () => {
     appState.createDialogOpen = false
     appState.setCreateDialogOpen.mockClear()
     appState.setVenueForPulse.mockClear()
+    window.localStorage.clear()
   })
 
   it('lets an onboarded guest reach map + venues instead of the discovery AuthGate', async () => {

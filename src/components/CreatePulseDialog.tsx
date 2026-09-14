@@ -227,8 +227,8 @@ export function CreatePulseDialog({
   }
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
+    const file = event.target?.files?.[0]
+    if (event.target) event.target.value = ''
     if (!file) return
     try {
       const dataUrl = await compressPulsePhotoFile(file)
@@ -421,7 +421,7 @@ export function CreatePulseDialog({
                 value={energyRating}
                 onChange={setEnergyRating}
                 energyPhotos={energyPhotos}
-                onAddPhoto={handlePhotoUpload}
+                onAddPhoto={() => photoInputRef.current?.click()}
                 onRemovePhoto={removePhoto}
               />
             </div>

@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import type { Venue } from '@/lib/types'
+
+function renderTonight(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -41,7 +47,7 @@ function makeVenue(overrides: Partial<Venue> = {}): Venue {
 describe('TonightHomeHeader', () => {
   it('shows X-style Tonight / Live / Map tabs and For you cards on Tonight', () => {
     const onSurfaceChange = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -71,7 +77,7 @@ describe('TonightHomeHeader', () => {
 
   it('lets a guest search Neumos from Tonight and open the venue', () => {
     const onVenueClick = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -92,7 +98,7 @@ describe('TonightHomeHeader', () => {
   it('follows from a Tonight row and sends guests to /auth', () => {
     const onFollowAuth = vi.fn()
     const onToggleFollow = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -112,7 +118,7 @@ describe('TonightHomeHeader', () => {
 
   it('toggles Follow on a Tonight row when signed in', () => {
     const onToggleFollow = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -130,7 +136,7 @@ describe('TonightHomeHeader', () => {
 
   it('exposes Share on Tonight rows', () => {
     const onShareVenue = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -147,7 +153,7 @@ describe('TonightHomeHeader', () => {
 
   it('keeps guest Following as teach-the-loop and Near on Launch 33 without geo', () => {
     const onFollowAuth = vi.fn()
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}
@@ -170,7 +176,7 @@ describe('TonightHomeHeader', () => {
   })
 
   it('lists followed venues and their latest live pulse when signed in', () => {
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[{
@@ -202,7 +208,7 @@ describe('TonightHomeHeader', () => {
   })
 
   it('hides For you cards on the Map surface', () => {
-    render(
+    renderTonight(
       <TonightHomeHeader
         venues={[makeVenue()]}
         pulses={[]}

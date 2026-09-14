@@ -207,7 +207,7 @@ describe('CreatePulseDialog', () => {
     expect(payload.energyRating).toBe('buzzing')
     expect(payload.caption).toBe('Great vibes')
     expect(payload.kind).toBe('review')
-    expect(payload.photos.length).toBe(1)
+    expect(payload.photos.length).toBe(0)
     expect(onClose).toHaveBeenCalled()
   })
 

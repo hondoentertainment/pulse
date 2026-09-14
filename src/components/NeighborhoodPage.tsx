@@ -21,7 +21,7 @@ export function NeighborhoodPage() {
   const { handleCreatePulse } = useAppHandlers()
   const { session, isPlaceholder } = useSupabaseAuth()
 
-  const catalog = venues ?? []
+  const catalog = useMemo(() => venues ?? [], [venues])
   const page = useMemo(() => findNeighborhoodPage(catalog, slug), [catalog, slug])
   const hoodVenues = useMemo(() => listNeighborhoodVenues(catalog, slug), [catalog, slug])
 
