@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { track } from '@/lib/observability/analytics'
 import { trackFunnel } from '@/lib/funnel-events'
 import { AUTH_GATE_COPY } from '@/lib/guest-discovery'
+import { parseAuthNext, persistAuthNext } from '@/lib/auth-return-intent'
 import { Envelope, CircleNotch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { UX_CTA, UX_HAIRLINE } from '@/lib/ux-chrome'
 
 export function AuthGate() {
   const { signInWithOAuth, signInWithOtp, authError, isLoading } = useSupabaseAuth()
+  const location = useLocation()
+
+  useEffect(() => {
+    const next = parseAuthNext(location.search)
+    if (next) persistAuthNext(next)
+  }, [location.search])
 
   const [email, setEmail] = useState('')
   const [otpSent, setOtpSent] = useState(false)

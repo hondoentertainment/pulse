@@ -60,6 +60,21 @@ export function dismissReportsForPulse(
   })
 }
 
+export const OWNER_ONE_TAP_REPLY = 'Thanks — see you tonight'
+
+export function createOwnerOneTapReply(input: {
+  pulseId: string
+  venueId: string
+  nowIso?: string
+}): OwnerInboxReply | null {
+  return createOwnerReply({
+    pulseId: input.pulseId,
+    venueId: input.venueId,
+    body: OWNER_ONE_TAP_REPLY,
+    nowIso: input.nowIso,
+  })
+}
+
 export function createOwnerReply(input: {
   pulseId: string
   venueId: string
@@ -158,6 +173,7 @@ const REPORT_REASONS: readonly ReportReason[] = [
   'harassment',
   'misinformation',
   'fake_location',
+  'hide',
   'other',
 ]
 

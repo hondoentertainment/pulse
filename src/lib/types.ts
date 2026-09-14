@@ -156,6 +156,8 @@ export interface VenueLiveSummary {
 
 export type PulseKind = 'pulse' | 'review'
 
+export type DoorChip = 'line' | 'cover' | 'energy'
+
 export interface Pulse {
   id: string
   userId: string
@@ -163,6 +165,8 @@ export interface Pulse {
   photos: string[]
   video?: string
   energyRating: EnergyRating
+  /** Optional compose one-taps. Only line / cover / energy. */
+  doorChips?: DoorChip[]
   caption?: string
   hashtags?: string[]
   createdAt: string

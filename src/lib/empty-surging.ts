@@ -5,6 +5,7 @@
 import type { Venue } from './types'
 import { filterTonightCatalog } from './catalog-quality'
 import { isCuratedVenue } from './map-filters'
+import { densityRankBoost } from './seattle-density'
 
 export const EMPTY_SURGING_HEADLINE = 'Quiet nearby — no live reviews in the last hour.'
 export const EMPTY_SURGING_BODY =
@@ -15,7 +16,7 @@ export const EMPTY_SURGING_MIN = 3
 export const EMPTY_SURGING_MAX = 5
 
 function startHereScore(venue: Venue): number {
-  let score = 0
+  let score = densityRankBoost(venue)
   if (isCuratedVenue(venue)) score += 12
   if (venue.claimVerified) score += 8
   if (venue.seeded) score += 4
@@ -43,9 +44,9 @@ export function emptySurgingPulseHref(input: {
   isPlaceholder: boolean
   hasSession: boolean
   venueId: string
-}): { kind: 'compose'; venueId: string } | { kind: 'auth' } {
+}): { kind: 'compose'; venueId: string } | { kind: 'auth'; next: string } {
   if (input.isPlaceholder || input.hasSession) {
     return { kind: 'compose', venueId: input.venueId }
   }
-  return { kind: 'auth' }
+  return { kind: 'auth', next: `/venue/${encodeURIComponent(input.venueId)}?compose=1` }
 }

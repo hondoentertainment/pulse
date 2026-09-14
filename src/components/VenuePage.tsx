@@ -43,6 +43,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { ShareArrivalCard } from '@/components/ShareArrivalCard'
+import { HereNowCount } from '@/components/HereNowCount'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { FollowUserButton } from '@/components/FollowUserButton'
+import { getVenueInviteShareUrl, INVITE_FRIEND_COPY } from '@/lib/invite-friend'
+import { shareVenueFromSurface } from '@/lib/sharing'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
@@ -90,6 +95,11 @@ interface VenuePageProps {
   onReportPulse?: (report: ContentReport) => void
   onToggleFavorite: () => void
   onToggleFollow?: () => void
+  onPinMyNight?: () => void
+  onHidePulse?: (pulseId: string) => void
+  onFollowUser?: (userId: string) => void
+  invitePrimed?: boolean
+  hereNow?: { count: number; friends: { userId: string; username: string | null }[] }
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
@@ -118,6 +128,11 @@ export function VenuePage({
   onReportPulse,
   onToggleFavorite,
   onToggleFollow,
+  onPinMyNight,
+  onHidePulse,
+  onFollowUser,
+  invitePrimed = false,
+  hereNow,
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
@@ -127,7 +142,7 @@ export function VenuePage({
 }: VenuePageProps) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const fromShare = searchParams.get('from') === 'share'
+  const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
@@ -408,6 +423,10 @@ export function VenuePage({
           )
         })()}
 
+        {hereNow && (
+          <HereNowCount count={hereNow.count} friends={hereNow.friends} />
+        )}
+
         <div className="flex gap-2">
           <Button
             onClick={onCreatePulse}
@@ -420,6 +439,33 @@ export function VenuePage({
               following={Boolean(isFollowed)}
               onClick={onToggleFollow}
             />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+            onClick={() => {
+              const inviteUrl = getVenueInviteShareUrl(venue.id)
+              void shareVenueFromSurface(venue, {
+                writeText: async (text) => {
+                  await navigator.clipboard.writeText(`${inviteUrl}\n${text}`)
+                },
+              }).then((result) => {
+                if (result === 'copied') toast.success('Invite link copied')
+              })
+            }}
+          >
+            {INVITE_FRIEND_COPY.cta}
+          </button>
+          {onPinMyNight && (
+            <button
+              type="button"
+              className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+              onClick={onPinMyNight}
+            >
+              Pin My night
+            </button>
           )}
         </div>
 
@@ -598,10 +644,10 @@ export function VenuePage({
 
         {/* Phase 2: Live Crowd Indicator */}
         <LiveCrowdIndicator
-          count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
+          count={hereNow?.count ?? presenceData?.friendsHereNowCount ?? 0}
           trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
-          friendCount={presenceData?.friendsNearbyCount ?? 0}
-          isEstimated={!presenceData}
+          friendCount={hereNow?.friends.length ?? presenceData?.friendsNearbyCount ?? 0}
+          isEstimated={false}
         />
 
         {/* Phase 4: Venue Memory Card */}
@@ -763,14 +809,32 @@ export function VenuePage({
             </DialogDescription>
           </DialogHeader>
           {selectedLiveReview && (
-            <PulseCard
-              pulse={selectedLiveReview}
-              allPulses={venuePulses}
-              onReaction={(type) => onReaction(selectedLiveReview.id, type)}
-              currentUserId={currentUser?.id}
-              onReport={onReportPulse}
-              venueName={venue.name}
-            />
+            <div className="space-y-3">
+              <PulseCard
+                pulse={selectedLiveReview}
+                allPulses={venuePulses}
+                onReaction={(type) => onReaction(selectedLiveReview.id, type)}
+                currentUserId={currentUser?.id}
+                onReport={onReportPulse}
+                venueName={venue.name}
+              />
+              <DoorChipRow value={selectedLiveReview.doorChips} readOnly />
+              {onFollowUser && selectedLiveReview.userId !== currentUser?.id && (
+                <FollowUserButton
+                  following={Boolean(currentUser?.friends?.includes(selectedLiveReview.userId))}
+                  onClick={() => onFollowUser(selectedLiveReview.userId)}
+                />
+              )}
+              {onHidePulse && (
+                <button
+                  type="button"
+                  className="text-[13px] font-semibold text-muted-foreground"
+                  onClick={() => onHidePulse(selectedLiveReview.id)}
+                >
+                  Hide this pulse
+                </button>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>

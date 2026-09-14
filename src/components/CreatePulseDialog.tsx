@@ -36,6 +36,9 @@ import {
 import { ComposerVenueChip } from '@/components/ux/ComposerVenueChip'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { UX_CTA } from '@/lib/ux-chrome'
+import { compressPulsePhotoFile } from '@/lib/pulse-photo'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { toggleDoorChip, type DoorChip } from '@/lib/door-chips'
 
 interface CreatePulseDialogProps {
   open: boolean
@@ -50,6 +53,7 @@ interface CreatePulseDialogProps {
     hashtags?: string[]
     kind: 'review' | 'pulse'
     locationVerified: boolean
+    doorChips?: DoorChip[]
   }) => void | Promise<void | { error?: string }>
 }
 
@@ -69,6 +73,8 @@ export function CreatePulseDialog({
     buzzing: null,
     electric: null
   })
+  const [doorChips, setDoorChips] = useState<DoorChip[]>([])
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -178,6 +184,7 @@ export function CreatePulseDialog({
       hashtags: selectedHashtags,
       kind: wantsReview ? 'review' : 'pulse',
       locationVerified: locationProof.locationVerified,
+      doorChips,
     })
     if (result && typeof result === 'object' && result.error) {
       setIsSubmitting(false)
@@ -219,17 +226,22 @@ export function CreatePulseDialog({
     onClose()
   }
 
-  const handlePhotoUpload = (energy: EnergyRating) => {
-    const mockPhotos = [
-      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
-    ]
-    const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    setEnergyPhotos(prev => ({
-      ...prev,
-      [energy]: randomPhoto
-    }))
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const dataUrl = await compressPulsePhotoFile(file)
+      setEnergyPhotos({
+        dead: null,
+        chill: null,
+        buzzing: null,
+        electric: null,
+        [energyRating]: dataUrl,
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not add photo')
+    }
   }
 
   const removePhoto = (energy: EnergyRating) => {
@@ -400,6 +412,10 @@ export function CreatePulseDialog({
               </p>
             </div>
             <EnergyPills value={energyRating} onChange={setEnergyRating} />
+            <DoorChipRow
+              value={doorChips}
+              onToggle={(chip) => setDoorChips((current) => toggleDoorChip(current, chip))}
+            />
             <div className="hidden">
               <EnergySlider
                 value={energyRating}
@@ -466,6 +482,14 @@ export function CreatePulseDialog({
           {!video && !isCompressing && (
             <div>
               <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                id="pulse-photo-upload"
+              />
+              <input
                 ref={videoInputRef}
                 type="file"
                 accept="video/*"
@@ -476,8 +500,8 @@ export function CreatePulseDialog({
               <button
                 type="button"
                 onClick={() => {
-                  if (photoCount < 3) {
-                    handlePhotoUpload(energyRating)
+                  if (photoCount < 1) {
+                    photoInputRef.current?.click()
                     return
                   }
                   videoInputRef.current?.click()

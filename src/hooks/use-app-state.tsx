@@ -23,11 +23,10 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
-import { createEvent } from '@/lib/events'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
-import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
+import { fetchEventsFromApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
 import { hasSupabaseConfig, isVisualPreviewEnabled, supabase } from '@/lib/supabase'
 import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
@@ -46,7 +45,8 @@ import {
   type UsMarket,
 } from '@/lib/us-markets'
 import { fetchProfilesByIds } from '@/lib/auth-profile'
-import { hasSupabaseEnv, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { FollowData, hasSupabaseEnv, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { mapPulseReportsToContentReports, mergeInboxReports } from '@/lib/owner-inbox'
 
 export type SubPage =
   | 'events'
@@ -269,6 +269,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setCurrentUser((current) => current ? { ...current, followedVenues: ids } : current)
     })
+    void FollowData.listFollowedUsers(userId).then((ids) => {
+      if (cancelled) return
+      setCurrentUser((current) => current ? { ...current, friends: ids } : current)
+    }).catch(() => undefined)
+    void PulseData.listMyPulseReports().then((rows) => {
+      if (cancelled) return
+      setContentReports((current) => mergeInboxReports(
+        mapPulseReportsToContentReports(rows),
+        current,
+      ))
+    }).catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -360,20 +371,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   })
 
-  // Seed demo events / promotions
+  // Never seed fake events. Promotions stay local demo-only.
   useEffect(() => {
-    if ((!events || events.length === 0) && (!Array.isArray(serverEvents) || serverEvents.length === 0)) {
-      if (venues && venues.length > 0) {
-        const now = new Date()
-        const demoEvents = [
-          createEvent(venues[0].id, 'user-2', 'Friday Night DJ Set', 'Live DJ spinning house & techno all night', 'dj_set', new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString()),
-          createEvent(venues[1]?.id || venues[0].id, 'user-3', 'Trivia Tuesday', 'Test your knowledge — prizes for top 3 teams!', 'trivia', new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 27 * 60 * 60 * 1000).toISOString()),
-          createEvent(venues[2]?.id || venues[0].id, 'user-4', 'Happy Hour Special', '$5 cocktails and half-price apps', 'happy_hour', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString()),
-        ]
-        setEvents(demoEvents)
-        Promise.allSettled(demoEvents.map(e => postEventToApi(e))).catch(() => { })
-      }
-    }
     if (!promotions || promotions.length === 0) {
       if (venues && venues.length > 2) {
         setPromotions([
@@ -382,7 +381,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ])
       }
     }
-  }, [events, promotions, serverEvents, venues])
+  }, [promotions, venues])
 
   // Hydrate local KV state from React Query
   useEffect(() => {

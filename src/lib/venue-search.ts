@@ -5,6 +5,7 @@
 
 import type { Venue } from './types'
 import { isCuratedVenue } from './map-filters'
+import { densityRankBoost } from './seattle-density'
 
 export const VENUE_SEARCH_PLACEHOLDER = 'Search venues or neighborhoods'
 export const VENUE_SEARCH_LIMIT = 8
@@ -44,7 +45,7 @@ export function searchVenueCatalog(
     const score = Math.max(nameScore, hoodScore * 0.85)
     if (score <= 0) continue
     const matched: VenueSearchHit['matched'] = nameScore >= hoodScore ? 'name' : 'neighborhood'
-    const boost = (isCuratedVenue(venue) ? 6 : 0) + (venue.claimVerified ? 3 : 0)
+    const boost = (isCuratedVenue(venue) ? 6 : 0) + (venue.claimVerified ? 3 : 0) + densityRankBoost(venue)
     hits.push({ venue, score: score + boost, matched })
   }
 

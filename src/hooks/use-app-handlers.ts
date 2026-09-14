@@ -27,8 +27,13 @@ import type { TabId } from '@/components/BottomNav'
 import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { venueComposePath } from '@/lib/auth-return-intent'
+import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 
-import { CheckInData, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { CheckInData, FollowData, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { createReport } from '@/lib/content-moderation'
+import { HIDE_PULSE_REASON } from '@/lib/pulse-hide'
+import { FRIEND_FOLLOW_COPY } from '@/lib/friends-follow'
 import { nextFollowedVenueIds, VENUE_FOLLOW_COPY } from '@/lib/venue-follows'
 import { checkPulseRateLimit, pulseRateLimitFromUnknown } from '@/lib/pulse-rate-limit'
 import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
@@ -84,6 +89,7 @@ export function useAppHandlers() {
     const authRedirect = getCreatePulseAuthRedirect({
       isPlaceholder,
       hasSession: Boolean(session),
+      next: venueComposePath(venueId),
     })
     if (authRedirect) {
       closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
@@ -114,6 +120,7 @@ export function useAppHandlers() {
     hashtags?: string[]
     kind?: 'pulse' | 'review'
     locationVerified?: boolean
+    doorChips?: DoorChip[]
   }) => {
     const writeRedirect = getWriteAuthRedirect({
       isPlaceholder,
@@ -208,6 +215,7 @@ export function useAppHandlers() {
       kind: wantsReview ? 'review' as const : 'pulse' as const,
       locationVerified,
       hasBody: true,
+      doorChips: sanitizeDoorChips(data.doorChips),
     }
 
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
@@ -505,6 +513,7 @@ export function useAppHandlers() {
     const writeRedirect = getWriteAuthRedirect({
       isPlaceholder,
       hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
     })
     if (writeRedirect) {
       toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
@@ -533,6 +542,63 @@ export function useAppHandlers() {
     }
   }, [currentUser, isPlaceholder, navigate, session, updateProfile])
 
+  const handleHidePulse = useCallback((pulseId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.create.title, { description: 'Sign in to hide this pulse.' })
+      navigate(writeRedirect ?? '/auth')
+      return
+    }
+    handlePulseReport(createReport(currentUser.id, 'pulse', pulseId, HIDE_PULSE_REASON))
+  }, [currentUser, handlePulseReport, isPlaceholder, navigate, session])
+
+  const handleToggleFriendFollow = useCallback(async (userId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect) {
+      toast.error(FRIEND_FOLLOW_COPY.guest, { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
+    if (!currentUser || currentUser.id === userId) return
+    try {
+      const following = (currentUser.friends ?? []).includes(userId)
+      if (following) {
+        await FollowData.unfollowUser(userId)
+        updateProfile({ friends: (currentUser.friends ?? []).filter((id) => id !== userId) })
+      } else {
+        await FollowData.followUser(userId)
+        updateProfile({ friends: [...(currentUser.friends ?? []), userId] })
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not follow')
+    }
+  }, [currentUser, isPlaceholder, navigate, session, updateProfile])
+
+  const handlePinMyNight = useCallback(async (venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pin My night', { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await FollowData.pinFollowedVenue(venueId)
+      toast.success('My night updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not pin room')
+    }
+  }, [isPlaceholder, navigate, session])
+
   return useMemo(() => ({
     handleCreatePulse,
     handleSubmitPulse,
@@ -546,13 +612,18 @@ export function useAppHandlers() {
     handlePromotionImpression,
     handlePromotionClick,
     handleStartCrewCheckIn,
+    handleHidePulse,
+    handlePinMyNight,
     handleToggleFavorite,
     handleToggleFollow,
+    handleToggleFriendFollow,
   }), [
     handleAddFriend,
     handleCreatePulse,
     handleEventsUpdate,
+    handleHidePulse,
     handleNotificationClick,
+    handlePinMyNight,
     handlePromotionClick,
     handlePromotionImpression,
     handlePulseReport,
@@ -563,5 +634,6 @@ export function useAppHandlers() {
     handleTabChange,
     handleToggleFavorite,
     handleToggleFollow,
+    handleToggleFriendFollow,
   ])
 }

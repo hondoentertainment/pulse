@@ -13,6 +13,7 @@ import { track } from '@/lib/observability/analytics'
 import { Button } from '@/components/ui/button'
 import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import {
+  createOwnerOneTapReply,
   createOwnerReply,
   isPulseDismissed,
   loadOwnerDismissals,
@@ -259,6 +260,17 @@ export function VenueInboxPage({
                       }}
                     >
                       Reply
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        const reply = createOwnerOneTapReply({ pulseId: pulse.id, venueId: venue.id })
+                        if (reply) setReplies(persistOwnerReply(reply))
+                      }}
+                    >
+                      One-tap thanks
                     </button>
                     {pulseReports.length > 0 && (
                       <button

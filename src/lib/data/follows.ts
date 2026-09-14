@@ -19,6 +19,7 @@ export interface Follow {
   targetUserId: string | null
   targetVenueId: string | null
   createdAt: string
+  pinnedAt: string | null
 }
 
 interface FollowRow {
@@ -29,6 +30,7 @@ interface FollowRow {
   target_venue_id: string | null
   created_at: string
   deleted_at: string | null
+  pinned_at?: string | null
 }
 
 function rowToFollow(row: FollowRow): Follow {
@@ -39,6 +41,7 @@ function rowToFollow(row: FollowRow): Follow {
     targetUserId: row.target_user_id,
     targetVenueId: row.target_venue_id,
     createdAt: row.created_at,
+    pinnedAt: row.pinned_at ?? null,
   }
 }
 
@@ -134,6 +137,50 @@ export async function followVenue(venueId: string): Promise<Follow> {
     .select(SELECT_COLUMNS)
     .single()
   return rowToFollow(unwrap<FollowRow>(result))
+}
+
+export async function listPinnedVenues(followerId: string): Promise<string[]> {
+  try {
+    const result = await fromAlive('follows', 'target_venue_id, pinned_at')
+      .eq('follower_id', followerId)
+      .eq('target_kind', 'venue')
+      .not('pinned_at', 'is', null)
+    if (result.error || !result.data) return []
+    return (result.data as { target_venue_id: string }[])
+      .map((r) => r.target_venue_id)
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+export async function pinFollowedVenue(venueId: string): Promise<void> {
+  const followerId = await requireUserId({ action: 'pin this room' })
+  const pinned = await listPinnedVenues(followerId)
+  if (pinned.includes(venueId)) {
+    await supabase
+      .from('follows')
+      .update({ pinned_at: null })
+      .eq('follower_id', followerId)
+      .eq('target_kind', 'venue')
+      .eq('target_venue_id', venueId)
+      .is('deleted_at', null)
+    return
+  }
+  if (pinned.length >= 3) {
+    throw new Error('Pin up to 3 rooms for My night')
+  }
+  await followVenue(venueId)
+  const result = await supabase
+    .from('follows')
+    .update({ pinned_at: new Date().toISOString() })
+    .eq('follower_id', followerId)
+    .eq('target_kind', 'venue')
+    .eq('target_venue_id', venueId)
+    .is('deleted_at', null)
+  if (result.error) {
+    throw Object.assign(new Error(result.error.message), { cause: result.error })
+  }
 }
 
 export async function unfollowVenue(venueId: string): Promise<void> {

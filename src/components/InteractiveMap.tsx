@@ -37,6 +37,8 @@ import { getEnergyAriaLabel } from '@/lib/accessibility'
 import { getEnergyLabel } from '@/lib/pulse-engine'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
+import { PresenceData } from '@/lib/data'
+import { formatHereNowCount } from '@/lib/here-now'
 import {
   buildVenueRenderPoints,
   clampCenter,
@@ -105,6 +107,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   const [zoom, setZoom] = useState(() => resolveMapCamera().zoom)
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(() => resolveMapCamera().center)
   const [hoveredVenue, setHoveredVenue] = useState<Venue | null>(null)
+  const [hoverHereNow, setHoverHereNow] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [followUser, setFollowUser] = useState(false)
@@ -234,6 +237,24 @@ export const InteractiveMap = memo(function InteractiveMap({
     setZoom((current) => clampZoom(resolveImHereMapZoom(current)))
     setHoveredVenue(venue)
   }, [focusVenueId, venues])
+
+  useEffect(() => {
+    if (!hoveredVenue) {
+      setHoverHereNow(0)
+      return
+    }
+    let cancelled = false
+    void PresenceData.fetchHereNowCount(hoveredVenue.id)
+      .then((count) => {
+        if (!cancelled) setHoverHereNow(count)
+      })
+      .catch(() => {
+        if (!cancelled) setHoverHereNow(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hoveredVenue])
 
   useEffect(() => {
     if (userLocation && !center && isLocationNearCatalog(userLocation, venues)) {
@@ -1590,7 +1611,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                           <Users size={12} />
-                          <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                          <span className="font-medium">{formatHereNowCount(hoverHereNow)}</span>
                         </div>
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                           <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />

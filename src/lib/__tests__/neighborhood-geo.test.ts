@@ -25,6 +25,8 @@ describe('neighborhood geo', () => {
   it('infers Capitol Hill from a Neumos-like point', () => {
     expect(inferNeighborhoodFromGeo({ lat: 47.6145, lng: -122.3205 })).toBe('Capitol Hill')
     expect(inferNeighborhoodFromGeo({ lat: 47.668, lng: -122.383 })).toBe('Ballard')
+    expect(inferNeighborhoodFromGeo({ lat: 47.548, lng: -122.322 })).toBe('Georgetown')
+    expect(inferNeighborhoodFromGeo({ lat: 47.580, lng: -122.330 })).toBe('SoDo')
     expect(inferNeighborhoodFromGeo({ lat: 10, lng: 10 })).toBeNull()
   })
 

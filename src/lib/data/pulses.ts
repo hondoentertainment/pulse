@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
 import type { EnergyRating, Pulse, PulseKind } from '@/lib/types'
+import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
 import { mapLiveReviewFields, validateLiveReviewCaption } from '@/lib/live-reviews'
 
@@ -35,6 +36,7 @@ interface PulseRow {
   kind?: string | null
   location_verified?: boolean | null
   has_body?: boolean | null
+  door_chips?: string[] | null
 }
 
 function rowToPulse(row: PulseRow): Pulse {
@@ -57,6 +59,7 @@ function rowToPulse(row: PulseRow): Pulse {
     isPending: false,
     uploadError: false,
     ...mapLiveReviewFields(row),
+    doorChips: sanitizeDoorChips(row.door_chips),
   }
 }
 
@@ -64,7 +67,7 @@ const SELECT_COLUMNS = `
   id, user_id, venue_id, crew_id, photos, video_url,
   energy_rating, caption, hashtags, views, is_pioneer,
   credibility_weight, reactions, created_at, expires_at, deleted_at,
-  kind, location_verified, has_body
+  kind, location_verified, has_body, door_chips
 `.trim()
 
 // ── Read queries ─────────────────────────────────────────────────────────
@@ -177,6 +180,7 @@ export interface CreatePulseInput {
   isPioneer?: boolean
   kind?: PulseKind
   locationVerified?: boolean
+  doorChips?: DoorChip[]
 }
 
 export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
@@ -219,6 +223,7 @@ export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
       expires_at: expiresAt.toISOString(),
       kind,
       location_verified: input.locationVerified ?? false,
+      door_chips: sanitizeDoorChips(input.doorChips),
     })
     .select(SELECT_COLUMNS)
     .single()

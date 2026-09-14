@@ -7,6 +7,7 @@
  */
 
 import { getCreatePulseAuthRedirect } from './guest-discovery'
+import { venueComposePath } from './auth-return-intent'
 import { isCuratedVenue, type MapInventoryLayer } from './map-filters'
 import type { Venue } from './types'
 
@@ -56,6 +57,7 @@ export function resolveImHereAction(input: {
   const authRedirect = getCreatePulseAuthRedirect({
     isPlaceholder: input.isPlaceholder,
     hasSession: input.hasSession,
+    next: venueComposePath(input.venueId),
   })
   return {
     mapPath: getImHereMapPath(input.venueId),

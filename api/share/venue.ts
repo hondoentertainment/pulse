@@ -57,7 +57,12 @@ export default async function handler(
   const raw = req.query?.venueId
   const venueId = Array.isArray(raw) ? raw[0] : raw
   const origin = originFromReq(req)
-  const target = venueId ? `${origin}/venue/${encodeURIComponent(venueId)}?from=share` : `${origin}/`
+  const fromRaw = req.query?.from
+  const from = Array.isArray(fromRaw) ? fromRaw[0] : fromRaw
+  const landingFrom = from === 'invite' ? 'invite' : 'share'
+  const target = venueId
+    ? `${origin}/venue/${encodeURIComponent(venueId)}?from=${landingFrom}`
+    : `${origin}/?here=${encodeURIComponent(venueId ?? '')}`
 
   let title = 'Pulse'
   let description = 'Nightlife energy on a map — live reviews from people who are there.'

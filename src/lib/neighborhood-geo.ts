@@ -35,6 +35,7 @@ export const SEATTLE_NEIGHBORHOOD_BOXES: readonly GeoBox[] = [
   { name: 'Pioneer Square', minLat: 47.595, maxLat: 47.605, minLng: -122.340, maxLng: -122.325 },
   { name: 'International District', minLat: 47.595, maxLat: 47.605, minLng: -122.330, maxLng: -122.312 },
   { name: 'Georgetown', minLat: 47.540, maxLat: 47.560, minLng: -122.335, maxLng: -122.310 },
+  { name: 'SoDo', minLat: 47.568, maxLat: 47.595, minLng: -122.345, maxLng: -122.318 },
   { name: 'West Seattle', minLat: 47.550, maxLat: 47.590, minLng: -122.410, maxLng: -122.370 },
 ]
 

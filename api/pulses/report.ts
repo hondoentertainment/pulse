@@ -25,6 +25,7 @@ const REPORT_REASONS = [
   'harassment',
   'misinformation',
   'fake_location',
+  'hide',
   'other',
 ] as const
 

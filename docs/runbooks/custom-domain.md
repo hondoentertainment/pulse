@@ -91,4 +91,11 @@ documented live URL, not a secret.
 ## Ownership
 
 - Owner: Pulse ops / auth
-- Last reviewed: 2026-09-12
+- Last reviewed: 2026-09-14
+
+## Roadmap #13 — skipped in code
+
+Custom domain + branded magic-link needs a domain **the owner names**.
+This agent does not buy, attach, or document a guessed hostname.
+Site URL stays dashboard-only (`xeldqwhztcnnvazmshzh`). Live URL remains
+`https://pulse-chi-nine.vercel.app/` until a human attaches DNS.

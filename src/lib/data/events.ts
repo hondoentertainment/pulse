@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { mapEventRow, type CatalogEvent } from '@/lib/events-tonight'
 
 export interface TicketingTicketType {
   name: string
@@ -39,6 +40,19 @@ export async function listEventsForVenue(venueId: string): Promise<TicketingEven
     .order('starts_at', { ascending: true })
   if (error) throw error
   return (data ?? []) as unknown as TicketingEventRow[]
+}
+
+export async function listCatalogEvents(): Promise<CatalogEvent[]> {
+  const wide = await supabase
+    .from('events')
+    .select('id, venue_id, title, starts_at, date')
+    .limit(200)
+  const rows = wide.error
+    ? (await supabase.from('events').select('id, venue_id, title, starts_at').limit(200)).data
+    : wide.data
+  return (rows ?? [])
+    .map((row) => mapEventRow(row as { id: string; venue_id?: string; title?: string | null; starts_at?: string | null; date?: string | null }))
+    .filter((row): row is CatalogEvent => row !== null)
 }
 
 export async function getEvent(eventId: string): Promise<TicketingEventRow | null> {

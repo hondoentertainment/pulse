@@ -34,6 +34,11 @@ If the requested `emailRedirectTo` / `redirectTo` is missing from this
 list, GoTrue silently substitutes **Site URL** — that is how prod mail
 ended up at `http://localhost:3000`.
 
+Return-to-intent (compose / venue / inbox) is stored in the client as
+`next=` plus `pulse_auth_next_v1`. Do **not** change Site URL to a
+deep link — GoTrue still receives origin only. After magic-link/Google,
+the app consumes the persisted path on the existing origin.
+
 ## Verification
 
 - [ ] From https://pulse-chi-nine.vercel.app/auth, send a magic link.
