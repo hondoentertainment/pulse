@@ -17,11 +17,15 @@ import {
 import { canAccessVenueInbox } from '@/lib/live-reviews'
 import { dismissReportsForPulseOnServer, listVenueReportsOnServer } from '@/lib/ops-client'
 import type { ContentReport } from '@/lib/content-moderation'
-import { createVenueClaim, type VenueClaim } from '@/lib/venue-owner'
+import { createVenueClaim, verifyVenueClaim, type VenueClaim } from '@/lib/venue-owner'
 import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
 import type { Venue } from '@/lib/types'
 import { isFeatureEnabled } from '@/lib/feature-flags'
+import { isE2EAuthBypassEnabled } from '@/lib/supabase'
 import { toast } from 'sonner'
+
+/** Playwright-only: sessionStorage key to seed a verified mock claim (no admin invent). */
+export const E2E_VERIFIED_CLAIM_KEY = 'pulse:e2e:verified-claim'
 
 export function VenueInboxRoute() {
   const { venueId } = useParams<{ venueId: string }>()
@@ -38,10 +42,41 @@ export function VenueInboxRoute() {
 
   const cached = venues?.find((venue) => venue.id === venueId) ?? null
   const venue = freshVenue ?? cached
-  const claims = useMemo(
-    () => (USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])),
-    [localClaims, serverClaims],
-  )
+  const claims = useMemo(() => {
+    const base = USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])
+    // E2E-only: merge a verified claim from sessionStorage so smoke can prove
+    // unlock without racing Spark KV hydration or inventing /ops admin creds.
+    if (!isE2EAuthBypassEnabled || USE_SUPABASE_BACKEND || !currentUser?.id || !venueId) {
+      return base
+    }
+    let seedVenueId: string | null = null
+    try {
+      seedVenueId = sessionStorage.getItem(E2E_VERIFIED_CLAIM_KEY)
+    } catch {
+      return base
+    }
+    if (!seedVenueId || seedVenueId !== venueId) return base
+    if (base.some((claim) => (
+      claim.venueId === venueId
+      && claim.claimantUserId === currentUser.id
+      && claim.status === 'verified'
+    ))) {
+      return base
+    }
+    return [
+      verifyVenueClaim(
+        createVenueClaim(
+          venueId,
+          currentUser.id,
+          'E2E verified venue',
+          'e2e@pulse.test',
+          'email',
+          'E2E verified seed',
+        ),
+      ),
+      ...base,
+    ]
+  }, [currentUser?.id, localClaims, serverClaims, venueId])
 
   useEffect(() => {
     if (!USE_SUPABASE_BACKEND || !venueId) return
@@ -65,6 +100,7 @@ export function VenueInboxRoute() {
       navigate(authRedirect)
     }
   }, [isPlaceholder, navigate, session])
+
 
   useEffect(() => {
     if (!currentUser?.id || !isFeatureEnabled('venueInbox')) return

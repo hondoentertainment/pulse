@@ -13,7 +13,7 @@
         "test:coverage": "vitest run --coverage",
         "test:watch": "vitest",
         "test:smoke": "npm run test:smoke:venue",
-        "test:smoke:venue": "playwright test e2e/venue-shell.spec.ts e2e/pulse-creation.spec.ts e2e/search.spec.ts",
+        "test:smoke:venue": "playwright test e2e/venue-shell.spec.ts e2e/pulse-creation.spec.ts e2e/search.spec.ts e2e/venue-claim-share.spec.ts",
         "test:e2e": "playwright test",
         "audit": "npm audit --audit-level=high",
         "bundle-size": "node scripts/check-bundle-size.mjs",
