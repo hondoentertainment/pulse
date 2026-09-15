@@ -67,3 +67,15 @@ export function buildShareOgEnergy(input: {
     freshness,
   }
 }
+
+export function buildNeighborhoodShareOg(input: {
+  name: string
+  slug?: string
+}): ShareOgEnergy {
+  const name = input.name.trim() || 'Seattle'
+  return {
+    title: name,
+    description: `Tonight · Seattle · tagged rooms in ${name}. We never invent a crowd.`,
+    energyLine: 'Tonight · Seattle',
+  }
+}

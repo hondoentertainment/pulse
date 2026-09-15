@@ -102,7 +102,7 @@ describe('handleCreatePulse auth gate', () => {
     const { result } = renderHook(() => useAppHandlers(), { wrapper })
     result.current.handleCreatePulse('venue-1')
 
-    expect(setters.navigate).toHaveBeenCalledWith('/auth')
+    expect(setters.navigate).toHaveBeenCalledWith('/auth?next=%2Fvenue%2Fvenue-1%3Fcompose%3D1')
     expect(setters.setCreateDialogOpen).toHaveBeenCalledWith(false)
     expect(setters.setVenueForPulse).toHaveBeenCalledWith(null)
     expect(toast.error).toHaveBeenCalledWith('Sign in to Pulse', {

@@ -32,9 +32,16 @@ Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?nod
 - Setting Vercel env `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (generate locally; do not invent prod secrets). Missing keys = honest no-op.
 - Setting `app_metadata.role = admin` for `/ops` (domain-match claims can verify without this).
 - Confirming OG cards on a real iMessage/Slack crawl (share URL is now `/api/share/venue?venueId=`; needs a production deploy + phone).
-- Custom domain attach + branded magic-link: [custom-domain.md](runbooks/custom-domain.md). Live URL stays `https://pulse-chi-nine.vercel.app/` until a human attaches DNS.
+- Custom domain attach + branded magic-link: [custom-domain.md](runbooks/custom-domain.md). Live URL stays `https://pulse-chi-nine.vercel.app/` until a human attaches DNS. **Roadmap #13 is skipped** until the owner names a domain — do not buy or attach one from this repo.
+- Apply `supabase/migrations/20260914000000_next15_usage.sql` on `xeldqwhztcnnvazmshzh` (door_chips, follows.pinned_at, here-now RPCs). Verify with `supabase/verify/next15_usage.sql`.
+- Do **not** change Supabase Site URL from this repo. Return-to-intent is client `next=` + localStorage after magic-link/Google land on the existing origin.
+- First-night invites still need a human to send them. Do not close #85/#86.
+
+## Next-15 usage (this PR)
+
+Return-to-intent, tonight digest / quiet-night (VAPID optional), here-now count, one photo, door chips, invite link, `/n/:slug` for **every** hood already tagged on Seattle venues (not only Capitol Hill / Ballard / Georgetown / SoDo), neighborhood share + OG via existing `/api/share/venue?n=` + crawler rewrite on `/n/:slug`, last-5 recents on Tonight/map, My night pins, owner one-tap reply, hide pulse, friends follow, events overlay from existing `events` only. Hourly Vercel cron for `/api/cron/night-coach` uses existing `CRON_SECRET` (missing = honest no-op). No new keys, no custom domain, no fake events. Prod SQL for `door_chips` / `pinned_at` / `venue_here_now_*` is already applied — do not recreate that migration.
 
 ## Ownership
 
 - Owner: Pulse product / map + live reviews
-- Last reviewed: 2026-09-12
+- Last reviewed: 2026-09-14

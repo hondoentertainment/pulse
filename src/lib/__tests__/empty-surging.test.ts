@@ -44,6 +44,17 @@ describe('listEmptySurgingStartHere', () => {
   it('does not invent rooms when the catalog is empty', () => {
     expect(listEmptySurgingStartHere([])).toEqual([])
   })
+
+  it('prefers Seattle density hoods the way Capitol Hill is preferred', () => {
+    const start = listEmptySurgingStartHere([
+      makeVenue({ id: 'lake', name: 'Lake City Bar', neighborhood: 'Lake City', inventorySource: 'osm', seeded: false }),
+      makeVenue({ id: 'sunset', name: 'Sunset', neighborhood: 'Ballard', inventorySource: 'curated-seed', seeded: true }),
+      makeVenue({ id: 'hoover', name: 'Hooverville', neighborhood: 'SoDo', inventorySource: 'curated-seed', seeded: true }),
+      makeVenue({ id: 'ninebar', name: '9bar', neighborhood: 'Georgetown', inventorySource: 'curated-seed', seeded: true }),
+    ])
+    expect(start.map((venue) => venue.id)).toEqual(expect.arrayContaining(['sunset', 'hoover', 'ninebar']))
+    expect(start[0]?.neighborhood).not.toBe('Lake City')
+  })
 })
 
 describe('emptySurgingPulseHref', () => {
@@ -57,6 +68,6 @@ describe('emptySurgingPulseHref', () => {
       isPlaceholder: false,
       hasSession: false,
       venueId: 'neumos',
-    })).toEqual({ kind: 'auth' })
+    })).toEqual({ kind: 'auth', next: '/venue/neumos?compose=1' })
   })
 })

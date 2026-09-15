@@ -9,7 +9,8 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http.js'
-import { loadShareOgEnergy } from '../_lib/share-og-lookup.js'
+import { loadShareNeighborhoodOg, loadShareOgEnergy } from '../_lib/share-og-lookup.js'
+import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-share.js'
 
 function escapeXml(value: string): string {
   return value
@@ -31,13 +32,30 @@ export default async function handler(
 
   const raw = req.query?.venueId
   const venueId = Array.isArray(raw) ? raw[0] : raw
+  const nRaw = req.query?.n ?? req.query?.neighborhood
+  const neighborhoodSlug = parseNeighborhoodShareSlug(Array.isArray(nRaw) ? nRaw[0] : nRaw)
   let title = 'Pulse'
   let energyLine = 'Live reviews on Pulse'
-  const caption = 'I’m here · open map'
+  let eyebrow = 'Someone shared a venue'
+  let caption = 'I’m here · open map'
+  let cta = "I'm here · open map"
 
   if (venueId) {
     try {
       const card = await loadShareOgEnergy(venueId)
+      if (card) {
+        title = card.title
+        energyLine = card.energyLine
+      }
+    } catch {
+      /* keep generic card */
+    }
+  } else if (neighborhoodSlug) {
+    eyebrow = 'Someone shared a neighborhood'
+    caption = 'Guest-safe rooms · Start here'
+    cta = 'Open neighborhood'
+    try {
+      const card = await loadShareNeighborhoodOg(neighborhoodSlug)
       if (card) {
         title = card.title
         energyLine = card.energyLine
@@ -50,12 +68,12 @@ export default async function handler(
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="#0F0F14"/>
-  <text x="72" y="120" fill="#9E9EA8" font-family="Inter, system-ui, sans-serif" font-size="28">Someone shared a venue</text>
+  <text x="72" y="120" fill="#9E9EA8" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(eyebrow)}</text>
   <text x="72" y="220" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="700">${escapeXml(title)}</text>
   <text x="72" y="290" fill="#FF2D78" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600">${escapeXml(energyLine)}</text>
   <text x="72" y="360" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(caption)}</text>
   <rect x="72" y="430" width="520" height="80" rx="28" fill="#FF2D78"/>
-  <text x="332" y="482" text-anchor="middle" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600">I'm here · open map</text>
+  <text x="332" y="482" text-anchor="middle" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600">${escapeXml(cta)}</text>
 </svg>`
 
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8')

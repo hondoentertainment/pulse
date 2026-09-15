@@ -5,7 +5,9 @@
  * Create Pulse, live reviews, inbox, and claims — not discovery.
  */
 
-export const AUTH_PATH = '/auth'
+import { AUTH_PATH as AUTH_RETURN_PATH, buildAuthPath } from './auth-return-intent'
+
+export const AUTH_PATH = AUTH_RETURN_PATH
 
 export const DISCOVERY_AUTH_GATE_COPY = "Sign in to discover what's buzzing near you"
 
@@ -29,9 +31,10 @@ export function shouldBlockDiscoveryForAuth(_input?: {
 export function getCreatePulseAuthRedirect(input: {
   isPlaceholder: boolean
   hasSession: boolean
+  next?: string | null
 }): string | null {
   if (input.isPlaceholder || input.hasSession) return null
-  return AUTH_PATH
+  return buildAuthPath(input.next)
 }
 
 /**
@@ -41,6 +44,7 @@ export function getCreatePulseAuthRedirect(input: {
 export function getWriteAuthRedirect(input: {
   isPlaceholder: boolean
   hasSession: boolean
+  next?: string | null
 }): string | null {
   return getCreatePulseAuthRedirect(input)
 }

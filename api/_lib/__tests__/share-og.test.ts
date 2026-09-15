@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildShareOgEnergy, energyLabelFromScore, formatShareFreshness } from '../share-og'
+import { buildNeighborhoodShareOg, buildShareOgEnergy, energyLabelFromScore, formatShareFreshness } from '../share-og'
 
 describe('share OG energy', () => {
   it('prefers live review energy + freshness over a generic card', () => {
@@ -28,5 +28,13 @@ describe('share OG energy', () => {
     })
     expect(card.title).toBe('Neumos')
     expect(card.energyLine).toBe('Electric')
+  })
+
+  it('builds a real neighborhood card without inventing a crowd', () => {
+    const card = buildNeighborhoodShareOg({ name: 'Capitol Hill', slug: 'capitol-hill' })
+    expect(card.title).toBe('Capitol Hill')
+    expect(card.energyLine).toBe('Tonight · Seattle')
+    expect(card.description).toContain('tagged rooms in Capitol Hill')
+    expect(card.description).not.toMatch(/packed|live crowd|50 people/i)
   })
 })

@@ -5,15 +5,17 @@ import {
   installAffordancePath,
   isInstallAffordanceDismissed,
   shouldShowInstallAffordance,
+  shouldShowInstallOnSurface,
 } from '@/lib/install-affordance'
 import { getInstallState, listenForInstallPrompt, showInstallPrompt } from '@/lib/pwa'
 import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 
 interface InstallAffordanceProps {
   onInstalled?: () => void
+  surface?: 'tonight' | 'capitol-hill' | 'map' | 'other'
 }
 
-export function InstallAffordance({ onInstalled }: InstallAffordanceProps = {}) {
+export function InstallAffordance({ onInstalled, surface }: InstallAffordanceProps = {}) {
   const [visible, setVisible] = useState(false)
   const [path, setPath] = useState<'prompt' | 'ios' | 'menu'>('menu')
 
@@ -22,11 +24,13 @@ export function InstallAffordance({ onInstalled }: InstallAffordanceProps = {}) 
     const refresh = () => {
       const state = getInstallState()
       setPath(installAffordancePath(state))
-      setVisible(shouldShowInstallAffordance({ ...state, dismissed }))
+      setVisible(surface
+        ? shouldShowInstallOnSurface({ ...state, dismissed, surface })
+        : shouldShowInstallAffordance({ ...state, dismissed }))
     }
     refresh()
     return listenForInstallPrompt(refresh)
-  }, [])
+  }, [surface])
 
   if (!visible) return null
 

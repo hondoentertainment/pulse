@@ -24,6 +24,22 @@ import { catalogQualityLine } from '@/lib/catalog-quality'
 import { shareVenueFromSurface } from '@/lib/sharing'
 import { toast } from 'sonner'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
+import { orderFollowingRowsPinnedFirst } from '@/lib/my-night'
+import { listFollowedPeoplePulses, mixFollowingFeed } from '@/lib/friends-follow'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { listEventsTonight, EVENTS_TONIGHT_EMPTY, EVENTS_TONIGHT_EMPTY_BODY, type CatalogEvent } from '@/lib/events-tonight'
+import { listNeighborhoodPages, neighborhoodPath } from '@/lib/neighborhood-pages'
+import { Link } from 'react-router-dom'
+import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
+import { InstallAffordance } from '@/components/InstallAffordance'
+import { LastNightRecap } from '@/components/LastNightRecap'
+import { AddToCalendarButton } from '@/components/AddToCalendarButton'
+import { PulseThreadActions } from '@/components/PulseThreadActions'
+import { OpenNowChip } from '@/components/OpenNowChip'
+import { doorRollupLabel } from '@/lib/door-rollup'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { LastNightRoom } from '@/lib/last-night'
 
 const MAP_TABS = [
   { id: 'tonight' as const, label: 'Tonight' },
@@ -45,7 +61,14 @@ interface TonightHomeHeaderProps {
   userLocation: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
   followedVenueIds?: readonly string[]
+  pinnedVenueIds?: readonly string[]
+  followedUserIds?: readonly string[]
+  catalogEvents?: readonly CatalogEvent[]
+  recentVenues?: Venue[]
   signedIn?: boolean
+  onHidePulse?: (pulseId: string) => void
+  onPinMyNight?: (venueId: string) => void
+  onBeFirstPulse?: (venue: Venue) => void
   locationDenied?: boolean
   onVenueClick: (venue: Venue) => void
   onFollowAuth?: () => void
@@ -53,6 +76,14 @@ interface TonightHomeHeaderProps {
   onShareVenue?: (venue: Venue) => void
   surface?: MapHomeSurface
   onSurfaceChange?: (surface: MapHomeSurface) => void
+  viewerId?: string | null
+  replies?: readonly PulseReply[]
+  agrees?: readonly PulseAgree[]
+  lastNightRooms?: LastNightRoom[]
+  onLastNightAuth?: () => void
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
 }
 
 export function TonightHomeHeader({
@@ -61,7 +92,14 @@ export function TonightHomeHeader({
   userLocation,
   savedVenueIds = [],
   followedVenueIds = [],
+  pinnedVenueIds = [],
+  followedUserIds = [],
+  catalogEvents = [],
+  recentVenues = [],
   signedIn = false,
+  onHidePulse,
+  onPinMyNight,
+  onBeFirstPulse,
   locationDenied,
   onVenueClick,
   onFollowAuth,
@@ -69,6 +107,14 @@ export function TonightHomeHeader({
   onShareVenue,
   surface = 'map',
   onSurfaceChange,
+  viewerId,
+  replies = [],
+  agrees = [],
+  lastNightRooms = [],
+  onLastNightAuth,
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
 }: TonightHomeHeaderProps) {
   const [tonightFeed, setTonightFeed] = useState<TonightFeed>('foryou')
   const home = buildTonightHome({
@@ -79,10 +125,19 @@ export function TonightHomeHeader({
     locationDenied,
   })
 
-  const followingFeed = useMemo(
-    () => listTonightFollowingFeed(venues, pulses, followedVenueIds),
-    [followedVenueIds, pulses, venues],
-  )
+  const followingFeed = useMemo(() => {
+    const venueRows = orderFollowingRowsPinnedFirst(
+      listTonightFollowingFeed(venues, pulses, followedVenueIds),
+      pinnedVenueIds,
+    )
+    return mixFollowingFeed(
+      venueRows,
+      listFollowedPeoplePulses(pulses, venues, followedUserIds),
+    )
+  }, [followedUserIds, followedVenueIds, pinnedVenueIds, pulses, venues])
+
+  const tonightEvents = useMemo(() => listEventsTonight(catalogEvents), [catalogEvents])
+  const hoodLinks = useMemo(() => listNeighborhoodPages(venues), [venues])
 
   const near = useMemo(
     () => listTonightNearVenues(venues, userLocation),
@@ -109,10 +164,76 @@ export function TonightHomeHeader({
         )}
       </header>
 
+      {surface !== 'live' && recentVenues.length > 0 && (
+        <div className="pt-2 pb-1">
+          <p className="text-[13px] font-semibold text-muted-foreground">Recent</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recentVenues.map((venue) => (
+              <button
+                key={venue.id}
+                type="button"
+                onClick={() => onVenueClick(venue)}
+                className="h-8 rounded-full border border-border px-3 text-[12px] font-semibold text-foreground"
+              >
+                {venue.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
+          {surface === 'tonight' && <div className="pb-3"><InstallAffordance surface="tonight" /></div>}
+          <LastNightRecap
+            rooms={lastNightRooms}
+            signedIn={signedIn}
+            onAuth={onLastNightAuth}
+            onVenueClick={onVenueClick}
+          />
           <div className="pb-2">
             <VenueTypeahead venues={venues} onVenueSelect={onVenueClick} />
+          </div>
+          {hoodLinks.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-3">
+              {hoodLinks.map((hood) => (
+                <Link
+                  key={hood.slug}
+                  to={neighborhoodPath(hood.slug)}
+                  className="h-8 rounded-full border border-border px-3 text-[12px] font-semibold text-foreground"
+                >
+                  {hood.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          <div className="border-b border-border pb-3">
+            <p className="text-[13px] font-semibold text-muted-foreground">Events tonight</p>
+            {tonightEvents.length === 0 ? (
+              <div className="pt-2">
+                <p className="text-[15px] font-semibold text-foreground">{EVENTS_TONIGHT_EMPTY}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">{EVENTS_TONIGHT_EMPTY_BODY}</p>
+                {onBeFirstPulse && (
+                  <EmptySurgingStartHere
+                    venues={venues}
+                    onVenueClick={onVenueClick}
+                    onBeFirstPulse={onBeFirstPulse}
+                  />
+                )}
+              </div>
+            ) : (
+              <ul className="pt-2">
+                {tonightEvents.map((event) => {
+                  const venue = venues.find((row) => row.id === event.venueId)
+                  return (
+                    <li key={event.id} className="flex items-center justify-between gap-2 py-1.5 text-[15px] text-foreground">
+                      <span>{event.title}</span>
+                      <AddToCalendarButton event={event} venueName={venue?.name} />
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
           <FeedTabBar<TonightFeed>
             tabs={TONIGHT_FEEDS}
@@ -138,6 +259,12 @@ export function TonightHomeHeader({
                     onFollowAuth={onFollowAuth}
                     onToggleFollow={onToggleFollow}
                     onShareVenue={onShareVenue}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
                   />
                 </>
               )}
@@ -157,6 +284,12 @@ export function TonightHomeHeader({
                       onFollowAuth={onFollowAuth}
                       onToggleFollow={onToggleFollow}
                       onShareVenue={onShareVenue}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
                     />
                   ))}
                 </div>
@@ -182,22 +315,60 @@ export function TonightHomeHeader({
             ) : followingFeed.length === 0 ? (
               <TonightEmptyState empty={TONIGHT_FOLLOWING_SIGNED_IN_EMPTY} />
             ) : (
-              followingFeed.map(({ venue, latestPulse }) => (
-                <TonightFeedRow
-                  key={venue.id}
-                  venue={venue}
-                  headline={latestPulse?.caption
-                    ? latestPulse.caption
-                    : `${venue.name} is on your Following list`}
-                  pulses={pulses}
-                  onVenueClick={onVenueClick}
-                  signedIn={signedIn}
-                  following
-                  onFollowAuth={onFollowAuth}
-                  onToggleFollow={onToggleFollow}
-                  onShareVenue={onShareVenue}
-                />
-              ))
+              followingFeed.map((row) => {
+                if (row.kind === 'friend_pulse') {
+                  const venue = row.venue
+                  if (!venue) return null
+                  return (
+                    <TonightFeedRow
+                      key={`friend-${row.pulse.id}`}
+                      venue={venue}
+                      headline={row.pulse.caption || `${venue.name} · from someone you follow`}
+                      pulses={[row.pulse]}
+                      onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
+                      onHidePulse={onHidePulse}
+                      onPinMyNight={onPinMyNight}
+                      pinned={pinnedVenueIds.includes(venue.id)}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
+                    />
+                  )
+                }
+                return (
+                  <TonightFeedRow
+                    key={row.venue.id}
+                    venue={row.venue}
+                    headline={row.latestPulse?.caption
+                      ? row.latestPulse.caption
+                      : `${row.venue.name} is on your Following list`}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
+                    onHidePulse={onHidePulse}
+                    onPinMyNight={onPinMyNight}
+                    pinned={pinnedVenueIds.includes(row.venue.id)}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
+                  />
+                )
+              })
             )
           )}
 
@@ -231,6 +402,12 @@ export function TonightHomeHeader({
                     onFollowAuth={onFollowAuth}
                     onToggleFollow={onToggleFollow}
                     onShareVenue={onShareVenue}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
                   />
                 ))}
               </>
@@ -252,6 +429,15 @@ function TonightFeedRow({
   onFollowAuth,
   onToggleFollow,
   onShareVenue,
+  onHidePulse,
+  onPinMyNight,
+  pinned = false,
+  viewerId,
+  replies = [],
+  agrees = [],
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
 }: {
   venue: Venue
   headline: string
@@ -262,6 +448,15 @@ function TonightFeedRow({
   onFollowAuth?: () => void
   onToggleFollow?: (venueId: string) => void
   onShareVenue?: (venue: Venue) => void
+  onHidePulse?: (pulseId: string) => void
+  onPinMyNight?: (venueId: string) => void
+  pinned?: boolean
+  viewerId?: string | null
+  replies?: readonly PulseReply[]
+  agrees?: readonly PulseAgree[]
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
 }) {
   const activity = getVenueMapActivity(venue, pulses)
   const glance = buildTrustGlance(venue, pulses, Date.now(), activity)
@@ -300,7 +495,40 @@ function TonightFeedRow({
           onClick={() => onVenueClick(venue)}
           onShare={handleShare}
         />
-        <div className="-mt-1 flex justify-end pb-2">{followControl}</div>
+        <div className="-mt-1 flex justify-end gap-2 pb-2">
+          {followControl}
+          {onPinMyNight && (
+            <button type="button" className="h-8 rounded-full border border-border px-3 text-[12px] font-semibold" onClick={() => onPinMyNight(venue.id)}>
+              {pinned ? 'Pinned' : 'Pin'}
+            </button>
+          )}
+        </div>
+        {activity.latest?.doorChips && activity.latest.doorChips.length > 0 && (
+          <div className="pb-2"><DoorChipRow value={activity.latest.doorChips} readOnly /></div>
+        )}
+        {doorRollupLabel(pulses, venue.id) && (
+          <p className="pb-1 text-[12px] font-semibold text-foreground">{doorRollupLabel(pulses, venue.id)}</p>
+        )}
+        <div className="pb-1"><OpenNowChip venue={venue} /></div>
+        {activity.latest && (
+          <PulseThreadActions
+            pulseId={activity.latest.id}
+            venueId={venue.id}
+            authorUserId={activity.latest.userId}
+            viewerId={viewerId}
+            doorChips={activity.latest.doorChips}
+            replies={replies}
+            agrees={agrees}
+            onReply={(id) => onPulseReply?.(id, venue.id)}
+            onSame={(id) => onSameAgree?.(id, venue.id)}
+            onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
+          />
+        )}
+        {onHidePulse && activity.latest && (
+          <button type="button" className="pb-2 text-[12px] text-muted-foreground" onClick={() => onHidePulse(activity.latest!.id)}>
+            Hide this pulse
+          </button>
+        )}
         {catalogQualityLine(venue) && (
           <p className="pb-2 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
         )}

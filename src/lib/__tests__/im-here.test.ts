@@ -20,7 +20,10 @@ describe('im-here deep link', () => {
       venueId: 'neumos',
       isPlaceholder: false,
       hasSession: false,
-    })).toMatchObject({ openCreate: false, authRedirect: '/auth' })
+    })).toMatchObject({
+      openCreate: false,
+      authRedirect: '/auth?next=%2Fvenue%2Fneumos%3Fcompose%3D1',
+    })
   })
 
   it('waits for the catalog before focusing and opens All Seattle for OSM pins', () => {

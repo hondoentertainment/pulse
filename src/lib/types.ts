@@ -93,6 +93,8 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  /** Catalog photo already on the venue row. Never scraped or invented. */
+  imageUrl?: string
   ownerEmailDomain?: string
   preTrending?: boolean
   preTrendingLabel?: string
@@ -156,6 +158,8 @@ export interface VenueLiveSummary {
 
 export type PulseKind = 'pulse' | 'review'
 
+export type DoorChip = 'line' | 'cover' | 'energy'
+
 export interface Pulse {
   id: string
   userId: string
@@ -163,6 +167,8 @@ export interface Pulse {
   photos: string[]
   video?: string
   energyRating: EnergyRating
+  /** Optional compose one-taps. Only line / cover / energy. */
+  doorChips?: DoorChip[]
   caption?: string
   hashtags?: string[]
   createdAt: string

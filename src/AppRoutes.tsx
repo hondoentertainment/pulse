@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
@@ -26,6 +26,7 @@ import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
 import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
+import { consumeAuthReturnPath, readPersistedAuthNext } from '@/lib/auth-return-intent'
 import { UX_FAB } from '@/lib/ux-chrome'
 
 // ── Lazy page imports ────────────────────────
@@ -54,6 +55,9 @@ const VenueMetadataRoute = lazy(() =>
 const OpsQueuePage = lazy(() =>
   import('@/components/OpsQueuePage').then((m) => ({ default: m.OpsQueuePage })),
 )
+const NeighborhoodPage = lazy(() =>
+  import('@/components/NeighborhoodPage').then((m) => ({ default: m.NeighborhoodPage })),
+)
 
 /**
  * AppRoutes — the tab / sub-page / modal switcher.
@@ -76,7 +80,7 @@ const OpsQueuePage = lazy(() =>
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab, location } = useRouteNavigation()
+  const { activeTab, navigateToTab, location, navigate } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -117,6 +121,20 @@ export function AppRoutes() {
     if (sub) setSubPage(sub)
   }, [pathname, setActiveTab, setSubPage])
 
+  // Magic-link / Google land on Site URL (origin `/`), not /auth.
+  // Consume persisted next= only when a session newly hydrates.
+  const hadSessionRef = useRef(false)
+  useEffect(() => {
+    if (authLoading) return
+    const justSignedIn = Boolean(session) && !hadSessionRef.current
+    hadSessionRef.current = Boolean(session)
+    if (!justSignedIn || pathname === AUTH_PATH) return
+    if (!readPersistedAuthNext()) return
+    const next = consumeAuthReturnPath({ search: location.search })
+    const current = `${pathname}${location.search}`
+    if (next && next !== current) navigate(next, { replace: true })
+  }, [authLoading, location.search, navigate, pathname, session])
+
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
 
@@ -151,7 +169,8 @@ export function AppRoutes() {
     // Real sessions can leave /auth. Guests — including local placeholder
     // mode — must stay here when Follow / write sends them to sign in.
     if (session) {
-      return <Navigate to="/" replace />
+      const next = consumeAuthReturnPath({ search: location.search })
+      return <Navigate to={next} replace />
     }
     return (
       <Suspense fallback={<PageSkeleton />}>
@@ -218,6 +237,16 @@ export function AppRoutes() {
       <Toaster position="top-center" theme="dark" />
 
       <Routes>
+        {/* Neighborhood pages — guest-safe, no GPS */}
+        <Route
+          path="/n/:slug"
+          element={(
+            <Suspense fallback={<PageSkeleton />}>
+              <NeighborhoodPage />
+            </Suspense>
+          )}
+        />
+
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
         <Route

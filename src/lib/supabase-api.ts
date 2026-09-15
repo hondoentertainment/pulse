@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import type { Venue, Pulse, EnergyRating, ReactionType, VenueLiveSummary } from './types'
 import type { LiveReport } from './live-intelligence'
 import { mapLiveReviewFields } from './live-reviews'
+import { sanitizeDoorChips } from './door-chips'
 
 type VenueLiveReportRow = {
   id: string
@@ -48,6 +49,7 @@ type LiveVenueIntelligenceRow = {
   hours: Venue['hours'] | null
   phone: string | null
   website: string | null
+  image_url?: string | null
   integrations: Venue['integrations'] | null
   live_summary: VenueLiveAggregateRow | null
   latest_activity_at: string | null
@@ -81,6 +83,7 @@ function mapVenueRow(row: {
   hours?: Venue['hours'] | null
   phone?: string | null
   website?: string | null
+  image_url?: string | null
   integrations?: Venue['integrations'] | null
   latest_activity_at?: string | null
   neighborhood?: string | null
@@ -113,6 +116,7 @@ function mapVenueRow(row: {
     hours: row.hours ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
+    imageUrl: row.image_url ?? undefined,
     integrations: row.integrations ?? undefined,
     liveSummary: liveAggregate ? mapVenueLiveAggregate(liveAggregate) : undefined
   }
@@ -176,6 +180,7 @@ export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
     isPending: false,
     uploadError: false,
     ...mapLiveReviewFields(row),
+    doorChips: sanitizeDoorChips(row.door_chips),
   }))
 }
 
@@ -208,6 +213,7 @@ export async function uploadPulseToSupabase(pulse: Pulse): Promise<boolean> {
     expires_at: pulse.expiresAt,
     kind: pulse.kind ?? 'review',
     location_verified: pulse.locationVerified ?? false,
+    door_chips: pulse.doorChips ?? [],
   })
   
   if (error) {

@@ -43,6 +43,25 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { ShareArrivalCard } from '@/components/ShareArrivalCard'
+import { HereNowCount } from '@/components/HereNowCount'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { FollowUserButton } from '@/components/FollowUserButton'
+import { getVenueInviteShareUrl, INVITE_FRIEND_COPY } from '@/lib/invite-friend'
+import { venueMapsHref, MAPS_CTA } from '@/lib/venue-maps'
+import { listHopNextVenues } from '@/lib/hop-next'
+import { doorRollupLabel } from '@/lib/door-rollup'
+import { canPinFromTheDoor, DOOR_PIN_CTA, DOOR_PIN_LABEL, type VenueDoorPin } from '@/lib/door-pin'
+import { CREW_TONIGHT_COPY } from '@/lib/crew-tonight'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { VenueClaim } from '@/lib/venue-owner'
+import { VenueCoverPhoto } from '@/components/VenueCoverPhoto'
+import { OpenNowChip } from '@/components/OpenNowChip'
+import { TextInviteButton } from '@/components/TextInviteButton'
+import { HopNextRow } from '@/components/HopNextRow'
+import { CrewTonightPicker } from '@/components/CrewTonightPicker'
+import { PulseThreadActions } from '@/components/PulseThreadActions'
+import { shareVenueFromSurface } from '@/lib/sharing'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
@@ -90,6 +109,22 @@ interface VenuePageProps {
   onReportPulse?: (report: ContentReport) => void
   onToggleFavorite: () => void
   onToggleFollow?: () => void
+  onPinMyNight?: () => void
+  onHidePulse?: (pulseId: string) => void
+  onFollowUser?: (userId: string) => void
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
+  onCrewTonight?: (venueId: string, memberIds: string[]) => void
+  onDoorPin?: (venueId: string, pulseId: string) => void
+  catalogVenues?: Venue[]
+  claims?: VenueClaim[]
+  doorPin?: VenueDoorPin | null
+  replies?: PulseReply[]
+  agrees?: PulseAgree[]
+  myNightPinned?: boolean
+  invitePrimed?: boolean
+  hereNow?: { count: number; friends: { userId: string; username: string | null }[] }
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
@@ -118,6 +153,22 @@ export function VenuePage({
   onReportPulse,
   onToggleFavorite,
   onToggleFollow,
+  onPinMyNight,
+  onHidePulse,
+  onFollowUser,
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
+  onCrewTonight,
+  onDoorPin,
+  catalogVenues = [],
+  claims = [],
+  doorPin = null,
+  replies = [],
+  agrees = [],
+  myNightPinned = false,
+  invitePrimed = false,
+  hereNow,
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
@@ -127,7 +178,7 @@ export function VenuePage({
 }: VenuePageProps) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const fromShare = searchParams.get('from') === 'share'
+  const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
@@ -363,7 +414,16 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
+          <VenueCoverPhoto venue={venue} />
           <h1 className="text-[28px] font-bold tracking-tight text-foreground">{venue.name}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <OpenNowChip venue={venue} />
+            {doorRollupLabel(venuePulses, venue.id) && (
+              <span className="inline-flex min-h-7 items-center rounded-full border border-border px-2.5 text-[11px] font-semibold">
+                {doorRollupLabel(venuePulses, venue.id)}
+              </span>
+            )}
+          </div>
           <p className="sr-only">{venueHandle(venue.name)}</p>
           {(() => {
             const placeStatus = venueStatusLine(venue)
@@ -408,6 +468,10 @@ export function VenuePage({
           )
         })()}
 
+        {hereNow && (
+          <HereNowCount count={hereNow.count} friends={hereNow.friends} />
+        )}
+
         <div className="flex gap-2">
           <Button
             onClick={onCreatePulse}
@@ -422,12 +486,72 @@ export function VenuePage({
             />
           )}
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+            onClick={() => {
+              const inviteUrl = getVenueInviteShareUrl(venue.id)
+              void shareVenueFromSurface(venue, {
+                writeText: async (text) => {
+                  await navigator.clipboard.writeText(`${inviteUrl}\n${text}`)
+                },
+              }).then((result) => {
+                if (result === 'copied') toast.success('Invite link copied')
+              })
+            }}
+          >
+            {INVITE_FRIEND_COPY.cta}
+          </button>
+          {onPinMyNight && (
+            <button
+              type="button"
+              className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+              onClick={onPinMyNight}
+            >
+              Pin My night
+            </button>
+          )}
+          <a
+            href={venueMapsHref({
+              lat: venue.location.lat,
+              lng: venue.location.lng,
+              name: venue.name,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+          >
+            {MAPS_CTA}
+          </a>
+          <TextInviteButton venueId={venue.id} venueName={venue.name} />
+        </div>
+        <HopNextRow
+          venues={listHopNextVenues(catalogVenues.length > 0 ? catalogVenues : [venue], venue)}
+          onVenueClick={(next) => navigate(`/venue/${next.id}`)}
+        />
+        {onCrewTonight && (
+          <CrewTonightPicker
+            followedPeople={(currentUser?.friends ?? []).map((id) => ({
+              id,
+              username: id.slice(0, 8),
+            }))}
+            ownerId={currentUser?.id}
+            pinned={myNightPinned}
+            onSave={(ids) => onCrewTonight(venue.id, ids)}
+            onInvite={() => {
+              void navigator.clipboard?.writeText(getVenueInviteShareUrl(venue.id))
+              toast.success(CREW_TONIGHT_COPY.share)
+            }}
+          />
+        )}
 
         <LiveNowStrip
           venueId={venue.id}
           pulses={venuePulses}
           venueName={venue.name}
           onSelect={setSelectedLiveReview}
+          doorPin={doorPin}
         />
 
         <details className="rounded-xl border border-border bg-card p-3.5">
@@ -598,10 +722,10 @@ export function VenuePage({
 
         {/* Phase 2: Live Crowd Indicator */}
         <LiveCrowdIndicator
-          count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
+          count={hereNow?.count ?? presenceData?.friendsHereNowCount ?? 0}
           trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
-          friendCount={presenceData?.friendsNearbyCount ?? 0}
-          isEstimated={!presenceData}
+          friendCount={hereNow?.friends.length ?? presenceData?.friendsNearbyCount ?? 0}
+          isEstimated={false}
         />
 
         {/* Phase 4: Venue Memory Card */}
@@ -763,14 +887,57 @@ export function VenuePage({
             </DialogDescription>
           </DialogHeader>
           {selectedLiveReview && (
-            <PulseCard
-              pulse={selectedLiveReview}
-              allPulses={venuePulses}
-              onReaction={(type) => onReaction(selectedLiveReview.id, type)}
-              currentUserId={currentUser?.id}
-              onReport={onReportPulse}
-              venueName={venue.name}
-            />
+            <div className="space-y-3">
+              <PulseCard
+                pulse={selectedLiveReview}
+                allPulses={venuePulses}
+                onReaction={(type) => onReaction(selectedLiveReview.id, type)}
+                currentUserId={currentUser?.id}
+                onReport={onReportPulse}
+                venueName={venue.name}
+              />
+              <DoorChipRow value={selectedLiveReview.doorChips} readOnly />
+              <PulseThreadActions
+                pulseId={selectedLiveReview.id}
+                venueId={venue.id}
+                authorUserId={selectedLiveReview.userId}
+                viewerId={currentUser?.id}
+                doorChips={selectedLiveReview.doorChips}
+                replies={replies}
+                agrees={agrees}
+                onReply={(id) => onPulseReply?.(id, venue.id)}
+                onSame={(id) => onSameAgree?.(id, venue.id)}
+                onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
+              />
+              {canPinFromTheDoor({
+                userId: currentUser?.id,
+                venueId: venue.id,
+                claims,
+              }) && onDoorPin && (
+                <button
+                  type="button"
+                  className="text-[13px] font-semibold text-foreground"
+                  onClick={() => onDoorPin(venue.id, selectedLiveReview.id)}
+                >
+                  {doorPin?.pulseId === selectedLiveReview.id ? DOOR_PIN_LABEL : DOOR_PIN_CTA}
+                </button>
+              )}
+              {onFollowUser && selectedLiveReview.userId !== currentUser?.id && (
+                <FollowUserButton
+                  following={Boolean(currentUser?.friends?.includes(selectedLiveReview.userId))}
+                  onClick={() => onFollowUser(selectedLiveReview.userId)}
+                />
+              )}
+              {onHidePulse && (
+                <button
+                  type="button"
+                  className="text-[13px] font-semibold text-muted-foreground"
+                  onClick={() => onHidePulse(selectedLiveReview.id)}
+                >
+                  Hide this pulse
+                </button>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>

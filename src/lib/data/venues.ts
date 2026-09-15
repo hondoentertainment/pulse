@@ -72,6 +72,7 @@ function rowToVenue(row: VenueRow): Venue {
     website: row.website ?? undefined,
     ownerEmailDomain: row.owner_email_domain ?? undefined,
     integrations: row.integrations ?? undefined,
+    imageUrl: (row as { image_url?: string | null }).image_url ?? undefined,
   }
 }
 

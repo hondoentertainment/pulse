@@ -21,12 +21,23 @@ import {
   clearPushNotifyTrigger,
 } from '@/lib/push-notify-affordance'
 import { readViteVapidPublicKey } from '@/lib/web-push-client'
-import { AUTH_PATH, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
 import { markNavigationStart } from '@/lib/cold-start'
 import { dismissFirstOpenCoach, shouldShowFirstOpenCoach } from '@/lib/first-open-coach'
 import { shareVenueFromSurface } from '@/lib/sharing'
+import { evaluateLocalNightCoach } from '@/lib/local-night-coach'
+import { listCatalogEvents } from '@/lib/data/events'
+import type { CatalogEvent } from '@/lib/events-tonight'
+import { DoorPinData, FollowData, PulseAgreeData, PulseReplyData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { listLastNightRooms } from '@/lib/last-night'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import { lastNightAuthPath } from '@/lib/last-night'
+import { buildAuthPath } from '@/lib/auth-return-intent'
+import { venueComposePath } from '@/lib/auth-return-intent'
+import { listRecentVenues, readRecentVenueIds } from '@/lib/recent-venues'
 import {
   findImHereVenue,
   inventoryLayerForImHere,
@@ -97,6 +108,11 @@ export function MainTabRouter() {
     handlePromotionImpression,
     handlePromotionClick,
     handleCreatePulse,
+    handleHidePulse,
+    handlePinMyNight,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
   } = handlers
 
   // Card taps set selectedVenue (for state consumers) and route to the venue
@@ -107,6 +123,12 @@ export function MainTabRouter() {
   const { session, isPlaceholder } = useSupabaseAuth()
   const signedIn = Boolean(session) && !isPlaceholder
   const [showPushNotify, setShowPushNotify] = useState(false)
+  const [catalogEvents, setCatalogEvents] = useState<CatalogEvent[]>([])
+  const [pinnedVenueIds, setPinnedVenueIds] = useState<string[]>([])
+  const [recentVenueIds, setRecentVenueIds] = useState<string[]>(() => readRecentVenueIds())
+  const [tonightReplies, setTonightReplies] = useState<PulseReply[]>([])
+  const [tonightAgrees, setTonightAgrees] = useState<PulseAgree[]>([])
+  const [lastNightPresence, setLastNightPresence] = useState<{ venueId: string; userId: string; checkedInAt: string }[]>([])
 
   useEffect(() => {
     setShowPushNotify(shouldShowPushNotifyAffordance({
@@ -116,6 +138,57 @@ export function MainTabRouter() {
       trigger: readPushNotifyTrigger(),
     }))
   }, [followedVenues, signedIn])
+
+  useEffect(() => {
+    if (!USE_SUPABASE_BACKEND) return
+    void listCatalogEvents().then(setCatalogEvents).catch(() => setCatalogEvents([]))
+    if (signedIn && currentUser?.id) {
+      void FollowData.listPinnedVenues(currentUser.id).then(setPinnedVenueIds).catch(() => setPinnedVenueIds([]))
+      const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      void DoorPinData.listMyPresenceLastNight(currentUser.id, since)
+        .then(setLastNightPresence)
+        .catch(() => setLastNightPresence([]))
+    }
+    const pulseIds = moderatedPulses.slice(0, 40).map((pulse) => pulse.id)
+    void PulseAgreeData.listAgreesForPulses(pulseIds).then(setTonightAgrees).catch(() => setTonightAgrees([]))
+    const venueIds = [...new Set(visibleVenues.slice(0, 12).map((venue) => venue.id))]
+    void Promise.all(venueIds.map((id) => PulseReplyData.listRepliesForVenue(id)))
+      .then((rows) => setTonightReplies(rows.flat()))
+      .catch(() => setTonightReplies([]))
+  }, [currentUser?.id, moderatedPulses, signedIn, visibleVenues])
+
+  useEffect(() => {
+    if (!signedIn) return
+    const note = evaluateLocalNightCoach({
+      venues: venues ?? [],
+      pulses: moderatedPulses,
+      followedVenueIds: followedVenues.map((venue) => venue.id),
+    })
+    if (!note) return
+    toast.message(note.title, { description: note.body })
+  }, [followedVenues, moderatedPulses, signedIn, venues])
+  useEffect(() => {
+    setRecentVenueIds(readRecentVenueIds())
+  }, [location.pathname])
+
+  const lastNight = useMemo(
+    () => signedIn && currentUser
+      ? listLastNightRooms({
+        venues: venues ?? [],
+        pulses: moderatedPulses,
+        userId: currentUser.id,
+        pinnedVenueIds,
+        presence: lastNightPresence,
+      })
+      : [],
+    [currentUser, lastNightPresence, moderatedPulses, pinnedVenueIds, signedIn, venues],
+  )
+
+  const recentVenues = useMemo(
+    () => listRecentVenues(venues ?? [], recentVenueIds),
+    [recentVenueIds, venues],
+  )
+
   const hereVenueId = parseHereVenueId(location.search)
   const mapVenues = useMemo(
     () => retainFocusedVenue(visibleVenues, venues, hereVenueId),
@@ -280,17 +353,38 @@ export function MainTabRouter() {
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
               followedVenueIds={followedVenues.map((venue) => venue.id)}
+              pinnedVenueIds={pinnedVenueIds}
+              followedUserIds={currentUser.friends ?? []}
+              catalogEvents={catalogEvents}
+              recentVenues={recentVenues}
               signedIn={signedIn}
               locationDenied={!userLocation}
               onVenueClick={handleVenueClick}
               onToggleFollow={handleToggleFollow}
               onShareVenue={handleShareVenue}
+              onHidePulse={handleHidePulse}
+              onPinMyNight={handlePinMyNight}
+              onBeFirstPulse={(venue) => {
+                if (!signedIn) {
+                  navigate(buildAuthPath(venueComposePath(venue.id)))
+                  return
+                }
+                handleCreatePulse(venue.id)
+              }}
               onFollowAuth={() => {
                 toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
-                navigate(AUTH_PATH)
+                navigate(buildAuthPath(`${location.pathname}${location.search}`))
               }}
               surface={mapSurface}
               onSurfaceChange={setMapSurface}
+              viewerId={currentUser.id}
+              replies={tonightReplies}
+              agrees={tonightAgrees}
+              lastNightRooms={lastNight}
+              onLastNightAuth={() => navigate(lastNightAuthPath())}
+              onPulseReply={handlePulseReply}
+              onSameAgree={handleSameAgree}
+              onBlockUser={handleBlockUser}
             />
             {mapSurface === 'live' && (
               <LivePulseTimeline

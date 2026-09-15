@@ -14,6 +14,7 @@ import {
 import { ENERGY_CONFIG, type EnergyRating } from './types'
 import { filterTonightCatalog } from './catalog-quality'
 import { isCuratedVenue } from './map-filters'
+import { densityRankBoost } from './seattle-density'
 import {
   DEFAULT_LAUNCH_NEIGHBORHOOD,
   inferNeighborhoodFromGeo,
@@ -154,7 +155,7 @@ function rankScore(
     ? calculateDistance(userLocation.lat, userLocation.lng, venue.location.lat, venue.location.lng)
     : 2
   const recencyBoost = activity.latest ? 20 : 0
-  return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4
+  return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4 + densityRankBoost(venue)
 }
 
 /** Prefer curated / quality pins when energy + distance are tied. */
@@ -171,6 +172,8 @@ export function compareTonightRank(
   if (curatedDiff !== 0) return curatedDiff
   const claimDiff = Number(Boolean(b.claimVerified)) - Number(Boolean(a.claimVerified))
   if (claimDiff !== 0) return claimDiff
+  const densityDiff = densityRankBoost(b) - densityRankBoost(a)
+  if (densityDiff !== 0) return densityDiff
   return (a.name ?? '').localeCompare(b.name ?? '')
 }
 

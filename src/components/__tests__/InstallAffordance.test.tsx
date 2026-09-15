@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { InstallAffordance } from '@/components/InstallAffordance'
 import { INSTALL_DISMISS_STORAGE_KEY } from '@/lib/install-affordance'
@@ -22,5 +22,14 @@ describe('InstallAffordance', () => {
     expect(screen.getByRole('region', { name: 'Install Pulse' })).toBeInTheDocument()
     expect(screen.getByText(/browser menu/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument()
+  })
+
+  it('dismisses locally and does not nag again', () => {
+    window.localStorage.removeItem(INSTALL_DISMISS_STORAGE_KEY)
+    const { rerender } = render(<InstallAffordance />)
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
+    expect(window.localStorage.getItem(INSTALL_DISMISS_STORAGE_KEY)).toBe('1')
+    rerender(<InstallAffordance />)
+    expect(screen.queryByRole('region', { name: 'Install Pulse' })).not.toBeInTheDocument()
   })
 })

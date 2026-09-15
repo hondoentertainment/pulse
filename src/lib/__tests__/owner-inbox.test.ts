@@ -4,7 +4,9 @@ import type { Pulse } from '../types'
 import type { VenueClaim } from '../venue-owner'
 import {
   countTonightReports,
+  createOwnerOneTapReply,
   createOwnerReply,
+  OWNER_ONE_TAP_REPLY,
   dismissReportsForPulse,
   mapPulseReportsToContentReports,
   mergeInboxReports,
@@ -65,6 +67,7 @@ describe('owner inbox v2', () => {
     expect(createOwnerReply({ pulseId: 'p1', venueId: 'neumos', body: '   ' })).toBeNull()
     const reply = createOwnerReply({ pulseId: 'p1', venueId: 'neumos', body: 'Thanks for coming' })
     expect(reply?.body).toBe('Thanks for coming')
+    expect(createOwnerOneTapReply({ pulseId: 'p1', venueId: 'neumos' })?.body).toBe(OWNER_ONE_TAP_REPLY)
   })
 
   it('ignores dismissed reports in the count', () => {
