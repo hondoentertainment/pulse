@@ -1,118 +1,205 @@
-# Pulse — Recommended Next Steps
+# Pulse — Recommended Next Steps (Twitter-class bar)
 
 > Updated 2026-09-15. **Pulse is venue + map only** (Signal removed; no `VITE_APP_MODE`).
 > Production: https://pulse-chi-nine.vercel.app/ · Catalog: 533 Seattle venues.
 > Detail maps: [docs/next-steps.md](docs/next-steps.md) · Claims ops: [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md).
 
+## What “Twitter-class” means here
+
+Not “become Twitter.” It means matching the **product bar** that made Twitter feel world-class:
+
+| Pillar | Twitter move | Pulse equivalent |
+|--------|--------------|------------------|
+| **Habit open** | Open for the timeline | Open every night for *Tonight · what’s live near me* |
+| **Realtime feel** | Posts appear instantly | Live review → map / Surging update without refresh |
+| **Trust at scale** | Verified + anti-spam | Location-verified pulses, claim/inbox, report triage |
+| **Distribution** | Quote / share / follow | Share OG, I’m-here, follow venue, crew tonight |
+| **Return triggers** | Push + badges | Venue-surge push when a followed spot goes Electric |
+| **Feed quality** | For You ranking | Tonight / For You ranking that feels right in &lt;1s |
+| **Perf** | Snappy on mid phones | Cold start `pulse_map_interactive` ≲ 2s |
+| **Ops truth** | Metrics or it didn’t happen | Funnel + realtime SLO dashboards actually wired |
+
+Pulse already has most of these **in-repo**. The gap to world-class is **prove the loop on prod**, then **tighten the habit → return → trust flywheel** until Seattle feels inevitable.
+
+---
+
 ## Intake summary
 
-| Track | Items | Who |
+| Track | Focus | Who |
 |-------|-------|-----|
-| A — Ship ready code | Next-15 PRs landed (#105 merged; #104 closed as superseded; #106 docs on `main`) | Maintainer |
-| B — Human ops / prod proof | Env, live loop, branch protection, #85/#86 | Human admin |
-| C — Agent-safe polish | ENG-1 done; remaining items after B or while waiting on credentials | Agent / maintainer |
-| Parked | Explicitly out of scope | — |
+| 0 — Foundation | Prod truth: env, live loop, claim, share, protection | Human admin |
+| 1 — Habit | Nightly open feels magical + measurable | Agent + human |
+| 2 — Return | Push + notifications that bring people back | Human keys + agent |
+| 3 — Trust | Supply-side owners + anti-gaming | Agent + human |
+| 4 — Growth | Viral share → install → first pulse | Agent + human |
+| 5 — Scale polish | Perf, a11y, city #2 readiness | Later |
+| Parked | Explicitly not Twitter-clone scope | — |
 
-**Recommended next action:** Prove #85/#86 on production and close them. Confirm Vercel env + live review loop (OPS-1 / #64).
+**Recommended next action:** Finish Track 0 on production (especially #64 live loop + #85/#86 proof), then ship **WC-1 Tonight habit ranking + funnel wiring** so every open has a measurable “Twitter timeline” moment.
 
-> **2026-09-15 agent pass:** ENG-1 Playwright smoke + CI wiring landed on this branch; OPS-2 schema verified present on prod via Supabase MCP (see [docs/runbooks/prod-next-steps-checklist.md](docs/runbooks/prod-next-steps-checklist.md)). #105/#106 are on `main`; Vercel env, branch protection, and live #85/#86 proof remain **human-only**.
+### Assumptions
+- No active production incident.
+- #105 next-15 usage stack is on `main`; open issues remaining: **#85**, **#86** (prod proof).
+- Solo maintainer still owns Vercel / Supabase / GitHub admin.
+- “Twitter-class” is a quality bar, not a feature request to add a global public text feed.
+
+---
+
+## Scorecard (honest)
+
+| Pillar | In-repo | Prod-proven | Gap to world-class |
+|--------|---------|-------------|--------------------|
+| Live review → map realtime | Yes | **Unproven** (#64) | One signed-in prod walkthrough |
+| Claim → owner inbox | Yes | **Unproven** (#85) | Domain verify or `/ops` on real venue |
+| Share OG + I’m-here | Yes | **Unproven** (#86) | Phone + crawler |
+| Guest → first pulse funnel | Events defined | Adapter often **no-op** in prod | Wire PostHog/Amplitude + dashboard |
+| Venue-surge push | Stub + VAPID no-op | Keys usually **missing** | Generate VAPID; prove one surge notify |
+| Tonight / For You ranking | Surfaces exist | Feels early | Rank freshness + friends + distance; A/B |
+| Cold start &lt;2s | Marks exist | Not measured on mid phone | Device budget + Launch 33 default |
+| Trust / anti-spam | Credibility + reports | Soft | Weight verified location in ranking; mod SLA |
+| Crew / social graph | Components exist | Density unknown | Invite + follow loops in one hood first |
 
 ---
 
 ## Prioritized queue
 
-### Track A — Ship ready code (do first)
+### Track 0 — Foundation (do before calling anything “world-class”)
 
-1. **[SHIP-1] Merge #105 — next-15 thread / Same / Crew / Maps / Last night** — P0 | Effort: S | Impact: High — **DONE (merged to `main` as `a6b6f10`, 2026-09-15)**  
-   - Why now: Ready for review (not draft), mergeable, CI green (lint/test/build/typecheck/smoke/audit). Lands the stacked usage features on `main`.  
-   - Dependencies: none for merge; leave #85/#86 open until prod proof.  
+1. **[WC-0.1 / #64] Prove the live loop on production** — P0 | Effort: S–M | Impact: Critical  
+   - Why now: Without a real signed-in review updating Live now + map/Surging, every other pillar is theater.  
    - Acceptance:
-     - [x] #105 merged to `main`
-     - [ ] Production/preview redeploy succeeds
-   - Verification: GitHub merge + Vercel production deploy healthy
-
-2. **[SHIP-2] Merge or close #104 — next-15 usage roadmap** — P1 | Effort: S | Impact: Medium — **DONE (closed as superseded after #105, 2026-09-15)**  
-   - Why now: #105 is stacked on / rebased onto #104; if #105 already contains the #104 surface, close #104 as superseded after #105 lands. If not, merge #104 next.  
-   - Dependencies: Prefer #105 first to avoid fighting the stack.  
-   - Acceptance:
-     - [x] Either #104 merged, or closed with comment “superseded by #105”
-   - Verification: `main` has hood `/n/:slug` pages, night-coach cron, recents row
-
-### Track B — Human ops / prod proof (blocks “done” for trust + growth)
-
-3. **[OPS-1 / #64] Confirm Vercel env + prove live loop** — P0 | Effort: S–M | Impact: Stability  
-   - Why now: Code assumes Supabase; fixture-only prod is not a real nightlife loop.  
-   - Acceptance:
-     - [ ] Vercel production has `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (rebuild after set)
+     - [ ] Vercel prod has `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (rebuild after set)
      - [ ] Do **not** set `VITE_APP_MODE`
-     - [ ] Sign in on https://pulse-chi-nine.vercel.app/, post a live review, confirm Live now + map/Surging without refresh
-   - Verification: Manual prod walkthrough; then close remaining #64 boxes
+     - [ ] Sign in → post live review → Live now + map/Surging update **without refresh**
+   - Verification: Manual prod walkthrough; close remaining #64 boxes
 
-4. **[OPS-2] Apply remaining additive SQL (if not already on prod)** — P0 | Effort: S | Impact: Trust / growth — **VERIFIED PRESENT (agent MCP, 2026-09-15)**  
-   - Project: `xeldqwhztcnnvazmshzh`  
-   - Confirmed on prod: `venue_claims.work_email` + `work_email_confirmed_at`, `try_verify_venue_claim_by_email_domain`, `follows.target_venue_id`, `push_tokens.p256dh`/`auth`/`platform`, `pulse_reports.status`/`reviewed_at`.  
-   - Still human: only re-apply SQL if a fresh environment is missing these; do **not** recreate; do **not** drop leftover `signal_*` tables. Checklist: [docs/runbooks/prod-next-steps-checklist.md](docs/runbooks/prod-next-steps-checklist.md).
+2. **[WC-0.2 / #85] Prove claim → verified → owner inbox** — P0 | Effort: M | Impact: Trust  
+   - Why now: Twitter-class products have a supply side that can respond. Owners without inbox = dead social graph.  
+   - Acceptance: pending visible; pending does **not** unlock; verified/domain unlocks reply/dismiss; guest blocked  
+   - Runbook: [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md)
 
-5. **[OPS-3 / #85] Prove venue claim → owner inbox E2E on prod** — P1 | Effort: M | Impact: Trust  
-   - Code is in-repo; issue stays open until live proof.  
-   - Acceptance (from issue):
-     - [ ] Claim submit → pending visible to claimant
-     - [ ] Verified claim (domain-match or `/ops` admin) unlocks `/venue/:id/inbox`
-     - [ ] Pending does **not** unlock inbox
-     - [ ] Reply / dismiss report works for verified owner; guest blocked
-   - Runbook: [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md)  
-   - Verification: Real Seattle venue + real signed-in accounts on prod → close #85
+3. **[WC-0.3 / #86] Prove share OG + I’m-here on a real device** — P0 | Effort: S | Impact: Growth  
+   - Why now: Distribution is how Twitter scaled; OG + deep link is Pulse’s quote-tweet.  
+   - Acceptance: iMessage/Slack crawl shows name + freshness; I’m-here focuses pin; guest can view; write → `/auth`
 
-6. **[OPS-4 / #86] Prove share OG + I’m-here pin on a real device** — P1 | Effort: S | Impact: Growth  
+4. **[WC-0.4 / #65] Branch protection for solo maintainer** — P1 | Effort: S | Impact: Velocity  
+   - Required: `smoke-preview` / `smoke-preview-venue`; remove Signal checks; reviews = 0 or admin bypass  
+   - Runbook: [docs/runbooks/github-branch-protection.md](docs/runbooks/github-branch-protection.md)
+
+5. **[WC-0.5] Wire analytics backend (not console no-op)** — P1 | Effort: S | Impact: Critical  
+   - Why now: Twitter-class teams manage to metrics. Funnel events exist (`guest_map_view` → `first_pulse_create`) but prod adapter is often unset → silent no-op.  
    - Acceptance:
-     - [ ] Share URL `/api/share/venue?venueId=` shows venue name + freshness in iMessage/Slack crawl
-     - [ ] I’m-here focuses the map pin; guest can view; write still requires `/auth`
-   - Verification: Phone + crawler preview → close #86
+     - [ ] `VITE_ANALYTICS_BACKEND=posthog` (or amplitude) + API key on Vercel
+     - [ ] Dashboard shows guest→auth→first pulse for last 7 days
+   - Verification: Post one guest session + one first pulse; events appear in provider within 5 minutes
 
-7. **[OPS-5 / #65] Branch protection for solo maintainer** — P1 | Effort: S | Impact: Velocity  
-   - Runbook: [docs/runbooks/github-branch-protection.md](docs/runbooks/github-branch-protection.md)  
-   - Required checks: `smoke-preview` and/or `smoke-preview-venue`  
-   - Remove any required `smoke-preview-signal` / `e2e-signal`  
-   - Solo maintainer: admin bypass **or** required reviews = 0  
-   - Verification: Open a no-op PR; confirm checks + merge path
+### Track 1 — Habit open (the “timeline” moment)
 
-8. **[OPS-6] Optional credentials / ops unlocks** — P2 | Effort: S each | Impact: Medium  
-   - Set `app_metadata.role = admin` for `/ops` (domain-match claims can verify without this)  
-   - Optional VAPID trio for venue-surge push stub (`VAPID_*` / `VITE_VAPID_PUBLIC_KEY`) — missing keys = honest no-op  
-   - Custom domain + branded magic-link: [docs/runbooks/custom-domain.md](docs/runbooks/custom-domain.md) — live URL stays `pulse-chi-nine.vercel.app` until DNS attach  
-   - Cold-start measure: hard reload `/`, confirm `pulse_map_interactive` ≲ 2s on a mid phone ([docs/next-steps.md](docs/next-steps.md))
+6. **[WC-1] Tonight habit surface v1** — P1 | Effort: M | Impact: High  
+   - Problem: Opening Pulse must answer “where do I go in the next hour?” in one screen — Twitter’s timeline equivalent.  
+   - Scope in: rank Start here / Heating up from **live energy + distance + time-of-day + followed venues**; empty Surging teaches the loop; Launch 33 default  
+   - Scope out: second city, video, paid boost  
+   - Acceptance:
+     - [ ] Cold open `/` shows `Tonight · {hood}` + ≤8 ranked cards in &lt;1s after map interactive
+     - [ ] Followed venues that pulsed in 90m float to top when nearby
+     - [ ] Empty state CTA posts a live review (auth gate if guest)
+   - Verification: Playwright smoke + 10-person Seattle dogfood for 3 nights; qualitative “I opened it before leaving”
 
-### Track C — Agent-safe / later (only if A+B wait, or after ship)
+7. **[WC-2] Realtime latency SLO** — P1 | Effort: M | Impact: High  
+   - Problem: Twitter feels instant; a 10s map lag kills trust.  
+   - Acceptance:
+     - [ ] Client metric: `pulse_created` → local map/Surging reflection p95 &lt; 2s on wifi
+     - [ ] Alert when realtime channel errors &gt; 1% of sessions (Sentry)
+   - Verification: Synthetic post in staging/prod; dashboard panel
 
-9. **[ENG-1] Venue smoke expansion** — P2 | Effort: M | Impact: Regression safety — **DONE (agent, 2026-09-15)**  
-   - Playwright coverage for claim → inbox gate, share deep link, I’m-here pin in `e2e/venue-claim-share.spec.ts`, wired into `test:smoke:venue` + CI. Verified unlock uses e2e-only `sessionStorage` seed (no invented admin).  
-   - Acceptance: smoke exercises pending-lock + share/`here=` URL focus without prod secrets.
+### Track 2 — Return triggers (why they come back)
 
-10. **[ENG-2] Lint warning trend-down** — P3 | Effort: M | Impact: Velocity  
-    - Zero errors already; do **not** raise `--max-warnings`. Trim unused exports / `any` / a11y warnings incrementally.
+8. **[WC-3] Venue-surge Web Push (new issue, not Signal #66)** — P1 | Effort: M | Impact: High  
+   - Why now: Twitter’s badge/push is the return loop. Pulse needs “Neumos just went Electric” while the night is young.  
+   - Dependencies: WC-0.1; generate VAPID trio on Vercel (`VAPID_*`, `VITE_VAPID_PUBLIC_KEY`); missing keys stay honest no-op  
+   - Acceptance:
+     - [ ] Following a venue + granting push → one notification when venue crosses Electric (rate-limited ≤1/venue/2h)
+     - [ ] Prefs: mute per venue; quiet hours
+   - Verification: Two devices; follow → trigger surge (or staging inject) → notify received  
+   - Note: Do **not** revive Signal push (#66). Open a **new** venue-surge push issue.
 
-11. **[ENG-3] Auth + offline + realtime integration tests** — P3 | Effort: L | Impact: Stability  
-    - From [NEXT_PHASES.md](NEXT_PHASES.md) Phase 2.2: `use-supabase-auth`, offline queue sync, realtime subscription handling — only after prod loop is proven.
+9. **[WC-4] In-app notification quality** — P2 | Effort: M | Impact: Medium  
+   - Group surges, friend pulses, owner replies; deep link to venue/inbox; unread badge on You tab  
+   - Acceptance: tapping a notify lands on the right venue with highlight; no duplicate storms
 
-### Track D — Parked (do not schedule)
+### Track 3 — Trust & supply (anti-spam + owners)
 
-- Restoring Pulse Signal or any `VITE_APP_MODE` dual shell  
-- Closing #66 as “Web Push for Signal” — **not planned**; if needed, open a **new** venue-surge push issue  
-- Apple Health / Google Fit, AI concierge, ticketing, creator economy, video feed  
-- Invented Pulse Pro pricing / Stripe  
-- Second city beyond Seattle  
-- Mass deletes of OSM catalog rows  
-- Dropping leftover `signal_*` tables without a dedicated review  
+10. **[WC-5] Location-verified weight in ranking** — P1 | Effort: M | Impact: High  
+    - Problem: Twitter-class feeds punish low-trust noise. Unverified remote pulses must not dominate Tonight.  
+    - Acceptance:
+      - [ ] Ranking prefers `location_verified` pulses in last 90m
+      - [ ] Trust chips stay honest (never invent Verified)
+      - [ ] Unit tests for rank comparator
+    - Verification: Fixture with verified vs remote pulses; verified wins when otherwise tied
+
+11. **[WC-6] Owner inbox response loop** — P1 | Effort: M | Impact: High  
+    - After #85 proof: one-tap owner reply visible on venue Live now; dismiss persists server-side  
+    - Acceptance: patron sees owner reply within session; `/ops` can triage reports in &lt;2 min flow
+
+12. **[WC-7] Moderation SLA basics** — P2 | Effort: M | Impact: Medium  
+    - Report → hide for reporter → admin queue → resolve/dismiss with reason  
+    - Acceptance: p95 time-to-hide for reporter &lt; 1s; admin can clear queue without SQL
+
+### Track 4 — Growth loops
+
+13. **[WC-8] Share → install → first pulse funnel** — P1 | Effort: M | Impact: High  
+    - Instrument + polish: OG share → `ShareArrivalCard` → install affordance → auth → first pulse  
+    - Acceptance: funnel dashboard for this path; install card only when eligible; no fake urgency
+
+14. **[WC-9] Single-hood density wedge** — P1 | Effort: L | Impact: High  
+    - Pick **one** Seattle hood (e.g. Capitol Hill); 20 venues claimed/followed; 50 nightly actives dogfood  
+    - Why now: Twitter won cities before countries. Density beats breadth.  
+    - Acceptance: that hood’s Tonight never empty Fri/Sat 9–12pm for 4 weeks of dogfood  
+    - Verification: weekly active reviews + unique posters chart
+
+15. **[WC-10] Crew tonight (keep tight)** — P2 | Effort: M | Impact: Medium  
+    - 2–4 friends, one pinned venue, no SMS vendor required  
+    - Acceptance: crew sees each other’s I’m-here; guests not leaked cross-crew
+
+### Track 5 — Scale polish (after Tracks 0–2)
+
+16. **[WC-11] Cold-start budget on mid phones** — P2 | Effort: M | Impact: Medium  
+    - Hard reload `/`; `pulse_map_interactive` ≲ 2000ms; Launch 33 first; All Seattle idle  
+    - Verification: 3 device profiles documented in [docs/next-steps.md](docs/next-steps.md)
+
+17. **[WC-12] Accessibility + motion pass** — P2 | Effort: M | Impact: Medium  
+    - Map + Tonight + composer: keyboard, reduced-motion, contrast; no emoji-only meaning
+
+18. **[WC-13] Second city readiness checklist only** — P3 | Effort: S | Impact: Low now  
+    - Document catalog import + geo-gate + OG; **do not launch** until Seattle D1/D7 targets hit
+
+### Parked (not Twitter-class for Pulse)
+
+- Restoring Signal / dual `VITE_APP_MODE` shell  
+- Global public text timeline unrelated to venues  
+- Stripe / invented Pulse Pro pricing  
+- Ticketing, AI concierge, video-first feed, Health/Fit  
+- Mass OSM deletes; dropping leftover `signal_*` tables without review  
+- Closing #66 as Signal Web Push — open a **new** venue-surge issue instead  
 
 ---
 
+## Suggested sequencing (next 6 execution slices)
+
+1. Human: **WC-0.1 → 0.3** (prod proof #64/#85/#86)  
+2. Human: **WC-0.4 + WC-0.5** (protection + analytics keys)  
+3. Agent: **WC-1 + WC-5** (Tonight ranking + verified weight)  
+4. Human+agent: **WC-3** (VAPID + surge push)  
+5. Agent: **WC-8** (share→pulse funnel polish)  
+6. Human: **WC-9** (one-hood density dogfood)
+
 ## Decision
 
-**Pulse is the nightlife venue + map PWA.** Signal is gone. See [PRD.md](PRD.md). Optional geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`.
+**Pulse is the nightlife venue + map PWA.** World-class means the **nightly open → live truth → return notify → trusted supply** flywheel works in Seattle with Twitter-level realtime and trust — not a clone of Twitter’s product surface.
 
-## Assumptions
+## References
 
-- No active production incident.  
-- #85/#86 remain open until a human proves them on prod (in-repo work already landed via #101–#103).  
-- #73 Signal feature work is historical; do not reopen Signal as the shipping product.  
-- Solo maintainer still owns Supabase / Vercel / GitHub admin.
+- [docs/next-steps.md](docs/next-steps.md) — Figma → shipped surfaces  
+- [docs/runbooks/prod-next-steps-checklist.md](docs/runbooks/prod-next-steps-checklist.md) — ops checklist  
+- [docs/observability.md](docs/observability.md) — funnel + adapters  
+- [PRD.md](PRD.md) — product north star  
