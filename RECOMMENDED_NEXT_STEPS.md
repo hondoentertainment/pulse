@@ -1,6 +1,6 @@
 # Pulse — Recommended Next Steps
 
-> Updated 2026-09-14. **Pulse is venue + map only** (Signal removed; no `VITE_APP_MODE`).
+> Updated 2026-09-15. **Pulse is venue + map only** (Signal removed; no `VITE_APP_MODE`).
 > Production: https://pulse-chi-nine.vercel.app/ · Catalog: 533 Seattle venues.
 > Detail maps: [docs/next-steps.md](docs/next-steps.md) · Claims ops: [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md).
 
@@ -8,12 +8,14 @@
 
 | Track | Items | Who |
 |-------|-------|-----|
-| A — Ship ready code | Merge open next-15 PRs | Maintainer |
-| B — Human ops / prod proof | Env, migrations, live loop, branch protection, #85/#86 | Human admin |
-| C — Agent-safe polish | Only after A+B, or while waiting on credentials | Agent / maintainer |
+| A — Ship ready code | Next-15 PRs landed (#105 merged; #104 closed as superseded; #106 docs on `main`) | Maintainer |
+| B — Human ops / prod proof | Env, live loop, branch protection, #85/#86 | Human admin |
+| C — Agent-safe polish | ENG-1 done; remaining items after B or while waiting on credentials | Agent / maintainer |
 | Parked | Explicitly out of scope | — |
 
-**Recommended next action:** Merge [#105](https://github.com/hondoentertainment/pulse/pull/105) (CI green, mergeable into `main`), then prove #85/#86 on production and close them.
+**Recommended next action:** Prove #85/#86 on production and close them. Confirm Vercel env + live review loop (OPS-1 / #64).
+
+> **2026-09-15 agent pass:** ENG-1 Playwright smoke + CI wiring landed on this branch; OPS-2 schema verified present on prod via Supabase MCP (see [docs/runbooks/prod-next-steps-checklist.md](docs/runbooks/prod-next-steps-checklist.md)). #105/#106 are on `main`; Vercel env, branch protection, and live #85/#86 proof remain **human-only**.
 
 ---
 
@@ -21,19 +23,19 @@
 
 ### Track A — Ship ready code (do first)
 
-1. **[SHIP-1] Merge #105 — next-15 thread / Same / Crew / Maps / Last night** — P0 | Effort: S | Impact: High  
+1. **[SHIP-1] Merge #105 — next-15 thread / Same / Crew / Maps / Last night** — P0 | Effort: S | Impact: High — **DONE (merged to `main` as `a6b6f10`, 2026-09-15)**  
    - Why now: Ready for review (not draft), mergeable, CI green (lint/test/build/typecheck/smoke/audit). Lands the stacked usage features on `main`.  
    - Dependencies: none for merge; leave #85/#86 open until prod proof.  
    - Acceptance:
-     - [ ] #105 merged to `main`
+     - [x] #105 merged to `main`
      - [ ] Production/preview redeploy succeeds
    - Verification: GitHub merge + Vercel production deploy healthy
 
-2. **[SHIP-2] Merge or close #104 — next-15 usage roadmap** — P1 | Effort: S | Impact: Medium  
+2. **[SHIP-2] Merge or close #104 — next-15 usage roadmap** — P1 | Effort: S | Impact: Medium — **DONE (closed as superseded after #105, 2026-09-15)**  
    - Why now: #105 is stacked on / rebased onto #104; if #105 already contains the #104 surface, close #104 as superseded after #105 lands. If not, merge #104 next.  
    - Dependencies: Prefer #105 first to avoid fighting the stack.  
    - Acceptance:
-     - [ ] Either #104 merged, or closed with comment “superseded by #105”
+     - [x] Either #104 merged, or closed with comment “superseded by #105”
    - Verification: `main` has hood `/n/:slug` pages, night-coach cron, recents row
 
 ### Track B — Human ops / prod proof (blocks “done” for trust + growth)
@@ -46,13 +48,10 @@
      - [ ] Sign in on https://pulse-chi-nine.vercel.app/, post a live review, confirm Live now + map/Surging without refresh
    - Verification: Manual prod walkthrough; then close remaining #64 boxes
 
-4. **[OPS-2] Apply remaining additive SQL (if not already on prod)** — P0 | Effort: S | Impact: Trust / growth  
+4. **[OPS-2] Apply remaining additive SQL (if not already on prod)** — P0 | Effort: S | Impact: Trust / growth — **VERIFIED PRESENT (agent MCP, 2026-09-15)**  
    - Project: `xeldqwhztcnnvazmshzh`  
-   - Apply only if missing (do **not** recreate already-applied migrations):
-     - Optional: `20260911000000_owner_report_triage.sql` (owner dismiss beyond localStorage)
-     - Additive: `20260912120000_venue_follows_push_claim_rate.sql` (domain-match claim, pulse rate-limit, web columns on `push_tokens`)
-   - Verify: `supabase/verify/` scripts for follows, push_tokens, notifications, venue_claim_domain, pulse_rate_limit  
-   - Do **not** create `venue_follows` / `web_push_subscriptions`; do **not** reuse leftover `signal_*` push tables; do **not** re-apply claim-verified badge migration.
+   - Confirmed on prod: `venue_claims.work_email` + `work_email_confirmed_at`, `try_verify_venue_claim_by_email_domain`, `follows.target_venue_id`, `push_tokens.p256dh`/`auth`/`platform`, `pulse_reports.status`/`reviewed_at`.  
+   - Still human: only re-apply SQL if a fresh environment is missing these; do **not** recreate; do **not** drop leftover `signal_*` tables. Checklist: [docs/runbooks/prod-next-steps-checklist.md](docs/runbooks/prod-next-steps-checklist.md).
 
 5. **[OPS-3 / #85] Prove venue claim → owner inbox E2E on prod** — P1 | Effort: M | Impact: Trust  
    - Code is in-repo; issue stays open until live proof.  
@@ -85,8 +84,9 @@
 
 ### Track C — Agent-safe / later (only if A+B wait, or after ship)
 
-9. **[ENG-1] Venue smoke expansion** — P2 | Effort: M | Impact: Regression safety  
-   - Add Playwright coverage for claim → inbox gate, share deep link, I’m-here pin (mirrors #85/#86 acceptance without needing prod secrets in CI).
+9. **[ENG-1] Venue smoke expansion** — P2 | Effort: M | Impact: Regression safety — **DONE (agent, 2026-09-15)**  
+   - Playwright coverage for claim → inbox gate, share deep link, I’m-here pin in `e2e/venue-claim-share.spec.ts`, wired into `test:smoke:venue` + CI. Verified unlock uses e2e-only `sessionStorage` seed (no invented admin).  
+   - Acceptance: smoke exercises pending-lock + share/`here=` URL focus without prod secrets.
 
 10. **[ENG-2] Lint warning trend-down** — P3 | Effort: M | Impact: Velocity  
     - Zero errors already; do **not** raise `--max-warnings`. Trim unused exports / `any` / a11y warnings incrementally.

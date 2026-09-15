@@ -8,6 +8,7 @@ import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 import { ViteImageOptimizer } from 'vite-plugin-image-optimizer'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sparkKvLocalPlugin } from './vite-plugins/spark-kv-local'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
@@ -17,6 +18,11 @@ export default defineConfig(({ command }) => {
   const isDev = command === 'serve' && !isVitest
 
   return {
+    // Spark workbench normally injects this in `vite serve`. Preview / CI builds
+    // need the same global or every useKV call throws a ReferenceError.
+    define: {
+      BASE_KV_SERVICE_URL: JSON.stringify('/_spark/kv'),
+    },
     build: {
       chunkSizeWarningLimit: 600,
       rollupOptions: {
@@ -70,6 +76,8 @@ export default defineConfig(({ command }) => {
     plugins: [
       !isVitest && react(),
       tailwindcss(),
+      // Local KV for preview/e2e (and as fallback when workbench KV is absent).
+      sparkKvLocalPlugin(),
       // Icon proxy + Spark workbench plugins are serve-only. Shipping them in
       // `vite build` re-emits dist/proxy.js (~1.5 MB) into the PWA precache.
       (isDev || isVitest) && (createIconImportProxy() as PluginOption),
