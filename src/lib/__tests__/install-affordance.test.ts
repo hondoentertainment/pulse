@@ -5,6 +5,7 @@ import {
   dismissInstallAffordance,
   installAffordancePath,
   isInstallAffordanceDismissed,
+  isPwaInstallEligible,
   shouldShowInstallAffordance,
   shouldShowInstallOnSurface,
 } from '../install-affordance'
@@ -76,5 +77,35 @@ describe('install affordance', () => {
       platform: 'ios',
       dismissed: true,
     })).toBe(false)
+  })
+
+  it('shows the share-arrival install card only when the PWA can actually install', () => {
+    expect(isPwaInstallEligible({
+      canInstall: true,
+      isInstalled: false,
+      platform: 'desktop',
+    })).toBe(true)
+    expect(isPwaInstallEligible({
+      canInstall: false,
+      isInstalled: false,
+      platform: 'ios',
+    })).toBe(true)
+    expect(isPwaInstallEligible({
+      canInstall: false,
+      isInstalled: false,
+      platform: 'desktop',
+    })).toBe(false)
+    expect(shouldShowInstallOnSurface({
+      surface: 'share',
+      canInstall: false,
+      isInstalled: false,
+      platform: 'desktop',
+    })).toBe(false)
+    expect(shouldShowInstallOnSurface({
+      surface: 'share',
+      canInstall: true,
+      isInstalled: false,
+      platform: 'android',
+    })).toBe(true)
   })
 })

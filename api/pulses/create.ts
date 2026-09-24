@@ -280,6 +280,7 @@ export default async function handler(
       caption: pulseRow.caption,
       pulseId: typeof data?.id === 'string' ? data.id : id,
       authorUserId: auth.context.userId,
+      energyRating: validated.value.energyRating,
       venueLocation,
     }).catch((err) => {
       console.warn('[push] notify-live failed', err)

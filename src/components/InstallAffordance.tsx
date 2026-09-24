@@ -12,7 +12,7 @@ import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 
 interface InstallAffordanceProps {
   onInstalled?: () => void
-  surface?: 'tonight' | 'capitol-hill' | 'map' | 'other'
+  surface?: 'tonight' | 'capitol-hill' | 'share' | 'map' | 'other'
 }
 
 export function InstallAffordance({ onInstalled, surface }: InstallAffordanceProps = {}) {

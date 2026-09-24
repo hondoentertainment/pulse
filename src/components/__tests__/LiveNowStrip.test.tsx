@@ -79,4 +79,22 @@ describe('LiveNowStrip', () => {
     )
     expect(screen.getByText('Unverified')).toBeInTheDocument()
   })
+
+  it('shows a verified owner reply on the live review', () => {
+    render(
+      <LiveNowStrip
+        venueId="venue-1"
+        pulses={[makePulse()]}
+        onSelect={vi.fn()}
+        ownerReplies={[{
+          id: 'reply-1',
+          pulseId: 'p-1',
+          venueId: 'venue-1',
+          body: 'Thanks — see you tonight',
+          createdAt: new Date().toISOString(),
+        }]}
+      />,
+    )
+    expect(screen.getByText('Owner · Thanks — see you tonight')).toBeInTheDocument()
+  })
 })

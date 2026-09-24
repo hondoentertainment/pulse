@@ -41,6 +41,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   }
 
   const caption = typeof req.body.caption === 'string' ? req.body.caption : undefined
+  const energyRating = typeof req.body.energyRating === 'string' ? req.body.energyRating : undefined
   const lat = typeof req.body.lat === 'number' ? req.body.lat : undefined
   const lng = typeof req.body.lng === 'number' ? req.body.lng : undefined
 
@@ -48,6 +49,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     venueId,
     venueName,
     caption,
+    energyRating,
     authorUserId: auth.context.userId,
     venueLocation: lat !== undefined && lng !== undefined ? { lat, lng } : null,
   })

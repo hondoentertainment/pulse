@@ -16,6 +16,7 @@ import {
 } from '@/lib/owner-inbox'
 import { canAccessVenueInbox } from '@/lib/live-reviews'
 import { dismissReportsForPulseOnServer, listVenueReportsOnServer } from '@/lib/ops-client'
+import { createOwnerReplyOnServer } from '@/lib/data/owner-replies'
 import type { ContentReport } from '@/lib/content-moderation'
 import { createVenueClaim, verifyVenueClaim, type VenueClaim } from '@/lib/venue-owner'
 import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
@@ -265,6 +266,15 @@ export function VenueInboxRoute() {
             })
           }
         })
+      }}
+      onOwnerReply={async (reply) => {
+        if (!inboxAllowed) return
+        const saved = await createOwnerReplyOnServer(reply)
+        if (!saved) {
+          toast.error('Reply stayed on this device', {
+            description: 'Live now shows it after a verified claim and venue_owner_replies are applied.',
+          })
+        }
       }}
     />
   )

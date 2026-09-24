@@ -29,6 +29,7 @@ import { listFollowedPeoplePulses, mixFollowingFeed } from '@/lib/friends-follow
 import { DoorChipRow } from '@/components/DoorChipRow'
 import { listEventsTonight, EVENTS_TONIGHT_EMPTY, EVENTS_TONIGHT_EMPTY_BODY, type CatalogEvent } from '@/lib/events-tonight'
 import { listNeighborhoodPages, neighborhoodPath } from '@/lib/neighborhood-pages'
+import { focusHoodDensityLabel } from '@/lib/focus-hood'
 import { Link } from 'react-router-dom'
 import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import { InstallAffordance } from '@/components/InstallAffordance'
@@ -122,6 +123,7 @@ export function TonightHomeHeader({
     pulses,
     userLocation,
     savedVenueIds,
+    followedVenueIds,
     locationDenied,
   })
 
@@ -161,6 +163,11 @@ export function TonightHomeHeader({
         </h1>
         {surface === 'tonight' && (
           <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
+        )}
+        {surface === 'tonight' && focusHoodDensityLabel(home.neighborhood) && (
+          <p className="text-[12px] font-semibold text-foreground">
+            {focusHoodDensityLabel(home.neighborhood)}
+          </p>
         )}
       </header>
 
@@ -245,7 +252,15 @@ export function TonightHomeHeader({
 
           {tonightFeed === 'foryou' && (
             <>
-              {home.empty && <TonightEmptyState empty={home.empty} />}
+              {home.empty && (
+                <TonightEmptyState
+                  empty={home.empty}
+                  ctaLabel={onBeFirstPulse && home.startHere ? 'Post a live review' : undefined}
+                  onCta={onBeFirstPulse && home.startHere
+                    ? () => onBeFirstPulse(home.startHere!.venue)
+                    : undefined}
+                />
+              )}
               {home.startHere && (
                 <>
                   <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Start here</h2>
@@ -273,6 +288,32 @@ export function TonightHomeHeader({
                 <div>
                   <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
                   {home.heatingUp.map((pick) => (
+                    <TonightFeedRow
+                      key={pick.venue.id}
+                      venue={pick.venue}
+                      headline={pick.headline}
+                      pulses={pulses}
+                      onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(pick.venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {home.surging.length > 0 && (
+                <div>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Surging</h2>
+                  {home.surging.map((pick) => (
                     <TonightFeedRow
                       key={pick.venue.id}
                       venue={pick.venue}
@@ -540,7 +581,11 @@ function TonightFeedRow({
   const energyLabel = getEnergyLabel(venue.pulseScore)
   const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
     .find((key) => ENERGY_CONFIG[key].label === energyLabel)
-  const verified = pulses.some((pulse) => pulse.venueId === venue.id && pulse.locationVerified)
+  const trustLabel = venue.claimVerified
+    ? 'Claimed'
+    : activity.latest?.locationVerified === true
+      ? 'GPS ✓'
+      : 'Unverified'
   return (
     <article className="flex gap-3 border-b border-border py-3">
       <TimelineAvatar name={venue.name} />
@@ -570,7 +615,7 @@ function TonightFeedRow({
                 {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
               </span>
               <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                {verified ? 'Verified' : 'Unverified'}
+                {trustLabel}
               </span>
             </div>
             <TrustPinChips chips={glance.chips} className="mt-1.5" />

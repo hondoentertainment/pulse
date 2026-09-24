@@ -14,7 +14,7 @@ import {
 import { ENERGY_CONFIG, type EnergyRating } from './types'
 import { filterTonightCatalog } from './catalog-quality'
 import { isCuratedVenue } from './map-filters'
-import { densityRankBoost } from './seattle-density'
+import { densityRankBoost, normalizeNeighborhoodName } from './seattle-density'
 import {
   DEFAULT_LAUNCH_NEIGHBORHOOD,
   inferNeighborhoodFromGeo,
@@ -23,6 +23,7 @@ import {
   readSavedNeighborhood,
   resolveNeighborhoodFallback,
 } from './neighborhood-geo'
+import { focusHoodEmptyBody } from './focus-hood'
 
 export interface TonightHomePick {
   venue: Venue
@@ -45,8 +46,24 @@ export interface TonightHome {
   neighborhood: string
   startHere: TonightHomePick | null
   heatingUp: TonightHomePick[]
+  /** Remaining ranked cards after Start here + Heating up. Total cards ≤ 8. */
+  surging: TonightHomePick[]
   empty: TonightEmptyState | null
   locationDenied: boolean
+}
+
+export const TONIGHT_CARD_LIMIT = 8
+export const FOLLOWED_RECENT_WINDOW_MS = 90 * 60 * 1000
+export const FOLLOWED_NEARBY_MILES = 2
+/** Enough to win a tie, not enough to beat a clearly hotter room. */
+export const LOCATION_VERIFIED_RANK_BOOST = 8
+export const FOLLOWED_NEARBY_FLOAT_BOOST = 48
+
+const ENERGY_RANK: Record<EnergyRating, number> = {
+  dead: 0,
+  chill: 4,
+  buzzing: 10,
+  electric: 16,
 }
 
 export const TONIGHT_EMPTY_LOOP: TonightEmptyState = {
@@ -144,29 +161,114 @@ function pickLine(
   }
 }
 
+export interface TonightRankContext {
+  followedVenueIds?: readonly string[]
+}
+
+interface VenuePulseSignals {
+  latest: Pulse | null
+  count90: number
+  locationVerified: boolean
+  ageMs: number | null
+}
+
+function venuePulseSignals(
+  venueId: string,
+  pulses: readonly Pulse[],
+  nowMs: number,
+): VenuePulseSignals {
+  const cutoff = nowMs - FOLLOWED_RECENT_WINDOW_MS
+  let latest: Pulse | null = null
+  let latestMs = -Infinity
+  let count90 = 0
+  for (const pulse of pulses) {
+    if (pulse.venueId !== venueId) continue
+    const created = Date.parse(pulse.createdAt)
+    if (!Number.isFinite(created) || created > nowMs || created < cutoff) continue
+    count90 += 1
+    if (created >= latestMs) {
+      latestMs = created
+      latest = pulse
+    }
+  }
+  return {
+    latest,
+    count90,
+    locationVerified: latest?.locationVerified === true,
+    ageMs: latest ? nowMs - latestMs : null,
+  }
+}
+
+function freshnessBoost(ageMs: number | null): number {
+  if (ageMs == null || ageMs < 0) return 0
+  const ageMin = ageMs / 60000
+  if (ageMin > 90) return 0
+  return Math.max(4, 24 - ageMin * 0.2)
+}
+
+function followedNearbyFloat(
+  venue: Venue,
+  signals: VenuePulseSignals,
+  userLocation: { lat: number; lng: number } | null,
+  followedVenueIds: readonly string[],
+): number {
+  if (!userLocation || signals.count90 === 0) return 0
+  if (!followedVenueIds.includes(venue.id)) return 0
+  const miles = calculateDistance(
+    userLocation.lat,
+    userLocation.lng,
+    venue.location.lat,
+    venue.location.lng,
+  )
+  if (miles > FOLLOWED_NEARBY_MILES) return 0
+  return FOLLOWED_NEARBY_FLOAT_BOOST
+}
+
 function rankScore(
   venue: Venue,
   pulses: Pulse[],
   now: Date,
   userLocation: { lat: number; lng: number } | null,
+  context: TonightRankContext = {},
 ): number {
-  const activity = getVenueMapActivity(venue, pulses, now.getTime())
+  const signals = venuePulseSignals(venue.id, pulses, now.getTime())
   const distance = userLocation
     ? calculateDistance(userLocation.lat, userLocation.lng, venue.location.lat, venue.location.lng)
     : 2
-  const recencyBoost = activity.latest ? 20 : 0
-  return recencyBoost + activity.liveReviewCount * 8 + timeOfDayBoost(venue.category, now.getHours()) - distance * 4 + densityRankBoost(venue)
+  const energy = signals.latest ? ENERGY_RANK[signals.latest.energyRating] ?? 0 : 0
+  const verified = signals.locationVerified ? LOCATION_VERIFIED_RANK_BOOST : 0
+  const followed = followedNearbyFloat(
+    venue,
+    signals,
+    userLocation,
+    context.followedVenueIds ?? [],
+  )
+  return freshnessBoost(signals.ageMs)
+    + energy
+    + signals.count90 * 8
+    + verified
+    + followed
+    + timeOfDayBoost(venue.category, now.getHours())
+    - distance * 4
+    + densityRankBoost(venue)
 }
 
-/** Prefer curated / quality pins when energy + distance are tied. */
+/**
+ * Rank comparator for Tonight.
+ * Prefers fresher live energy, closer pins, time-of-day, followed venues
+ * that pulsed in the last 90 minutes when nearby, and location-verified
+ * pulses when the rooms are otherwise comparable.
+ * Curated / claimed still break remaining ties. Never invents Verified.
+ */
 export function compareTonightRank(
   a: Venue,
   b: Venue,
   pulses: Pulse[],
   now: Date,
   userLocation: { lat: number; lng: number } | null,
+  context: TonightRankContext = {},
 ): number {
-  const scoreDiff = rankScore(b, pulses, now, userLocation) - rankScore(a, pulses, now, userLocation)
+  const scoreDiff = rankScore(b, pulses, now, userLocation, context) - rankScore(a, pulses, now, userLocation, context)
   if (scoreDiff !== 0) return scoreDiff
   const curatedDiff = Number(isCuratedVenue(b)) - Number(isCuratedVenue(a))
   if (curatedDiff !== 0) return curatedDiff
@@ -254,11 +356,16 @@ export function listTonightNearVenues(
   }
 }
 
+function hasRecentPulse(venueId: string, pulses: readonly Pulse[], nowMs: number): boolean {
+  return venuePulseSignals(venueId, pulses, nowMs).count90 > 0
+}
+
 export function buildTonightHome(input: {
   venues: Venue[]
   pulses: Pulse[]
   userLocation?: { lat: number; lng: number } | null
   savedVenueIds?: readonly string[]
+  followedVenueIds?: readonly string[]
   now?: Date
   locationDenied?: boolean
   savedNeighborhood?: string | null
@@ -270,6 +377,8 @@ export function buildTonightHome(input: {
   const locationDenied = input.locationDenied ?? userLocation === null
   const catalog = filterTonightCatalog(input.venues)
   const lastCity = (input.savedCity ?? readSavedCity() ?? 'Seattle').trim() || 'Seattle'
+  const followedVenueIds = input.followedVenueIds ?? []
+  const rankContext: TonightRankContext = { followedVenueIds }
   const neighborhood = resolveHomeNeighborhood(
     catalog,
     userLocation,
@@ -279,22 +388,39 @@ export function buildTonightHome(input: {
   const surging = getSurgingNearbyVenues(catalog, input.pulses, {
     userLocation,
     nowMs,
-    limit: 8,
+    limit: TONIGHT_CARD_LIMIT,
   })
-  const inHood = surging.filter((venue) => venue.neighborhood === neighborhood)
-  const ranked = [...(inHood.length > 0 ? inHood : surging)].sort((a, b) => (
-    compareTonightRank(a, b, input.pulses, now, userLocation)
+  const recent = catalog.filter((venue) => hasRecentPulse(venue.id, input.pulses, nowMs))
+  const inHood = recent.filter((venue) => venue.neighborhood === neighborhood)
+  const followedNearby = recent.filter((venue) => (
+    followedNearbyFloat(
+      venue,
+      venuePulseSignals(venue.id, input.pulses, nowMs),
+      userLocation,
+      followedVenueIds,
+    ) > 0
   ))
-  const startHere = ranked[0] ? pickLine(ranked[0], input.pulses, nowMs) : null
-  const heatingUp = ranked.slice(1, 4).map((venue) => pickLine(venue, input.pulses, nowMs))
+  const base = inHood.length > 0 ? inHood : (recent.length > 0 ? recent : surging)
+  const pool = new Map<string, Venue>()
+  for (const venue of [...base, ...followedNearby]) pool.set(venue.id, venue)
+  const ranked = [...pool.values()]
+    .sort((a, b) => compareTonightRank(a, b, input.pulses, now, userLocation, rankContext))
+    .slice(0, TONIGHT_CARD_LIMIT)
+  const picks = ranked.map((venue) => pickLine(venue, input.pulses, nowMs))
+  const startHere = picks[0] ?? null
+  const heatingUp = picks.slice(1, 4)
+  const surgingPicks = picks.slice(4, TONIGHT_CARD_LIMIT)
 
   let empty: TonightEmptyState | null = null
   let resolvedStart = startHere
   if (!startHere) {
-    empty = TONIGHT_EMPTY_LOOP
-    const inHood = catalog.filter((venue) => venue.neighborhood === neighborhood)
-    const pool = inHood.length > 0 ? inHood : catalog
-    const nearbyCurated = [...pool].sort((a, b) => {
+    const focus = normalizeNeighborhoodName(neighborhood) === 'Capitol Hill'
+    empty = focus
+      ? { ...TONIGHT_EMPTY_LOOP, body: focusHoodEmptyBody() }
+      : TONIGHT_EMPTY_LOOP
+    const hoodCatalog = catalog.filter((venue) => venue.neighborhood === neighborhood)
+    const fallbackPool = hoodCatalog.length > 0 ? hoodCatalog : catalog
+    const nearbyCurated = [...fallbackPool].sort((a, b) => {
       if (!userLocation) return 0
       return calculateDistance(userLocation.lat, userLocation.lng, a.location.lat, a.location.lng)
         - calculateDistance(userLocation.lat, userLocation.lng, b.location.lat, b.location.lng)
@@ -312,6 +438,7 @@ export function buildTonightHome(input: {
     neighborhood,
     startHere: resolvedStart,
     heatingUp,
+    surging: surgingPicks,
     empty,
     locationDenied,
   }

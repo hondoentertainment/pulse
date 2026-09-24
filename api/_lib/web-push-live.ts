@@ -5,10 +5,16 @@
 
 import {
   collectLivePulseNotifyUserIds,
-  livePulseNotifyPayload,
   selectLivePulseNotifyTargets,
   type NotifySubscriber,
 } from '../../src/lib/live-pulse-notify.js'
+import {
+  decideVenueSurgeNotify,
+  parseQuietHour,
+  seattleHour,
+  shouldDeliverSurgePush,
+  venueSurgeNotifyPayload,
+} from '../../src/lib/venue-surge-notify.js'
 import { createAdminClient } from './supabase-server.js'
 
 export interface WebPushEnv {
@@ -23,6 +29,7 @@ export interface LivePulseNotifyInput {
   caption?: string | null
   pulseId?: string | null
   authorUserId?: string | null
+  energyRating?: string | null
   venueLocation?: { lat: number; lng: number } | null
 }
 
@@ -30,7 +37,7 @@ export interface LivePulseNotifyResult {
   attempted: boolean
   sent: number
   skipped: number
-  reason?: 'missing_vapid' | 'missing_admin' | 'ok'
+  reason?: 'missing_vapid' | 'missing_admin' | 'ok' | 'not_surge' | 'rate_limited' | 'already_electric' | 'rate_limit_unavailable'
 }
 
 function readVapid(env: WebPushEnv = process.env): { publicKey: string; privateKey: string; subject: string } | null {
@@ -88,20 +95,49 @@ export async function notifyLivePulse(
     return { attempted: false, sent: 0, skipped: 0, reason: 'missing_vapid' }
   }
 
-  const [{ data: followRows }, { data: subRows }] = await Promise.all([
+  const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  const [{ data: followRows, error: followError }, { data: subRows }, { data: recentRows }, noticeResult] = await Promise.all([
     admin
       .from('follows')
-      .select('follower_id')
+      .select('follower_id, surge_muted')
       .eq('target_kind', 'venue')
       .eq('target_venue_id', input.venueId)
       .is('deleted_at', null),
     admin
       .from('push_tokens')
-      .select('user_id, token, p256dh, auth, lat, lng, scope, platform')
+      .select('user_id, token, p256dh, auth, lat, lng, scope, platform, quiet_hours_start, quiet_hours_end')
       .eq('platform', 'web'),
+    admin
+      .from('pulses')
+      .select('id, energy_rating')
+      .eq('venue_id', input.venueId)
+      .gte('created_at', since)
+      .limit(40),
+    admin
+      .from('venue_surge_notices')
+      .select('notified_at')
+      .eq('venue_id', input.venueId)
+      .maybeSingle(),
   ])
 
-  const followedUserIds = (followRows ?? [])
+  let resolvedFollows = followRows
+  if (followError) {
+    const fallback = await admin
+      .from('follows')
+      .select('follower_id')
+      .eq('target_kind', 'venue')
+      .eq('target_venue_id', input.venueId)
+      .is('deleted_at', null)
+    resolvedFollows = fallback.data
+  }
+
+  const mutedUserIds = new Set(
+    (followError ? [] : (followRows ?? []))
+      .filter((row) => row.surge_muted === true && typeof row.follower_id === 'string')
+      .map((row) => row.follower_id as string),
+  )
+
+  const followedUserIds = (resolvedFollows ?? [])
     .map((row) => (typeof row.follower_id === 'string' ? row.follower_id : ''))
     .filter(Boolean)
 
@@ -126,7 +162,14 @@ export async function notifyLivePulse(
     followedUserIds,
     subscriberTargets: targets,
   })
-  const payload = livePulseNotifyPayload(input)
+  const priorEnergies = (recentRows ?? [])
+    .filter((row) => row.id !== input.pulseId)
+    .map((row) => (typeof row.energy_rating === 'string' ? row.energy_rating : ''))
+  const surge = decideVenueSurgeNotify({
+    energyRating: input.energyRating,
+    priorEnergies,
+    lastNotifiedAt: noticeResult.error ? null : (noticeResult.data?.notified_at ?? null),
+  })
 
   if (notifyUserIds.length > 0) {
     const rows = notifyUserIds.map((userId) => ({
@@ -141,21 +184,61 @@ export async function notifyLivePulse(
     })
   }
 
+  if (!surge.send) {
+    return {
+      attempted: false,
+      sent: 0,
+      skipped: 0,
+      reason: surge.reason === 'electric_cross' ? 'ok' : surge.reason,
+    }
+  }
+  if (noticeResult.error) {
+    console.info('[web-push] surge rate-limit unavailable', noticeResult.error.message)
+    return { attempted: false, sent: 0, skipped: 0, reason: 'rate_limit_unavailable' }
+  }
+
+  const surgePayload = venueSurgeNotifyPayload({
+    venueId: input.venueId,
+    venueName: input.venueName,
+  })
+  const hour = seattleHour(new Date())
   let sent = 0
   let skipped = 0
   for (const row of subRows ?? []) {
     if (typeof row.user_id !== 'string' || !webPushUserIds.has(row.user_id)) continue
+    if (!followedUserIds.includes(row.user_id)) {
+      skipped += 1
+      continue
+    }
+    const deliver = shouldDeliverSurgePush({
+      muted: mutedUserIds.has(row.user_id),
+      quietStart: parseQuietHour(row.quiet_hours_start),
+      quietEnd: parseQuietHour(row.quiet_hours_end),
+      hour,
+    })
+    if (!deliver) {
+      skipped += 1
+      continue
+    }
     if (typeof row.token !== 'string' || typeof row.p256dh !== 'string' || typeof row.auth !== 'string') {
       skipped += 1
       continue
     }
     const ok = await sendOne(
       { endpoint: row.token, keys: { p256dh: row.p256dh, auth: row.auth } },
-      payload,
+      surgePayload,
       vapid,
     )
     if (ok) sent += 1
     else skipped += 1
+  }
+
+  if (sent > 0) {
+    await admin.from('venue_surge_notices').upsert({
+      venue_id: input.venueId,
+      notified_at: new Date().toISOString(),
+      pulse_id: input.pulseId ?? null,
+    }, { onConflict: 'venue_id' })
   }
 
   return { attempted: true, sent, skipped, reason: 'ok' }

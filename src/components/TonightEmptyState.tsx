@@ -2,9 +2,11 @@ import type { TonightEmptyState as TonightEmpty } from '@/lib/tonight-home'
 
 interface TonightEmptyStateProps {
   empty: TonightEmpty
+  ctaLabel?: string
+  onCta?: () => void
 }
 
-export function TonightEmptyState({ empty }: TonightEmptyStateProps) {
+export function TonightEmptyState({ empty, ctaLabel, onCta }: TonightEmptyStateProps) {
   return (
     <section className="border-y border-border py-5" aria-label="Teach the Pulse loop">
       <h2 className="text-[15px] font-bold text-foreground">{empty.headline}</h2>
@@ -17,6 +19,15 @@ export function TonightEmptyState({ empty }: TonightEmptyStateProps) {
           </li>
         ))}
       </ol>
+      {ctaLabel && onCta && (
+        <button
+          type="button"
+          onClick={onCta}
+          className="mt-4 h-12 w-full rounded-full bg-primary text-[15px] font-bold text-primary-foreground"
+        >
+          {ctaLabel}
+        </button>
+      )}
     </section>
   )
 }

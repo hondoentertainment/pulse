@@ -4,6 +4,7 @@ import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { authorHandle } from '@/lib/venue-handle'
 import { track } from '@/lib/observability/analytics'
 import { orderPulsesDoorPinnedFirst, type VenueDoorPin } from '@/lib/door-pin'
+import { ownerRepliesForLiveNow, type OwnerInboxReply } from '@/lib/owner-inbox'
 
 interface LiveNowStripProps {
   venueId: string
@@ -11,9 +12,10 @@ interface LiveNowStripProps {
   onSelect: (pulse: PulseWithUser) => void
   venueName?: string
   doorPin?: VenueDoorPin | null
+  ownerReplies?: readonly OwnerInboxReply[]
 }
 
-export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin }: LiveNowStripProps) {
+export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin, ownerReplies = [] }: LiveNowStripProps) {
   const liveNow = orderPulsesDoorPinnedFirst(getLiveNowReviews(pulses, venueId), doorPin)
 
   return (
@@ -30,26 +32,32 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin }: 
       ) : (
         <div>
           {liveNow.map((pulse, index) => (
-            <LiveReviewFeedCard
-              key={pulse.id}
-              as="button"
-              energyRating={pulse.energyRating}
-              createdAt={pulse.createdAt}
-              caption={pulse.caption}
-              unverified={pulse.locationVerified === false}
-              displayName={pulse.user?.username || venueName}
-              handle={authorHandle(pulse.user?.username, venueName)}
-              avatarUrl={pulse.user?.profilePhoto}
-              onClick={() => {
-                track('pulse_viewed', {
-                  pulseId: pulse.id,
-                  venueId,
-                  position: index,
-                  feed: 'live_now',
-                })
-                onSelect(pulse)
-              }}
-            />
+            <div key={pulse.id}>
+              <LiveReviewFeedCard
+                as="button"
+                energyRating={pulse.energyRating}
+                createdAt={pulse.createdAt}
+                caption={pulse.caption}
+                unverified={pulse.locationVerified === false}
+                displayName={pulse.user?.username || venueName}
+                handle={authorHandle(pulse.user?.username, venueName)}
+                avatarUrl={pulse.user?.profilePhoto}
+                onClick={() => {
+                  track('pulse_viewed', {
+                    pulseId: pulse.id,
+                    venueId,
+                    position: index,
+                    feed: 'live_now',
+                  })
+                  onSelect(pulse)
+                }}
+              />
+              {ownerRepliesForLiveNow(ownerReplies, pulse.id).map((reply) => (
+                <p key={reply.id} className="pb-2 text-[13px] font-semibold text-foreground">
+                  Owner · {reply.body}
+                </p>
+              ))}
+            </div>
           ))}
         </div>
       )}

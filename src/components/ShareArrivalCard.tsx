@@ -7,6 +7,7 @@ import { getVenueMapActivity } from '@/lib/map-live-reviews'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { resolveImHereAction } from '@/lib/im-here'
 import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
+import { InstallAffordance } from '@/components/InstallAffordance'
 
 interface ShareArrivalCardProps {
   venue: Venue
@@ -38,6 +39,7 @@ export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
           <p className="mt-2 text-sm text-foreground">{card.caption}</p>
         )}
       </div>
+      <InstallAffordance surface="share" />
       <button
         type="button"
         onClick={() => {
@@ -52,8 +54,26 @@ export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
       >
         {card.cta}
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          const action = resolveImHereAction({
+            venueId: venue.id,
+            isPlaceholder,
+            hasSession: Boolean(session),
+          })
+          if (action.authRedirect) {
+            navigate(action.authRedirect)
+            return
+          }
+          navigate(getImHereMapPath(venue.id, { create: true }))
+        }}
+        className="h-12 w-full rounded-full border border-border text-[15px] font-bold text-foreground"
+      >
+        Post a live review
+      </button>
       <p className="text-xs text-muted-foreground">
-        OG preview matches this card · guests can view the pin, writes go to /auth
+        OG preview matches this card. Install only when this browser can add Pulse. Guests can view the pin; posting goes to /auth.
       </p>
     </section>
   )

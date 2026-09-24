@@ -25,6 +25,10 @@ import { mapVenueLiveAggregate, mapVenueLiveReport } from '@/lib/supabase-api'
 import type { LiveReport } from '@/lib/live-intelligence'
 import { isLiveReview } from '@/lib/live-reviews'
 import { stampVenuesFromLiveReviews } from '@/lib/map-live-reviews'
+import { recordPulseReflection } from '@/lib/pulse-reflection'
+import { track } from '@/lib/observability/analytics'
+import { logger } from '@/lib/observability/logger'
+import { breadcrumb } from '@/lib/sentry-bridge'
 
 /**
  * Flush handler for pulse inserts — merges new pulses into React Query cache.
@@ -54,6 +58,38 @@ function handlePulseBatchFlush(batch: BatchFlush) {
       stampVenuesFromLiveReviews(venues, reviews),
     )
     trackPerformance('realtime_live_review_insert', reviews.length)
+    for (const review of reviews) {
+      const sample = recordPulseReflection({
+        pulseId: review.id,
+        createdAt: review.createdAt,
+      })
+      if (!sample) continue
+      track('pulse_reflection', {
+        latencyMs: sample.latencyMs,
+        p95Ms: sample.p95Ms,
+        sampleCount: sample.sampleCount,
+        surface: 'surging',
+      })
+      logger.info('pulse reflected on map', {
+        action: 'pulse.reflection',
+        component: 'realtime',
+        extra: {
+          latencyMs: sample.latencyMs,
+          p95Ms: sample.p95Ms,
+          sampleCount: sample.sampleCount,
+        },
+      })
+      breadcrumb({
+        category: 'pulse.reflection',
+        message: 'pulse reflected on map',
+        level: 'info',
+        data: {
+          latencyMs: sample.latencyMs,
+          p95Ms: sample.p95Ms,
+          sampleCount: sample.sampleCount,
+        },
+      })
+    }
   }
 
   trackPerformance('realtime_pulse_batch_size', batch.events.length)

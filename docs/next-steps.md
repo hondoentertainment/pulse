@@ -41,7 +41,23 @@ Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?nod
 
 Return-to-intent, tonight digest / quiet-night (VAPID optional), here-now count, one photo, door chips, invite link, `/n/:slug` for **every** hood already tagged on Seattle venues (not only Capitol Hill / Ballard / Georgetown / SoDo), neighborhood share + OG via existing `/api/share/venue?n=` + crawler rewrite on `/n/:slug`, last-5 recents on Tonight/map, My night pins, owner one-tap reply, hide pulse, friends follow, events overlay from existing `events` only. Hourly Vercel cron for `/api/cron/night-coach` uses existing `CRON_SECRET` (missing = honest no-op). No new keys, no custom domain, no fake events. Prod SQL for `door_chips` / `pinned_at` / `venue_here_now_*` is already applied — do not recreate that migration.
 
+## Twitter-class slices (repo, 2026-09-24)
+
+Agent code only. Track 0 stays human: #64 live loop, #85/#86 phone proof (do not close), Supabase Site URL, analytics keys (WC-0.5), first-night invites, branch protection if the agent lacks admin.
+
+| Slice | What landed |
+|-------|-------------|
+| WC-1 | `buildTonightHome` / `compareTonightRank` — freshness, distance, time-of-day, followed venues with a pulse in the last 90m float when nearby, ≤8 cards. Empty Tonight CTA calls the existing auth-gated compose path. |
+| WC-2 | `pulse_reflection` when a live review hits the local cache Surging reads. p95 is logged; Sentry breadcrumb uses the existing bridge. |
+| WC-3 | Electric cross + `venue_surge_notices` rate limit + `follows.surge_muted` + `push_tokens` quiet hours. [#109](https://github.com/hondoentertainment/pulse/issues/109). Missing VAPID stays `{ reason: 'missing_vapid' }`. Do not generate keys in git. Do not close #66. |
+| WC-5 | Location-verified pulses in the 90m window outrank otherwise comparable unverified pulses. |
+| WC-6 | `venue_owner_replies` shown on Live now. Dismiss still PATCHes `/api/pulses/report`. #85 stays open. |
+| WC-8 | `ShareArrivalCard` install affordance only when `isPwaInstallEligible`. Post a live review goes to `/auth` for guests. Funnel events stay `guest_map_view` → `venue_open` → `auth_start` → `first_pulse_create`. |
+| WC-9 | Capitol Hill focus-hood badge and empty copy from the existing launch seed. No ownership edits. |
+
+Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on prod after merge (Supabase MCP or SQL editor). Verify with `supabase/verify/venue_surge_owner_replies.sql`.
+
 ## Ownership
 
 - Owner: Pulse product / map + live reviews
-- Last reviewed: 2026-09-14
+- Last reviewed: 2026-09-24
