@@ -581,11 +581,9 @@ function TonightFeedRow({
   const energyLabel = getEnergyLabel(venue.pulseScore)
   const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
     .find((key) => ENERGY_CONFIG[key].label === energyLabel)
-  const trustLabel = venue.claimVerified
-    ? 'Claimed'
-    : activity.latest?.locationVerified === true
-      ? 'GPS ✓'
-      : 'Unverified'
+  // This branch has no live pulse (`activity.latest` is null after the return above).
+  // Claimed comes from the venue row. Do not read a live GPS flag here.
+  const trustLabel = venue.claimVerified ? 'Claimed' : 'Unverified'
   return (
     <article className="flex gap-3 border-b border-border py-3">
       <TimelineAvatar name={venue.name} />
