@@ -88,6 +88,12 @@ Exact event names (also listed in `REGISTERED_EVENTS`). Payloads are `guest` + o
 
 `guest` is `true` when there is no session (placeholder/demo mode counts as signed-in for local). Helper: `src/lib/funnel-events.ts` (`trackFunnel`).
 
+Share arrival (`/venue/:id?from=share`) fires `venue_open` with `fromShare: true`. The auth page fires `auth_start`. The first successful create fires `first_pulse_create`. If `VITE_ANALYTICS_BACKEND` is unset in production, the adapter is a no-op (WC-0.5 is human env work — do not add a new vendor key from the repo).
+
+### Realtime reflection (WC-2)
+
+When a live review is flushed into the local pulse cache (the list Surging and the map read), the client records `created_at` → flush time as `pulse_reflection` (`latencyMs`, `p95Ms`, `sampleCount`, `surface: 'surging'`). The same sample is an `info` log (`action: pulse.reflection`) and a Sentry breadcrumb through the existing bridge. No new observability SaaS. A dashboard alert for channel errors above 1% of sessions is still a human Sentry rule.
+
 ---
 
 ## 3. Logging

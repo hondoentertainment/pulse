@@ -307,6 +307,7 @@ export function useAppHandlers() {
             venueId: venueForPulse.id,
             venueName: venueForPulse.name,
             caption: captionCheck.caption,
+            energyRating: data.energyRating,
             lat: venueForPulse.location.lat,
             lng: venueForPulse.location.lng,
           }),

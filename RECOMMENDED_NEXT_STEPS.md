@@ -1,6 +1,6 @@
 # Pulse — Recommended Next Steps (Twitter-class bar)
 
-> Updated 2026-09-15. **Pulse is venue + map only** (Signal removed; no `VITE_APP_MODE`).
+> Updated 2026-09-24. **Pulse is venue + map only** (Signal removed; no `VITE_APP_MODE`).
 > Production: https://pulse-chi-nine.vercel.app/ · Catalog: 533 Seattle venues.
 > Detail maps: [docs/next-steps.md](docs/next-steps.md) · Claims ops: [docs/runbooks/venue-claims-ops.md](docs/runbooks/venue-claims-ops.md).
 
@@ -49,15 +49,15 @@ Pulse already has most of these **in-repo**. The gap to world-class is **prove t
 
 | Pillar | In-repo | Prod-proven | Gap to world-class |
 |--------|---------|-------------|--------------------|
-| Live review → map realtime | Yes | **Unproven** (#64) | One signed-in prod walkthrough |
-| Claim → owner inbox | Yes | **Unproven** (#85) | Domain verify or `/ops` on real venue |
-| Share OG + I’m-here | Yes | **Unproven** (#86) | Phone + crawler |
-| Guest → first pulse funnel | Events defined | Adapter often **no-op** in prod | Wire PostHog/Amplitude + dashboard |
-| Venue-surge push | Stub + VAPID no-op | Keys usually **missing** | Generate VAPID; prove one surge notify |
-| Tonight / For You ranking | Surfaces exist | Feels early | Rank freshness + friends + distance; A/B |
+| Live review → map realtime | Yes + reflection metric | **Unproven** (#64) | One signed-in prod walkthrough |
+| Claim → owner inbox | Yes; reply row on Live now | **Unproven** (#85) | Domain verify or `/ops` on real venue. Do not close #85 |
+| Share OG + I’m-here | Yes; share card → install → auth | **Unproven** (#86) | Phone + crawler. Do not close #86 |
+| Guest → first pulse funnel | Events fire on the path | Adapter **no-op** until WC-0.5 | Human: PostHog/Amplitude keys. No new vendor in repo |
+| Venue-surge push | Electric cross, ≤1/venue/2h, mute + quiet hours ([#109](https://github.com/hondoentertainment/pulse/issues/109)) | Keys usually **missing** = honest no-op | Human: existing VAPID trio on Vercel. Do not close #66 |
+| Tonight / For You ranking | Freshness + distance + time + followed 90m float + verified weight | Not dogfooded | ≤8 cards; Launch 33 default stays |
 | Cold start &lt;2s | Marks exist | Not measured on mid phone | Device budget + Launch 33 default |
-| Trust / anti-spam | Credibility + reports | Soft | Weight verified location in ranking; mod SLA |
-| Crew / social graph | Components exist | Density unknown | Invite + follow loops in one hood first |
+| Trust / anti-spam | Verified pulses win comparable ties; chips stay GPS/Claimed | Soft | Mod SLA still open |
+| Crew / social graph | Capitol Hill focus-hood badge + empty copy | Density unknown | Human invites. No ownership edits |
 
 ---
 
@@ -184,14 +184,26 @@ Pulse already has most of these **in-repo**. The gap to world-class is **prove t
 
 ---
 
-## Suggested sequencing (next 6 execution slices)
+## Landed in repo (2026-09-24) vs still human
 
-1. Human: **WC-0.1 → 0.3** (prod proof #64/#85/#86)  
-2. Human: **WC-0.4 + WC-0.5** (protection + analytics keys)  
-3. Agent: **WC-1 + WC-5** (Tonight ranking + verified weight)  
-4. Human+agent: **WC-3** (VAPID + surge push)  
-5. Agent: **WC-8** (share→pulse funnel polish)  
-6. Human: **WC-9** (one-hood density dogfood)
+Code for **WC-1, WC-2, WC-3, WC-5, WC-6, WC-8, WC-9** is in the agent PR. It does **not** prove production.
+
+| Slice | In this PR | Still human |
+|-------|------------|-------------|
+| WC-1 Tonight habit | Rank Start here / Heating up / Surging (≤8). Followed nearby pulses from the last 90m float. Empty Surging CTA auth-gates guests. Launch neighborhood default unchanged. | Dogfood “I opened it before leaving” |
+| WC-2 Realtime SLO | `pulse_reflection` latency + p95 log and Sentry breadcrumb (existing Sentry only) | Prod p95 &lt; 2s and a Sentry alert |
+| WC-3 Venue-surge push | Electric crossing, ≤1/venue/2h, mute + quiet hours. Missing VAPID = no-op. Issue [#109](https://github.com/hondoentertainment/pulse/issues/109). Not #66. | Vercel must already have `VAPID_*` + `VITE_VAPID_PUBLIC_KEY`. Apply migration. Two-device proof |
+| WC-5 Verified weight | `compareTonightRank` prefers `location_verified` in the last 90m when otherwise comparable. Unit tests. Chips do not invent Verified. | — |
+| WC-6 Owner reply | One-tap reply writes `venue_owner_replies` and shows on Live now. Dismiss already PATCHes `pulse_reports`. | #85 phone/domain proof. Do not close #85 |
+| WC-8 Share funnel | Share card → install only if PWA-eligible → auth → first pulse. Existing funnel events. | WC-0.5 analytics keys. #86 phone proof |
+| WC-9 Focus hood | Capitol Hill seed list, density badge, empty-state copy | Claims and invites. No mass ownership edits |
+
+## Suggested sequencing (after this PR)
+
+1. Human: **WC-0.1 → 0.3** (prod proof #64/#85/#86 — leave #85 and #86 open until proof)  
+2. Human: **WC-0.4 + WC-0.5** (branch protection + analytics keys). Console/no-op adapter stays until keys exist.  
+3. Human: apply `20260924153000_venue_surge_and_owner_replies.sql` on `xeldqwhztcnnvazmshzh`, confirm existing VAPID trio, prove [#109](https://github.com/hondoentertainment/pulse/issues/109)  
+4. Human: **WC-9** Capitol Hill dogfood (invites + claims). Do not send invites from the repo.
 
 ## Decision
 

@@ -7,6 +7,7 @@ import {
   listTonightFollowingVenues,
   listTonightNearVenues,
   resolveHomeNeighborhood,
+  TONIGHT_CARD_LIMIT,
   TONIGHT_EMPTY_LOOP,
   timeOfDayBoost,
 } from '../tonight-home'
@@ -231,6 +232,80 @@ describe('compareTonightRank', () => {
       seeded: false,
     })
     expect(compareTonightRank(curated, osm, [], now, { lat: 47.614, lng: -122.32 })).toBeLessThan(0)
+  })
+
+  it('prefers a location-verified pulse over an unverified one when otherwise tied', () => {
+    const now = new Date('2026-09-11T04:40:00.000Z')
+    const createdAt = new Date(now.getTime() - 10 * 60 * 1000).toISOString()
+    const verified = makeVenue({ id: 'verified', name: 'Verified Room' })
+    const remote = makeVenue({ id: 'remote', name: 'Remote Room' })
+    const pulses = [
+      makePulse({ venueId: 'verified', locationVerified: true, createdAt, energyRating: 'buzzing' }),
+      makePulse({ id: 'p2', venueId: 'remote', locationVerified: false, createdAt, energyRating: 'buzzing' }),
+    ]
+    const here = { lat: 47.614, lng: -122.32 }
+    expect(compareTonightRank(verified, remote, pulses, now, here)).toBeLessThan(0)
+    expect(compareTonightRank(remote, verified, pulses, now, here)).toBeGreaterThan(0)
+  })
+
+  it('floats a followed nearby venue that pulsed in the last 90 minutes', () => {
+    const now = new Date('2026-09-11T04:40:00.000Z')
+    const createdAt = new Date(now.getTime() - 20 * 60 * 1000).toISOString()
+    const followed = makeVenue({ id: 'followed', name: 'Followed Room' })
+    const hotter = makeVenue({
+      id: 'hotter',
+      name: 'Hotter Room',
+      location: { lat: 47.63, lng: -122.35, address: 'Farther' },
+    })
+    const pulses = [
+      makePulse({ venueId: 'followed', energyRating: 'buzzing', createdAt, locationVerified: false }),
+      makePulse({ id: 'p2', venueId: 'hotter', energyRating: 'electric', createdAt, locationVerified: false }),
+    ]
+    const here = { lat: 47.614, lng: -122.32 }
+    expect(compareTonightRank(followed, hotter, pulses, now, here, {
+      followedVenueIds: ['followed'],
+    })).toBeLessThan(0)
+    expect(compareTonightRank(followed, hotter, pulses, now, null, {
+      followedVenueIds: ['followed'],
+    })).toBeGreaterThan(0)
+  })
+})
+
+describe('buildTonightHome ranking cap', () => {
+  it('returns at most 8 ranked cards and uses Capitol Hill focus copy when quiet', () => {
+    const now = new Date('2026-09-11T04:40:00.000Z')
+    const createdAt = new Date(now.getTime() - 5 * 60 * 1000).toISOString()
+    const venues = Array.from({ length: 12 }, (_, index) => makeVenue({
+      id: `v${index}`,
+      name: `Room ${index}`,
+      location: { lat: 47.614 + index * 0.001, lng: -122.32, address: 'Pike' },
+    }))
+    const pulses = venues.map((venue, index) => makePulse({
+      id: `p${index}`,
+      venueId: venue.id,
+      createdAt,
+      energyRating: 'electric',
+    }))
+    const home = buildTonightHome({
+      venues,
+      pulses,
+      userLocation: { lat: 47.614, lng: -122.32 },
+      now,
+    })
+    const cards = [home.startHere, ...home.heatingUp, ...home.surging].filter(Boolean)
+    expect(cards.length).toBeLessThanOrEqual(TONIGHT_CARD_LIMIT)
+    expect(cards.length).toBe(TONIGHT_CARD_LIMIT)
+    expect(home.empty).toBeNull()
+
+    const quiet = buildTonightHome({
+      venues: [makeVenue()],
+      pulses: [],
+      userLocation: { lat: 47.614, lng: -122.32 },
+      savedNeighborhood: 'Capitol Hill',
+      now,
+    })
+    expect(quiet.empty?.body).toMatch(/focus hood/)
+    expect(quiet.title).toBe('Tonight · Capitol Hill')
   })
 })
 

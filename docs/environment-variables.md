@@ -121,10 +121,9 @@ Full detail: [Feature Flags](feature-flags.md).
 | `APNS_TEAM_ID` | server | Apple team ID |
 | `APNS_BUNDLE_ID` | server | iOS bundle identifier |
 
-Generate a local pair with `npx web-push generate-vapid-keys`. Set the
-public key on both `VITE_VAPID_PUBLIC_KEY` and `VAPID_PUBLIC_KEY`. If
-either server key is missing, `notifyLivePulse` returns
-`{ attempted: false, reason: 'missing_vapid' }` and never fakes a send.
+Vercel production must **already** have `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VITE_VAPID_PUBLIC_KEY` (the same public key on both public vars). Do not generate or commit new VAPID secrets in a pull request. A human can generate a local pair with `npx web-push generate-vapid-keys` and paste it into Vercel, then rebuild. If either server key is missing, `notifyLivePulse` returns `{ attempted: false, reason: 'missing_vapid' }` and never fakes a send. Venue-surge delivery (Electric cross, ≤1/venue/2h) is tracked in GitHub issue #109 — not Signal #66.
+
+`CRON_SECRET` missing keeps `/api/cron/night-coach` an honest no-op. Do not invent that secret either.
 
 ---
 
@@ -133,7 +132,7 @@ either server key is missing, `notifyLivePulse` returns
 | Variable | Scope | Description |
 |----------|-------|-------------|
 | `VITE_SENTRY_DSN` | client | Error tracking |
-| `VITE_ANALYTICS_BACKEND` | client | `console`, `amplitude`, `posthog` |
+| `VITE_ANALYTICS_BACKEND` | client | `console`, `amplitude`, `posthog`. Unset in prod = no-op. WC-0.5 (human) wires a backend; do not add a new vendor key from the repo. |
 | `VITE_AMPLITUDE_API_KEY` | client | Amplitude project key |
 | `VITE_POSTHOG_API_KEY` | client | PostHog project key |
 | `VITE_POSTHOG_HOST` | client | PostHog ingest URL |

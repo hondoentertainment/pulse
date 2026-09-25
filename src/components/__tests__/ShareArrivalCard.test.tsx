@@ -67,4 +67,11 @@ describe('ShareArrivalCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /I'm here · open map/i }))
     expect(navigate).toHaveBeenCalledWith('/?here=neumos&create=1')
   })
+
+  it('sends a guest who posts a live review to auth', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'Post a live review' }))
+    expect(navigate).toHaveBeenCalledWith(expect.stringMatching(/^\/auth/))
+    expect(screen.queryByLabelText('Install Pulse')).not.toBeInTheDocument()
+  })
 })

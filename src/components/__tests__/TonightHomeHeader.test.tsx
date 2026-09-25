@@ -288,4 +288,23 @@ describe('TonightHomeHeader', () => {
     )
     expect(screen.queryByText('Recent')).not.toBeInTheDocument()
   })
+
+  it('empty Surging teaches the loop and posts a live review', () => {
+    const onBeFirstPulse = vi.fn()
+    renderTonight(
+      <TonightHomeHeader
+        venues={[makeVenue()]}
+        pulses={[]}
+        userLocation={null}
+        locationDenied
+        onVenueClick={vi.fn()}
+        onBeFirstPulse={onBeFirstPulse}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText('Teach the Pulse loop')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Post a live review' }))
+    expect(onBeFirstPulse).toHaveBeenCalledWith(expect.objectContaining({ id: 'venue-1' }))
+  })
 })

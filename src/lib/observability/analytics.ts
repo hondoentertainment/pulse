@@ -139,6 +139,13 @@ export interface EventRegistry {
     surgeLevel?: 'rising' | 'hot' | 'peak'
     notificationId?: string
   }
+  /** pulse created_at → local map/Surging cache flush. No new vendor. */
+  pulse_reflection: {
+    latencyMs: number
+    p95Ms: number
+    sampleCount: number
+    surface: 'surging'
+  }
 }
 
 export type EventName = keyof EventRegistry
@@ -449,4 +456,5 @@ export const REGISTERED_EVENTS: EventName[] = [
   'search_performed',
   'friend_added',
   'surge_notification_opened',
+  'pulse_reflection',
 ]

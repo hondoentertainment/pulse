@@ -23,6 +23,8 @@ import { useState, useEffect } from 'react'
 import { listMyPulseReports, type PulseReportRow } from '@/lib/data/pulses'
 import { USE_SUPABASE_BACKEND } from '@/lib/data'
 import { describeVenueSurgePushStub } from '@/lib/venue-surge-watch'
+import { readQuietHours, writeQuietHours, type QuietHours } from '@/lib/surge-prefs'
+import { saveQuietHoursOnServer } from '@/lib/data/surge-prefs'
 import { motion } from 'framer-motion'
 
 interface SettingsPageProps {
@@ -228,9 +230,11 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
                 ))}
               </ul>
             )}
+            <SurgeQuietHoursFields />
             <p className="text-[11px] text-muted-foreground">
-              Venue surge alerts stay local ({surgeStub.storageKey}). Closed-app push is a future
-              venue-only stub — Signal Web Push will not be rebuilt.
+              Followed-venue Electric alerts use Web Push when Vercel already has VAPID keys.
+              Missing keys stay a no-op. Mute a venue from its page. Signal Web Push is not restored.
+              Local watch list: {surgeStub.storageKey}.
             </p>
           </Card>
         </motion.div>
@@ -572,6 +576,59 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
             </div>
           </Card>
         </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function SurgeQuietHoursFields() {
+  const [hours, setHours] = useState<QuietHours>(() => readQuietHours())
+
+  const save = (next: QuietHours) => {
+    setHours(next)
+    writeQuietHours(next)
+    void saveQuietHoursOnServer(next).then((ok) => {
+      if (!ok) {
+        toast.message('Quiet hours saved on this device', {
+          description: 'They apply to Web Push after a subscription exists and the quiet-hours columns are applied. Missing VAPID keys stay a no-op.',
+        })
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-foreground">Surge quiet hours (Seattle)</p>
+      <p className="text-[11px] text-muted-foreground">
+        Local hours 0–23. Leave both empty for none. 22 to 7 is overnight.
+      </p>
+      <div className="flex gap-2">
+        <label className="text-[11px] text-muted-foreground">
+          Start
+          <input
+            aria-label="Quiet hours start"
+            inputMode="numeric"
+            value={hours.start ?? ''}
+            onChange={(event) => {
+              const start = event.target.value === '' ? null : Number(event.target.value)
+              save({ ...hours, start: Number.isInteger(start) ? start : null })
+            }}
+            className="mt-1 block h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          End
+          <input
+            aria-label="Quiet hours end"
+            inputMode="numeric"
+            value={hours.end ?? ''}
+            onChange={(event) => {
+              const end = event.target.value === '' ? null : Number(event.target.value)
+              save({ ...hours, end: Number.isInteger(end) ? end : null })
+            }}
+            className="mt-1 block h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+          />
+        </label>
       </div>
     </div>
   )

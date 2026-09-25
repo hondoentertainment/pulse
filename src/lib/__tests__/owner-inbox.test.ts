@@ -6,6 +6,7 @@ import {
   countTonightReports,
   createOwnerOneTapReply,
   createOwnerReply,
+  ownerRepliesForLiveNow,
   OWNER_ONE_TAP_REPLY,
   dismissReportsForPulse,
   mapPulseReportsToContentReports,
@@ -67,7 +68,10 @@ describe('owner inbox v2', () => {
     expect(createOwnerReply({ pulseId: 'p1', venueId: 'neumos', body: '   ' })).toBeNull()
     const reply = createOwnerReply({ pulseId: 'p1', venueId: 'neumos', body: 'Thanks for coming' })
     expect(reply?.body).toBe('Thanks for coming')
-    expect(createOwnerOneTapReply({ pulseId: 'p1', venueId: 'neumos' })?.body).toBe(OWNER_ONE_TAP_REPLY)
+    const oneTap = createOwnerOneTapReply({ pulseId: 'p1', venueId: 'neumos' })
+    expect(oneTap?.body).toBe(OWNER_ONE_TAP_REPLY)
+    expect(oneTap && ownerRepliesForLiveNow([oneTap], 'p1')).toHaveLength(1)
+    expect(ownerRepliesForLiveNow([oneTap!], 'other')).toEqual([])
   })
 
   it('ignores dismissed reports in the count', () => {

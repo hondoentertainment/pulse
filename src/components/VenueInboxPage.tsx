@@ -37,6 +37,7 @@ interface VenueInboxPageProps {
   claimBusy?: boolean
   reports?: ContentReport[]
   onDismissReports?: (pulseId: string) => void
+  onOwnerReply?: (reply: OwnerInboxReply) => Promise<void> | void
 }
 
 export function VenueInboxPage({
@@ -50,6 +51,7 @@ export function VenueInboxPage({
   claimBusy = false,
   reports = [],
   onDismissReports,
+  onOwnerReply,
 }: VenueInboxPageProps) {
   const allowed = canAccessVenueInbox({
     userId: currentUser?.id,
@@ -267,7 +269,10 @@ export function VenueInboxPage({
                       onClick={(event) => {
                         event.stopPropagation()
                         const reply = createOwnerOneTapReply({ pulseId: pulse.id, venueId: venue.id })
-                        if (reply) setReplies(persistOwnerReply(reply))
+                        if (reply) {
+                          setReplies(persistOwnerReply(reply))
+                          void onOwnerReply?.(reply)
+                        }
                       }}
                     >
                       One-tap thanks
@@ -307,6 +312,7 @@ export function VenueInboxPage({
                         })
                         if (!reply) return
                         setReplies(persistOwnerReply(reply))
+                        void onOwnerReply?.(reply)
                         setReplyingId(null)
                         setReplyBody('')
                       }}

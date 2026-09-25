@@ -32,6 +32,9 @@ import { trackEvent } from '@/lib/analytics'
 import { track } from '@/lib/observability/analytics'
 import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import { LiveNowStrip } from '@/components/LiveNowStrip'
+import { listOwnerRepliesForVenue } from '@/lib/data/owner-replies'
+import type { OwnerInboxReply } from '@/lib/owner-inbox'
+import { VenueSurgeMuteButton } from '@/components/VenueSurgeMuteButton'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
@@ -184,6 +187,7 @@ export function VenuePage({
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
+  const [ownerReplies, setOwnerReplies] = useState<OwnerInboxReply[]>([])
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
@@ -214,6 +218,21 @@ export function VenuePage({
   useEffect(() => {
     refreshLiveData()
   }, [refreshLiveData])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      void listOwnerRepliesForVenue(venue.id).then((rows) => {
+        if (!cancelled) setOwnerReplies(rows)
+      })
+    }
+    load()
+    window.addEventListener('focus', load)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+    }
+  }, [venue.id])
 
   useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
@@ -552,6 +571,7 @@ export function VenuePage({
           venueName={venue.name}
           onSelect={setSelectedLiveReview}
           doorPin={doorPin}
+          ownerReplies={ownerReplies}
         />
 
         <details className="rounded-xl border border-border bg-card p-3.5">
@@ -588,6 +608,7 @@ export function VenuePage({
                   />
                 </button>
               )}
+              {isFollowed && <VenueSurgeMuteButton venueId={venue.id} />}
               <button
                 onClick={handleShare}
                 aria-label="Share venue"

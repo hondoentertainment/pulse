@@ -159,6 +159,14 @@ export function persistOwnerDismissal(dismissal: OwnerInboxDismissal): OwnerInbo
   return next
 }
 
+/** Owner replies that should render under a Live now card. */
+export function ownerRepliesForLiveNow(
+  replies: readonly OwnerInboxReply[],
+  pulseId: string,
+): OwnerInboxReply[] {
+  return replies.filter((reply) => reply.pulseId === pulseId && reply.body.trim().length > 0)
+}
+
 export function isPulseDismissed(
   dismissals: OwnerInboxDismissal[],
   pulseId: string,

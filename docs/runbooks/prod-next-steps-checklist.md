@@ -1,6 +1,6 @@
 # Prod next-steps checklist (agent-verified + human blockers)
 
-> Updated 2026-09-15. Pulse is **venue + map only**. Production: https://pulse-chi-nine.vercel.app/  
+> Updated 2026-09-24. Pulse is **venue + map only**. Production: https://pulse-chi-nine.vercel.app/  
 > Supabase project ref: `xeldqwhztcnnvazmshzh`
 
 ## Agent-verified on 2026-09-15 (Supabase MCP)
@@ -31,7 +31,9 @@
 - [ ] **OPS-3 / #85** Prod claim → pending → verified unlock → owner inbox reply/dismiss (see [venue-claims-ops.md](venue-claims-ops.md))
 - [ ] **OPS-4 / #86** Phone + crawler: `/api/share/venue?venueId=` OG + I’m-here pin
 - [ ] **OPS-5 / #65** Branch protection: require `smoke-preview` / `smoke-preview-venue`; remove Signal checks; solo reviews = 0 or admin bypass ([github-branch-protection.md](github-branch-protection.md))
-- [ ] **OPS-6** Optional: `app_metadata.role=admin` for `/ops`; VAPID trio; custom domain ([custom-domain.md](custom-domain.md))
+- [ ] **OPS-6** Optional: `app_metadata.role=admin` for `/ops`; VAPID trio already on Vercel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY`) — do not invent secrets; custom domain ([custom-domain.md](custom-domain.md))
+- [ ] **OPS-7 / WC-0.5** `VITE_ANALYTICS_BACKEND` + provider key. Until set, funnel events stay console/no-op.
+- [ ] **OPS-8** Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on `xeldqwhztcnnvazmshzh`. Verify with `supabase/verify/venue_surge_owner_replies.sql`. Then prove [#109](https://github.com/hondoentertainment/pulse/issues/109) (not Signal #66).
 
 ## Agent-shipped in-repo (this pass)
 

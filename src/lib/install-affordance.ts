@@ -59,14 +59,31 @@ export function dismissInstallAffordance(
   }
 }
 
-/** Tonight home + /n/capitol-hill only. One local dismiss — don’t nag. */
+/**
+ * Share arrival only shows an install card when the browser can actually
+ * install (prompt) or the device is iOS (Share → Add to Home Screen).
+ * Desktop without a prompt is not eligible — no fake urgency.
+ */
+export function isPwaInstallEligible(input: {
+  canInstall: boolean
+  isInstalled: boolean
+  platform: 'ios' | 'android' | 'desktop' | 'unknown'
+}): boolean {
+  if (input.isInstalled) return false
+  if (input.canInstall) return true
+  return input.platform === 'ios'
+}
+
+/** Tonight, Capitol Hill, and eligible share arrivals. One local dismiss. */
 export function shouldShowInstallOnSurface(input: {
-  surface: 'tonight' | 'capitol-hill' | 'map' | 'other'
+  surface: 'tonight' | 'capitol-hill' | 'share' | 'map' | 'other'
   canInstall: boolean
   isInstalled: boolean
   platform: 'ios' | 'android' | 'desktop' | 'unknown'
   dismissed?: boolean
 }): boolean {
+  if (input.dismissed || input.isInstalled) return false
+  if (input.surface === 'share') return isPwaInstallEligible(input)
   if (input.surface !== 'tonight' && input.surface !== 'capitol-hill') return false
   return shouldShowInstallAffordance(input)
 }
