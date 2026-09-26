@@ -75,10 +75,10 @@ const ENERGY_HEAT: Record<EnergyRating, number> = {
 }
 
 const ENERGY_RGB: Record<EnergyRating, RgbColor> = {
-  dead: { r: 138, g: 138, b: 147 },
-  chill: { r: 0, g: 209, b: 255 },
-  buzzing: { r: 255, g: 138, b: 0 },
-  electric: { r: 255, g: 45, b: 120 },
+  dead: { r: 140, g: 140, b: 148 },
+  chill: { r: 89, g: 199, b: 158 },
+  buzzing: { r: 255, g: 184, b: 71 },
+  electric: { r: 250, g: 89, b: 140 },
 }
 
 export function heatColorForScore(score: number): RgbColor {

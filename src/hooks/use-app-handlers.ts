@@ -457,7 +457,7 @@ export function useAppHandlers() {
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab)
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Pulse', map: 'Map', notifications: 'Friends', profile: 'You' }
+    const labels: Record<TabId, string> = { trending: 'Tonight', discover: 'Pulse', map: 'Map', notifications: 'Following', profile: 'You' }
     announce(`Switched to ${labels[tab]} tab`)
   }, [setActiveTab])
 

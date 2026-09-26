@@ -1450,7 +1450,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                     {activity.countLabel && (
                       <button
                         type="button"
-                        className="pointer-events-auto mt-1 rounded-full bg-[#FF2D78] px-2 py-0.5 text-[10px] font-semibold text-white"
+                        className="pointer-events-auto mt-1 rounded-full bg-[#fa598c] px-2 py-0.5 text-[10px] font-semibold text-white"
                         aria-label={`Live reviews at ${venue.name}`}
                         onClick={(event) => {
                           event.stopPropagation()
@@ -2039,7 +2039,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                             </p>
                           )}
                           {previewActivity.countLabel && (
-                            <p className="mt-1 text-[10px] font-semibold text-[#FF2D78]">
+                            <p className="mt-1 text-[10px] font-semibold text-[#fa598c]">
                               {previewActivity.countLabel}
                             </p>
                           )}

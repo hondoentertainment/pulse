@@ -33,9 +33,7 @@ import {
   readPulseDraft,
   writePulseDraft,
 } from '@/lib/pulse-draft'
-import { ComposerVenueChip } from '@/components/ux/ComposerVenueChip'
-import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
-import { UX_CTA } from '@/lib/ux-chrome'
+import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import { compressPulsePhotoFile } from '@/lib/pulse-photo'
 import { DoorChipRow } from '@/components/DoorChipRow'
 import { toggleDoorChip, type DoorChip } from '@/lib/door-chips'
@@ -382,49 +380,45 @@ export function CreatePulseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-3 pt-4">
-          <TimelineAvatar name={venue?.name ?? 'You'} />
-          <div className="min-w-0 flex-1 space-y-3">
-            {venue && (
-              <ComposerVenueChip
-                name={venue.name}
-                nearVenue={locationProof.reason === 'verified'}
-                showAvatar={false}
-              />
-            )}
-            <div className="relative">
-              <label htmlFor="create-pulse-caption" className="sr-only">
-                Caption
-              </label>
-              <Textarea
-                id="create-pulse-caption"
-                placeholder="What's the vibe right now?"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
-                maxLength={QUICK_PULSE_CAPTION_MAX}
-                rows={3}
-                className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[20px] leading-7 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
-                aria-required="true"
-                aria-describedby="create-pulse-caption-count create-pulse-location-proof"
-              />
-              <p id="create-pulse-caption-count" className="sr-only">
-                {caption.length} / {QUICK_PULSE_CAPTION_MAX}
-              </p>
-            </div>
-            <EnergyPills value={energyRating} onChange={setEnergyRating} />
-            <DoorChipRow
-              value={doorChips}
-              onToggle={(chip) => setDoorChips((current) => toggleDoorChip(current, chip))}
+        <div className="space-y-3">
+          <div>
+            <p className="text-[26px] font-bold text-foreground">Post live review</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {venue ? `${venue.name} · What’s the vibe right now?` : 'What’s the vibe right now?'}
+            </p>
+          </div>
+          <EnergyPills value={energyRating} onChange={setEnergyRating} />
+          <div className={`${UX_CARD} p-3.5`}>
+            <label htmlFor="create-pulse-caption" className="sr-only">
+              Caption
+            </label>
+            <Textarea
+              id="create-pulse-caption"
+              placeholder="What's the vibe right now?"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
+              maxLength={QUICK_PULSE_CAPTION_MAX}
+              rows={3}
+              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[14px] leading-5 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
+              aria-required="true"
+              aria-describedby="create-pulse-caption-count create-pulse-location-proof"
             />
-            <div className="hidden">
-              <EnergySlider
-                value={energyRating}
-                onChange={setEnergyRating}
-                energyPhotos={energyPhotos}
-                onAddPhoto={() => photoInputRef.current?.click()}
-                onRemovePhoto={removePhoto}
-              />
-            </div>
+            <p id="create-pulse-caption-count" className="mt-2 text-[11px] text-muted-foreground">
+              {caption.length} / {QUICK_PULSE_CAPTION_MAX} chars
+            </p>
+          </div>
+          <DoorChipRow
+            value={doorChips}
+            onToggle={(chip) => setDoorChips((current) => toggleDoorChip(current, chip))}
+          />
+          <div className="hidden">
+            <EnergySlider
+              value={energyRating}
+              onChange={setEnergyRating}
+              energyPhotos={energyPhotos}
+              onAddPhoto={() => photoInputRef.current?.click()}
+              onRemovePhoto={removePhoto}
+            />
           </div>
         </div>
 
@@ -506,7 +500,7 @@ export function CreatePulseDialog({
                   }
                   videoInputRef.current?.click()
                 }}
-                className="flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-full border border-dashed border-border bg-card px-3.5 py-3 text-center transition-colors hover:border-primary/60"
+                className={`${UX_CARD} flex min-h-24 w-full flex-col items-center justify-center gap-1 px-3.5 py-3 text-center transition-colors hover:border-primary/60`}
               >
                 {photoCount > 0 ? (
                   <>
@@ -528,10 +522,10 @@ export function CreatePulseDialog({
           <div id="create-pulse-location-proof" className="flex items-center gap-2">
             {locationProof.reason === 'verified' ? (
               <>
-                <span className="inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground">
+                <span className="inline-flex items-center rounded-full border border-[rgba(89,199,158,0.55)] bg-[rgba(89,199,158,0.18)] px-3 py-[7px] text-[12px] font-medium text-[#59c79e]">
                   Near venue ✓
                 </span>
-                <span className="text-xs text-muted-foreground">Auto from map</span>
+                <span className="text-[12px] text-muted-foreground">Location verified</span>
               </>
             ) : (
               <>
@@ -608,11 +602,12 @@ export function CreatePulseDialog({
             <p role="alert" className="text-sm font-semibold text-destructive">{submitError}</p>
           )}
           <Button
-            className={UX_CTA}
+            className={`${UX_CTA} sticky bottom-0`}
+            aria-label="Post · 1 tap"
             onClick={handleSubmit}
             disabled={isSubmitting || isCompressing}
           >
-            {isSubmitting ? 'Posting...' : 'Post · 1 tap'}
+            {isSubmitting ? 'Posting...' : 'Post live review'}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
             Photo optional · draft never lost

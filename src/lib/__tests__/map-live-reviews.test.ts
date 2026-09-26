@@ -66,7 +66,7 @@ describe('getVenueMapActivity', () => {
     expect(activity.liveReviewCount).toBe(2)
     expect(activity.countLabel).toBe('2 live reviews · last hour')
     expect(activity.heatScore).toBeGreaterThan(40)
-    expect(activity.heatColor).toEqual({ r: 255, g: 45, b: 120 })
+    expect(activity.heatColor).toEqual({ r: 250, g: 89, b: 140 })
   })
 
   it('still paints heat when pulseScore is 0 but reviews exist', () => {

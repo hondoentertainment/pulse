@@ -9,15 +9,16 @@ import {
 } from '@/lib/tonight-home'
 import { TonightEmptyState } from '@/components/TonightEmptyState'
 import { FeedTabBar } from '@/components/ux/FeedTabBar'
-import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
-import { PulseActionRow } from '@/components/ux/PulseActionRow'
-import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { TrustPinChips } from '@/components/TrustPinChips'
 import { VenueTypeahead } from '@/components/VenueTypeahead'
 import { FollowVenueButton } from '@/components/FollowVenueButton'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
-import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
-import { ENERGY_CONFIG } from '@/lib/types'
+import { getEnergyLabel } from '@/lib/pulse-engine'
+import { ENERGY_CONFIG, type EnergyRating } from '@/lib/types'
+import { SignalPill } from '@/components/ux/SignalPill'
+import { toneForEnergy } from '@/lib/signal-tone'
+import { isOpenNow } from '@/lib/open-now'
+import type { VenueMapActivity } from '@/lib/map-live-reviews'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { venueHandle } from '@/lib/venue-handle'
 import { catalogQualityLine } from '@/lib/catalog-quality'
@@ -48,12 +49,14 @@ const MAP_TABS = [
   { id: 'map' as const, label: 'Map' },
 ]
 
-type TonightFeed = 'foryou' | 'following' | 'near'
+type TonightFeed = 'foryou' | 'surging' | 'near' | 'open' | 'following'
 
-const TONIGHT_FEEDS: readonly { id: TonightFeed; label: string }[] = [
-  { id: 'foryou', label: 'For you' },
-  { id: 'following', label: 'Following' },
-  { id: 'near', label: 'Near' },
+const TONIGHT_FEEDS: readonly { id: TonightFeed; label: string; tone: 'cyan' | 'electric' | 'chill' | 'amber' | 'dead' }[] = [
+  { id: 'foryou', label: 'For you', tone: 'cyan' },
+  { id: 'surging', label: 'Surging', tone: 'electric' },
+  { id: 'near', label: 'Near me', tone: 'chill' },
+  { id: 'open', label: 'Open now', tone: 'amber' },
+  { id: 'following', label: 'Following', tone: 'dead' },
 ]
 
 interface TonightHomeHeaderProps {
@@ -158,11 +161,11 @@ export function TonightHomeHeader({
       )}
 
       <header className="space-y-1 pt-3">
-        <h1 id="tonight-home-heading" className="text-[22px] font-bold tracking-tight text-foreground">
-          {surface === 'live' ? 'Live' : home.title}
+        <h1 id="tonight-home-heading" className="text-[28px] font-bold tracking-tight text-foreground">
+          {surface === 'live' ? 'Live' : surface === 'map' ? 'Pulse' : 'Tonight'}
         </h1>
         {surface === 'tonight' && (
-          <p className="text-[13px] text-muted-foreground">{home.subtitle}</p>
+          <p className="text-[13px] text-muted-foreground">{home.subtitle} · habit ranking on</p>
         )}
         {surface === 'tonight' && focusHoodDensityLabel(home.neighborhood) && (
           <p className="text-[12px] font-semibold text-foreground">
@@ -191,7 +194,280 @@ export function TonightHomeHeader({
 
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
-          {surface === 'tonight' && <div className="pb-3"><InstallAffordance surface="tonight" /></div>}
+          <FeedTabBar<TonightFeed>
+            tabs={TONIGHT_FEEDS}
+            value={tonightFeed}
+            onChange={setTonightFeed}
+            ariaLabel="Tonight feeds"
+            variant="pills"
+            className="mt-3"
+          />
+
+          {tonightFeed === 'foryou' && (
+            <>
+              {home.empty && (
+                <TonightEmptyState
+                  empty={home.empty}
+                  ctaLabel={onBeFirstPulse && home.startHere ? 'Post a live review' : undefined}
+                  onCta={onBeFirstPulse && home.startHere
+                    ? () => onBeFirstPulse(home.startHere!.venue)
+                    : undefined}
+                />
+              )}
+              {home.startHere && (
+                <>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Start here</h2>
+                  <TonightFeedRow
+                    venue={home.startHere.venue}
+                    headline={home.startHere.headline}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following={followedVenueIds.includes(home.startHere.venue.id)}
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
+                    onImHere={onBeFirstPulse}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
+                  />
+                </>
+              )}
+
+              {home.heatingUp.length > 0 && (
+                <div>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
+                  {home.heatingUp.map((pick) => (
+                    <TonightFeedRow
+                      key={pick.venue.id}
+                      venue={pick.venue}
+                      headline={pick.headline}
+                      pulses={pulses}
+                      onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(pick.venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
+                      onImHere={onBeFirstPulse}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {home.surging.length > 0 && (
+                <div>
+                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Surging</h2>
+                  {home.surging.map((pick) => (
+                    <TonightFeedRow
+                      key={pick.venue.id}
+                      venue={pick.venue}
+                      headline={pick.headline}
+                      pulses={pulses}
+                      onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(pick.venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
+                      onImHere={onBeFirstPulse}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
+                    />
+                  ))}
+                </div>
+              )}
+
+            </>
+          )}
+
+          {tonightFeed === 'surging' && (
+            home.surging.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: 'Nothing surging in the last hour',
+                  body: 'Surging uses live reviews already on the map. Guests can browse; posting still needs a sign-in.',
+                  steps: ['Open the map', 'Tap a real Seattle pin', 'Post a pulse when you’re there'],
+                }}
+              />
+            ) : (
+              home.surging.map((pick) => (
+                <TonightFeedRow
+                  key={pick.venue.id}
+                  venue={pick.venue}
+                  headline={pick.headline}
+                  pulses={pulses}
+                  onVenueClick={onVenueClick}
+                  signedIn={signedIn}
+                  following={followedVenueIds.includes(pick.venue.id)}
+                  onFollowAuth={onFollowAuth}
+                  onToggleFollow={onToggleFollow}
+                  onShareVenue={onShareVenue}
+                  onImHere={onBeFirstPulse}
+                  viewerId={viewerId}
+                  replies={replies}
+                  agrees={agrees}
+                  onPulseReply={onPulseReply}
+                  onSameAgree={onSameAgree}
+                  onBlockUser={onBlockUser}
+                />
+              ))
+            )
+          )}
+
+          {tonightFeed === 'open' && (
+            <OpenNowFeed
+              picks={[home.startHere, ...home.heatingUp, ...home.surging].filter((pick): pick is NonNullable<typeof pick> => Boolean(pick))}
+              pulses={pulses}
+              onVenueClick={onVenueClick}
+              signedIn={signedIn}
+              followedVenueIds={followedVenueIds}
+              onFollowAuth={onFollowAuth}
+              onToggleFollow={onToggleFollow}
+              onShareVenue={onShareVenue}
+              onImHere={onBeFirstPulse}
+              viewerId={viewerId}
+              replies={replies}
+              agrees={agrees}
+              onPulseReply={onPulseReply}
+              onSameAgree={onSameAgree}
+              onBlockUser={onBlockUser}
+            />
+          )}
+
+          {tonightFeed === 'following' && (
+            !signedIn ? (
+              <div>
+                <TonightEmptyState empty={TONIGHT_FOLLOWING_GUEST_EMPTY} />
+                {onFollowAuth && (
+                  <button
+                    type="button"
+                    className="mt-3 h-12 w-full rounded-full border border-border bg-muted text-[15px] font-bold text-foreground"
+                    onClick={onFollowAuth}
+                  >
+                    Follow
+                  </button>
+                )}
+              </div>
+            ) : followingFeed.length === 0 ? (
+              <TonightEmptyState empty={TONIGHT_FOLLOWING_SIGNED_IN_EMPTY} />
+            ) : (
+              followingFeed.map((row) => {
+                if (row.kind === 'friend_pulse') {
+                  const venue = row.venue
+                  if (!venue) return null
+                  return (
+                    <TonightFeedRow
+                      key={`friend-${row.pulse.id}`}
+                      venue={venue}
+                      headline={row.pulse.caption || `${venue.name} · from someone you follow`}
+                      pulses={[row.pulse]}
+                      onVenueClick={onVenueClick}
+                      signedIn={signedIn}
+                      following={followedVenueIds.includes(venue.id)}
+                      onFollowAuth={onFollowAuth}
+                      onToggleFollow={onToggleFollow}
+                      onShareVenue={onShareVenue}
+                      onImHere={onBeFirstPulse}
+                      onHidePulse={onHidePulse}
+                      onPinMyNight={onPinMyNight}
+                      pinned={pinnedVenueIds.includes(venue.id)}
+                      viewerId={viewerId}
+                      replies={replies}
+                      agrees={agrees}
+                      onPulseReply={onPulseReply}
+                      onSameAgree={onSameAgree}
+                      onBlockUser={onBlockUser}
+                    />
+                  )
+                }
+                return (
+                  <TonightFeedRow
+                    key={row.venue.id}
+                    venue={row.venue}
+                    headline={row.latestPulse?.caption
+                      ? row.latestPulse.caption
+                      : `${row.venue.name} is on your Following list`}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
+                    onImHere={onBeFirstPulse}
+                    onHidePulse={onHidePulse}
+                    onPinMyNight={onPinMyNight}
+                    pinned={pinnedVenueIds.includes(row.venue.id)}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
+                  />
+                )
+              })
+            )
+          )}
+
+          {tonightFeed === 'near' && (
+            near.venues.length === 0 ? (
+              <TonightEmptyState
+                empty={{
+                  headline: 'Quiet nearby',
+                  body: 'Near uses your map pin against the real catalog, or Launch 33 when location is off. Guests can browse; posting still needs a sign-in.',
+                  steps: ['Allow location or stay on Launch 33', 'Tap a nearby pin', 'Post a pulse when you’re there'],
+                }}
+              />
+            ) : (
+              <>
+                {near.usedLaunch33Fallback && (
+                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">
+                    Launch 33 · location off
+                  </h2>
+                )}
+                {near.venues.map((venue) => (
+                  <TonightFeedRow
+                    key={venue.id}
+                    venue={venue}
+                    headline={near.usedLaunch33Fallback
+                      ? `${venue.name} is on Launch 33`
+                      : `${venue.name} is close`}
+                    pulses={pulses}
+                    onVenueClick={onVenueClick}
+                    signedIn={signedIn}
+                    following={followedVenueIds.includes(venue.id)}
+                    onFollowAuth={onFollowAuth}
+                    onToggleFollow={onToggleFollow}
+                    onShareVenue={onShareVenue}
+                    onImHere={onBeFirstPulse}
+                    viewerId={viewerId}
+                    replies={replies}
+                    agrees={agrees}
+                    onPulseReply={onPulseReply}
+                    onSameAgree={onSameAgree}
+                    onBlockUser={onBlockUser}
+                  />
+                ))}
+              </>
+            )
+          )}
+          {surface === 'tonight' && <div className="pt-4 pb-3"><InstallAffordance surface="tonight" /></div>}
           <LastNightRecap
             rooms={lastNightRooms}
             signedIn={signedIn}
@@ -242,221 +518,95 @@ export function TonightHomeHeader({
               </ul>
             )}
           </div>
-          <FeedTabBar<TonightFeed>
-            tabs={TONIGHT_FEEDS}
-            value={tonightFeed}
-            onChange={setTonightFeed}
-            ariaLabel="Tonight feeds"
-            className="mt-1"
-          />
-
-          {tonightFeed === 'foryou' && (
-            <>
-              {home.empty && (
-                <TonightEmptyState
-                  empty={home.empty}
-                  ctaLabel={onBeFirstPulse && home.startHere ? 'Post a live review' : undefined}
-                  onCta={onBeFirstPulse && home.startHere
-                    ? () => onBeFirstPulse(home.startHere!.venue)
-                    : undefined}
-                />
-              )}
-              {home.startHere && (
-                <>
-                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Start here</h2>
-                  <TonightFeedRow
-                    venue={home.startHere.venue}
-                    headline={home.startHere.headline}
-                    pulses={pulses}
-                    onVenueClick={onVenueClick}
-                    signedIn={signedIn}
-                    following={followedVenueIds.includes(home.startHere.venue.id)}
-                    onFollowAuth={onFollowAuth}
-                    onToggleFollow={onToggleFollow}
-                    onShareVenue={onShareVenue}
-                    viewerId={viewerId}
-                    replies={replies}
-                    agrees={agrees}
-                    onPulseReply={onPulseReply}
-                    onSameAgree={onSameAgree}
-                    onBlockUser={onBlockUser}
-                  />
-                </>
-              )}
-
-              {home.heatingUp.length > 0 && (
-                <div>
-                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Also heating up</h2>
-                  {home.heatingUp.map((pick) => (
-                    <TonightFeedRow
-                      key={pick.venue.id}
-                      venue={pick.venue}
-                      headline={pick.headline}
-                      pulses={pulses}
-                      onVenueClick={onVenueClick}
-                      signedIn={signedIn}
-                      following={followedVenueIds.includes(pick.venue.id)}
-                      onFollowAuth={onFollowAuth}
-                      onToggleFollow={onToggleFollow}
-                      onShareVenue={onShareVenue}
-                      viewerId={viewerId}
-                      replies={replies}
-                      agrees={agrees}
-                      onPulseReply={onPulseReply}
-                      onSameAgree={onSameAgree}
-                      onBlockUser={onBlockUser}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {home.surging.length > 0 && (
-                <div>
-                  <h2 className="pt-4 pb-1 text-[13px] font-semibold text-muted-foreground">Surging</h2>
-                  {home.surging.map((pick) => (
-                    <TonightFeedRow
-                      key={pick.venue.id}
-                      venue={pick.venue}
-                      headline={pick.headline}
-                      pulses={pulses}
-                      onVenueClick={onVenueClick}
-                      signedIn={signedIn}
-                      following={followedVenueIds.includes(pick.venue.id)}
-                      onFollowAuth={onFollowAuth}
-                      onToggleFollow={onToggleFollow}
-                      onShareVenue={onShareVenue}
-                      viewerId={viewerId}
-                      replies={replies}
-                      agrees={agrees}
-                      onPulseReply={onPulseReply}
-                      onSameAgree={onSameAgree}
-                      onBlockUser={onBlockUser}
-                    />
-                  ))}
-                </div>
-              )}
-
-            </>
-          )}
-
-          {tonightFeed === 'following' && (
-            !signedIn ? (
-              <div>
-                <TonightEmptyState empty={TONIGHT_FOLLOWING_GUEST_EMPTY} />
-                {onFollowAuth && (
-                  <button
-                    type="button"
-                    className="mt-3 h-12 w-full rounded-full border border-border bg-muted text-[15px] font-bold text-foreground"
-                    onClick={onFollowAuth}
-                  >
-                    Follow
-                  </button>
-                )}
-              </div>
-            ) : followingFeed.length === 0 ? (
-              <TonightEmptyState empty={TONIGHT_FOLLOWING_SIGNED_IN_EMPTY} />
-            ) : (
-              followingFeed.map((row) => {
-                if (row.kind === 'friend_pulse') {
-                  const venue = row.venue
-                  if (!venue) return null
-                  return (
-                    <TonightFeedRow
-                      key={`friend-${row.pulse.id}`}
-                      venue={venue}
-                      headline={row.pulse.caption || `${venue.name} · from someone you follow`}
-                      pulses={[row.pulse]}
-                      onVenueClick={onVenueClick}
-                      signedIn={signedIn}
-                      following={followedVenueIds.includes(venue.id)}
-                      onFollowAuth={onFollowAuth}
-                      onToggleFollow={onToggleFollow}
-                      onShareVenue={onShareVenue}
-                      onHidePulse={onHidePulse}
-                      onPinMyNight={onPinMyNight}
-                      pinned={pinnedVenueIds.includes(venue.id)}
-                      viewerId={viewerId}
-                      replies={replies}
-                      agrees={agrees}
-                      onPulseReply={onPulseReply}
-                      onSameAgree={onSameAgree}
-                      onBlockUser={onBlockUser}
-                    />
-                  )
-                }
-                return (
-                  <TonightFeedRow
-                    key={row.venue.id}
-                    venue={row.venue}
-                    headline={row.latestPulse?.caption
-                      ? row.latestPulse.caption
-                      : `${row.venue.name} is on your Following list`}
-                    pulses={pulses}
-                    onVenueClick={onVenueClick}
-                    signedIn={signedIn}
-                    following
-                    onFollowAuth={onFollowAuth}
-                    onToggleFollow={onToggleFollow}
-                    onShareVenue={onShareVenue}
-                    onHidePulse={onHidePulse}
-                    onPinMyNight={onPinMyNight}
-                    pinned={pinnedVenueIds.includes(row.venue.id)}
-                    viewerId={viewerId}
-                    replies={replies}
-                    agrees={agrees}
-                    onPulseReply={onPulseReply}
-                    onSameAgree={onSameAgree}
-                    onBlockUser={onBlockUser}
-                  />
-                )
-              })
-            )
-          )}
-
-          {tonightFeed === 'near' && (
-            near.venues.length === 0 ? (
-              <TonightEmptyState
-                empty={{
-                  headline: 'Quiet nearby',
-                  body: 'Near uses your map pin against the real catalog, or Launch 33 when location is off. Guests can browse; posting still needs a sign-in.',
-                  steps: ['Allow location or stay on Launch 33', 'Tap a nearby pin', 'Post a pulse when you’re there'],
-                }}
-              />
-            ) : (
-              <>
-                {near.usedLaunch33Fallback && (
-                  <h2 className="pt-3 text-[13px] font-semibold text-muted-foreground">
-                    Launch 33 · location off
-                  </h2>
-                )}
-                {near.venues.map((venue) => (
-                  <TonightFeedRow
-                    key={venue.id}
-                    venue={venue}
-                    headline={near.usedLaunch33Fallback
-                      ? `${venue.name} is on Launch 33`
-                      : `${venue.name} is close`}
-                    pulses={pulses}
-                    onVenueClick={onVenueClick}
-                    signedIn={signedIn}
-                    following={followedVenueIds.includes(venue.id)}
-                    onFollowAuth={onFollowAuth}
-                    onToggleFollow={onToggleFollow}
-                    onShareVenue={onShareVenue}
-                    viewerId={viewerId}
-                    replies={replies}
-                    agrees={agrees}
-                    onPulseReply={onPulseReply}
-                    onSameAgree={onSameAgree}
-                    onBlockUser={onBlockUser}
-                  />
-                ))}
-              </>
-            )
-          )}
         </div>
       )}
     </section>
+  )
+}
+
+function formatTonightMetric(venue: Venue, pulses: Pulse[], activity: VenueMapActivity): string {
+  const now = Date.now()
+  const recent = pulses.filter((pulse) => {
+    if (pulse.venueId !== venue.id) return false
+    const age = now - new Date(pulse.createdAt).getTime()
+    return age >= 0 && age < 10 * 60 * 1000
+  }).length
+  const delta = recent * 8
+  const deltaText = delta > 0 ? `+${delta} / 10m` : 'steady'
+  const verified = activity.latest?.locationVerified === true
+  const score = venue.pulseScore
+  return verified ? `${score} · ${deltaText} · verified weight` : `${score} · ${deltaText}`
+}
+
+function OpenNowFeed({
+  picks,
+  pulses,
+  onVenueClick,
+  signedIn,
+  followedVenueIds,
+  onFollowAuth,
+  onToggleFollow,
+  onShareVenue,
+  onImHere,
+  viewerId,
+  replies,
+  agrees,
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
+}: {
+  picks: { venue: Venue; headline: string }[]
+  pulses: Pulse[]
+  onVenueClick: (venue: Venue) => void
+  signedIn: boolean
+  followedVenueIds: readonly string[]
+  onFollowAuth?: () => void
+  onToggleFollow?: (venueId: string) => void
+  onShareVenue?: (venue: Venue) => void
+  onImHere?: (venue: Venue) => void
+  viewerId?: string | null
+  replies: readonly PulseReply[]
+  agrees: readonly PulseAgree[]
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
+}) {
+  const open = picks.filter((pick) => isOpenNow(pick.venue))
+  if (open.length === 0) {
+    return (
+      <TonightEmptyState
+        empty={{
+          headline: 'Nothing with hours open right now',
+          body: 'Open now only lists venues that already have hours on the row. Missing hours stay off this chip.',
+          steps: ['Check For you', 'Tap a venue', 'Hours show here when the catalog has them'],
+        }}
+      />
+    )
+  }
+  return (
+    <>
+      {open.map((pick) => (
+        <TonightFeedRow
+          key={pick.venue.id}
+          venue={pick.venue}
+          headline={pick.headline}
+          pulses={pulses}
+          onVenueClick={onVenueClick}
+          signedIn={signedIn}
+          following={followedVenueIds.includes(pick.venue.id)}
+          onFollowAuth={onFollowAuth}
+          onToggleFollow={onToggleFollow}
+          onShareVenue={onShareVenue}
+          onImHere={onImHere}
+          viewerId={viewerId}
+          replies={replies}
+          agrees={agrees}
+          onPulseReply={onPulseReply}
+          onSameAgree={onSameAgree}
+          onBlockUser={onBlockUser}
+        />
+      ))}
+    </>
   )
 }
 
@@ -470,6 +620,7 @@ function TonightFeedRow({
   onFollowAuth,
   onToggleFollow,
   onShareVenue,
+  onImHere,
   onHidePulse,
   onPinMyNight,
   pinned = false,
@@ -489,6 +640,7 @@ function TonightFeedRow({
   onFollowAuth?: () => void
   onToggleFollow?: (venueId: string) => void
   onShareVenue?: (venue: Venue) => void
+  onImHere?: (venue: Venue) => void
   onHidePulse?: (pulseId: string) => void
   onPinMyNight?: (venueId: string) => void
   pinned?: boolean
@@ -517,111 +669,87 @@ function TonightFeedRow({
       if (result === 'copied') toast.success('Link copied')
     })
   }
-  const followControl = (
-    <FollowVenueButton following={following} onClick={handleFollow} compact />
-  )
-
-  if (activity.latest) {
-    return (
-      <div>
-        <LiveReviewFeedCard
-          as="button"
-          energyRating={activity.latest.energyRating}
-          createdAt={activity.latest.createdAt}
-          caption={activity.latest.caption || headline}
-          unverified={activity.latest.locationVerified === false}
-          displayName={venue.name}
-          handle={venueHandle(venue.name)}
-          trustChips={glance.chips}
-          onClick={() => onVenueClick(venue)}
-          onShare={handleShare}
-        />
-        <div className="-mt-1 flex justify-end gap-2 pb-2">
-          {followControl}
-          {onPinMyNight && (
-            <button type="button" className="h-8 rounded-full border border-border px-3 text-[12px] font-semibold" onClick={() => onPinMyNight(venue.id)}>
-              {pinned ? 'Pinned' : 'Pin'}
-            </button>
-          )}
-        </div>
-        {activity.latest?.doorChips && activity.latest.doorChips.length > 0 && (
-          <div className="pb-2"><DoorChipRow value={activity.latest.doorChips} readOnly /></div>
-        )}
-        {doorRollupLabel(pulses, venue.id) && (
-          <p className="pb-1 text-[12px] font-semibold text-foreground">{doorRollupLabel(pulses, venue.id)}</p>
-        )}
-        <div className="pb-1"><OpenNowChip venue={venue} /></div>
-        {activity.latest && (
-          <PulseThreadActions
-            pulseId={activity.latest.id}
-            venueId={venue.id}
-            authorUserId={activity.latest.userId}
-            viewerId={viewerId}
-            doorChips={activity.latest.doorChips}
-            replies={replies}
-            agrees={agrees}
-            onReply={(id) => onPulseReply?.(id, venue.id)}
-            onSame={(id) => onSameAgree?.(id, venue.id)}
-            onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
-          />
-        )}
-        {onHidePulse && activity.latest && (
-          <button type="button" className="pb-2 text-[12px] text-muted-foreground" onClick={() => onHidePulse(activity.latest!.id)}>
-            Hide this pulse
-          </button>
-        )}
-        {catalogQualityLine(venue) && (
-          <p className="pb-2 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
-        )}
-      </div>
-    )
-  }
-
   const open = () => onVenueClick(venue)
-  const energyLabel = getEnergyLabel(venue.pulseScore)
-  const energyKey = (Object.keys(ENERGY_CONFIG) as Array<keyof typeof ENERGY_CONFIG>)
-    .find((key) => ENERGY_CONFIG[key].label === energyLabel)
-  // This branch has no live pulse (`activity.latest` is null after the return above).
-  // Claimed comes from the venue row. Do not read a live GPS flag here.
-  const trustLabel = venue.claimVerified ? 'Claimed' : 'Unverified'
+  const energyRating: EnergyRating | undefined = activity.latest?.energyRating
+  const energyLabel = energyRating
+    ? ENERGY_CONFIG[energyRating].label
+    : getEnergyLabel(venue.pulseScore)
+  const why = activity.latest?.caption?.trim() || headline
+
   return (
-    <article className="flex gap-3 border-b border-border py-3">
-      <TimelineAvatar name={venue.name} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <button
-            type="button"
-            onClick={open}
-            aria-label={`${venue.name}, ${headline}`}
-            className="block min-h-11 min-w-0 flex-1 text-left"
-          >
-            <div className="flex min-w-0 items-baseline gap-1">
-              <span className="truncate text-[15px] font-bold text-foreground">{venue.name}</span>
-              <span className="truncate text-[15px] text-muted-foreground">{venueHandle(venue.name)}</span>
-              {venue.lastPulseAt && (
-                <span className="shrink-0 text-[15px] text-muted-foreground">
-                  · {formatTimeAgo(venue.lastPulseAt).replace(' ago', '')}
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 text-[15px] leading-5 text-foreground">{headline}</p>
-            {catalogQualityLine(venue) && (
-              <p className="mt-0.5 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
-            )}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
-                {energyKey ? ENERGY_CONFIG[energyKey].label : energyLabel}
-              </span>
-              <span className="inline-flex min-h-8 items-center rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                {trustLabel}
-              </span>
-            </div>
-            <TrustPinChips chips={glance.chips} className="mt-1.5" />
-          </button>
-          {followControl}
+    <article className="mt-3 rounded-2xl border border-border bg-card p-3.5">
+      <button
+        type="button"
+        onClick={open}
+        aria-label={`${venue.name}, ${why}`}
+        className="block w-full text-left"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[16px] font-semibold text-foreground">{venue.name}</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">{why}</p>
+            <span className="sr-only">{venueHandle(venue.name)}</span>
+          </div>
+          <SignalPill tone={toneForEnergy(energyRating ?? energyLabel.toLowerCase())}>{energyLabel}</SignalPill>
         </div>
-        <PulseActionRow onReply={open} onShare={handleShare} />
+        <p className="mt-2 text-[12px] font-medium text-accent">
+          {formatTonightMetric(venue, pulses, activity)}
+        </p>
+      </button>
+      <div className="mt-1 flex items-center justify-center gap-2 text-[12px]">
+        <FollowVenueButton following={following} onClick={handleFollow} inline />
+        <span className="text-muted-foreground" aria-hidden>·</span>
+        <button
+          type="button"
+          className="min-h-11 px-1 font-medium text-foreground touch-manipulation"
+          onClick={handleShare}
+        >
+          Share
+        </button>
+        <span className="text-muted-foreground" aria-hidden>·</span>
+        <button
+          type="button"
+          className="min-h-11 px-1 font-medium text-accent touch-manipulation"
+          onClick={() => (onImHere ? onImHere(venue) : open())}
+        >
+          I’m here
+        </button>
       </div>
+      {onPinMyNight && (
+        <button type="button" className="text-[12px] font-semibold text-muted-foreground" onClick={() => onPinMyNight(venue.id)}>
+          {pinned ? 'Pinned' : 'Pin'}
+        </button>
+      )}
+      {activity.latest?.doorChips && activity.latest.doorChips.length > 0 && (
+        <div className="pt-2"><DoorChipRow value={activity.latest.doorChips} readOnly /></div>
+      )}
+      {doorRollupLabel(pulses, venue.id) && (
+        <p className="pt-1 text-[12px] font-semibold text-foreground">{doorRollupLabel(pulses, venue.id)}</p>
+      )}
+      <div className="pt-1"><OpenNowChip venue={venue} /></div>
+      <TrustPinChips chips={glance.chips} className="mt-1.5" />
+      {catalogQualityLine(venue) && (
+        <p className="pt-1 text-[13px] text-muted-foreground">{catalogQualityLine(venue)}</p>
+      )}
+      {activity.latest && (
+        <PulseThreadActions
+          pulseId={activity.latest.id}
+          venueId={venue.id}
+          authorUserId={activity.latest.userId}
+          viewerId={viewerId}
+          doorChips={activity.latest.doorChips}
+          replies={replies}
+          agrees={agrees}
+          onReply={(id) => onPulseReply?.(id, venue.id)}
+          onSame={(id) => onSameAgree?.(id, venue.id)}
+          onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
+        />
+      )}
+      {onHidePulse && activity.latest && (
+        <button type="button" className="pt-1 text-[12px] text-muted-foreground" onClick={() => onHidePulse(activity.latest!.id)}>
+          Hide this pulse
+        </button>
+      )}
     </article>
   )
 }

@@ -4,7 +4,7 @@ import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import type { Venue } from '@/lib/types'
+import { ENERGY_CONFIG, type Venue } from '@/lib/types'
 import type { EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { MapEnergyPills } from '@/components/MapEnergyPills'
@@ -27,6 +27,10 @@ import type { MapHomeSurface } from '@/lib/ux-chrome'
 import { markNavigationStart } from '@/lib/cold-start'
 import { dismissFirstOpenCoach, shouldShowFirstOpenCoach } from '@/lib/first-open-coach'
 import { shareVenueFromSurface } from '@/lib/sharing'
+import { getEnergyLabel } from '@/lib/pulse-engine'
+import { getSurgingNearbyVenues, getVenueMapActivity } from '@/lib/map-live-reviews'
+import { SignalPill } from '@/components/ux/SignalPill'
+import { toneForEnergy } from '@/lib/signal-tone'
 import { evaluateLocalNightCoach } from '@/lib/local-night-coach'
 import { listCatalogEvents } from '@/lib/data/events'
 import type { CatalogEvent } from '@/lib/events-tonight'
@@ -221,6 +225,30 @@ export function MainTabRouter() {
   const [showFirstOpenCoach, setShowFirstOpenCoach] = useState(() => shouldShowFirstOpenCoach())
   const [surgingReady, setSurgingReady] = useState(false)
   const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
+  const mapFloatVenue = useMemo(() => {
+    if (hereVenueId) {
+      const focused = mapVenues.find((venue) => venue.id === hereVenueId)
+      if (focused) return focused
+    }
+    const surging = getSurgingNearbyVenues(visibleVenues, visiblePulses, {
+      userLocation,
+      limit: 1,
+    })
+    if (surging[0]) return surging[0]
+    return [...visibleVenues].sort((a, b) => b.pulseScore - a.pulseScore)[0] ?? null
+  }, [hereVenueId, mapVenues, userLocation, visiblePulses, visibleVenues])
+  const mapFloatEnergy = useMemo(() => {
+    if (!mapFloatVenue) return null
+    const activity = getVenueMapActivity(mapFloatVenue, visiblePulses)
+    if (activity.latest) {
+      return {
+        tone: toneForEnergy(activity.latest.energyRating),
+        label: ENERGY_CONFIG[activity.latest.energyRating].label,
+      }
+    }
+    const label = getEnergyLabel(mapFloatVenue.pulseScore)
+    return { tone: toneForEnergy(label.toLowerCase()), label }
+  }, [mapFloatVenue, visiblePulses])
 
   useEffect(() => {
     markNavigationStart()
@@ -443,7 +471,7 @@ export function MainTabRouter() {
                   }}
                   onToggleNearMe={() => setMapNearMe((current) => !current)}
                 />
-                <div className="-mx-4 h-[320px] overflow-hidden bg-[#14171c]" role="region" aria-labelledby="tonight-home-heading">
+                <div className="relative h-[280px] overflow-hidden rounded-[20px] bg-[#12141a]" role="region" aria-labelledby="tonight-home-heading">
                   <InteractiveMap
                     venues={mapVenues}
                     userLocation={userLocation}
@@ -462,6 +490,16 @@ export function MainTabRouter() {
                     onInventoryLayerChange={setInventoryLayer}
                     focusVenueId={hereVenueId}
                   />
+                  {mapFloatVenue && mapFloatEnergy && (
+                    <button
+                      type="button"
+                      onClick={() => handleVenueClick(mapFloatVenue)}
+                      className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-[rgba(23,23,26,0.95)] px-3 py-2 shadow-lg"
+                    >
+                      <span className="max-w-[140px] truncate text-[12px] font-semibold text-foreground">{mapFloatVenue.name}</span>
+                      <SignalPill tone={mapFloatEnergy.tone}>{mapFloatEnergy.label}</SignalPill>
+                    </button>
+                  )}
                 </div>
                 {surgingReady ? (
                   <SurgingNearbyList

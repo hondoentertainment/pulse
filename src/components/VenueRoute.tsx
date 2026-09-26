@@ -3,8 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { BottomNav } from '@/components/BottomNav'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
 import { USE_SUPABASE_BACKEND, VenueData, CheckInData, PresenceData } from '@/lib/data'
 import { useVenuePulsesInfinite } from '@/hooks/api/use-pulses'
 import { AuthRequiredError } from '@/lib/auth/require-auth'
@@ -32,7 +30,6 @@ export function VenueRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const { activeTab, navigateToTab } = useRouteNavigation()
   const state = useAppState()
   const handlers = useAppHandlers()
   const { session, isPlaceholder } = useSupabaseAuth()
@@ -46,7 +43,6 @@ export function VenueRoute() {
     isTracking,
     realtimeLocation,
     userLocation,
-    unreadNotificationCount,
     isFavorite,
     isFollowed,
     integrationsEnabled,
@@ -307,11 +303,6 @@ export function VenueRoute() {
           isLoadingMoreVenuePulses={USE_SUPABASE_BACKEND ? venuePulseQuery.isFetchingNextPage : false}
         />
       </Suspense>
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={(tab) => navigateToTab(tab)}
-        unreadNotifications={unreadNotificationCount}
-      />
     </>
   )
 }
