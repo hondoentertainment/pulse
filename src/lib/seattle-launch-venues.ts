@@ -555,6 +555,17 @@ export function assertSeattleLaunchInventory(venues: SeattleLaunchVenue[] = SEAT
   }
 }
 
+const LAUNCH_UUID_TO_LOCAL_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(SEATTLE_LAUNCH_VENUE_UUIDS).map(([localId, uuid]) => [uuid, localId]),
+)
+
+/** Map a production share UUID (Barboza, Neumos, …) back to the local catalog id. */
+export function localLaunchVenueIdForShareId(shareId: string | null | undefined): string | null {
+  const id = (shareId ?? '').trim()
+  if (!id) return null
+  return LAUNCH_UUID_TO_LOCAL_ID[id] ?? null
+}
+
 export function getSeattleLaunchVenues(): SeattleLaunchVenue[] {
   assertSeattleLaunchInventory()
   return SEATTLE_LAUNCH_VENUES

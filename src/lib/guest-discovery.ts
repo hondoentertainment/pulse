@@ -12,6 +12,22 @@ export const AUTH_PATH = AUTH_RETURN_PATH
 export const DISCOVERY_AUTH_GATE_COPY = "Sign in to discover what's buzzing near you"
 
 /**
+ * Share and venue deep links skip first-run onboarding.
+ * A plain first open of `/` still shows Welcome / “What’s your scene?”.
+ */
+export function shouldBypassFirstRunOnboarding(input: {
+  pathname?: string | null
+  search?: string | null
+}): boolean {
+  const pathname = (input.pathname ?? '').split('?')[0]
+  if (/^\/venue\/[^/]+\/?$/.test(pathname)) return true
+  const raw = input.search ?? ''
+  const query = raw.startsWith('?') ? raw.slice(1) : raw
+  const from = new URLSearchParams(query).get('from')
+  return from === 'share' || from === 'invite'
+}
+
+/**
  * Whether the post-onboarding shell should be replaced by AuthGate.
  * Always false: guests must reach map + venues after Start Exploring.
  */

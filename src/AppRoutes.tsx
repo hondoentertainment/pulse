@@ -25,7 +25,7 @@ import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
-import { AUTH_PATH, shouldBlockDiscoveryForAuth } from '@/lib/guest-discovery'
+import { AUTH_PATH, shouldBlockDiscoveryForAuth, shouldBypassFirstRunOnboarding } from '@/lib/guest-discovery'
 import { consumeAuthReturnPath, readPersistedAuthNext } from '@/lib/auth-return-intent'
 import { UX_FAB } from '@/lib/ux-chrome'
 
@@ -143,8 +143,19 @@ export function AppRoutes() {
     if (navigator.vibrate) navigator.vibrate([15])
   }
 
+  // Share /venue/:id deep links skip first-run onboarding. Plain `/` does not.
+  const bypassFirstRun = shouldBypassFirstRunOnboarding({
+    pathname,
+    search: location.search,
+  })
+  useEffect(() => {
+    if (bypassFirstRun && hasCompletedOnboarding === false) {
+      setHasCompletedOnboarding(true)
+    }
+  }, [bypassFirstRun, hasCompletedOnboarding, setHasCompletedOnboarding])
+
   // ── Onboarding gate ──────────────────────
-  if (hasCompletedOnboarding === false) {
+  if (hasCompletedOnboarding === false && !bypassFirstRun) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <OnboardingFlow

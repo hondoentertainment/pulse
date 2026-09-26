@@ -6,11 +6,45 @@ import {
   getCreatePulseAuthRedirect,
   getWriteAuthRedirect,
   shouldBlockDiscoveryForAuth,
+  shouldBypassFirstRunOnboarding,
   WRITE_AUTH_COPY,
   closeComposerForAuthRedirect,
 } from '../guest-discovery'
 
 describe('guest discovery policy', () => {
+  it('skips first-run onboarding for share and venue deep links', () => {
+    const barboza = '/venue/c0000000-0000-4000-8000-000000000001'
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: barboza,
+      search: '?from=share',
+    })).toBe(true)
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: '/venue/a0000000-0000-4000-8000-000000000018',
+      search: '',
+    })).toBe(true)
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: '/venue/venue-1/',
+      search: '?from=invite',
+    })).toBe(true)
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: '/',
+      search: '?from=share',
+    })).toBe(true)
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: '/venue',
+      search: '?from=share',
+    })).toBe(true)
+  })
+
+  it('keeps first-run onboarding for a plain open of /', () => {
+    expect(shouldBypassFirstRunOnboarding({ pathname: '/', search: '' })).toBe(false)
+    expect(shouldBypassFirstRunOnboarding({ pathname: '/discover', search: '' })).toBe(false)
+    expect(shouldBypassFirstRunOnboarding({
+      pathname: '/venue/neumos/inbox',
+      search: '',
+    })).toBe(false)
+  })
+
   it('never walls map browse behind AuthGate after onboarding', () => {
     expect(shouldBlockDiscoveryForAuth({
       isPlaceholder: false,

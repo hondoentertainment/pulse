@@ -8,6 +8,7 @@ import {
   SEATTLE_LAUNCH_NEIGHBORHOODS,
   SEATTLE_LAUNCH_VENUES,
   SEATTLE_LAUNCH_VENUE_UUIDS,
+  localLaunchVenueIdForShareId,
   assertSeattleLaunchInventory,
   getSeattleLaunchNeighborhoodCoverage,
 } from '../seattle-launch-venues'
@@ -57,6 +58,9 @@ describe('Seattle launch inventory', () => {
       expect(CATALOG_MIGRATION).toContain(venue.name.replace(/'/g, "''"))
       expect(CATALOG_MIGRATION).toContain(venue.location.address)
     }
+    expect(localLaunchVenueIdForShareId('c0000000-0000-4000-8000-000000000001')).toBe('venue-12')
+    expect(localLaunchVenueIdForShareId('a0000000-0000-4000-8000-000000000018')).toBe('venue-1')
+    expect(localLaunchVenueIdForShareId('venue-12')).toBeNull()
   })
 
   it('keeps every Launch 33 pin rankable for Tonight', () => {

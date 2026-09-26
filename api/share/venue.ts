@@ -12,14 +12,14 @@ import {
   type ResponseLike,
 } from '../_lib/http.js'
 import { loadShareNeighborhoodOg, loadShareOgEnergy, loadShareVenueCoverUrl } from '../_lib/share-og-lookup.js'
-import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-share.js'
+import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-slugs.js'
 
 function escapeHtml(value: string): string {
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 function originFromReq(req: RequestLike): string {
@@ -55,54 +55,55 @@ export default async function handler(
     return
   }
 
-  const raw = req.query?.venueId
-  const venueId = Array.isArray(raw) ? raw[0] : raw
-  const nRaw = req.query?.n ?? req.query?.neighborhood
-  const neighborhoodSlug = parseNeighborhoodShareSlug(Array.isArray(nRaw) ? nRaw[0] : nRaw)
-  const origin = originFromReq(req)
-  const fromRaw = req.query?.from
-  const from = Array.isArray(fromRaw) ? fromRaw[0] : fromRaw
-  const landingFrom = from === 'invite' ? 'invite' : 'share'
-  const target = venueId
-    ? `${origin}/venue/${encodeURIComponent(venueId)}?from=${landingFrom}`
-    : neighborhoodSlug
-      ? `${origin}/n/${encodeURIComponent(neighborhoodSlug)}`
-      : `${origin}/?here=${encodeURIComponent(venueId ?? '')}`
-  let ogImage = venueId
-    ? `${origin}/api/share/og?venueId=${encodeURIComponent(venueId)}`
-    : neighborhoodSlug
-      ? `${origin}/api/share/og?n=${encodeURIComponent(neighborhoodSlug)}`
-      : `${origin}/api/share/og`
+  try {
+    const raw = req.query?.venueId
+    const venueId = Array.isArray(raw) ? raw[0] : raw
+    const nRaw = req.query?.n ?? req.query?.neighborhood
+    const neighborhoodSlug = parseNeighborhoodShareSlug(Array.isArray(nRaw) ? nRaw[0] : nRaw)
+    const origin = originFromReq(req)
+    const fromRaw = req.query?.from
+    const from = Array.isArray(fromRaw) ? fromRaw[0] : fromRaw
+    const landingFrom = from === 'invite' ? 'invite' : 'share'
+    const target = venueId
+      ? `${origin}/venue/${encodeURIComponent(venueId)}?from=${landingFrom}`
+      : neighborhoodSlug
+        ? `${origin}/n/${encodeURIComponent(neighborhoodSlug)}`
+        : `${origin}/?here=${encodeURIComponent(venueId ?? '')}`
+    let ogImage = venueId
+      ? `${origin}/api/share/og?venueId=${encodeURIComponent(venueId)}`
+      : neighborhoodSlug
+        ? `${origin}/api/share/og?n=${encodeURIComponent(neighborhoodSlug)}`
+        : `${origin}/api/share/og`
 
-  let title = 'Pulse'
-  let description = 'Nightlife energy on a map — live reviews from people who are there.'
-  if (venueId) {
-    title = 'Venue on Pulse'
-    try {
-      const card = await loadShareOgEnergy(venueId)
-      if (card) {
-        title = card.title
-        description = card.description
+    let title = 'Pulse'
+    let description = 'Nightlife energy on a map — live reviews from people who are there.'
+    if (venueId) {
+      title = 'Venue on Pulse'
+      try {
+        const card = await loadShareOgEnergy(venueId)
+        if (card) {
+          title = card.title
+          description = card.description
+        }
+        const cover = await loadShareVenueCoverUrl(venueId)
+        if (cover) ogImage = cover
+      } catch {
+        /* keep generic card */
       }
-      const cover = await loadShareVenueCoverUrl(venueId)
-      if (cover) ogImage = cover
-    } catch {
-      /* keep generic card */
-    }
-  } else if (neighborhoodSlug) {
-    title = 'Neighborhood on Pulse'
-    try {
-      const card = await loadShareNeighborhoodOg(neighborhoodSlug)
-      if (card) {
-        title = card.title
-        description = card.description
+    } else if (neighborhoodSlug) {
+      title = 'Neighborhood on Pulse'
+      try {
+        const card = await loadShareNeighborhoodOg(neighborhoodSlug)
+        if (card) {
+          title = card.title
+          description = card.description
+        }
+      } catch {
+        /* keep generic card */
       }
-    } catch {
-      /* keep generic card */
     }
-  }
 
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -123,5 +124,21 @@ export default async function handler(
 </body>
 </html>`
 
-  writeHtml(res, html)
+    writeHtml(res, html)
+  } catch {
+    const origin = originFromReq(req)
+    writeHtml(res, `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pulse</title>
+  <meta property="og:title" content="Pulse" />
+  <meta property="og:description" content="Nightlife energy on a map — live reviews from people who are there." />
+  <meta property="og:url" content="${escapeHtml(origin)}" />
+</head>
+<body>
+  <p><a href="${escapeHtml(origin)}">Pulse</a></p>
+</body>
+</html>`)
+  }
 }

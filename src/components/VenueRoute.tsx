@@ -21,6 +21,7 @@ import type { PulseAgree } from '@/lib/pulse-same'
 import type { VenueDoorPin } from '@/lib/door-pin'
 import type { VenueClaim } from '@/lib/venue-owner'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
+import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
@@ -169,7 +170,9 @@ export function VenueRoute() {
 
   if (!venues || !currentUser || !venueId) return <MapHomeSkeleton />
 
-  const cachedVenue = venues.find(v => v.id === venueId) ?? null
+  const localShareId = localLaunchVenueIdForShareId(venueId)
+  const cachedVenue = venues.find(v => v.id === venueId)
+    ?? (localShareId ? venues.find(v => v.id === localShareId) ?? null : null)
   const venue = freshVenue ?? cachedVenue
   if (!venue) {
     return (
