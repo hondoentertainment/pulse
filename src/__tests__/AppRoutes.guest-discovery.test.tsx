@@ -26,9 +26,11 @@ const appState = vi.hoisted(() => {
     followedVenues: [],
     createdAt: '1970-01-01T00:00:00.000Z',
   }
-  return {
+    return {
     venue,
     guest,
+    hasCompletedOnboarding: true as boolean,
+    setHasCompletedOnboarding: vi.fn(),
     createDialogOpen: false,
     setCreateDialogOpen: vi.fn((open: boolean) => {
       appState.createDialogOpen = open
@@ -86,8 +88,8 @@ vi.mock('@/hooks/use-supabase-auth', () => ({
 
 vi.mock('@/hooks/use-app-state', () => ({
   useAppState: () => ({
-    hasCompletedOnboarding: true,
-    setHasCompletedOnboarding: vi.fn(),
+    hasCompletedOnboarding: appState.hasCompletedOnboarding,
+    setHasCompletedOnboarding: appState.setHasCompletedOnboarding,
     venues: [appState.venue],
     pulses: [],
     currentUser: appState.guest,
@@ -159,10 +161,31 @@ describe('guest map discovery vs auth-gated create', () => {
     authState.session = null
     authState.isPlaceholder = false
     authState.isLoading = false
+    appState.hasCompletedOnboarding = true
+    appState.setHasCompletedOnboarding.mockClear()
     appState.createDialogOpen = false
     appState.setCreateDialogOpen.mockClear()
     appState.setVenueForPulse.mockClear()
     window.localStorage.clear()
+  })
+
+  it('lets a share deep link skip first-run onboarding and reach the venue', async () => {
+    appState.hasCompletedOnboarding = false
+    renderAt('/venue/c0000000-0000-4000-8000-000000000001?from=share')
+
+    expect(await screen.findByText('Venue')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Get Started/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/What's your scene/i)).not.toBeInTheDocument()
+    expect(appState.setHasCompletedOnboarding).toHaveBeenCalledWith(true)
+  })
+
+  it('still shows first-run onboarding on a plain open of /', async () => {
+    appState.hasCompletedOnboarding = false
+    renderAt('/')
+
+    expect(await screen.findByRole('button', { name: /Get Started/i })).toBeInTheDocument()
+    expect(screen.queryByText('Venue')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-browse')).not.toBeInTheDocument()
   })
 
   it('lets an onboarded guest reach map + venues instead of the discovery AuthGate', async () => {
