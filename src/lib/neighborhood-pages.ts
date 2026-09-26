@@ -7,50 +7,16 @@ import type { Venue } from './types'
 import { listEmptySurgingStartHere } from './empty-surging'
 import { isDensityNeighborhood } from './seattle-density'
 import { SEATTLE_LAUNCH_VENUES } from './seattle-launch-venues'
+import {
+  neighborhoodSlug,
+  SEATTLE_TAGGED_NEIGHBORHOODS,
+} from './neighborhood-slugs.js'
+
+export { neighborhoodSlug, SEATTLE_TAGGED_NEIGHBORHOODS }
 
 export interface NeighborhoodPageDef {
   slug: string
   name: string
-}
-
-/** Hoods already tagged on the Seattle launch + OSM catalog. Not a second city. */
-export const SEATTLE_TAGGED_NEIGHBORHOODS = [
-  'Capitol Hill',
-  'Ballard',
-  'Belltown',
-  'Downtown',
-  'Fremont',
-  'West Seattle',
-  'Queen Anne',
-  'University District',
-  'Georgetown',
-  'SoDo',
-  'Pioneer Square',
-  'Greenwood',
-  'Columbia City',
-  'Phinney Ridge',
-  'Lake City',
-  'Beacon Hill',
-  'South Lake Union',
-  'Green Lake',
-  'Rainier Valley',
-  'Central District',
-  'Northgate',
-  'Magnolia',
-  'International District',
-  'Ravenna',
-  'Wallingford',
-] as const
-
-export function neighborhoodSlug(name: string | null | undefined): string | null {
-  const trimmed = (name ?? '').trim()
-  if (!trimmed) return null
-  const slug = trimmed
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug || null
 }
 
 function addTaggedHood(bySlug: Map<string, string>, name: string | null | undefined): void {

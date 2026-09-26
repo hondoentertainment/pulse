@@ -4,17 +4,12 @@
  */
 
 import { getPublicAppOrigin } from './sharing'
-import { neighborhoodPath, neighborhoodSlug, resolveNeighborhoodPage } from './neighborhood-pages'
+import { neighborhoodPath, resolveNeighborhoodPage } from './neighborhood-pages'
+import { neighborhoodSlug, parseNeighborhoodShareSlug } from './neighborhood-slugs.js'
+
+export { parseNeighborhoodShareSlug }
 
 export const NEIGHBORHOOD_SHARE_QUERY = 'n'
-
-export function parseNeighborhoodShareSlug(
-  raw: string | null | undefined,
-): string | null {
-  const slug = neighborhoodSlug(raw)
-  if (!slug) return null
-  return resolveNeighborhoodPage(slug)?.slug ?? null
-}
 
 export function getNeighborhoodShareLandingPath(slug: string): string {
   const page = resolveNeighborhoodPage(slug)

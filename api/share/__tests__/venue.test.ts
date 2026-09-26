@@ -80,7 +80,8 @@ describe('GET /api/share/venue', () => {
 
     expect(state.status).toBe(200)
     expect(state.headers['content-type']).toContain('text/html')
-    expect(state.body).toContain('content="Neumos"')
+    expect(state.body).toContain('property="og:title" content="Neumos"')
+    expect(state.body).toContain('property="og:description" content="Electric · 12m ago · Music Venue · Capitol Hill, Seattle"')
     expect(state.body).toContain(`<title>Neumos</title>`)
     expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share`)
     expect(state.body).toContain(`/api/share/og?venueId=${NEUMOS_ID}`)
@@ -98,7 +99,10 @@ describe('GET /api/share/venue', () => {
       } as RequestLike,
       res,
     )
+    expect(state.status).toBe(200)
+    expect(state.headers['content-type']).toContain('text/html')
     expect(state.body).toContain('og:title" content="Venue on Pulse"')
+    expect(state.body).toContain('property="og:description"')
     expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share`)
   })
 

@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient, createAnonClient } from './supabase-server.js'
 import { buildNeighborhoodShareOg, buildShareOgEnergy, type ShareOgEnergy } from './share-og.js'
-import { resolveNeighborhoodPage } from '../../src/lib/neighborhood-pages.js'
+import { resolveTaggedNeighborhoodPage } from '../../src/lib/neighborhood-slugs.js'
 
 export type ShareCatalogClient = Pick<SupabaseClient, 'from'>
 
@@ -73,7 +73,7 @@ export async function loadShareVenueCoverUrl(
 export async function loadShareNeighborhoodOg(
   slug: string,
 ): Promise<ShareOgEnergy | null> {
-  const page = resolveNeighborhoodPage(slug)
+  const page = resolveTaggedNeighborhoodPage(slug)
   if (!page) return null
   return buildNeighborhoodShareOg(page)
 }

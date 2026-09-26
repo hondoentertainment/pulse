@@ -82,6 +82,8 @@ describe('GET /api/share/og', () => {
       { method: 'GET', query: { venueId: NEUMOS_ID } } as RequestLike,
       res,
     )
+    expect(state.status).toBe(200)
+    expect(state.headers['content-type']).toContain('image/svg+xml')
     expect(state.body).toContain('>Pulse<')
     expect(state.body).toContain('Live reviews on Pulse')
   })
