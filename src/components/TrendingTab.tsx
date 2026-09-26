@@ -127,7 +127,7 @@ export function TrendingTab({
     <main id="tonight-feed" aria-labelledby="tonight-heading">
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
         <div>
-          <h1 id="tonight-heading" className="text-[20px] font-bold tracking-tight">Trending</h1>
+          <h1 id="tonight-heading" className="text-[28px] font-bold tracking-tight">Tonight</h1>
           <p className="text-sm text-muted-foreground">Just popped · Gaining · Hot now</p>
         </div>
         {isGeoGateEnabled(launchedMarkets) && (

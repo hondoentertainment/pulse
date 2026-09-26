@@ -39,7 +39,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
 import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
 import { authorHandle, venueHandle } from '@/lib/venue-handle'
-import { UX_CARD, UX_CTA_INVERT } from '@/lib/ux-chrome'
+import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import { FollowVenueButton } from '@/components/FollowVenueButton'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -433,8 +433,8 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
-          <VenueCoverPhoto venue={venue} />
-          <h1 className="text-[28px] font-bold tracking-tight text-foreground">{venue.name}</h1>
+          {!fromShare && <VenueCoverPhoto venue={venue} />}
+          <h1 className="text-[26px] font-bold tracking-tight text-foreground">{venue.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <OpenNowChip venue={venue} />
             {doorRollupLabel(venuePulses, venue.id) && (
@@ -463,20 +463,19 @@ export function VenuePage({
         {fromShare && (
           <ShareArrivalCard venue={venue} pulses={venuePulses} />
         )}
-        {(() => {
+        {!fromShare && (() => {
           const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
           const delta = recent10m * 8
           return (
             <Card className={`${UX_CARD} p-3.5`}>
               <div className="flex items-center gap-3.5">
-                <p
-                  className="text-[40px] font-bold tabular-nums leading-none text-primary"
-                  style={{ color: energyScoreColor(venue.pulseScore) }}
-                >
+                <p className="text-[48px] font-bold tabular-nums leading-none text-foreground">
                   {venue.pulseScore}
                 </p>
                 <div className="min-w-0">
-                  <p className="text-[17px] font-semibold text-foreground">{getEnergyLabel(venue.pulseScore)}</p>
+                  <p className="text-[16px] font-semibold" style={{ color: energyScoreColor(venue.pulseScore) }}>
+                    {getEnergyLabel(venue.pulseScore)}
+                  </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
                     {delta > 0 && <span>+{delta} / 10m ·</span>}
                     <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} inline />
@@ -494,7 +493,7 @@ export function VenuePage({
         <div className="flex gap-2">
           <Button
             onClick={onCreatePulse}
-            className={`${UX_CTA_INVERT} flex-1`}
+            className={`${UX_CTA} flex-1`}
           >
             I’m here · Pulse
           </Button>

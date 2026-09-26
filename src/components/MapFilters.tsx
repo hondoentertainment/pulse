@@ -40,10 +40,10 @@ interface MapFiltersProps {
 }
 
 const ENERGY_LEVELS = [
-  { value: 'dead' as const, label: 'Dead', color: '#8A8A93', emoji: '💀' },
-  { value: 'chill' as const, label: 'Chill', color: '#00D1FF', emoji: '😌' },
-  { value: 'buzzing' as const, label: 'Buzzing', color: '#FF8A00', emoji: '🔥' },
-  { value: 'electric' as const, label: 'Electric', color: '#FF2D78', emoji: '⚡' }
+  { value: 'dead' as const, label: 'Dead', color: '#8c8c94', emoji: '💀' },
+  { value: 'chill' as const, label: 'Chill', color: '#59c79e', emoji: '😌' },
+  { value: 'buzzing' as const, label: 'Buzzing', color: '#ffb847', emoji: '🔥' },
+  { value: 'electric' as const, label: 'Electric', color: '#fa598c', emoji: '⚡' }
 ]
 
 const DISTANCE_OPTIONS_MILES = [
@@ -306,7 +306,7 @@ export function MapFilters({
 
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <MapPin size={16} weight="fill" className="text-[#00D1FF]" />
+                        <MapPin size={16} weight="fill" className="text-accent" />
                         <h4 className="font-semibold text-sm">Neighborhood</h4>
                       </div>
                       <div className="flex flex-wrap gap-2">

@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { TrustPinChips } from '@/components/TrustPinChips'
+import { SignalPill } from '@/components/ux/SignalPill'
+import { toneForEnergy } from '@/lib/signal-tone'
 
 interface LiveReviewFeedCardProps {
   energyRating: EnergyRating
@@ -22,6 +24,8 @@ interface LiveReviewFeedCardProps {
   onReply?: () => void
   onShare?: () => void
   trustChips?: TrustChip[]
+  /** Card matches the Figma live-now row: energy pill, age, caption. */
+  variant?: 'timeline' | 'card'
 }
 
 export function LiveReviewFeedCard({
@@ -40,11 +44,36 @@ export function LiveReviewFeedCard({
   onReply,
   onShare,
   trustChips,
+  variant = 'timeline',
 }: LiveReviewFeedCardProps) {
   const energy = ENERGY_CONFIG[energyRating]
   const name = displayName || energy.label
   const metaHandle = handle ?? `@${energyRating}`
   const body = snippetCaption(caption, 200) || 'On-site energy'
+
+  if (variant === 'card') {
+    return (
+      <article className={cn('rounded-2xl border border-border bg-card p-3.5', className)}>
+        <div className="flex items-center justify-between gap-2">
+          <SignalPill tone={toneForEnergy(energyRating)}>{energy.label}</SignalPill>
+          <span className="text-[12px] text-muted-foreground">{relativeReviewTime(createdAt)}</span>
+        </div>
+        {as === 'button' ? (
+          <button type="button" onClick={onClick} aria-label={body} className="mt-2 block w-full text-left text-[14px] text-foreground">
+            {body}
+          </button>
+        ) : (
+          <p className="mt-2 text-[14px] text-foreground">{body}</p>
+        )}
+        {unverified && (
+          <p className="mt-1 text-[12px] text-muted-foreground">Unverified</p>
+        )}
+        {trustChips && trustChips.length > 0 && (
+          <TrustPinChips chips={trustChips} className="mt-1.5" />
+        )}
+      </article>
+    )
+  }
 
   const meta = (
     <>

@@ -1,14 +1,16 @@
 import { memo, useMemo } from 'react'
-import { Venue, Pulse } from '@/lib/types'
-import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { ENERGY_CONFIG, Venue, Pulse } from '@/lib/types'
 import { PulseActionRow } from '@/components/ux/PulseActionRow'
 import { TimelineAvatar } from '@/components/ux/TimelineAvatar'
 import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import { venueHandle } from '@/lib/venue-handle'
 import { getSurgingNearbyVenues, getVenueMapActivityFromLive, buildVenueActivityMap, formatSurgingRailSubline } from '@/lib/map-live-reviews'
 import { getEnergyLabel } from '@/lib/pulse-engine'
+import { snippetCaption } from '@/lib/live-reviews'
 import { buildTrustGlance } from '@/lib/trust-glance'
 import { TrustPinChips } from '@/components/TrustPinChips'
+import { SignalPill } from '@/components/ux/SignalPill'
+import { toneForEnergy } from '@/lib/signal-tone'
 import { shareVenueFromSurface } from '@/lib/sharing'
 import { toast } from 'sonner'
 
@@ -42,7 +44,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
 
   return (
     <section aria-labelledby="surging-nearby-heading">
-      <h2 id="surging-nearby-heading" className="pb-2 text-[13px] font-semibold text-muted-foreground">
+      <h2 id="surging-nearby-heading" className="pb-2 text-[15px] font-semibold text-foreground">
         Surging nearby
       </h2>
       {nearby.length === 0 ? (
@@ -68,24 +70,41 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
               })
             }
             if (activity.latest) {
+              const caption = snippetCaption(activity.latest.caption, 200)
+                || formatSurgingRailSubline(activity)
+              const liveLine = activity.liveReviewCount > 0
+                ? `${activity.liveReviewCount} live · last hour`
+                : activity.countLabel
               return (
-                <LiveReviewFeedCard
-                  key={venue.id}
-                  as="button"
-                  energyRating={activity.latest.energyRating}
-                  createdAt={activity.latest.createdAt}
-                  caption={activity.latest.caption || formatSurgingRailSubline(activity)}
-                  unverified={activity.latest.locationVerified === false}
-                  displayName={venue.name}
-                  handle={venueHandle(venue.name)}
-                  trustChips={glance.chips}
-                  onClick={open}
-                  onShare={handleShare}
-                />
+                <article key={venue.id} className="mb-3 rounded-2xl border border-border bg-card p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-[16px] font-semibold text-foreground">{venue.name}</h3>
+                      {liveLine && (
+                        <p className="mt-1 text-[12px] text-muted-foreground">{liveLine}</p>
+                      )}
+                    </div>
+                    <SignalPill tone={toneForEnergy(activity.latest.energyRating)}>
+                      {ENERGY_CONFIG[activity.latest.energyRating].label}
+                    </SignalPill>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={open}
+                    aria-label={caption}
+                    className="mt-2 block w-full text-left text-[14px] text-foreground"
+                  >
+                    {caption}
+                  </button>
+                  {activity.latest.locationVerified === false && (
+                    <p className="mt-1 text-[12px] text-muted-foreground">Unverified</p>
+                  )}
+                  <TrustPinChips chips={glance.chips} className="mt-1.5" />
+                </article>
               )
             }
             return (
-              <article key={venue.id} className="flex gap-3 border-b border-border py-3.5">
+              <article key={venue.id} className="mb-3 flex gap-3 rounded-2xl border border-border bg-card p-3.5">
                 <TimelineAvatar name={venue.name} />
                 <div className="min-w-0 flex-1">
                   <button

@@ -53,7 +53,7 @@ export function VenueDetailHero({
           <button
             onClick={onBack}
             aria-label="Back to Map"
-            className="flex h-11 items-center gap-1.5 rounded-full bg-black/35 px-3 text-sm font-semibold text-[#00D1FF] backdrop-blur transition-colors hover:bg-black/55"
+            className="flex h-11 items-center gap-1.5 rounded-full bg-black/35 px-3 text-sm font-semibold text-accent backdrop-blur transition-colors hover:bg-black/55"
           >
             <ArrowLeft size={18} weight="bold" />
             Map

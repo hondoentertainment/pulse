@@ -247,7 +247,7 @@ describe('relativeReviewTime / averageEnergyScore / venueStatusLine', () => {
   })
 
   it('colors high scores Electric pink', () => {
-    expect(energyScoreColor(82)).toBe('#FF2D78')
+    expect(energyScoreColor(82)).toBe('#fa598c')
   })
 })
 

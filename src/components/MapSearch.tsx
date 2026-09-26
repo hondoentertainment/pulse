@@ -200,15 +200,17 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
   return (
     <div className="relative w-full">
       <div className="relative">
-        <MagnifyingGlass
-          size={20}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-          weight="bold"
-        />
+        {!compact && (
+          <MagnifyingGlass
+            size={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            weight="bold"
+          />
+        )}
         <Input
           ref={inputRef}
           type="text"
-          placeholder={isListening ? 'Listening...' : 'Search venues or neighborhoods'}
+          placeholder={isListening ? 'Listening...' : compact ? 'Search Capitol Hill venues' : 'Search venues or neighborhoods'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -217,10 +219,12 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            'h-11 rounded-full border border-border bg-card pl-10 shadow-none focus:ring-2 focus:ring-primary/40',
+            'h-11 border border-border bg-card shadow-none focus:ring-2 focus:ring-primary/40',
             compact
-              ? (query ? 'pr-12' : 'pr-4')
-              : (query ? 'pr-20' : 'pr-12'),
+              ? 'rounded-2xl px-3.5 text-center text-[14px] placeholder:text-muted-foreground'
+              : 'rounded-full pl-10',
+            !compact && (query ? 'pr-20' : 'pr-12'),
+            compact && query && 'pr-12 text-left',
             isListening && 'ring-2 ring-accent animate-pulse'
           )}
         />

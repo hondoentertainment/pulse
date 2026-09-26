@@ -7,6 +7,9 @@ import {
 } from '@/lib/live-reviews'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { formatTimeAgo } from '@/lib/pulse-engine'
+import { averageEnergyScore } from '@/lib/live-reviews'
+import { SignalPill } from '@/components/ux/SignalPill'
+import { toneForEnergy } from '@/lib/signal-tone'
 import { CaretLeft } from '@phosphor-icons/react'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { track } from '@/lib/observability/analytics'
@@ -103,21 +106,26 @@ export function VenueInboxPage({
             <CaretLeft size={18} />
             Venue
           </button>
-          <h1 className="text-[22px] font-bold text-foreground">Tonight’s queue</h1>
+          <h1 className="text-[26px] font-bold text-foreground">Tonight’s reviews</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {venue.name} · {allowed ? 'verified claim' : 'owner inbox'}
+            {venue.name} · owner inbox{allowed ? ' · replies on' : ''}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
           <div className={`${UX_CARD} p-3.5`}>
-            <p className="text-[22px] font-bold leading-none text-foreground">{allowed ? summary.reviewCount : 0}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">Reviews</p>
+            <p className="text-[24px] font-bold leading-none text-foreground">{allowed ? summary.reviewCount : 0}</p>
+            <p className="mt-2 text-[12px] text-muted-foreground">Live reviews</p>
           </div>
           <div className={`${UX_CARD} p-3.5`}>
-            <p className="text-[22px] font-bold leading-none text-amber-300">{allowed ? summary.reportCount : 0}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">Reports</p>
+            <p className="text-[24px] font-bold leading-none text-foreground">
+              {allowed ? averageEnergyScore(summary.tonight) : 0}
+            </p>
+            <p className="mt-2 text-[12px] text-muted-foreground">Avg energy</p>
           </div>
         </div>
+        <p className="text-[12px] text-muted-foreground">
+          Reports · {allowed ? summary.reportCount : 0}
+        </p>
 
         {!allowed ? (
           <div className={`${UX_CARD} space-y-3 p-3.5`}>
@@ -245,16 +253,21 @@ export function VenueInboxPage({
                     })
                   }}
                 >
-                  <p className="text-[13px] font-semibold text-foreground">
-                    {ENERGY_CONFIG[pulse.energyRating].label} · {formatTimeAgo(pulse.createdAt).replace(' ago', '')}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <SignalPill tone={toneForEnergy(pulse.energyRating)}>
+                      {ENERGY_CONFIG[pulse.energyRating].label}
+                    </SignalPill>
+                    <span className="text-[12px] text-muted-foreground">
+                      {formatTimeAgo(pulse.createdAt).replace(' ago', '')}
+                    </span>
+                  </div>
                   {pulse.caption && (
                     <p className="text-sm text-foreground">{pulse.caption}</p>
                   )}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2.5">
                     <button
                       type="button"
-                      className="rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
+                      className="rounded-[10px] bg-[rgba(115,209,255,0.15)] px-3 py-2 text-[12px] font-semibold text-accent"
                       onClick={(event) => {
                         event.stopPropagation()
                         setReplyingId(pulse.id)
@@ -277,23 +290,22 @@ export function VenueInboxPage({
                     >
                       One-tap thanks
                     </button>
-                    {pulseReports.length > 0 && (
-                      <button
-                        type="button"
-                        className="rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          onDismissReports?.(pulse.id)
-                          setDismissals(persistOwnerDismissal({
-                            pulseId: pulse.id,
-                            venueId: venue.id,
-                            dismissedAt: new Date().toISOString(),
-                          }))
-                        }}
-                      >
-                        Dismiss report
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      aria-label={pulseReports.length > 0 ? 'Dismiss report' : 'Dismiss'}
+                      className="rounded-[10px] bg-[rgba(46,46,51,0.4)] px-3 py-2 text-[12px] font-medium text-muted-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        if (pulseReports.length > 0) onDismissReports?.(pulse.id)
+                        setDismissals(persistOwnerDismissal({
+                          pulseId: pulse.id,
+                          venueId: venue.id,
+                          dismissedAt: new Date().toISOString(),
+                        }))
+                      }}
+                    >
+                      Dismiss
+                    </button>
                   </div>
                   {existingReplies.map((reply) => (
                     <p key={reply.id} className="text-xs text-muted-foreground">

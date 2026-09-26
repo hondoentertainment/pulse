@@ -18,18 +18,21 @@ export function MapEnergyPills({
     <div className="flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Map filters">
       <FilterPill
         pressed={energyLevels.includes('electric')}
+        tone="electric"
         onClick={() => onToggleEnergy('electric')}
       >
         Electric
       </FilterPill>
       <FilterPill
         pressed={energyLevels.includes('buzzing')}
+        tone="buzzing"
         onClick={() => onToggleEnergy('buzzing')}
       >
         Buzzing
       </FilterPill>
       <FilterPill
         pressed={nearMeActive}
+        tone="chill"
         onClick={onToggleNearMe}
       >
         Near me

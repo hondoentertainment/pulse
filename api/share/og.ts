@@ -87,13 +87,13 @@ function renderShareSvg(input: {
 }): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0F0F14"/>
-  <text x="72" y="120" fill="#9E9EA8" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(input.eyebrow)}</text>
-  <text x="72" y="220" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="700">${escapeXml(input.title)}</text>
-  <text x="72" y="290" fill="#FF2D78" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600">${escapeXml(input.energyLine)}</text>
-  <text x="72" y="360" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(input.caption)}</text>
-  <rect x="72" y="430" width="520" height="80" rx="28" fill="#FF2D78"/>
-  <text x="332" y="482" text-anchor="middle" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600">${escapeXml(input.cta)}</text>
+  <rect width="1200" height="630" fill="#0a0a0d"/>
+  <text x="72" y="120" fill="#8c8c94" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(input.eyebrow)}</text>
+  <text x="72" y="220" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="700">${escapeXml(input.title)}</text>
+  <text x="72" y="290" fill="#fa598c" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600">${escapeXml(input.energyLine)}</text>
+  <text x="72" y="360" fill="#f5f5f7" font-family="Inter, system-ui, sans-serif" font-size="28">${escapeXml(input.caption)}</text>
+  <rect x="72" y="430" width="520" height="80" rx="14" fill="#73d1ff"/>
+  <text x="332" y="482" text-anchor="middle" fill="#0a0a0d" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600">${escapeXml(input.cta)}</text>
 </svg>`
 }
 

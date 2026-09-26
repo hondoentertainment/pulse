@@ -341,7 +341,7 @@ describe('TrendingTab', () => {
       />
     )
 
-    expect(screen.getByRole('heading', { name: 'Trending' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Tonight' })).toBeDefined()
     expect(screen.getByRole('tab', { name: 'Tonight' })).toBeDefined()
     expect(screen.getByRole('tab', { name: 'My Spots' })).toBeDefined()
   })

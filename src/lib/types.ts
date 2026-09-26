@@ -230,25 +230,25 @@ export const ENERGY_CONFIG = {
   dead: {
     label: 'Dead',
     value: 0,
-    color: '#8A8A93',
+    color: '#8c8c94',
     emoji: '💀'
   },
   chill: {
     label: 'Chill',
     value: 1,
-    color: '#00D1FF',
+    color: '#59c79e',
     emoji: '😌'
   },
   buzzing: {
     label: 'Buzzing',
     value: 2,
-    color: '#FF8A00',
+    color: '#ffb847',
     emoji: '🔥'
   },
   electric: {
     label: 'Electric',
     value: 3,
-    color: '#FF2D78',
+    color: '#fa598c',
     emoji: '⚡'
   }
 } as const

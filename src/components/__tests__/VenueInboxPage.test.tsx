@@ -60,7 +60,7 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByRole('heading', { name: /Tonight’s queue/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Tonight’s reviews/ })).toBeInTheDocument()
     expect(screen.getByText(/The Showbox · owner inbox/)).toBeInTheDocument()
     expect(screen.getByText(/Claim needed/)).toBeInTheDocument()
     expect(screen.getByText(/verified venue claim or a venue_staff row/)).toBeInTheDocument()
@@ -86,8 +86,8 @@ describe('VenueInboxPage', () => {
         onBack={vi.fn()}
       />,
     )
-    expect(screen.getByText(/Tonight’s queue/)).toBeInTheDocument()
-    expect(screen.getByText(/Reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/Tonight’s reviews/)).toBeInTheDocument()
+    expect(screen.getByText(/Live reviews/)).toBeInTheDocument()
     expect(screen.getByText(/Reports/)).toBeInTheDocument()
     expect(screen.getByText(/DJ just started/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument()

@@ -20,7 +20,7 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin, ow
 
   return (
     <section aria-labelledby="live-now-heading">
-      <h2 id="live-now-heading" className="pb-1 text-[13px] font-semibold text-muted-foreground">
+      <h2 id="live-now-heading" className="pb-1 text-[15px] font-semibold text-foreground">
         Live now
       </h2>
       {liveNow.length === 0 ? (
@@ -30,11 +30,12 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin, ow
           </p>
         </div>
       ) : (
-        <div>
+        <div className="space-y-3 pt-2">
           {liveNow.map((pulse, index) => (
             <div key={pulse.id}>
               <LiveReviewFeedCard
                 as="button"
+                variant="card"
                 energyRating={pulse.energyRating}
                 createdAt={pulse.createdAt}
                 caption={pulse.caption}
