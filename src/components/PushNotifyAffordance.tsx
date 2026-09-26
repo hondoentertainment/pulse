@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { META_GLASSES_COMPANION_COPY } from '@/lib/meta-glasses-companion'
 import {
   PUSH_NOTIFY_AFFORDANCE_COPY,
   dismissPushNotifyAffordance,
@@ -26,6 +27,7 @@ export function PushNotifyAffordance({ onDone, userLocation }: PushNotifyAfforda
       <section className="rounded-xl border border-border bg-card p-3.5" aria-label="Live pulse notify">
         <h2 className="text-sm font-semibold text-foreground">{PUSH_NOTIFY_AFFORDANCE_COPY.headline}</h2>
         <p className="mt-1 text-xs text-muted-foreground">{WEB_PUSH_COPY.missingKeys}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{META_GLASSES_COMPANION_COPY.body}</p>
         <button
           type="button"
           className="mt-3 h-10 rounded-full bg-muted px-3 text-sm font-semibold text-foreground"
@@ -41,6 +43,7 @@ export function PushNotifyAffordance({ onDone, userLocation }: PushNotifyAfforda
     <section className="rounded-xl border border-border bg-card p-3.5" aria-label="Live pulse notify">
       <h2 className="text-sm font-semibold text-foreground">{PUSH_NOTIFY_AFFORDANCE_COPY.headline}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{PUSH_NOTIFY_AFFORDANCE_COPY.body}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{META_GLASSES_COMPANION_COPY.body}</p>
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
       <div className="mt-3 flex gap-2">
         <button

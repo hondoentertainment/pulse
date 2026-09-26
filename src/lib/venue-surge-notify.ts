@@ -1,7 +1,10 @@
 /**
  * Followed-venue surge push decisions.
- * Not Signal. Missing VAPID keys stay an honest no-op in the sender.
+ * Missing VAPID keys stay an honest no-op in the sender.
+ * Payloads are short enough for a phone notification mirrored to glasses.
  */
+
+import { glanceText, type GlancePushPayload } from './glance-push'
 
 export const SURGE_NOTIFY_WINDOW_MS = 2 * 60 * 60 * 1000
 export const SURGE_ENERGY = 'electric'
@@ -90,14 +93,20 @@ export function shouldDeliverSurgePush(input: {
   })
 }
 
+export const VENUE_SURGE_KIND = 'venue_surge'
+
 export function venueSurgeNotifyPayload(input: {
   venueId: string
   venueName: string
-}): { title: string; body: string; url: string } {
+}): GlancePushPayload {
+  const name = glanceText(input.venueName, 28)
   return {
-    title: `${input.venueName} just went Electric`,
-    body: 'A venue you follow is surging.',
+    title: glanceText(`${name} · Surging`, 40),
+    body: 'Electric right now',
     url: `/venue/${input.venueId}`,
+    kind: VENUE_SURGE_KIND,
+    tag: `venue-surge:${input.venueId}`,
+    renotify: true,
   }
 }
 

@@ -8,6 +8,7 @@ import {
   selectLivePulseNotifyTargets,
   type NotifySubscriber,
 } from '../../src/lib/live-pulse-notify.js'
+import { encodeGlancePush, type GlancePushPayload } from '../../src/lib/glance-push.js'
 import {
   decideVenueSurgeNotify,
   parseQuietHour,
@@ -40,6 +41,12 @@ export interface LivePulseNotifyResult {
   reason?: 'missing_vapid' | 'missing_admin' | 'ok' | 'not_surge' | 'rate_limited' | 'already_electric' | 'rate_limit_unavailable'
 }
 
+export type WebPushUrgency = 'very-low' | 'low' | 'normal' | 'high'
+
+export function getVapidConfig(env: WebPushEnv = process.env): { publicKey: string; privateKey: string; subject: string } | null {
+  return readVapid(env)
+}
+
 function readVapid(env: WebPushEnv = process.env): { publicKey: string; privateKey: string; subject: string } | null {
   const publicKey = env.VAPID_PUBLIC_KEY?.trim()
   const privateKey = env.VAPID_PRIVATE_KEY?.trim()
@@ -55,19 +62,19 @@ export function hasVapidKeys(env: WebPushEnv = process.env): boolean {
   return readVapid(env) !== null
 }
 
-async function sendOne(
+export async function deliverWebPush(
   subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
-  payload: { title: string; body: string; url: string },
+  payload: GlancePushPayload,
   vapid: { publicKey: string; privateKey: string; subject: string },
+  options: { urgency?: WebPushUrgency; ttlSeconds?: number } = {},
 ): Promise<boolean> {
   try {
     const webpush = await import('web-push')
     webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey)
-    await webpush.sendNotification(subscription, JSON.stringify({
-      title: payload.title,
-      body: payload.body,
-      data: { url: payload.url },
-    }))
+    await webpush.sendNotification(subscription, encodeGlancePush(payload), {
+      TTL: options.ttlSeconds ?? 60 * 60,
+      urgency: options.urgency ?? 'normal',
+    })
     return true
   } catch (err) {
     console.warn('[web-push] send failed', err)
@@ -224,10 +231,11 @@ export async function notifyLivePulse(
       skipped += 1
       continue
     }
-    const ok = await sendOne(
+    const ok = await deliverWebPush(
       { endpoint: row.token, keys: { p256dh: row.p256dh, auth: row.auth } },
       surgePayload,
       vapid,
+      { urgency: 'high', ttlSeconds: 2 * 60 * 60 },
     )
     if (ok) sent += 1
     else skipped += 1

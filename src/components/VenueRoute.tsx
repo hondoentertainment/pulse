@@ -18,6 +18,7 @@ import type { PulseReply } from '@/lib/pulse-thread'
 import type { PulseAgree } from '@/lib/pulse-same'
 import type { VenueDoorPin } from '@/lib/door-pin'
 import type { VenueClaim } from '@/lib/venue-owner'
+import { requestImHereGlance } from '@/lib/data/im-here-push'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
@@ -216,6 +217,7 @@ export function VenueRoute() {
           lat: userLocation?.lat,
           lng: userLocation?.lng,
         }).catch(() => undefined)
+        void requestImHereGlance({ venueId: venue.id, venueName: venue.name })
         const summary = await PresenceData.fetchHereNowSummary(venue.id, true).catch(() => emptyHereNow())
         setHereNow(summary)
         toast.success('I’m here · 90 min', { description: venue.name })

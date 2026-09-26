@@ -1,6 +1,6 @@
 /**
- * Web Push handlers imported by VitePWA generateSW and public/sw.js.
- * Title/body/url come from the live-pulse notify payload.
+ * Web Push handlers imported by VitePWA generateSW.
+ * Keep field names aligned with src/lib/glance-push.ts (kind, tag, renotify, url).
  */
 self.addEventListener('push', function (event) {
   var payload = {}
@@ -15,15 +15,22 @@ self.addEventListener('push', function (event) {
   var url = (typeof extra.url === 'string' && extra.url.charAt(0) === '/')
     ? extra.url
     : '/'
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/badge-72.png',
-      tag: extra.tag || extra.kind || 'pulse-notification',
-      data: { url: url, kind: extra.kind || null },
-    })
-  )
+  var tag = (typeof extra.tag === 'string' && extra.tag)
+    || (typeof extra.kind === 'string' && extra.kind)
+    || 'pulse-notification'
+  var options = {
+    body: body,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-72.png',
+    tag: tag,
+    data: {
+      url: url,
+      kind: typeof extra.kind === 'string' ? extra.kind : null,
+      tag: tag,
+    },
+  }
+  if (extra.renotify === true) options.renotify = true
+  event.waitUntil(self.registration.showNotification(title, options))
 })
 
 self.addEventListener('notificationclick', function (event) {

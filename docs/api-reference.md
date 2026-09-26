@@ -124,6 +124,7 @@ Requires Twilio + Supabase service role. Gated by `VITE_SAFETY_KIT_ENABLED`.
 |--------|------|------|-------------|
 | `POST` | `/api/push/register` | JWT | Register device push token |
 | `POST` | `/api/push/unregister` | JWT | Remove device token |
+| `POST` | `/api/push/notify-im-here` | JWT | I’m-here Web Push glance (`im_here`) for the signed-in user and people who follow them |
 
 ## Moderation & Admin
 

@@ -104,26 +104,38 @@ function syncOfflinePulses() {
   })
 }
 
-// Legacy SW. Production uses VitePWA generateSW.
-// Keep these handlers for local/public fallback.
+// Legacy SW. Production uses VitePWA generateSW + public/push-sw.js.
+// Keep kind/tag/renotify aligned with src/lib/glance-push.ts.
 self.addEventListener('push', function (event) {
-  var payload = event.data ? event.data.json() : {}
+  var payload = {}
+  try {
+    payload = event.data ? event.data.json() : {}
+  } catch (_err) {
+    payload = {}
+  }
   var title = payload.title || 'Pulse'
   var body = payload.body || 'See where the energy is right now.'
   var extra = payload.data || {}
   var url = (typeof extra.url === 'string' && extra.url.charAt(0) === '/')
     ? extra.url
     : '/'
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/badge-72.png',
-      vibrate: [200, 100, 200],
-      tag: extra.tag || extra.kind || 'pulse-notification',
-      data: { url: url, kind: extra.kind || null },
-    })
-  )
+  var tag = (typeof extra.tag === 'string' && extra.tag)
+    || (typeof extra.kind === 'string' && extra.kind)
+    || 'pulse-notification'
+  var options = {
+    body: body,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-72.png',
+    vibrate: [200, 100, 200],
+    tag: tag,
+    data: {
+      url: url,
+      kind: typeof extra.kind === 'string' ? extra.kind : null,
+      tag: tag,
+    },
+  }
+  if (extra.renotify === true) options.renotify = true
+  event.waitUntil(self.registration.showNotification(title, options))
 })
 
 self.addEventListener('notificationclick', function (event) {
@@ -131,7 +143,7 @@ self.addEventListener('notificationclick', function (event) {
   var url = (event.notification.data && event.notification.data.url) || '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(function (clients) {
-      var existing = clients.find(function (c) { return c.url === url && 'focus' in c })
+      var existing = clients.find(function (c) { return c.url.indexOf(url) !== -1 && 'focus' in c })
       if (existing) return existing.focus()
       return self.clients.openWindow(url)
     })
