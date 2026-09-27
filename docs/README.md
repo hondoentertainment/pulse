@@ -136,6 +136,7 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | [Surge Traffic](runbooks/surge-traffic.md) | Traffic spike handling |
 | [Venue Staging](runbooks/venue-staging.md) | Venue preview / production checks |
 | [Venue claims ops](runbooks/venue-claims-ops.md) | Verify claims + triage pulse_reports (`/ops` or SQL) |
+| [Meta glasses companion](runbooks/meta-glasses-companion.md) | Phone Web Push mirrored to Ray-Ban glasses (not a glasses SDK) |
 
 ---
 

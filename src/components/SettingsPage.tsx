@@ -22,6 +22,7 @@ import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState, useEffect } from 'react'
 import { listMyPulseReports, type PulseReportRow } from '@/lib/data/pulses'
 import { USE_SUPABASE_BACKEND } from '@/lib/data'
+import { META_GLASSES_COMPANION_COPY } from '@/lib/meta-glasses-companion'
 import { describeVenueSurgePushStub } from '@/lib/venue-surge-watch'
 import { readQuietHours, writeQuietHours, type QuietHours } from '@/lib/surge-prefs'
 import { saveQuietHoursOnServer } from '@/lib/data/surge-prefs'
@@ -205,6 +206,13 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
                 className="data-[state=checked]:bg-primary"
               />
             </SettingRow>
+
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-sm font-medium">{META_GLASSES_COMPANION_COPY.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                {META_GLASSES_COMPANION_COPY.body}
+              </p>
+            </div>
           </Card>
         </motion.div>
 
@@ -600,7 +608,7 @@ function SurgeQuietHoursFields() {
     <div className="space-y-2">
       <p className="text-xs font-medium text-foreground">Surge quiet hours (Seattle)</p>
       <p className="text-[11px] text-muted-foreground">
-        Local hours 0–23. Leave both empty for none. 22 to 7 is overnight.
+        Local hours 0–23. Leave both empty for none. 22 to 7 is overnight. {META_GLASSES_COMPANION_COPY.quietHoursNote}
       </p>
       <div className="flex gap-2">
         <label className="text-[11px] text-muted-foreground">
