@@ -9,7 +9,7 @@ test.describe('Search and filter', () => {
   })
 
   test('search input becomes focusable and accepts text', async ({ page }) => {
-    const input = page.getByPlaceholder(/Search venues/i)
+    const input = page.getByPlaceholder(/Search .*venues/i)
     await expect(input).toBeVisible({ timeout: 15_000 })
     await input.fill('bar')
     await expect(input).toHaveValue('bar')

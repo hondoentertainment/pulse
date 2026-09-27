@@ -12,7 +12,7 @@ test.describe('Venue nightlife shell (Figma Enhanced)', () => {
     await expect(page.getByRole('heading', { name: /^(Pulse|Tonight|Where the energy is)/i }).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: 'Launch 33' }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'All Seattle' }).first()).toBeVisible()
-    await expect(page.getByPlaceholder(/Search venues/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/Search .*venues/i)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Electric' }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Buzzing' }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Near me/i }).first()).toBeVisible()
@@ -27,7 +27,7 @@ test.describe('Venue nightlife shell (Figma Enhanced)', () => {
 
   test('trending tab uses Just popped / Gaining / Hot now copy', async ({ page }) => {
     await page.getByTestId('tab-Tonight').evaluate((el) => (el as HTMLButtonElement).click())
-    await expect(page.getByRole('heading', { name: 'Tonight' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: 'Tonight', exact: true })).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('Just popped · Gaining · Hot now')).toBeVisible()
   })
 })

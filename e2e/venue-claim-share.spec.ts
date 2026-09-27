@@ -31,7 +31,7 @@ test.describe('Venue claim gate + share / I’m-here (#85 / #86)', () => {
       return
     }
 
-    await expect(page.getByRole('heading', { name: /Tonight’s queue/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Tonight’s reviews/i })).toBeVisible()
     await expect(page.getByText(/Pending claims do not grant access/i)).toBeVisible()
     await expect(page.getByText(/· owner inbox/i)).toBeVisible()
 
@@ -72,7 +72,7 @@ test.describe('Venue claim gate + share / I’m-here (#85 / #86)', () => {
 
     await expect(locked).toHaveCount(0)
     await expect(
-      page.getByRole('heading', { name: /No live reviews tonight|Tonight’s queue/i }).first(),
+      page.getByRole('heading', { name: /No live reviews tonight|Tonight’s reviews/i }).first(),
     ).toBeVisible()
   })
 

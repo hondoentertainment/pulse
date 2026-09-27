@@ -11,7 +11,7 @@ How Pulse works as a Progressive Web App — installability, service worker, and
 | Installable | `public/manifest.json` + `beforeinstallprompt` handler |
 | App shell caching | Service worker (`public/sw.js`) |
 | Offline writes | `src/lib/offline-queue.ts` |
-| Push notifications | Native + PWA both persist on `push_tokens` (web = `platform='web'`, `token` = endpoint). Client: `src/lib/web-push-client.ts` + `use-push-registration`. Fan-out: `api/_lib/web-push-live.ts` + in-app `notifications`. Requires `VITE_VAPID_PUBLIC_KEY` + server `VAPID_*`. Missing keys = honest no-op. Do not add `web_push_subscriptions`. |
+| Push notifications | Native + PWA both persist on `push_tokens` (web = `platform='web'`, `token` = endpoint). Client: `src/lib/web-push-client.ts` + `use-push-registration`. Fan-out: `api/_lib/web-push-live.ts` (Electric `venue_surge`) and `api/_lib/web-push-im-here.ts` (`im_here`). Service worker honors `kind` / `tag`. Glasses setup: [Meta glasses companion](runbooks/meta-glasses-companion.md). Requires `VITE_VAPID_PUBLIC_KEY` + server `VAPID_*`. Missing keys = honest no-op. Do not add `web_push_subscriptions`. |
 | Native wrapper | Capacitor (iOS/Android) — see [Native Setup](native/setup.md) |
 
 Vite PWA plugin configured in `vite.config.ts` (`vite-plugin-pwa`).

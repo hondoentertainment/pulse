@@ -82,11 +82,26 @@ describe('quiet hours and mute', () => {
 })
 
 describe('venueSurgeNotifyPayload', () => {
-  it('names the venue and deep-links to it', () => {
+  it('names the venue, tags the surge, and deep-links to it', () => {
     expect(venueSurgeNotifyPayload({ venueId: 'neumos', venueName: 'Neumos' })).toEqual({
-      title: 'Neumos just went Electric',
-      body: 'A venue you follow is surging.',
+      title: 'Neumos · Surging',
+      body: 'Electric right now',
       url: '/venue/neumos',
+      kind: 'venue_surge',
+      tag: 'venue-surge:neumos',
+      renotify: true,
     })
+  })
+
+  it('keeps a long venue name to a glasses glance', () => {
+    const payload = venueSurgeNotifyPayload({
+      venueId: 'long',
+      venueName: 'The Extremely Long Seattle Listening Room and Cocktail Bar',
+    })
+    expect(payload.title.endsWith('· Surging')).toBe(true)
+    expect(payload.title.length).toBeLessThanOrEqual(40)
+    expect(payload.body).toBe('Electric right now')
+    expect(payload.kind).toBe('venue_surge')
+    expect(payload.tag).toBe('venue-surge:long')
   })
 })
