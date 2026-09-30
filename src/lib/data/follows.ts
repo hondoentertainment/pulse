@@ -9,6 +9,7 @@
 import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap } from '@/lib/auth/rls-helpers'
+import { isVenueSurgeMuted } from '@/lib/surge-prefs'
 
 export type FollowTargetKind = 'user' | 'venue'
 
@@ -122,20 +123,23 @@ export async function unfollowUser(targetUserId: string): Promise<void> {
 
 export async function followVenue(venueId: string): Promise<Follow> {
   const followerId = await requireUserId({ action: 'follow this venue' })
-  const result = await supabase
+  const base = {
+    follower_id: followerId,
+    target_kind: 'venue' as const,
+    target_user_id: null,
+    target_venue_id: venueId,
+    deleted_at: null,
+  }
+  const muted = isVenueSurgeMuted(venueId)
+  const upsertFollow = (row: typeof base & { surge_muted?: boolean }) => supabase
     .from('follows')
-    .upsert(
-      {
-        follower_id: followerId,
-        target_kind: 'venue',
-        target_user_id: null,
-        target_venue_id: venueId,
-        deleted_at: null,
-      },
-      { onConflict: 'follower_id,target_venue_id' },
-    )
+    .upsert(row, { onConflict: 'follower_id,target_venue_id' })
     .select(SELECT_COLUMNS)
     .single()
+  let result = await upsertFollow(muted ? { ...base, surge_muted: true } : base)
+  if (result.error && muted && /surge_muted/i.test(result.error.message ?? '')) {
+    result = await upsertFollow(base)
+  }
   return rowToFollow(unwrap<FollowRow>(result))
 }
 
