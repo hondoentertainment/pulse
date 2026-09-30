@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Pulse, Venue } from '@/lib/types'
 import { buildShareOgCard, getImHereMapPath } from '@/lib/sharing'
@@ -5,7 +6,10 @@ import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { AuthRequiredError } from '@/lib/auth/require-auth'
+import { AUTH_PATH } from '@/lib/guest-discovery'
 import { resolveImHereAction } from '@/lib/im-here'
+import { confirmImHere } from '@/lib/im-here-confirm'
 import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import { InstallAffordance } from '@/components/InstallAffordance'
 import { SignalPill } from '@/components/ux/SignalPill'
@@ -15,11 +19,14 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 interface ShareArrivalCardProps {
   venue: Venue
   pulses: Pulse[]
+  userLocation?: { lat: number; lng: number } | null
 }
 
-export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
+export function ShareArrivalCard({ venue, pulses, userLocation }: ShareArrivalCardProps) {
   const navigate = useNavigate()
   const { session, isPlaceholder } = useSupabaseAuth()
+  const confirming = useRef(false)
+  const [busy, setBusy] = useState(false)
   const activity = getVenueMapActivity(venue, pulses)
   const energyLabel = activity.latest
     ? ENERGY_CONFIG[activity.latest.energyRating].label
@@ -32,6 +39,46 @@ export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
     caption: activity.latest?.caption,
   })
   const place = [venue.neighborhood, venue.city].filter(Boolean).join(' · ')
+
+  const handleImHere = async () => {
+    if (confirming.current) return
+    const hasSession = Boolean(session)
+    const action = resolveImHereAction({
+      venueId: venue.id,
+      isPlaceholder,
+      hasSession,
+    })
+    const mapPath = action.openCreate
+      ? getImHereMapPath(venue.id, { create: true })
+      : action.mapPath
+
+    if (!hasSession) {
+      navigate(mapPath)
+      return
+    }
+
+    confirming.current = true
+    setBusy(true)
+    try {
+      await confirmImHere({
+        venueId: venue.id,
+        venueName: venue.name,
+        signedIn: true,
+        lat: userLocation?.lat,
+        lng: userLocation?.lng,
+      })
+    } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        navigate(action.authRedirect ?? AUTH_PATH)
+        return
+      }
+      console.warn('[pulse] share im-here confirm failed', error)
+    } finally {
+      confirming.current = false
+      setBusy(false)
+    }
+    navigate(mapPath)
+  }
 
   return (
     <section className="space-y-3" aria-label={card.eyebrow}>
@@ -76,15 +123,10 @@ export function ShareArrivalCard({ venue, pulses }: ShareArrivalCardProps) {
         <button
           type="button"
           aria-label={card.cta}
-          onClick={() => {
-            const action = resolveImHereAction({
-              venueId: venue.id,
-              isPlaceholder,
-              hasSession: Boolean(session),
-            })
-            navigate(action.openCreate ? getImHereMapPath(venue.id, { create: true }) : action.mapPath)
-          }}
-          className={`${UX_CTA} flex-1`}
+          aria-busy={busy}
+          disabled={busy}
+          onClick={() => { void handleImHere() }}
+          className={`${UX_CTA} flex-1 disabled:opacity-70`}
         >
           I’m here
         </button>

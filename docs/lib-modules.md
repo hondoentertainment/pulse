@@ -152,6 +152,7 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 |--------|---------|
 | `guest-discovery.ts` | Guest browse + write `/auth` redirect; close composer |
 | `im-here.ts` | `/?here=` map focus + signed-in create |
+| `im-here-confirm.ts` | Shared I’m-here check-in, presence, and Web Push glance |
 | `cold-start.ts` | Launch 33 tip + `pulse_map_interactive` timing |
 | `tonight-home.ts` | Tonight ranking + teach-the-loop empty |
 | `neighborhood-geo.ts` | Seattle hood inference + saved fallback |
