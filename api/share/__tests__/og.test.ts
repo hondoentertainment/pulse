@@ -54,7 +54,7 @@ describe('GET /api/share/og', () => {
     loadShareNeighborhoodOgMock.mockReset()
   })
 
-  it('renders the SVG title as Neumos when the venue fetch returns', async () => {
+  it('renders a PNG card whose pixels change with the venue name and energy line', async () => {
     loadShareOgEnergyMock.mockResolvedValue({
       title: 'Neumos',
       description: 'Electric · 12m ago · Music Venue · Capitol Hill, Seattle',
@@ -69,6 +69,39 @@ describe('GET /api/share/og', () => {
     )
 
     expect(state.status).toBe(200)
+    expect(state.headers['content-type']).toContain('image/png')
+    const png = Buffer.isBuffer(state.body) ? state.body : Buffer.from(state.body)
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+
+    loadShareOgEnergyMock.mockResolvedValue({
+      title: 'Pulse',
+      description: 'Live reviews on Pulse',
+      energyLine: 'Live reviews on Pulse',
+    })
+    const generic = makeResponse()
+    await handler(
+      { method: 'GET', query: { venueId: NEUMOS_ID } } as RequestLike,
+      generic.res,
+    )
+    const other = Buffer.isBuffer(generic.state.body) ? generic.state.body : Buffer.from(generic.state.body)
+    expect(Buffer.compare(png, other)).not.toBe(0)
+  })
+
+  it('renders the SVG title as Neumos when the venue fetch returns', async () => {
+    loadShareOgEnergyMock.mockResolvedValue({
+      title: 'Neumos',
+      description: 'Electric · 12m ago · Music Venue · Capitol Hill, Seattle',
+      energyLine: 'Electric · 12m ago',
+      freshness: '12m ago',
+    })
+
+    const { res, state } = makeResponse()
+    await handler(
+      { method: 'GET', query: { venueId: NEUMOS_ID, format: 'svg' } } as RequestLike,
+      res,
+    )
+
+    expect(state.status).toBe(200)
     expect(state.headers['content-type']).toContain('image/svg+xml')
     expect(state.body).toContain('>Neumos<')
     expect(state.body).toContain('Electric · 12m ago')
@@ -79,7 +112,7 @@ describe('GET /api/share/og', () => {
     loadShareOgEnergyMock.mockRejectedValue(new Error('network'))
     const { res, state } = makeResponse()
     await handler(
-      { method: 'GET', query: { venueId: NEUMOS_ID } } as RequestLike,
+      { method: 'GET', query: { venueId: NEUMOS_ID, format: 'svg' } } as RequestLike,
       res,
     )
     expect(state.status).toBe(200)
@@ -97,7 +130,7 @@ describe('GET /api/share/og', () => {
 
     const { res, state } = makeResponse()
     await handler(
-      { method: 'GET', query: { n: 'capitol-hill' } } as RequestLike,
+      { method: 'GET', query: { n: 'capitol-hill', format: 'svg' } } as RequestLike,
       res,
     )
 

@@ -1,6 +1,7 @@
 /**
  * GET /api/share/og?venueId=
- * SVG card that matches the in-app “Someone shared a venue” landing.
+ * PNG card (SVG when ?format=svg) that matches the in-app “Someone shared a venue” landing.
+ * Default is PNG because iMessage, Slack, and Twitter drop SVG og:image.
  */
 
 import {
@@ -10,6 +11,7 @@ import {
   type ResponseLike,
 } from '../_lib/http.js'
 import { loadShareNeighborhoodOg, loadShareOgEnergy } from '../_lib/share-og-lookup.js'
+import { renderShareOgPng } from '../_lib/share-og-png.js'
 import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-slugs.js'
 
 function escapeXml(value: string): string {
@@ -33,6 +35,9 @@ export default async function handler(
   try {
     const raw = req.query?.venueId
     const venueId = Array.isArray(raw) ? raw[0] : raw
+    const formatRaw = req.query?.format
+    const format = Array.isArray(formatRaw) ? formatRaw[0] : formatRaw
+    const asSvg = format === 'svg'
     const nRaw = req.query?.n ?? req.query?.neighborhood
     const neighborhoodSlug = parseNeighborhoodShareSlug(Array.isArray(nRaw) ? nRaw[0] : nRaw)
     let title = 'Pulse'
@@ -66,15 +71,32 @@ export default async function handler(
       }
     }
 
-    writeSvg(res, renderShareSvg({ eyebrow, title, energyLine, caption, cta }))
+    const card = { eyebrow, title, energyLine, caption, cta }
+    if (asSvg) {
+      writeSvg(res, renderShareSvg(card))
+      return
+    }
+    writePng(res, renderShareOgPng({
+      eyebrow,
+      title,
+      energyLine,
+      cta,
+    }))
   } catch {
-    writeSvg(res, renderShareSvg({
+    const card = {
       eyebrow: 'Someone shared a venue',
       title: 'Pulse',
       energyLine: 'Live reviews on Pulse',
       caption: 'I’m here · open map',
       cta: "I'm here · open map",
-    }))
+    }
+    const formatRaw = req.query?.format
+    const format = Array.isArray(formatRaw) ? formatRaw[0] : formatRaw
+    if (format === 'svg') {
+      writeSvg(res, renderShareSvg(card))
+      return
+    }
+    writePng(res, renderShareOgPng(card))
   }
 }
 
@@ -97,17 +119,25 @@ function renderShareSvg(input: {
 </svg>`
 }
 
-function writeSvg(res: ResponseLike, svg: string): void {
-  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8')
+function writeBody(res: ResponseLike, body: string | Buffer, contentType: string): void {
+  res.setHeader('Content-Type', contentType)
   res.setHeader('Cache-Control', 'public, max-age=300')
   res.status(200)
   const writable = res as ResponseLike & {
-    end: (body?: string) => void
-    send?: (body: string) => void
+    end: (body?: string | Buffer) => void
+    send?: (body: string | Buffer) => void
   }
   if (typeof writable.send === 'function') {
-    writable.send(svg)
+    writable.send(body)
     return
   }
-  writable.end(svg)
+  writable.end(body)
+}
+
+function writePng(res: ResponseLike, png: Buffer): void {
+  writeBody(res, png, 'image/png')
+}
+
+function writeSvg(res: ResponseLike, svg: string): void {
+  writeBody(res, svg, 'image/svg+xml; charset=utf-8')
 }

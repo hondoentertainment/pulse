@@ -25,7 +25,7 @@ import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
-import { AUTH_PATH, shouldBlockDiscoveryForAuth, shouldBypassFirstRunOnboarding } from '@/lib/guest-discovery'
+import { AUTH_PATH, isVenueDeepLinkPath, shouldBlockDiscoveryForAuth, shouldBypassFirstRunOnboarding } from '@/lib/guest-discovery'
 import { consumeAuthReturnPath, readPersistedAuthNext } from '@/lib/auth-return-intent'
 import { UX_FAB } from '@/lib/ux-chrome'
 
@@ -206,13 +206,19 @@ export function AppRoutes() {
   }
 
   // ── Loading gate ─────────────────────────
-  if (!venues || !currentUser || !pulses) {
+  // A shared /venue/:id should paint that room's energy without waiting
+  // for the full Seattle catalog. Other routes still wait.
+  const venueDeepLink = isVenueDeepLinkPath(pathname)
+  if ((!venues || !currentUser || !pulses) && !venueDeepLink) {
     const onMap = pathname === '/' || pathname === '/map'
     return onMap ? <MapHomeSkeleton /> : <PageSkeleton />
   }
+  if (!currentUser) {
+    return <PageSkeleton />
+  }
 
   // ── Admin dashboard ──────────────────────
-  if (showAdminDashboard && socialDashboardEnabled) {
+  if (showAdminDashboard && socialDashboardEnabled && venues && pulses) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <SocialPulseDashboard

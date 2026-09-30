@@ -21,6 +21,7 @@ import type { VenueClaim } from '@/lib/venue-owner'
 import { confirmImHere } from '@/lib/im-here-confirm'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
+import { resolveShareVenueReady } from '@/lib/share-landing'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
@@ -74,6 +75,7 @@ export function VenueRoute() {
 
   // Live venue row + paginated pulses when Supabase backend is on.
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
+  const [serverLookupSettled, setServerLookupSettled] = useState(false)
   const [hereNow, setHereNow] = useState<HereNowSummary>(emptyHereNow)
   const [replies, setReplies] = useState<PulseReply[]>([])
   const [agrees, setAgrees] = useState<PulseAgree[]>([])
@@ -92,8 +94,12 @@ export function VenueRoute() {
   }, [USE_SUPABASE_BACKEND, venuePulseQuery.data?.pages, venuePulseQuery.isSuccess])
 
   useEffect(() => {
-    if (!USE_SUPABASE_BACKEND || !venueId) return
+    if (!USE_SUPABASE_BACKEND || !venueId) {
+      setServerLookupSettled(true)
+      return
+    }
     let cancelled = false
+    setServerLookupSettled(false)
 
     ;(async () => {
       try {
@@ -107,6 +113,8 @@ export function VenueRoute() {
         } else {
           console.warn('[pulse] VenuePage fresh fetch failed, using cached data', error)
         }
+      } finally {
+        if (!cancelled) setServerLookupSettled(true)
       }
     })()
 
@@ -165,12 +173,33 @@ export function VenueRoute() {
     if (venueId) rememberOpenedVenue(venueId)
   }, [venueId])
 
-  if (!venues || !currentUser || !venueId) return <MapHomeSkeleton />
+  if (!currentUser || !venueId) return <MapHomeSkeleton />
 
+  const catalog = venues ?? []
   const localShareId = localLaunchVenueIdForShareId(venueId)
-  const cachedVenue = venues.find(v => v.id === venueId)
-    ?? (localShareId ? venues.find(v => v.id === localShareId) ?? null : null)
+  const cachedVenue = catalog.find(v => v.id === venueId)
+    ?? (localShareId ? catalog.find(v => v.id === localShareId) ?? null : null)
   const venue = freshVenue ?? cachedVenue
+  const phase = resolveShareVenueReady({
+    cached: Boolean(cachedVenue),
+    fresh: Boolean(freshVenue),
+    catalogReady: Array.isArray(venues),
+    lookupSettled: serverLookupSettled || !USE_SUPABASE_BACKEND,
+  })
+  if (!venue && phase === 'pending') {
+    return (
+      <div className="min-h-screen bg-background" aria-busy="true" aria-label="Opening venue energy">
+        <div className="mx-auto max-w-2xl space-y-3 px-4 pb-6 pt-6">
+          <p className="text-[13px] font-semibold text-accent">Someone shared a venue</p>
+          <h1 className="text-[26px] font-bold text-foreground">Opening live energy</h1>
+          <p className="text-[13px] text-muted-foreground">
+            Loading this room. Guests can view it. Posting still goes to sign-in.
+          </p>
+          <div className="h-28 animate-pulse rounded-2xl bg-card" />
+        </div>
+      </div>
+    )
+  }
   if (!venue) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4">

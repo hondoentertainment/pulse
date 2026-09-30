@@ -14,7 +14,13 @@ export const DISCOVERY_AUTH_GATE_COPY = "Sign in to discover what's buzzing near
 /**
  * Share and venue deep links skip first-run onboarding.
  * A plain first open of `/` still shows Welcome / “What’s your scene?”.
+ * Direct /venue/:id loads can paint before the full catalog. Inbox stays on the normal shell.
  */
+export function isVenueDeepLinkPath(pathname: string | null | undefined): boolean {
+  const path = (pathname ?? '').split('?')[0].replace(/\/$/, '')
+  return /^\/venue\/[^/]+$/.test(path)
+}
+
 export function shouldBypassFirstRunOnboarding(input: {
   pathname?: string | null
   search?: string | null
