@@ -19,7 +19,7 @@ export const UX_CTA_INVERT =
   'h-12 w-full rounded-[14px] border border-border bg-card text-[15px] font-semibold text-foreground hover:bg-muted'
 export const UX_CARD = 'rounded-2xl border border-border bg-card shadow-none'
 export const UX_FAB =
-  'fixed right-5 bottom-24 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-[28px] font-bold leading-none text-primary-foreground shadow-[0_8px_24px_rgba(115,209,255,0.28)]'
+  'fixed right-4 z-[60] bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-[28px] font-bold leading-none text-primary-foreground shadow-[0_8px_24px_rgba(115,209,255,0.28)]'
 export const UX_TIMELINE_ROW =
   'flex w-full gap-3 border-b border-border px-0 py-3 text-left'
 

@@ -37,7 +37,7 @@ export function FeedTabBar<T extends string>({
       className={cn(
         'flex',
         pills
-          ? 'gap-2 overflow-x-auto [scrollbar-width:none]'
+          ? 'w-full flex-nowrap items-center gap-1 overflow-visible'
           : 'border-b border-border',
         !pills && align === 'start' ? 'justify-start gap-6' : undefined,
         className,
@@ -56,7 +56,7 @@ export function FeedTabBar<T extends string>({
             onClick={() => onChange(tab.id)}
             className={cn(
               pills
-                ? 'relative min-h-8 shrink-0 touch-manipulation rounded-full px-3 py-[7px] text-[12px] font-medium leading-none'
+                ? 'relative h-8 shrink-0 touch-manipulation whitespace-nowrap rounded-full !border-0 px-2 text-[12px] font-semibold leading-none'
                 : 'relative min-h-11 touch-manipulation px-0.5 text-[15px] font-semibold',
               !pills && align === 'stretch' ? 'flex-1 px-2' : undefined,
               pills

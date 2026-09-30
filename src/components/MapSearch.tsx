@@ -221,7 +221,7 @@ export function MapSearch({ venues, onVenueSelect, userLocation, compact = false
           className={cn(
             'h-11 border border-border bg-card shadow-none focus:ring-2 focus:ring-primary/40',
             compact
-              ? 'rounded-2xl px-3.5 text-center text-[14px] placeholder:text-muted-foreground'
+              ? 'rounded-xl px-3.5 text-left text-[14px] placeholder:text-muted-foreground'
               : 'rounded-full pl-10',
             !compact && (query ? 'pr-20' : 'pr-12'),
             compact && query && 'pr-12 text-left',

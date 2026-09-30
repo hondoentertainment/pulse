@@ -417,7 +417,9 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+    <div className={fromShare
+      ? 'min-h-screen bg-background pb-[calc(16rem+env(safe-area-inset-bottom,0px))]'
+      : 'min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]'}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -434,7 +436,10 @@ export function VenuePage({
             Map
           </button>
           {!fromShare && <VenueCoverPhoto venue={venue} />}
-          <h1 className="text-[26px] font-bold tracking-tight text-foreground">{venue.name}</h1>
+          {!fromShare && (
+          <h1 className="text-[28px] font-bold leading-9 tracking-tight text-foreground">{venue.name}</h1>
+          )}
+          {!fromShare && (
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <OpenNowChip venue={venue} />
             {doorRollupLabel(venuePulses, venue.id) && (
@@ -443,8 +448,9 @@ export function VenuePage({
               </span>
             )}
           </div>
+          )}
           <p className="sr-only">{venueHandle(venue.name)}</p>
-          {(() => {
+          {!fromShare && (() => {
             const placeStatus = venueStatusLine(venue)
             const verified = Boolean(
               venue.claimVerified ||
@@ -468,8 +474,8 @@ export function VenuePage({
           const delta = recent10m * 8
           return (
             <Card className={`${UX_CARD} p-3.5`}>
-              <div className="flex items-center gap-3.5">
-                <p className="text-[48px] font-bold tabular-nums leading-none text-foreground">
+              <div className="flex flex-nowrap items-center gap-3.5">
+                <p className="shrink-0 text-[40px] font-bold tabular-nums leading-[44px] text-foreground">
                   {venue.pulseScore}
                 </p>
                 <div className="min-w-0">
@@ -493,7 +499,9 @@ export function VenuePage({
         <div className="flex gap-2">
           <Button
             onClick={onCreatePulse}
-            className={`${UX_CTA} flex-1`}
+            className={fromShare
+              ? 'h-12 min-w-0 flex-[2] rounded-[14px] border border-white/15 bg-background text-[14px] font-semibold text-foreground'
+              : `${UX_CTA} min-w-0 flex-[2]`}
           >
             I’m here · Pulse
           </Button>
@@ -504,10 +512,10 @@ export function VenuePage({
             />
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+            className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
             onClick={() => {
               const inviteUrl = getVenueInviteShareUrl(venue.id)
               void shareVenueFromSurface(venue, {
@@ -524,7 +532,7 @@ export function VenuePage({
           {onPinMyNight && (
             <button
               type="button"
-              className="h-9 rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+              className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
               onClick={onPinMyNight}
             >
               Pin My night
@@ -538,7 +546,7 @@ export function VenuePage({
             })}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-9 items-center rounded-full border border-border px-3 text-[13px] font-semibold text-foreground"
+            className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
           >
             {MAPS_CTA}
           </a>
@@ -573,8 +581,8 @@ export function VenuePage({
           ownerReplies={ownerReplies}
         />
 
-        <details className="rounded-xl border border-border bg-card p-3.5">
-          <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+        <details className="relative z-10 mt-1 rounded-xl border border-border bg-card px-3.5 py-3">
+          <summary className="cursor-pointer text-[14px] font-medium text-foreground">
             More venue details
           </summary>
           <div className="mt-4 space-y-6">
