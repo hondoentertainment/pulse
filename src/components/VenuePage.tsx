@@ -461,7 +461,7 @@ export function VenuePage({
           })()}
         </div>
         {fromShare && (
-          <ShareArrivalCard venue={venue} pulses={venuePulses} />
+          <ShareArrivalCard venue={venue} pulses={venuePulses} userLocation={userLocation} />
         )}
         {!fromShare && (() => {
           const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length

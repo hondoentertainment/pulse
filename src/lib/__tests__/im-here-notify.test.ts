@@ -4,6 +4,7 @@ import {
   imHereDisplayName,
   imHereFollowerFanoutOpen,
   imHereFollowerGlancePayload,
+  imHereGlanceStillOpen,
   imHereRateLimitOpen,
   imHereSelfGlancePayload,
   presenceAllowsFollowerGlance,
@@ -32,6 +33,10 @@ describe('I’m-here notify decision', () => {
     expect(imHereRateLimitOpen(1)).toBe(true)
     expect(imHereRateLimitOpen(0)).toBe(true)
     expect(imHereRateLimitOpen(2)).toBe(false)
+    expect(imHereGlanceStillOpen(0, true)).toBe(true)
+    expect(imHereGlanceStillOpen(1, true)).toBe(false)
+    expect(imHereGlanceStillOpen(0, false)).toBe(true)
+    expect(imHereGlanceStillOpen(null, true)).toBe(true)
     expect(imHereFollowerFanoutOpen(1)).toBe(true)
     expect(imHereFollowerFanoutOpen(0)).toBe(false)
     expect(imHereFollowerFanoutOpen(2)).toBe(false)

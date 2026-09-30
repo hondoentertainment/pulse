@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { USE_SUPABASE_BACKEND, VenueData, CheckInData, PresenceData } from '@/lib/data'
+import { USE_SUPABASE_BACKEND, VenueData, PresenceData } from '@/lib/data'
 import { useVenuePulsesInfinite } from '@/hooks/api/use-pulses'
 import { AuthRequiredError } from '@/lib/auth/require-auth'
 import { RlsDeniedError } from '@/lib/auth/rls-helpers'
@@ -18,7 +18,7 @@ import type { PulseReply } from '@/lib/pulse-thread'
 import type { PulseAgree } from '@/lib/pulse-same'
 import type { VenueDoorPin } from '@/lib/door-pin'
 import type { VenueClaim } from '@/lib/venue-owner'
-import { requestImHereGlance } from '@/lib/data/im-here-push'
+import { confirmImHere } from '@/lib/im-here-confirm'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
@@ -206,18 +206,13 @@ export function VenueRoute() {
 
     if (USE_SUPABASE_BACKEND) {
       try {
-        await CheckInData.createCheckIn({
+        await confirmImHere({
           venueId: venue.id,
+          venueName: venue.name,
+          signedIn: true,
           lat: userLocation?.lat,
           lng: userLocation?.lng,
-          source: userLocation ? 'geo' : 'manual',
         })
-        await PresenceData.writeImHerePresence({
-          venueId: venue.id,
-          lat: userLocation?.lat,
-          lng: userLocation?.lng,
-        }).catch(() => undefined)
-        void requestImHereGlance({ venueId: venue.id, venueName: venue.name })
         const summary = await PresenceData.fetchHereNowSummary(venue.id, true).catch(() => emptyHereNow())
         setHereNow(summary)
         toast.success('I’m here · 90 min', { description: venue.name })

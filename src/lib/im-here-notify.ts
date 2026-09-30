@@ -73,6 +73,21 @@ export function imHereRateLimitOpen(recentPresenceCount: number): boolean {
   return recentPresenceCount <= 1
 }
 
+/**
+ * Whether this confirm should call the notify endpoint.
+ * `recentPresenceCount` is open rows already stored before this confirm's insert.
+ * The endpoint counts the row just written and sends only when that total is <= 1.
+ * Unknown counts stay open so the server can still decide.
+ */
+export function imHereGlanceStillOpen(
+  recentPresenceCount: number | null,
+  wrotePresence: boolean,
+): boolean {
+  if (recentPresenceCount === null || !Number.isFinite(recentPresenceCount)) return true
+  const counted = Math.max(0, recentPresenceCount) + (wrotePresence ? 1 : 0)
+  return imHereRateLimitOpen(counted)
+}
+
 /** Follower pushes need the presence row that says they are actually here. */
 export function imHereFollowerFanoutOpen(recentPresenceCount: number): boolean {
   return recentPresenceCount === 1

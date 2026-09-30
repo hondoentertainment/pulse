@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShareArrivalCard } from '@/components/ShareArrivalCard'
 import type { Pulse, Venue } from '@/lib/types'
 
 const navigate = vi.fn()
+const { confirmImHere } = vi.hoisted(() => ({
+  confirmImHere: vi.fn(async () => ({ notified: true, reason: 'confirmed' as const })),
+}))
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => navigate }
 })
+
+vi.mock('@/lib/im-here-confirm', () => ({
+  confirmImHere,
+}))
 
 const authState = { session: null as { user?: { id: string } } | null, isPlaceholder: false }
 vi.mock('@/hooks/use-supabase-auth', () => ({
@@ -48,6 +56,8 @@ function renderCard() {
 describe('ShareArrivalCard', () => {
   beforeEach(() => {
     navigate.mockReset()
+    confirmImHere.mockClear()
+    confirmImHere.mockResolvedValue({ notified: true, reason: 'confirmed' })
     authState.session = null
     authState.isPlaceholder = false
   })
@@ -59,13 +69,44 @@ describe('ShareArrivalCard', () => {
     expect(screen.getByText(/DJ just switched/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /I'm here · open map/i }))
     expect(navigate).toHaveBeenCalledWith('/?here=neumos')
+    expect(confirmImHere).not.toHaveBeenCalled()
   })
 
-  it('starts the signed-in create path on the focused pin', () => {
+  it('confirms presence and push once, then focuses the map for a signed-in user', async () => {
     authState.session = { user: { id: 'u1' } }
     renderCard()
     fireEvent.click(screen.getByRole('button', { name: /I'm here · open map/i }))
-    expect(navigate).toHaveBeenCalledWith('/?here=neumos&create=1')
+    await waitFor(() => {
+      expect(confirmImHere).toHaveBeenCalledTimes(1)
+    })
+    expect(confirmImHere).toHaveBeenCalledWith({
+      venueId: 'neumos',
+      venueName: 'Neumos',
+      signedIn: true,
+      lat: undefined,
+      lng: undefined,
+    })
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/?here=neumos&create=1')
+    })
+    expect(confirmImHere.mock.invocationCallOrder[0]).toBeLessThan(navigate.mock.invocationCallOrder[0])
+  })
+
+  it('does not confirm twice from a double tap before the first confirm settles', async () => {
+    authState.session = { user: { id: 'u1' } }
+    let release: (value: { notified: boolean; reason: 'confirmed' }) => void = () => undefined
+    confirmImHere.mockImplementation(() => new Promise((resolve) => {
+      release = resolve
+    }))
+    renderCard()
+    const button = screen.getByRole('button', { name: /I'm here · open map/i })
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(confirmImHere).toHaveBeenCalledTimes(1)
+    release({ notified: true, reason: 'confirmed' })
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('sends a guest who posts a live review to auth', () => {

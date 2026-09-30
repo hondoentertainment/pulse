@@ -14,7 +14,7 @@ VAPID keys are already on Vercel. Do not regenerate or rotate them for this path
 
 Electric uses a higher Web Push urgency and `renotify` so a new surge replaces the previous one for that venue. I’m-here stays normal urgency. A second I’m here at the same venue inside 90 minutes does not send again.
 
-Share-arrival “I’m here” only opens the map. The push fires when **I’m here · Pulse** succeeds (the check-in confirm in `VenueRoute`). Follower pushes also require a live `presence` row from that confirm. The self glance still sends if that row did not land.
+Signed-in share-arrival **I’m here** uses the same confirm as **I’m here · Pulse**: check-in, presence, then `POST /api/push/notify-im-here`, then the map focuses with `/?here={venueId}`. Guests only open the map and do not push. A second I’m here at the same venue inside 90 minutes does not send again. Follower pushes also require a live `presence` row from that confirm. The self glance still sends if that row did not land.
 
 ## Phone setup
 
@@ -49,6 +49,6 @@ Kyle owns hardware proof. On a signed-in phone with Pulse notifications allowed:
 - Surge decision + payload: `src/lib/venue-surge-notify.ts`
 - I’m-here decision + payload: `src/lib/im-here-notify.ts`
 - Senders: `api/_lib/web-push-live.ts`, `api/_lib/web-push-im-here.ts`
-- Confirm wire-up: `src/components/VenueRoute.tsx` after `writeImHerePresence`
+- Confirm wire-up: `src/lib/im-here-confirm.ts` (`confirmImHere`), used by `VenueRoute` (**I’m here · Pulse**) and `ShareArrivalCard`
 - Service worker: `public/push-sw.js` (VitePWA `importScripts`) and legacy `public/sw.js`
 - Setup copy: Settings → Notifications, and the push notify card
