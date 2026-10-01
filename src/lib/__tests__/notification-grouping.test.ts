@@ -95,6 +95,34 @@ describe('groupNotifications', () => {
     expect(result.length).toBe(2)
   })
 
+  it('collapses venue surges, friend pulses, and owner replies in the same hour', () => {
+    const now = new Date().toISOString()
+    const notifications: NotificationWithData[] = [
+      makeNotification({ id: 's1', type: 'venue_surge', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 's1', type: 'venue_surge', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 's2', type: 'venue_surge', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 'f1', type: 'friend_pulse', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 'f2', type: 'friend_pulse', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 'o1', type: 'owner_reply', venueId: 'neumos', createdAt: now }),
+      makeNotification({ id: 'o2', type: 'owner_reply', venueId: 'barboza', createdAt: now }),
+    ]
+
+    const result = groupNotifications(notifications, {
+      groupReactions: true,
+      groupFriendPulses: false,
+      groupTrendingVenues: false,
+    })
+
+    const surge = result.find((row) => row.type === 'venue_surge')
+    const friends = result.find((row) => row.type === 'friend_pulse')
+    const replies = result.filter((row) => row.type === 'owner_reply')
+    expect(surge?.count).toBe(2)
+    expect(surge?.groupedIds).toEqual(['s1', 's2'])
+    expect(friends?.count).toBe(2)
+    expect(replies).toHaveLength(2)
+    expect(result.filter((row) => row.type === 'venue_surge')).toHaveLength(1)
+  })
+
   it('does not deduplicate same user reacting twice', () => {
     const user = { id: 'u-2', username: 'alice', friends: [], createdAt: new Date().toISOString() }
     const notifications: NotificationWithData[] = [

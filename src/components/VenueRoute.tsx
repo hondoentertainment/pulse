@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { USE_SUPABASE_BACKEND, VenueData, PresenceData } from '@/lib/data'
+import { CrewTonightData, USE_SUPABASE_BACKEND, VenueData, PresenceData } from '@/lib/data'
 import { useVenuePulsesInfinite } from '@/hooks/api/use-pulses'
 import { AuthRequiredError } from '@/lib/auth/require-auth'
 import { RlsDeniedError } from '@/lib/auth/rls-helpers'
@@ -23,6 +23,8 @@ import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
 import { resolveShareVenueReady } from '@/lib/share-landing'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
+import { filterModeratedPulses } from '@/lib/content-moderation'
+import type { CrewPresenceRow } from '@/lib/crew-im-here'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 
@@ -39,6 +41,7 @@ export function VenueRoute() {
   const {
     venues,
     currentUser,
+    contentReports,
     moderatedPulses: _moderatedPulses,
     unitSystem,
     locationName,
@@ -71,12 +74,14 @@ export function VenueRoute() {
     handleBlockUser,
     handleCrewTonight,
     handleDoorPin,
+    handleOwnerReplyNotices,
   } = handlers
 
   // Live venue row + paginated pulses when Supabase backend is on.
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
   const [serverLookupSettled, setServerLookupSettled] = useState(false)
   const [hereNow, setHereNow] = useState<HereNowSummary>(emptyHereNow)
+  const [crewHere, setCrewHere] = useState<CrewPresenceRow[]>([])
   const [replies, setReplies] = useState<PulseReply[]>([])
   const [agrees, setAgrees] = useState<PulseAgree[]>([])
   const [doorPin, setDoorPin] = useState<VenueDoorPin | null>(null)
@@ -122,6 +127,22 @@ export function VenueRoute() {
       cancelled = true
     }
   }, [venueId])
+
+  useEffect(() => {
+    if (!venueId || !session?.user?.id) {
+      setCrewHere([])
+      return
+    }
+    let cancelled = false
+    void CrewTonightData.listCrewImHere(venueId).then((rows) => {
+      if (!cancelled) setCrewHere(rows)
+    }).catch(() => {
+      if (!cancelled) setCrewHere([])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id, venueId])
 
   useEffect(() => {
     if (!venueId) return
@@ -210,13 +231,20 @@ export function VenueRoute() {
   }
 
   const cachedPulses = getPulsesWithUsers().filter(p => p.venueId === venue.id)
-  const venuePulses: PulseWithUser[] = serverPulseList !== null
+  const rawVenuePulses: PulseWithUser[] = serverPulseList !== null
     ? serverPulseList.map((pulse) => ({
         ...pulse,
         user: resolvePulseUser(pulse.userId),
         venue,
       }))
     : cachedPulses
+  const venuePulses = filterModeratedPulses(
+    rawVenuePulses,
+    currentUser?.id ?? '',
+    [],
+    [],
+    contentReports ?? [],
+  ) as PulseWithUser[]
   const distance = userLocation
     ? Math.sqrt(Math.pow(venue.location.lat - userLocation.lat, 2) + Math.pow(venue.location.lng - userLocation.lng, 2)) * 69
     : undefined
@@ -295,6 +323,8 @@ export function VenueRoute() {
           onSameAgree={handleSameAgree}
           onBlockUser={handleBlockUser}
           onCrewTonight={handleCrewTonight}
+          crewHere={crewHere}
+          onOwnerReplyNotices={handleOwnerReplyNotices}
           onDoorPin={async (vid, pid) => {
             await handleDoorPin(vid, pid)
             const pin = await DoorPinData.fetchVenueDoorPin(vid).catch(() => null)

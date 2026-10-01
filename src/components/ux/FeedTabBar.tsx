@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { signalToneClass, type SignalTone } from '@/lib/signal-tone'
+import { nextRovingIndex } from '@/lib/surface-a11y'
 
 export interface FeedTab<T extends string = string> {
   id: T
@@ -30,10 +31,17 @@ export function FeedTabBar<T extends string>({
   variant = 'underline',
 }: FeedTabBarProps<T>) {
   const pills = variant === 'pills'
+  const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.id === value))
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
+      onKeyDown={(event) => {
+        const next = nextRovingIndex(selectedIndex, tabs.length, event.key)
+        if (next === null) return
+        event.preventDefault()
+        onChange(tabs[next].id)
+      }}
       className={cn(
         'flex',
         pills

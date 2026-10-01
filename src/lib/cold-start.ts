@@ -2,6 +2,9 @@
  * First-session cold start — Launch 33 first, All Seattle tip, fast map.
  */
 
+import { isCuratedVenue } from '@/lib/map-filters'
+import type { Venue } from '@/lib/types'
+
 export const COLD_START_TIP_STORAGE_KEY = 'pulse_cold_start_tip_v1'
 export const COLD_START_HEADLINE = 'Where the energy is'
 export const COLD_START_SUBLINE = 'Interactive map in under 2s · Launch 33 first'
@@ -93,4 +96,54 @@ export function readColdStartMs(
 export function formatColdStartDebug(ms: number | null): string {
   if (ms === null) return 'Cold start not measured'
   return `Map interactive in ${ms}ms (target <2000ms, Launch 33 default)`
+}
+
+/** Mid-phone budget for `pulse_map_interactive` on a hard reload of `/`. */
+export const COLD_START_BUDGET_MS = 2000
+
+export function coldStartWithinBudget(
+  ms: number | null,
+  budgetMs: number = COLD_START_BUDGET_MS,
+): boolean {
+  return ms !== null && ms >= 0 && ms <= budgetMs
+}
+
+/**
+ * Launch 33 (curated) paints first. OSM / All Seattle stays out of the
+ * first map pass and is released after idle.
+ */
+export function partitionColdStartCatalog<T extends Pick<Venue, 'inventorySource' | 'seeded'>>(
+  venues: readonly T[],
+): { launch: T[]; deferred: T[] } {
+  const launch: T[] = []
+  const deferred: T[] = []
+  for (const venue of venues) {
+    if (isCuratedVenue(venue)) launch.push(venue)
+    else deferred.push(venue)
+  }
+  return { launch, deferred }
+}
+
+/**
+ * Release All Seattle after the first frame, on idle, so the map mark
+ * can land near the 2s budget on a mid phone.
+ */
+export function scheduleAllSeattleRelease(onReady: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  let cancelled = false
+  let idleId = 0
+  const frame = window.requestAnimationFrame(() => {
+    const ric = window.requestIdleCallback?.bind(window)
+    const run = () => {
+      if (!cancelled) onReady()
+    }
+    if (ric) idleId = ric(run, { timeout: 1600 })
+    else idleId = window.setTimeout(run, 1200)
+  })
+  return () => {
+    cancelled = true
+    window.cancelAnimationFrame(frame)
+    if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleId)
+    else window.clearTimeout(idleId)
+  }
 }

@@ -1,3 +1,5 @@
+import { youTabAriaLabel } from '@/lib/in-app-notify'
+
 export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
 
 interface BottomNavProps {
@@ -11,8 +13,8 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
     { id: 'map' as const, label: 'Map' },
     { id: 'trending' as const, label: 'Tonight' },
     { id: 'discover' as const, label: 'Pulse' },
-    { id: 'notifications' as const, label: 'Following', badge: unreadNotifications },
-    { id: 'profile' as const, label: 'You' },
+    { id: 'notifications' as const, label: 'Following' },
+    { id: 'profile' as const, label: 'You', badge: unreadNotifications },
   ]
 
   return (
@@ -30,7 +32,7 @@ export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: B
               type="button"
               data-testid={`tab-${tab.label}`}
               onClick={() => onTabChange(tab.id)}
-              aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge} unread` : tab.label}
+              aria-label={tab.id === 'profile' ? youTabAriaLabel(tab.badge ?? 0) : tab.label}
               aria-current={isActive ? 'page' : undefined}
               className="relative flex h-full min-h-11 w-[70px] touch-manipulation flex-col items-center justify-center gap-1"
             >

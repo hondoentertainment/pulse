@@ -65,7 +65,8 @@ export function EnergySlider({ value, onChange }: EnergySliderProps) {
                 backgroundColor: `${currentConfig.color}15`
               }}
             >
-              <span className="text-7xl">{currentConfig.emoji}</span>
+              <span className="text-7xl" aria-hidden="true">{currentConfig.emoji}</span>
+              <span className="sr-only">{currentConfig.label}</span>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -135,10 +136,12 @@ export function EnergySlider({ value, onChange }: EnergySliderProps) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="text-xs"
+                    aria-hidden="true"
                   >
                     {ENERGY_CONFIG[level].emoji}
                   </motion.div>
                 )}
+                <span className="sr-only">{ENERGY_CONFIG[level].label}</span>
               </motion.div>
             ))}
           </div>

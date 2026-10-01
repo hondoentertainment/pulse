@@ -14,6 +14,7 @@ import {
 } from '@/lib/ops-client'
 import { Button } from '@/components/ui/button'
 import { UX_CARD } from '@/lib/ux-chrome'
+import { moderationResolution } from '@/lib/moderation-sla'
 
 export function OpsQueuePage() {
   const navigate = useNavigate()
@@ -23,6 +24,7 @@ export function OpsQueuePage() {
   const [reports, setReports] = useState<OpsReportRow[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reasons, setReasons] = useState<Record<string, string>>({})
 
   const reload = async () => {
     setBusy(true)
@@ -142,7 +144,10 @@ export function OpsQueuePage() {
                 <p className={`${UX_CARD} p-3.5 text-sm text-muted-foreground`}>
                   No pending reports.
                 </p>
-              ) : reports.map((report) => (
+              ) : reports.map((report) => {
+                const reason = reasons[report.id] ?? ''
+                const canClose = moderationResolution({ admin: true, status: 'dismissed', reason }).ok
+                return (
                 <article key={report.id} className={`${UX_CARD} space-y-2 p-3.5`}>
                   <p className="text-sm font-semibold text-foreground">{report.reason}</p>
                   <p className="text-xs text-muted-foreground">
@@ -152,13 +157,24 @@ export function OpsQueuePage() {
                   {report.details && (
                     <p className="text-xs text-muted-foreground">{report.details}</p>
                   )}
+                  <label className="block space-y-1 text-xs font-semibold text-muted-foreground">
+                    Reason
+                    <textarea
+                      value={reason}
+                      onChange={(event) => setReasons((current) => ({ ...current, [report.id]: event.target.value }))}
+                      maxLength={280}
+                      rows={2}
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-normal text-foreground"
+                      placeholder="Why this report is resolved or dismissed"
+                    />
+                  </label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
                       size="sm"
-                      disabled={busy}
+                      disabled={busy || !canClose}
                       onClick={() => {
-                        void updateOpsReport({ reportId: report.id, status: 'dismissed' })
+                        void updateOpsReport({ reportId: report.id, status: 'dismissed', reason: reason.trim() })
                           .then(() => {
                             toast.success('Report dismissed')
                             return reload()
@@ -172,9 +188,9 @@ export function OpsQueuePage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={busy}
+                      disabled={busy || !canClose}
                       onClick={() => {
-                        void updateOpsReport({ reportId: report.id, status: 'actioned' })
+                        void updateOpsReport({ reportId: report.id, status: 'actioned', reason: reason.trim() })
                           .then(() => {
                             toast.success('Report resolved')
                             return reload()
@@ -186,7 +202,8 @@ export function OpsQueuePage() {
                     </Button>
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </section>
           </>
         )}

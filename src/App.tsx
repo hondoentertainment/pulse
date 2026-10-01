@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion'
 import VenueApp from '@/VenueApp'
 
 /**
@@ -5,5 +6,9 @@ import VenueApp from '@/VenueApp'
  * The former Pulse Signal check-in shell was removed (no app-mode switch).
  */
 export default function App() {
-  return <VenueApp />
+  return (
+    <MotionConfig reducedMotion="user">
+      <VenueApp />
+    </MotionConfig>
+  )
 }

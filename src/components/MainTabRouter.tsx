@@ -24,7 +24,8 @@ import { readViteVapidPublicKey } from '@/lib/web-push-client'
 import { WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import type { MapHomeSurface } from '@/lib/ux-chrome'
-import { markNavigationStart } from '@/lib/cold-start'
+import { markNavigationStart, partitionColdStartCatalog, scheduleAllSeattleRelease } from '@/lib/cold-start'
+import { prefersReducedMotion } from '@/lib/accessibility'
 import { dismissFirstOpenCoach, shouldShowFirstOpenCoach } from '@/lib/first-open-coach'
 import { shareVenueFromSurface } from '@/lib/sharing'
 import { getEnergyLabel } from '@/lib/pulse-engine'
@@ -65,11 +66,21 @@ const SurgingNearbyList = lazy(() => import('@/components/SurgingNearbyList').th
 
 const pageFallback = <MapHomeSkeleton />
 
-const tabMotion = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-  transition: { duration: 0.2 },
+function tabMotionFor(reduced: boolean) {
+  if (reduced) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1 },
+      exit: { opacity: 1 },
+      transition: { duration: 0 },
+    }
+  }
+  return {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
+    transition: { duration: 0.2 },
+  }
 }
 
 export function MainTabRouter() {
@@ -101,6 +112,8 @@ export function MainTabRouter() {
     isFavorite,
     isFollowed,
     pulsesWithUsers,
+    notifications,
+    setNotifications,
   } = state
 
   const {
@@ -195,9 +208,16 @@ export function MainTabRouter() {
   )
 
   const hereVenueId = parseHereVenueId(location.search)
-  const mapVenues = useMemo(
-    () => retainFocusedVenue(visibleVenues, venues, hereVenueId),
-    [hereVenueId, venues, visibleVenues],
+  const [allSeattleReady, setAllSeattleReady] = useState(false)
+  const tabMotion = tabMotionFor(prefersReducedMotion())
+  const mapVenues = useMemo(() => {
+    const focused = retainFocusedVenue(visibleVenues, venues, hereVenueId)
+    if (allSeattleReady) return focused
+    return retainFocusedVenue(partitionColdStartCatalog(focused).launch, venues, hereVenueId)
+  }, [allSeattleReady, hereVenueId, venues, visibleVenues])
+  const tonightVenues = useMemo(
+    () => (allSeattleReady ? visibleVenues : partitionColdStartCatalog(visibleVenues).launch),
+    [allSeattleReady, visibleVenues],
   )
   const handleVenueClick = useCallback(
     (venue: Venue) => {
@@ -300,16 +320,10 @@ export function MainTabRouter() {
     }
   }, [handleCreatePulse, hereVenueId, isPlaceholder, location.search, session, setSelectedVenue, venues])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const idle = window.requestIdleCallback
-      ?? ((cb: () => void) => window.setTimeout(cb, 400))
-    const id = idle(() => setSurgingReady(true))
-    return () => {
-      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id as number)
-      else window.clearTimeout(id as number)
-    }
-  }, [])
+  useEffect(() => scheduleAllSeattleRelease(() => {
+    setAllSeattleReady(true)
+    setSurgingReady(true)
+  }), [])
 
   const handleMapPinClick = useCallback((venue: Venue) => {
     handleCreatePulse(venue.id)
@@ -392,7 +406,7 @@ export function MainTabRouter() {
             )}
           >
             <TonightHomeHeader
-              venues={visibleVenues}
+              venues={tonightVenues}
               pulses={visiblePulses}
               userLocation={userLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
@@ -553,6 +567,8 @@ export function MainTabRouter() {
               currentUser={currentUser}
               pulses={visiblePulses}
               venues={visibleVenues}
+              notifications={notifications}
+              onNotificationsChange={setNotifications}
               onNotificationClick={handleNotificationClick}
             />
           </motion.div>

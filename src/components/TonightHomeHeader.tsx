@@ -150,7 +150,7 @@ export function TonightHomeHeader({
   )
 
   return (
-    <section aria-labelledby="tonight-home-heading" className="shrink-0">
+    <section aria-labelledby="tonight-home-heading" data-surface="tonight" className="shrink-0">
       {onSurfaceChange && (
         <FeedTabBar
           tabs={MAP_TABS}

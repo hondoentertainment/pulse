@@ -198,7 +198,7 @@ export interface PulseWithUser extends Pulse {
   venue: Venue
 }
 
-export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact' | 'wave'
+export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact' | 'wave' | 'venue_surge' | 'owner_reply'
 
 export interface Notification {
   id: string
@@ -223,6 +223,7 @@ export interface NotificationWithData extends Notification {
 export interface GroupedNotification extends NotificationWithData {
   groupedUsers?: User[]
   groupedReactionTypes?: ('fire' | 'eyes' | 'skull' | 'lightning')[]
+  groupedIds?: string[]
   count?: number
 }
 

@@ -17,16 +17,27 @@ export function groupNotifications(
   const grouped: Map<string, GroupedNotification> = new Map()
   const standalone: GroupedNotification[] = []
 
+  const seenIds = new Set<string>()
+
   for (const notification of notifications) {
+    if (seenIds.has(notification.id)) continue
+    seenIds.add(notification.id)
+
     let shouldGroup = false
     let groupKey = ''
 
     if (notification.type === 'pulse_reaction' && notification.pulseId && preferences.groupReactions) {
       shouldGroup = true
       groupKey = `reaction_${notification.pulseId}`
-    } else if (notification.type === 'friend_pulse' && notification.venueId && preferences.groupFriendPulses) {
+    } else if (
+      (notification.type === 'friend_pulse'
+        || notification.type === 'venue_surge'
+        || notification.type === 'owner_reply')
+      && notification.venueId
+    ) {
+      // Always collapse these return triggers. A preference must not reopen a storm.
       shouldGroup = true
-      groupKey = `friend_pulse_${notification.venueId}_${getTimeWindow(notification.createdAt)}`
+      groupKey = `${notification.type}_${notification.venueId}_${getTimeWindow(notification.createdAt)}`
     } else if (notification.type === 'trending_venue' && notification.venueId && preferences.groupTrendingVenues) {
       shouldGroup = true
       groupKey = `trending_${notification.venueId}_${getTimeWindow(notification.createdAt)}`
@@ -35,6 +46,7 @@ export function groupNotifications(
     if (shouldGroup && groupKey) {
       if (grouped.has(groupKey)) {
         const existing = grouped.get(groupKey)!
+        existing.groupedIds = [...(existing.groupedIds ?? [existing.id]), notification.id]
         
         if (!existing.groupedUsers) {
           existing.groupedUsers = existing.user ? [existing.user] : []
@@ -67,7 +79,7 @@ export function groupNotifications(
           existing.read = false
         }
       } else {
-        grouped.set(groupKey, { ...notification })
+        grouped.set(groupKey, { ...notification, groupedIds: [notification.id] })
       }
     } else {
       standalone.push(notification)

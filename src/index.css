@@ -213,6 +213,20 @@ html[data-compose-lift] [data-testid="create-pulse-fab"] {
   bottom: calc(12.75rem + env(safe-area-inset-bottom, 0px));
 }
 
+@media (prefers-contrast: more) {
+  [data-surface='map'],
+  [data-surface='tonight'],
+  [data-surface='composer'] {
+    color: oklch(0.98 0 0);
+  }
+
+  [data-surface='map'] .text-muted-foreground,
+  [data-surface='tonight'] .text-muted-foreground,
+  [data-surface='composer'] .text-muted-foreground {
+    color: oklch(0.92 0 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

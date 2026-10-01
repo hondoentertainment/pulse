@@ -83,6 +83,7 @@ export async function listOpsReports(): Promise<OpsReportRow[]> {
 export async function updateOpsReport(input: {
   reportId: string
   status: 'pending' | 'reviewed' | 'actioned' | 'dismissed'
+  reason?: string
 }): Promise<void> {
   const headers = await authHeader()
   const res = await fetch('/api/pulses/report', {

@@ -6,6 +6,7 @@ import { TrustPinChips } from '@/components/TrustPinChips'
 import { OpenNowChip } from '@/components/OpenNowChip'
 import { buildTrustGlance, compactTrustPinChips, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '@/lib/trust-glance'
 import { markMapInteractive } from '@/lib/cold-start'
+import { prefersReducedMotion } from '@/lib/accessibility'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
   buildMapLiveToast,
@@ -226,10 +227,6 @@ export const InteractiveMap = memo(function InteractiveMap({
   }, [userLocation, followUser, venues])
 
   useEffect(() => {
-    markMapInteractive()
-  }, [])
-
-  useEffect(() => {
     if (!focusVenueId) return
     const venue = venues.find((item) => item.id === focusVenueId)
     if (!venue?.location) return
@@ -420,6 +417,7 @@ export const InteractiveMap = memo(function InteractiveMap({
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
 
       drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+      markMapInteractive()
     })
     return () => window.cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -482,7 +480,7 @@ export const InteractiveMap = memo(function InteractiveMap({
   }
 
   const startInertia = () => {
-    if (!center) return
+    if (!center || prefersReducedMotion()) return
     const MIN_VELOCITY = 0.0000008
     const FRICTION_PER_FRAME = 0.9
     let lastTime = performance.now()
@@ -795,27 +793,35 @@ export const InteractiveMap = memo(function InteractiveMap({
 
     switch (e.key) {
       case 'ArrowUp':
+        e.preventDefault()
         setCenter({ ...center, lat: center.lat + panAmount })
         setFollowUser(false)
         break
       case 'ArrowDown':
+        e.preventDefault()
         setCenter({ ...center, lat: center.lat - panAmount })
         setFollowUser(false)
         break
       case 'ArrowLeft':
+        e.preventDefault()
         setCenter({ ...center, lng: center.lng - panAmount })
         setFollowUser(false)
         break
       case 'ArrowRight':
+        e.preventDefault()
         setCenter({ ...center, lng: center.lng + panAmount })
         setFollowUser(false)
         break
       case '+':
       case '=':
+        e.preventDefault()
         handleZoomIn()
         break
       case '-':
+        e.preventDefault()
         handleZoomOut()
+        break
+      default:
         break
     }
   }
@@ -1053,14 +1059,15 @@ export const InteractiveMap = memo(function InteractiveMap({
     <div
       ref={containerRef}
       role="application"
-      aria-label="Venue map. Use arrow keys to pan, plus and minus to zoom."
+      data-surface="map"
+      aria-label="Venue map. Use arrow keys to pan, plus and minus to zoom. Energy is labeled in words."
       className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
       <nav aria-label="Venues on this map" className="sr-only">
         <ul>
-          {venues.map((venue) => (
+          {filteredVenues.map((venue) => (
             <li key={`map-list-${venue.id}`}>
               <button
                 type="button"
