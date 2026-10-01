@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   decideVenueSurgeNotify,
   isWithinQuietHours,
+  parseQuietHour,
   shouldDeliverSurgePush,
   surgeRateLimitOpen,
   venueSurgeNotifyPayload,
@@ -57,6 +58,10 @@ describe('quiet hours and mute', () => {
     expect(isWithinQuietHours({ hour: 21, start: 22, end: 7 })).toBe(false)
     expect(isWithinQuietHours({ hour: 1, start: null, end: null })).toBe(false)
     expect(isWithinQuietHours({ hour: 1, start: 1, end: 1 })).toBe(false)
+    expect(parseQuietHour('22')).toBe(22)
+    expect(parseQuietHour('7')).toBe(7)
+    expect(parseQuietHour('24')).toBeNull()
+    expect(parseQuietHour('')).toBeNull()
   })
 
   it('drops muted venues and quiet-hour subscribers', () => {

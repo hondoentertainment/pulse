@@ -1,6 +1,7 @@
 /**
  * Live-pulse Web Push fan-out.
- * Missing VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY is an honest no-op.
+ * Missing VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VITE_VAPID_PUBLIC_KEY is an honest no-op.
+ * The Vite public key must match VAPID_PUBLIC_KEY. No keys are generated here.
  */
 
 import {
@@ -17,10 +18,12 @@ import {
   venueSurgeNotifyPayload,
 } from '../../src/lib/venue-surge-notify.js'
 import { createAdminClient } from './supabase-server.js'
+import { claimVenueSurgeNotice, type SurgeNoticeWriter } from './venue-surge-claim.js'
 
 export interface WebPushEnv {
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string
+  VITE_VAPID_PUBLIC_KEY?: string
   VAPID_SUBJECT?: string
 }
 
@@ -62,6 +65,23 @@ export function hasVapidKeys(env: WebPushEnv = process.env): boolean {
   return readVapid(env) !== null
 }
 
+/** Surge fan-out also needs the same public key the browser used to subscribe. */
+export function hasVenueSurgeVapid(env: WebPushEnv = process.env): boolean {
+  const server = readVapid(env)
+  const clientKey = env.VITE_VAPID_PUBLIC_KEY?.trim()
+  if (!server || !clientKey) return false
+  return server.publicKey === clientKey
+}
+
+function vapidNoopMessage(env: WebPushEnv): string {
+  const publicKey = env.VAPID_PUBLIC_KEY?.trim()
+  const clientKey = env.VITE_VAPID_PUBLIC_KEY?.trim()
+  if (publicKey && clientKey && publicKey !== clientKey) {
+    return '[web-push] no-op (VAPID public keys do not match)'
+  }
+  return '[web-push] no-op (VAPID keys missing)'
+}
+
 export async function deliverWebPush(
   subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
   payload: GlancePushPayload,
@@ -86,8 +106,8 @@ export async function notifyLivePulse(
   input: LivePulseNotifyInput,
   env: WebPushEnv = process.env,
 ): Promise<LivePulseNotifyResult> {
-  if (!hasVapidKeys(env)) {
-    console.info('[web-push] no-op (VAPID keys missing)', { venueId: input.venueId })
+  if (!hasVenueSurgeVapid(env)) {
+    console.info(vapidNoopMessage(env), { venueId: input.venueId })
     return { attempted: false, sent: 0, skipped: 0, reason: 'missing_vapid' }
   }
 
@@ -119,6 +139,7 @@ export async function notifyLivePulse(
       .select('id, energy_rating')
       .eq('venue_id', input.venueId)
       .gte('created_at', since)
+      .order('created_at', { ascending: false })
       .limit(40),
     admin
       .from('venue_surge_notices')
@@ -209,7 +230,7 @@ export async function notifyLivePulse(
     venueName: input.venueName,
   })
   const hour = seattleHour(new Date())
-  let sent = 0
+  const deliverable: Array<{ token: string; p256dh: string; auth: string }> = []
   let skipped = 0
   for (const row of subRows ?? []) {
     if (typeof row.user_id !== 'string' || !webPushUserIds.has(row.user_id)) continue
@@ -231,6 +252,30 @@ export async function notifyLivePulse(
       skipped += 1
       continue
     }
+    deliverable.push({ token: row.token, p256dh: row.p256dh, auth: row.auth })
+  }
+
+  if (deliverable.length === 0) {
+    return { attempted: true, sent: 0, skipped, reason: 'ok' }
+  }
+
+  const nowIso = new Date().toISOString()
+  const claim = await claimVenueSurgeNotice(surgeNoticeWriter(admin), {
+    venueId: input.venueId,
+    pulseId: input.pulseId ?? null,
+    nowIso,
+    cutoffIso: since,
+  })
+  if (claim === 'rate_limited') {
+    return { attempted: false, sent: 0, skipped: 0, reason: 'rate_limited' }
+  }
+  if (claim === 'unavailable') {
+    console.info('[web-push] surge rate-limit unavailable')
+    return { attempted: false, sent: 0, skipped: 0, reason: 'rate_limit_unavailable' }
+  }
+
+  let sent = 0
+  for (const row of deliverable) {
     const ok = await deliverWebPush(
       { endpoint: row.token, keys: { p256dh: row.p256dh, auth: row.auth } },
       surgePayload,
@@ -241,13 +286,30 @@ export async function notifyLivePulse(
     else skipped += 1
   }
 
-  if (sent > 0) {
-    await admin.from('venue_surge_notices').upsert({
-      venue_id: input.venueId,
-      notified_at: new Date().toISOString(),
-      pulse_id: input.pulseId ?? null,
-    }, { onConflict: 'venue_id' })
-  }
-
   return { attempted: true, sent, skipped, reason: 'ok' }
+}
+
+function surgeNoticeWriter(admin: NonNullable<ReturnType<typeof createAdminClient>>): SurgeNoticeWriter {
+  return {
+    async updateIfOlder(input) {
+      const { data, error } = await admin
+        .from('venue_surge_notices')
+        .update({ notified_at: input.notifiedAt, pulse_id: input.pulseId })
+        .eq('venue_id', input.venueId)
+        .lte('notified_at', input.olderThan)
+        .select('venue_id')
+      return {
+        error: error ? { code: error.code, message: error.message } : null,
+        rows: Array.isArray(data) ? data.length : 0,
+      }
+    },
+    async insert(input) {
+      const { error } = await admin.from('venue_surge_notices').insert({
+        venue_id: input.venueId,
+        notified_at: input.notifiedAt,
+        pulse_id: input.pulseId,
+      })
+      return { error: error ? { code: error.code, message: error.message } : null }
+    },
+  }
 }

@@ -79,6 +79,21 @@ describe('persistWebPushSubscription', () => {
     )
   })
 
+  it('copies quiet hours onto the web push row', async () => {
+    await persistWebPushSubscription({
+      endpoint: 'https://push.example/1',
+      keys: { p256dh: 'p', auth: 'a' },
+      quietHours: { start: 22, end: 7 },
+    })
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quiet_hours_start: 22,
+        quiet_hours_end: 7,
+      }),
+      { onConflict: 'user_id,token' },
+    )
+  })
+
   it('deletes the web row by user + endpoint', async () => {
     await removeWebPushSubscription('https://push.example/1')
     expect(from).toHaveBeenCalledWith('push_tokens')

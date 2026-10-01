@@ -111,7 +111,11 @@ export function venueSurgeNotifyPayload(input: {
 }
 
 export function parseQuietHour(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isInteger(value)) return null
-  if (value < 0 || value > 23) return null
-  return value
+  const hour = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== ''
+      ? Number(value)
+      : Number.NaN
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null
+  return hour
 }

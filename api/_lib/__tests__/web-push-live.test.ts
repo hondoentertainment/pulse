@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { encodeGlancePush } from '../../../src/lib/glance-push.js'
 import { venueSurgeNotifyPayload } from '../../../src/lib/venue-surge-notify.js'
-import { hasVapidKeys, notifyLivePulse } from '../web-push-live.js'
+import { hasVapidKeys, hasVenueSurgeVapid, notifyLivePulse } from '../web-push-live.js'
 
 describe('notifyLivePulse', () => {
   it('no-ops honestly when VAPID keys are missing', async () => {
@@ -37,12 +37,30 @@ describe('notifyLivePulse', () => {
     })
   })
 
-  it('requires both public and private keys', () => {
+  it('requires both public and private keys for the shared sender', () => {
     expect(hasVapidKeys({ VAPID_PUBLIC_KEY: 'only-public' })).toBe(false)
     expect(hasVapidKeys({ VAPID_PRIVATE_KEY: 'only-private' })).toBe(false)
     expect(hasVapidKeys({
       VAPID_PUBLIC_KEY: 'public',
       VAPID_PRIVATE_KEY: 'private',
+    })).toBe(true)
+  })
+
+  it('stays a surge no-op unless the Vite public key matches the server key', () => {
+    expect(hasVenueSurgeVapid({})).toBe(false)
+    expect(hasVenueSurgeVapid({
+      VAPID_PUBLIC_KEY: 'public',
+      VAPID_PRIVATE_KEY: 'private',
+    })).toBe(false)
+    expect(hasVenueSurgeVapid({
+      VAPID_PUBLIC_KEY: 'public',
+      VAPID_PRIVATE_KEY: 'private',
+      VITE_VAPID_PUBLIC_KEY: 'other',
+    })).toBe(false)
+    expect(hasVenueSurgeVapid({
+      VAPID_PUBLIC_KEY: 'public',
+      VAPID_PRIVATE_KEY: 'private',
+      VITE_VAPID_PUBLIC_KEY: 'public',
     })).toBe(true)
   })
 })
