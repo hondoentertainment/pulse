@@ -24,11 +24,9 @@ export function LiveNowStrip({ venueId, pulses, onSelect, venueName, doorPin, ow
         Live now
       </h2>
       {liveNow.length === 0 ? (
-        <div className="border-y border-border py-5">
-          <p className="text-[15px] leading-5 text-muted-foreground">
-            No live reviews in the last 90 minutes. Be the first to pulse what’s happening.
-          </p>
-        </div>
+        <p className="pb-1 text-[13px] leading-[17px] text-muted-foreground">
+          No live reviews in the last 90 minutes. Be the first to pulse what’s happening.
+        </p>
       ) : (
         <div className="space-y-3 pt-2">
           {liveNow.map((pulse, index) => (

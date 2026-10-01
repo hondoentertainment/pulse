@@ -22,22 +22,22 @@ export function MapEmptyOverlay({
   const filteredAway = filteredCount === 0
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center px-4 pointer-events-none">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
       <div
         role="status"
-        className="pointer-events-auto w-full max-w-xs rounded-2xl border border-border bg-card/95 p-4 text-center shadow-2xl"
+        className="pointer-events-auto w-full rounded-[14px] border border-white/10 bg-[#12141a] p-3 text-left"
       >
-        <h3 className="text-[15px] font-bold text-foreground">
+        <h3 className="text-[14px] font-semibold leading-[18px] text-foreground">
           {filteredAway ? 'Filters hid Seattle pins' : 'Seattle pins are just off-screen'}
         </h3>
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+        <p className="mt-2 text-[12px] leading-4 text-muted-foreground">
           Map → venue → pulse. Location off uses Launch 33 / Downtown Seattle — we never invent live reviews.
         </p>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-2 flex flex-col gap-2">
           <button
             type="button"
             onClick={onShowCatalog}
-            className="h-11 w-full rounded-full bg-foreground text-[15px] font-bold text-background touch-manipulation"
+            className="h-11 w-full rounded-[14px] bg-white text-[14px] font-semibold text-[#06171f] touch-manipulation"
           >
             Show Seattle
           </button>
@@ -45,7 +45,7 @@ export function MapEmptyOverlay({
             <button
               type="button"
               onClick={onClearFilters}
-              className="h-11 w-full rounded-full bg-muted text-[15px] font-semibold text-foreground touch-manipulation"
+              className="h-11 w-full rounded-[14px] bg-muted text-[14px] font-semibold text-foreground touch-manipulation"
             >
               Clear filters
             </button>

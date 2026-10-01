@@ -8,14 +8,17 @@ interface TonightEmptyStateProps {
 
 export function TonightEmptyState({ empty, ctaLabel, onCta }: TonightEmptyStateProps) {
   return (
-    <section className="border-y border-border py-5" aria-label="Teach the Pulse loop">
+    <section className="pt-4" aria-label="Teach the Pulse loop">
       <h2 className="text-[15px] font-bold text-foreground">{empty.headline}</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">{empty.body}</p>
-      <ol className="mt-3 space-y-1.5 text-[15px] text-foreground">
+      <ol className="mt-3 flex items-stretch gap-2">
         {empty.steps.map((step, index) => (
-          <li key={step} className="flex gap-2">
-            <span className="font-semibold text-primary">{index + 1}.</span>
-            {step}
+          <li
+            key={step}
+            className="flex min-w-0 flex-1 flex-col gap-1 rounded-xl bg-card px-2.5 py-2.5"
+          >
+            <span className="text-[12px] font-bold leading-4 text-primary">{index + 1}</span>
+            <span className="text-[12px] font-medium leading-4 text-foreground">{step}</span>
           </li>
         ))}
       </ol>
@@ -23,7 +26,7 @@ export function TonightEmptyState({ empty, ctaLabel, onCta }: TonightEmptyStateP
         <button
           type="button"
           onClick={onCta}
-          className="mt-4 h-12 w-full rounded-full bg-primary text-[15px] font-bold text-primary-foreground"
+          className="mt-3 h-12 w-full rounded-[14px] bg-primary text-[15px] font-semibold text-primary-foreground"
         >
           {ctaLabel}
         </button>

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Pulse, Venue } from '@/lib/types'
 import { buildShareOgCard, getImHereMapPath } from '@/lib/sharing'
-import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
+import { formatTimeAgo, getEnergyColor, getEnergyLabel } from '@/lib/pulse-engine'
 import { ENERGY_CONFIG } from '@/lib/types'
 import { getVenueMapActivity } from '@/lib/map-live-reviews'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -12,8 +12,6 @@ import { resolveImHereAction } from '@/lib/im-here'
 import { confirmImHere } from '@/lib/im-here-confirm'
 import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
 import { InstallAffordance } from '@/components/InstallAffordance'
-import { SignalPill } from '@/components/ux/SignalPill'
-import { toneForEnergy } from '@/lib/signal-tone'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 
 interface ShareArrivalCardProps {
@@ -82,26 +80,28 @@ export function ShareArrivalCard({ venue, pulses, userLocation }: ShareArrivalCa
 
   return (
     <section className="space-y-3" aria-label={card.eyebrow}>
-      <div className="rounded-2xl border border-[rgba(115,209,255,0.4)] bg-[rgba(115,209,255,0.12)] p-3.5">
-        <p className="text-[13px] font-semibold text-accent">{card.eyebrow}</p>
-        <p className="mt-1 text-[12px] text-foreground">
-          You’re on {venue.name} · skip Welcome
-        </p>
-      </div>
       <div>
-        <h2 className="text-[26px] font-bold text-foreground">{card.title}</h2>
-        {place && (
-          <p className="mt-1 text-[13px] text-muted-foreground">{place}</p>
-        )}
+        <p className="text-[12px] font-semibold leading-4 text-accent">{card.eyebrow}</p>
+        <h1 className="mt-1.5 text-[28px] font-bold leading-9 text-foreground">{card.title}</h1>
+        <div className="mt-1 flex items-center justify-between gap-3 text-[13px] leading-[17px]">
+          {place ? (
+            <p className="min-w-0 text-muted-foreground">{place}</p>
+          ) : <span />}
+          <button
+            type="button"
+            className="shrink-0 font-semibold text-accent"
+            onClick={() => navigate('/')}
+          >
+            Skip Welcome
+          </button>
+        </div>
       </div>
       <div className={`${UX_CARD} p-3.5`}>
-        <div className="flex items-center gap-3.5">
-          <p className="text-[48px] font-bold leading-none text-foreground">{venue.pulseScore}</p>
-          <div>
-            <SignalPill tone={toneForEnergy(activity.latest?.energyRating ?? energyLabel.toLowerCase())}>
-              {energyLabel}
-            </SignalPill>
-            <div className="mt-1 flex flex-wrap items-center gap-x-1 text-[12px] text-muted-foreground">
+        <div className="flex flex-nowrap items-center gap-3.5">
+          <p className="shrink-0 text-[40px] font-bold leading-[44px] text-foreground">{venue.pulseScore}</p>
+          <div className="min-w-0">
+            <p className="text-[16px] font-semibold leading-[21px]" style={{ color: getEnergyColor(venue.pulseScore) }}>{energyLabel}</p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[12px] text-muted-foreground">
               {(() => {
                 const recent = pulses.filter((pulse) => {
                   const age = Date.now() - new Date(pulse.createdAt).getTime()
@@ -115,21 +115,14 @@ export function ShareArrivalCard({ venue, pulses, userLocation }: ShareArrivalCa
           </div>
         </div>
       </div>
+      <p className="text-[12px] leading-4 text-muted-foreground">
+        OG preview matches this card. Install only when this browser can add Pulse. Guests can view the pin; posting goes to /auth.
+      </p>
       {card.caption && (
         <p className="text-[14px] text-foreground">{card.caption}</p>
       )}
       <InstallAffordance surface="share" />
-      <div className="flex gap-2">
-        <button
-          type="button"
-          aria-label={card.cta}
-          aria-busy={busy}
-          disabled={busy}
-          onClick={() => { void handleImHere() }}
-          className={`${UX_CTA} flex-1 disabled:opacity-70`}
-        >
-          I’m here
-        </button>
+      <div className="fixed inset-x-0 z-40 mx-auto w-full max-w-2xl space-y-2 bg-background px-4 pb-2 pt-2 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]">
         <button
           type="button"
           onClick={() => {
@@ -144,14 +137,21 @@ export function ShareArrivalCard({ venue, pulses, userLocation }: ShareArrivalCa
             }
             navigate(getImHereMapPath(venue.id, { create: true }))
           }}
-          className="h-12 flex-1 rounded-[14px] border border-border bg-card px-3 text-[13px] font-semibold text-foreground"
+          className="flex h-12 w-full items-center justify-center rounded-[14px] border border-white/15 bg-background px-3 text-[14px] font-semibold text-foreground"
         >
           Post a live review
         </button>
+        <button
+          type="button"
+          aria-label={card.cta}
+          aria-busy={busy}
+          disabled={busy}
+          onClick={() => { void handleImHere() }}
+          className={`${UX_CTA} disabled:opacity-70`}
+        >
+          I’m here
+        </button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        OG preview matches this card. Install only when this browser can add Pulse. Guests can view the pin; posting goes to /auth.
-      </p>
     </section>
   )
 }

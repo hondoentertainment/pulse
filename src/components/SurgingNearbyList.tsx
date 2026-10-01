@@ -44,7 +44,7 @@ export const SurgingNearbyList = memo(function SurgingNearbyList({
 
   return (
     <section aria-labelledby="surging-nearby-heading">
-      <h2 id="surging-nearby-heading" className="pb-2 text-[15px] font-semibold text-foreground">
+      <h2 id="surging-nearby-heading" className="pb-1.5 text-[16px] font-semibold leading-[21px] text-foreground">
         Surging nearby
       </h2>
       {nearby.length === 0 ? (

@@ -150,7 +150,7 @@ export function TonightHomeHeader({
   )
 
   return (
-    <section aria-labelledby="tonight-home-heading">
+    <section aria-labelledby="tonight-home-heading" className="shrink-0">
       {onSurfaceChange && (
         <FeedTabBar
           tabs={MAP_TABS}
@@ -160,8 +160,15 @@ export function TonightHomeHeader({
         />
       )}
 
-      <header className="space-y-1 pt-3">
-        <h1 id="tonight-home-heading" className="text-[28px] font-bold tracking-tight text-foreground">
+      <header className={surface === 'map' ? 'space-y-1 pt-1' : 'space-y-1 pt-3'}>
+        <h1
+          id="tonight-home-heading"
+          className={
+            surface === 'map'
+              ? 'text-[22px] font-bold leading-[29px] tracking-tight text-foreground'
+              : 'text-[28px] font-bold leading-9 tracking-tight text-foreground'
+          }
+        >
           {surface === 'live' ? 'Live' : surface === 'map' ? 'Pulse' : 'Tonight'}
         </h1>
         {surface === 'tonight' && (
@@ -696,20 +703,18 @@ function TonightFeedRow({
           {formatTonightMetric(venue, pulses, activity)}
         </p>
       </button>
-      <div className="mt-1 flex items-center justify-center gap-2 text-[12px]">
-        <FollowVenueButton following={following} onClick={handleFollow} inline />
-        <span className="text-muted-foreground" aria-hidden>·</span>
+      <div className="mt-2 flex gap-2">
+        <FollowVenueButton following={following} onClick={handleFollow} equal />
         <button
           type="button"
-          className="min-h-11 px-1 font-medium text-foreground touch-manipulation"
+          className="flex h-11 min-w-0 flex-1 items-center justify-center rounded-[14px] bg-muted px-2 text-[13px] font-semibold text-foreground touch-manipulation"
           onClick={handleShare}
         >
           Share
         </button>
-        <span className="text-muted-foreground" aria-hidden>·</span>
         <button
           type="button"
-          className="min-h-11 px-1 font-medium text-accent touch-manipulation"
+          className="flex h-11 min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#1a384d] px-2 text-[13px] font-semibold text-accent touch-manipulation"
           onClick={() => (onImHere ? onImHere(venue) : open())}
         >
           I’m here

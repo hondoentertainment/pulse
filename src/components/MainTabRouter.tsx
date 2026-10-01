@@ -54,6 +54,7 @@ import {
 import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import type { MapInventoryLayer } from '@/lib/map-filters'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { cn } from '@/lib/utils'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -225,6 +226,11 @@ export function MainTabRouter() {
   const [showFirstOpenCoach, setShowFirstOpenCoach] = useState(() => shouldShowFirstOpenCoach())
   const [surgingReady, setSurgingReady] = useState(false)
   const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
+  useEffect(() => {
+    const lift = activeTab === 'map' && mapSurface === 'map'
+    document.documentElement.toggleAttribute('data-compose-lift', lift)
+    return () => document.documentElement.removeAttribute('data-compose-lift')
+  }, [activeTab, mapSurface])
   const mapFloatVenue = useMemo(() => {
     if (hereVenueId) {
       const focused = mapVenues.find((venue) => venue.id === hereVenueId)
@@ -374,7 +380,17 @@ export function MainTabRouter() {
         )}
 
         {activeTab === 'map' && (
-          <motion.div key="map" {...tabMotion} className="mx-auto max-w-2xl space-y-3 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6">
+          <>
+          <motion.div
+            key="map"
+            {...tabMotion}
+            className={cn(
+              'mx-auto max-w-2xl px-4',
+              mapSurface === 'map'
+                ? 'flex flex-col gap-2 pb-[calc(13rem+env(safe-area-inset-bottom,0px))] pt-3'
+                : 'space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6',
+            )}
+          >
             <TonightHomeHeader
               venues={visibleVenues}
               pulses={visiblePulses}
@@ -425,28 +441,7 @@ export function MainTabRouter() {
             )}
             {mapSurface === 'map' && (
               <>
-                {showFirstOpenCoach && (
-                  <FirstOpenCoach
-                    onDismiss={() => {
-                      dismissFirstOpenCoach()
-                      setShowFirstOpenCoach(false)
-                    }}
-                  />
-                )}
-                <InstallAffordance
-                  onInstalled={() => {
-                    if (signedIn) setShowPushNotify(true)
-                  }}
-                />
-                {showPushNotify && signedIn && (
-                  <PushNotifyAffordance
-                    userLocation={userLocation}
-                    onDone={() => {
-                      clearPushNotifyTrigger()
-                      setShowPushNotify(false)
-                    }}
-                  />
-                )}
+                <div className="flex shrink-0 flex-col gap-2">
                 <MapSearch
                   venues={visibleVenues}
                   onVenueSelect={handleVenueClick}
@@ -471,7 +466,9 @@ export function MainTabRouter() {
                   }}
                   onToggleNearMe={() => setMapNearMe((current) => !current)}
                 />
-                <div className="relative h-[280px] overflow-hidden rounded-[20px] bg-[#12141a]" role="region" aria-labelledby="tonight-home-heading">
+                </div>
+                <div className="relative h-[46vh] min-h-[300px] shrink-0" role="region" aria-labelledby="tonight-home-heading">
+                  <div className="absolute inset-0 overflow-hidden rounded-[20px] bg-[#080a0f]">
                   <InteractiveMap
                     venues={mapVenues}
                     userLocation={userLocation}
@@ -494,29 +491,60 @@ export function MainTabRouter() {
                     <button
                       type="button"
                       onClick={() => handleVenueClick(mapFloatVenue)}
-                      className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-[rgba(23,23,26,0.95)] px-3 py-2 shadow-lg"
+                      className="absolute bottom-4 left-4 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-[#1a1c21] py-2 pl-3 pr-2.5 shadow-lg"
                     >
                       <span className="max-w-[140px] truncate text-[12px] font-semibold text-foreground">{mapFloatVenue.name}</span>
                       <SignalPill tone={mapFloatEnergy.tone}>{mapFloatEnergy.label}</SignalPill>
                     </button>
                   )}
+                  </div>
                 </div>
-                {surgingReady ? (
-                  <SurgingNearbyList
-                    venues={visibleVenues}
-                    pulses={visiblePulses}
-                    userLocation={userLocation}
-                    unitSystem={unitSystem}
-                    onVenueClick={handleVenueClick}
-                    onBeFirstPulse={handleBeFirstPulse}
-                    onShareVenue={handleShareVenue}
+                <div className="flex shrink-0 flex-col gap-2">
+                {showFirstOpenCoach && (
+                  <FirstOpenCoach
+                    onDismiss={() => {
+                      dismissFirstOpenCoach()
+                      setShowFirstOpenCoach(false)
+                    }}
                   />
-                ) : (
-                  <div className="h-16 animate-pulse rounded-lg bg-muted" aria-hidden />
+                )}
+                <InstallAffordance
+                  onInstalled={() => {
+                    if (signedIn) setShowPushNotify(true)
+                  }}
+                />
+                {showPushNotify && signedIn && (
+                  <PushNotifyAffordance
+                    userLocation={userLocation}
+                    onDone={() => {
+                      clearPushNotifyTrigger()
+                      setShowPushNotify(false)
+                    }}
+                  />
+                )}
+                </div>
+                {!surgingReady && (
+                  <div className="h-16 shrink-0 animate-pulse rounded-lg bg-muted" aria-hidden />
                 )}
               </>
             )}
           </motion.div>
+          {mapSurface === 'map' && surgingReady && (
+            <div className="fixed inset-x-0 z-30 mx-auto w-full max-w-2xl bg-background px-4 pt-2 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]">
+              <div className="max-h-[7.5rem] overflow-y-auto">
+                <SurgingNearbyList
+                  venues={visibleVenues}
+                  pulses={visiblePulses}
+                  userLocation={userLocation}
+                  unitSystem={unitSystem}
+                  onVenueClick={handleVenueClick}
+                  onBeFirstPulse={handleBeFirstPulse}
+                  onShareVenue={handleShareVenue}
+                />
+              </div>
+            </div>
+          )}
+          </>
         )}
 
         {activeTab === 'notifications' && (

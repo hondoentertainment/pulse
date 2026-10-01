@@ -111,6 +111,8 @@ export function AppRoutes() {
   // so without this a direct load / refresh of /discover, /events, etc. would
   // show the default tab or a blank sub-page.
   const pathname = location.pathname
+  const shareArrival = /^\/venue\/[^/]+\/?$/.test(pathname)
+    && (location.search.includes('from=share') || location.search.includes('from=invite'))
   useEffect(() => {
     if (isTabPath(pathname)) {
       setActiveTab(deriveActiveTab(pathname))
@@ -347,6 +349,7 @@ export function AppRoutes() {
         </Suspense>
       )}
 
+      {!shareArrival && (
       <motion.button
         type="button"
         data-testid="create-pulse-fab"
@@ -360,6 +363,7 @@ export function AppRoutes() {
       >
         <Plus size={28} weight="bold" />
       </motion.button>
+      )}
     </main>
   )
 }

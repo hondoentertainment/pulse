@@ -209,6 +209,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html[data-compose-lift] [data-testid="create-pulse-fab"] {
+  bottom: calc(12.75rem + env(safe-area-inset-bottom, 0px));
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
