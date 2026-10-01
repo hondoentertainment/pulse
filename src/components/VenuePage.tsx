@@ -266,6 +266,14 @@ export function VenuePage({
   }, [arrivalWatch, showArrivalPrompt])
 
   useEffect(() => {
+    if (!fromShare || typeof document === 'undefined') return
+    const node = document.getElementById('energy')
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ block: 'center' })
+    }
+  }, [fromShare, venue.id])
+
+  useEffect(() => {
     track('venue_viewed', { venueId: venue.id, source: fromShare ? 'share' : 'deeplink' })
     trackFunnel('venue_open', {
       venueId: venue.id,

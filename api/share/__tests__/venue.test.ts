@@ -1,26 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestLike, ResponseLike } from '../../_lib/http'
 
-const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock, loadShareVenueCoverUrlMock } = vi.hoisted(() => ({
+const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock } = vi.hoisted(() => ({
   loadShareOgEnergyMock: vi.fn(),
   loadShareNeighborhoodOgMock: vi.fn(),
-  loadShareVenueCoverUrlMock: vi.fn(),
 }))
 
 vi.mock('../../_lib/share-og-lookup.js', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
-  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 vi.mock('../../_lib/share-og-lookup.ts', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
-  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 vi.mock('../../_lib/share-og-lookup', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
-  loadShareVenueCoverUrl: (...args: unknown[]) => loadShareVenueCoverUrlMock(...args),
 }))
 
 import handler from '../venue'
@@ -56,8 +52,6 @@ describe('GET /api/share/venue', () => {
   beforeEach(() => {
     loadShareOgEnergyMock.mockReset()
     loadShareNeighborhoodOgMock.mockReset()
-    loadShareVenueCoverUrlMock.mockReset()
-    loadShareVenueCoverUrlMock.mockResolvedValue(null)
   })
 
   it('sets og:title to Neumos when the venue fetch returns', async () => {
@@ -83,8 +77,14 @@ describe('GET /api/share/venue', () => {
     expect(state.body).toContain('property="og:title" content="Neumos"')
     expect(state.body).toContain('property="og:description" content="Electric · 12m ago · Music Venue · Capitol Hill, Seattle"')
     expect(state.body).toContain(`<title>Neumos</title>`)
-    expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share`)
+    expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share#energy`)
     expect(state.body).toContain(`/api/share/og?venueId=${NEUMOS_ID}`)
+    expect(state.body).toContain('property="og:image:type" content="image/png"')
+    expect(state.body).toContain('property="og:image:alt" content="Electric · 12m ago"')
+    expect(state.body).toContain('name="twitter:title" content="Neumos"')
+    expect(state.body).toContain('name="twitter:description" content="Electric · 12m ago · Music Venue · Capitol Hill, Seattle"')
+    expect(state.body).toContain(`property="og:url" content="https://pulse-chi-nine.vercel.app/api/share/venue?venueId=${NEUMOS_ID}"`)
+    expect(state.body).not.toContain('http-equiv="refresh"')
     expect(state.body).not.toContain('Venue on Pulse')
   })
 
@@ -103,7 +103,8 @@ describe('GET /api/share/venue', () => {
     expect(state.headers['content-type']).toContain('text/html')
     expect(state.body).toContain('og:title" content="Venue on Pulse"')
     expect(state.body).toContain('property="og:description"')
-    expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share`)
+    expect(state.body).toContain(`/venue/${NEUMOS_ID}?from=share#energy`)
+    expect(state.body).not.toContain('http-equiv="refresh"')
   })
 
   it('sets a real neighborhood card when a group chat drops /n/capitol-hill', async () => {

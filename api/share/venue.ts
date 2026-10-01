@@ -1,8 +1,10 @@
 /**
  * GET /api/share/venue?venueId=
  *
- * Lightweight Open Graph card for crawlers. Humans are sent to /venue/:id.
- * Does not restore Signal push and does not invent venue energy.
+ * Lightweight Open Graph card for crawlers. Humans are sent to /venue/:id#energy
+ * with a script, not a meta refresh — crawlers that follow a refresh would
+ * land on index.html and lose the venue name. The image stays the PNG energy
+ * card (name + freshness), not a cover photo. Does not restore Signal.
  */
 
 import {
@@ -11,7 +13,8 @@ import {
   type RequestLike,
   type ResponseLike,
 } from '../_lib/http.js'
-import { loadShareNeighborhoodOg, loadShareOgEnergy, loadShareVenueCoverUrl } from '../_lib/share-og-lookup.js'
+import { loadShareNeighborhoodOg, loadShareOgEnergy } from '../_lib/share-og-lookup.js'
+import { SHARE_OG_HEIGHT, SHARE_OG_WIDTH } from '../_lib/share-og-png.js'
 import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-slugs.js'
 
 function escapeHtml(value: string): string {
@@ -69,14 +72,21 @@ export default async function handler(
       : neighborhoodSlug
         ? `${origin}/n/${encodeURIComponent(neighborhoodSlug)}`
         : `${origin}/?here=${encodeURIComponent(venueId ?? '')}`
-    let ogImage = venueId
+    const humanUrl = venueId && landingFrom === 'share' ? `${target}#energy` : target
+    const ogImage = venueId
       ? `${origin}/api/share/og?venueId=${encodeURIComponent(venueId)}`
       : neighborhoodSlug
         ? `${origin}/api/share/og?n=${encodeURIComponent(neighborhoodSlug)}`
         : `${origin}/api/share/og`
+    const selfUrl = venueId
+      ? `${origin}/api/share/venue?venueId=${encodeURIComponent(venueId)}${landingFrom === 'invite' ? '&from=invite' : ''}`
+      : neighborhoodSlug
+        ? `${origin}/api/share/venue?n=${encodeURIComponent(neighborhoodSlug)}`
+        : `${origin}/api/share/venue`
 
     let title = 'Pulse'
     let description = 'Nightlife energy on a map — live reviews from people who are there.'
+    let energyLine = 'Live reviews on Pulse'
     if (venueId) {
       title = 'Venue on Pulse'
       try {
@@ -84,9 +94,8 @@ export default async function handler(
         if (card) {
           title = card.title
           description = card.description
+          energyLine = card.energyLine
         }
-        const cover = await loadShareVenueCoverUrl(venueId)
-        if (cover) ogImage = cover
       } catch {
         /* keep generic card */
       }
@@ -97,48 +106,76 @@ export default async function handler(
         if (card) {
           title = card.title
           description = card.description
+          energyLine = card.energyLine
         }
       } catch {
         /* keep generic card */
       }
     }
 
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <meta name="description" content="${escapeHtml(description)}" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="${escapeHtml(title)}" />
-  <meta property="og:description" content="${escapeHtml(description)}" />
-  <meta property="og:url" content="${escapeHtml(target)}" />
-  <meta property="og:image" content="${escapeHtml(ogImage)}" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="${escapeHtml(ogImage)}" />
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(target)}" />
-  <link rel="canonical" href="${escapeHtml(target)}" />
-</head>
-<body>
-  <p><a href="${escapeHtml(target)}">${escapeHtml(title)}</a></p>
-</body>
-</html>`
+    const html = renderShareHtml({
+      title,
+      description,
+      energyLine,
+      image: ogImage,
+      pageUrl: selfUrl,
+      humanUrl,
+    })
 
     writeHtml(res, html)
   } catch {
     const origin = originFromReq(req)
-    writeHtml(res, `<!DOCTYPE html>
+    writeHtml(res, renderShareHtml({
+      title: 'Pulse',
+      description: 'Nightlife energy on a map — live reviews from people who are there.',
+      energyLine: 'Live reviews on Pulse',
+      image: `${origin}/api/share/og`,
+      pageUrl: origin,
+      humanUrl: origin,
+    }))
+  }
+}
+
+function renderShareHtml(input: {
+  title: string
+  description: string
+  energyLine: string
+  image: string
+  pageUrl: string
+  humanUrl: string
+}): string {
+  const title = escapeHtml(input.title)
+  const description = escapeHtml(input.description)
+  const energyLine = escapeHtml(input.energyLine)
+  const image = escapeHtml(input.image)
+  const pageUrl = escapeHtml(input.pageUrl)
+  const humanUrl = escapeHtml(input.humanUrl)
+  const scriptTarget = JSON.stringify(input.humanUrl).replace(/</g, '\\u003c')
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Pulse</title>
-  <meta property="og:title" content="Pulse" />
-  <meta property="og:description" content="Nightlife energy on a map — live reviews from people who are there." />
-  <meta property="og:url" content="${escapeHtml(origin)}" />
+  <title>${title}</title>
+  <meta name="description" content="${description}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:url" content="${pageUrl}" />
+  <meta property="og:image" content="${image}" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="${SHARE_OG_WIDTH}" />
+  <meta property="og:image:height" content="${SHARE_OG_HEIGHT}" />
+  <meta property="og:image:alt" content="${energyLine}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${description}" />
+  <meta name="twitter:image" content="${image}" />
+  <meta name="twitter:image:alt" content="${energyLine}" />
+  <link rel="canonical" href="${pageUrl}" />
 </head>
 <body>
-  <p><a href="${escapeHtml(origin)}">Pulse</a></p>
+  <p><a href="${humanUrl}">${title}</a></p>
+  <script>location.replace(${scriptTarget})</script>
 </body>
-</html>`)
-  }
+</html>`
 }

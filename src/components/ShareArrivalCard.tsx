@@ -79,7 +79,7 @@ export function ShareArrivalCard({ venue, pulses, userLocation }: ShareArrivalCa
   }
 
   return (
-    <section className="space-y-3" aria-label={card.eyebrow}>
+    <section id="energy" className="space-y-3" aria-label={card.eyebrow}>
       <div>
         <p className="text-[12px] font-semibold leading-4 text-accent">{card.eyebrow}</p>
         <h1 className="mt-1.5 text-[28px] font-bold leading-9 text-foreground">{card.title}</h1>
