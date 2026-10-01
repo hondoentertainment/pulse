@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useKV } from '@github/spark/hooks'
 import { useAppState } from '@/hooks/use-app-state'
 import { VenueInboxPage } from '@/components/VenueInboxPage'
@@ -31,6 +31,8 @@ export const E2E_VERIFIED_CLAIM_KEY = 'pulse:e2e:verified-claim'
 export function VenueInboxRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const highlightReply = searchParams.get('highlight') === 'reply'
   const { venues, currentUser, moderatedPulses, contentReports, setContentReports } = useAppState()
   const { session, isPlaceholder, signInWithOtp, user } = useSupabaseAuth()
   const [localClaims, setLocalClaims] = useKV<VenueClaim[]>('venue-claims', [])
@@ -245,6 +247,12 @@ export function VenueInboxRoute() {
   }
 
   return (
+    <div className="min-h-screen bg-background">
+      {highlightReply && (
+        <p role="status" data-testid="notify-highlight" className="mx-auto max-w-2xl px-4 pt-4 text-sm font-semibold text-foreground">
+          Owner reply · highlighted in this inbox
+        </p>
+      )}
     <VenueInboxPage
       venue={venue}
       pulses={moderatedPulses}
@@ -277,5 +285,6 @@ export function VenueInboxRoute() {
         }
       }}
     />
+    </div>
   )
 }

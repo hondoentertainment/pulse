@@ -18,6 +18,7 @@ import { requireAuth, decodeJwt } from '../_lib/auth.js'
 import { consume } from '../_lib/rate-limit.js'
 import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
 import { createUserClient } from '../_lib/supabase-server.js'
+import { moderationResolution } from '../_lib/moderation-sla.js'
 
 const REPORT_REASONS = [
   'spam',
@@ -156,6 +157,16 @@ export default async function handler(
       fail(res, 400, 'invalid_input', 'status and reportId or pulseId are required')
       return
     }
+    const decision = moderationResolution({
+      admin,
+      status,
+      reason: typeof req.body.reason === 'string' ? req.body.reason : null,
+    })
+    if (!decision.ok) {
+      fail(res, 400, 'invalid_input', decision.message)
+      return
+    }
+    const resolutionPatch = decision.note ? { resolution_note: decision.note } : {}
 
     if (!admin) {
       const targetPulseId = pulseId ?? await (async () => {
@@ -191,7 +202,7 @@ export default async function handler(
     if (pulseId && !reportId) {
       const { data, error } = await client
         .from('pulse_reports')
-        .update({ status, reviewed_at: reviewedAt })
+        .update({ status, reviewed_at: reviewedAt, ...resolutionPatch })
         .eq('pulse_id', pulseId)
         .select('id, pulse_id, status, reviewed_at')
       if (error) {
@@ -207,6 +218,7 @@ export default async function handler(
       .update({
         status,
         reviewed_at: reviewedAt,
+        ...resolutionPatch,
       })
       .eq('id', reportId)
       .select('id, pulse_id, status, reviewed_at')

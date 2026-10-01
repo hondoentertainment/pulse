@@ -38,6 +38,7 @@ import { nextFollowedVenueIds, VENUE_FOLLOW_COPY } from '@/lib/venue-follows'
 import { checkPulseRateLimit, pulseRateLimitFromUnknown } from '@/lib/pulse-rate-limit'
 import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
+import { inAppNotifyHref, mergeOwnerReplyNotices, type OwnerReplyNoticeInput } from '@/lib/in-app-notify'
 import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
 import { getVenueSharePreviewUrl } from '@/lib/sharing'
 import { track } from '@/lib/observability/analytics'
@@ -430,10 +431,16 @@ export function useAppHandlers() {
   }, [currentUser, setPulses])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
+    if (notification.venue) setSelectedVenue(notification.venue)
+    const href = inAppNotifyHref(notification)
+    if (href) {
+      navigate(href)
+      return
+    }
     if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) setSelectedVenue(notification.venue)
     else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) setSelectedVenue(notification.venue)
     setActiveTab('trending')
-  }, [setActiveTab, setSelectedVenue])
+  }, [navigate, setActiveTab, setSelectedVenue])
 
   const handleAddFriend = useCallback((userId: string) => {
     if (!currentUser) return
@@ -669,6 +676,10 @@ export function useAppHandlers() {
     }
   }, [currentUser?.id, isPlaceholder, navigate, session, setUserBlocks])
 
+  const handleOwnerReplyNotices = useCallback((replies: OwnerReplyNoticeInput[]) => {
+    setNotifications((current) => mergeOwnerReplyNotices(current ?? [], replies))
+  }, [setNotifications])
+
   const handleCrewTonight = useCallback(async (venueId: string, memberUserIds: string[]) => {
     const writeRedirect = getWriteAuthRedirect({
       isPlaceholder,
@@ -734,6 +745,7 @@ export function useAppHandlers() {
     handleBlockUser,
     handleCrewTonight,
     handleDoorPin,
+    handleOwnerReplyNotices,
   }), [
     handleAddFriend,
     handleCreatePulse,
@@ -757,5 +769,6 @@ export function useAppHandlers() {
     handleBlockUser,
     handleCrewTonight,
     handleDoorPin,
+    handleOwnerReplyNotices,
   ])
 }

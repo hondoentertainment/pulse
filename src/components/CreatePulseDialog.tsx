@@ -354,6 +354,7 @@ export function CreatePulseDialog({
       <DialogContent
         fullscreen
         hideClose
+        data-surface="composer"
         className="flex flex-col gap-5 overflow-y-auto bg-background pt-5"
       >
         <DialogHeader className="gap-0 text-left">

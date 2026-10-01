@@ -23,6 +23,7 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
+import { unreadYouBadgeCount } from '@/lib/in-app-notify'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
@@ -453,7 +454,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [userLocation]
   )
 
-  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true)
+  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true, setNotifications)
 
   useEffect(() => {
     if (hasSupabaseConfig || realtimeLocation || simulatedLocation || locationPermissionDenied) return
@@ -679,7 +680,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [currentUser, pulseAuthorsById],
   )
   const unreadNotificationCount = useMemo(
-    () => (notifications || []).filter(n => !n.read).length,
+    () => unreadYouBadgeCount(notifications || []),
     [notifications]
   )
 

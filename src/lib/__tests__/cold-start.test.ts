@@ -7,9 +7,12 @@ import {
   dismissColdStartTip,
   shouldShowColdStartTip,
   START_EXPLORING_LABEL,
+  COLD_START_BUDGET_MS,
+  coldStartWithinBudget,
   formatColdStartDebug,
   markMapInteractive,
   markNavigationStart,
+  partitionColdStartCatalog,
 } from '../cold-start'
 
 function memoryStore(initial: Record<string, string> = {}): Storage {
@@ -54,5 +57,17 @@ describe('cold start', () => {
     expect(markMapInteractive(perf)).toBe(840)
     expect(formatColdStartDebug(840)).toContain('840ms')
     expect(formatColdStartDebug(840)).toContain('<2000ms')
+  })
+
+  it('keeps Launch 33 in the first pass and defers All Seattle', () => {
+    const split = partitionColdStartCatalog([
+      { id: 'launch', inventorySource: 'curated-seed', seeded: true },
+      { id: 'osm', inventorySource: 'osm', seeded: true },
+    ])
+    expect(split.launch.map((venue) => venue.id)).toEqual(['launch'])
+    expect(split.deferred.map((venue) => venue.id)).toEqual(['osm'])
+    expect(COLD_START_BUDGET_MS).toBe(2000)
+    expect(coldStartWithinBudget(1840)).toBe(true)
+    expect(coldStartWithinBudget(2400)).toBe(false)
   })
 })

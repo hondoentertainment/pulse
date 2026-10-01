@@ -197,6 +197,12 @@ Code for **WC-1, WC-2, WC-3, WC-5, WC-6, WC-8, WC-9** is in the agent PR. It doe
 | WC-6 Owner reply | One-tap reply writes `venue_owner_replies` and shows on Live now. Dismiss already PATCHes `pulse_reports`. | #85 phone/domain proof. Do not close #85 |
 | WC-8 Share funnel | Share card → install only if PWA-eligible → auth → first pulse. Existing funnel events. | WC-0.5 analytics keys. #86 phone proof |
 | WC-9 Focus hood | Capitol Hill seed list, density badge, empty-state copy | Claims and invites. No mass ownership edits |
+| WC-4 In-app notifications | Group venue surges, friend pulses, and owner replies. Tap deep-links to the venue or inbox with `highlight`. Unread badge on You. Storms collapse. | — |
+| WC-7 Moderation SLA | Report hides the pulse for the reporter immediately. `/ops` resolve/dismiss requires a reason on `pulse_reports.resolution_note`. | Apply `20261001160000_pulse_report_resolution_note.sql` |
+| WC-10 Crew tonight | 2–4 friends, one pinned venue. Members see each other’s I’m-here. Guests and other crews see nothing. | Apply `20261001161000_crew_tonight_member_read.sql`. No SMS |
+| WC-11 Cold start | Launch 33 first on `/`. All Seattle waits for idle. `pulse_map_interactive` after the canvas paints. Budget ~2s. | Mid-phone measurement. No second city |
+| WC-12 Accessibility | Map, Tonight, composer: keyboard, reduced motion, contrast. Energy labels are words. | — |
+| WC-13 Second city | Docs only: [docs/second-city-readiness.md](docs/second-city-readiness.md) | Do not launch or import a catalog |
 
 ## Suggested sequencing (after this PR)
 

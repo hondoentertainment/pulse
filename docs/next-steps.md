@@ -22,7 +22,17 @@ Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?nod
 
 1. Hard reload `/` (Launch 33 default — `inventoryLayer: 'curated'`).
 2. DevTools → Performance → look for `pulse_map_interactive` / measure `pulse_cold_start`.
-3. Target: mark under ~2000ms on a mid phone. All Seattle clustering and the Surging rail wait until after first paint.
+3. Target: mark under ~2000ms on a mid phone. All Seattle clustering and the Surging rail wait until after first paint (`scheduleAllSeattleRelease`).
+
+### Device profiles (WC-11)
+
+These are the budgets to check. This repo does not add a second city.
+
+| Profile | What to throttle | Expect |
+|---------|------------------|--------|
+| Mid phone | Pixel 6a class, 4G, CPU 4× in DevTools, hard reload `/` | `pulse_map_interactive` around 2s. Launch 33 pins only until idle. |
+| Newer phone | Current iPhone, wifi, no throttle | Comfortably under 2000ms. Same Launch 33 first paint. |
+| Slow phone | Older Android, CPU 6×, Slow 3G | Map still paints the curated set first. All Seattle and the Surging rail stay deferred so the mark is not waiting on the OSM catalog. |
 
 ## Follow-ups blocked on credentials / admin
 
@@ -56,6 +66,21 @@ Agent code only. Track 0 stays human: #64 live loop, #85/#86 phone proof (do not
 | WC-9 | Capitol Hill focus-hood badge and empty copy from the existing launch seed. No ownership edits. |
 
 Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on prod after merge (Supabase MCP or SQL editor). Verify with `supabase/verify/venue_surge_owner_replies.sql`.
+
+## Twitter-class slices (repo, 2026-10-01)
+
+Still Seattle venue + map only. No second city, no new keys, no Signal restore.
+
+| Slice | What landed |
+|-------|-------------|
+| WC-4 | Venue surges, friend pulses, and owner replies collapse per venue per hour. Tap opens `/venue/:id?highlight=` or `/venue/:id/inbox?highlight=reply`. Unread badge is on the You tab and counts groups, not a storm. |
+| WC-7 | A report hides that pulse for the reporter in the same turn. `/ops` resolve and dismiss require a reason, stored on `pulse_reports.resolution_note`. Same admin role as before. |
+| WC-10 | Crew tonight stays 2–4 followed people on one pinned venue. Members see each other’s I’m-here. Guests and other crews get an empty list. |
+| WC-11 | Hard reload of `/` paints Launch 33, then idle-releases All Seattle. `pulse_map_interactive` is marked when the canvas draws. Budget 2000ms. Device profiles above. |
+| WC-12 | Map, Tonight, and the composer take arrow keys. Reduced motion skips map inertia and tab slides. Contrast media query lifts muted text. Energy meaning is the word, not the emoji. |
+| WC-13 | Checklist only: [second-city-readiness.md](second-city-readiness.md). Do not launch a second city. |
+
+Apply `supabase/migrations/20261001160000_pulse_report_resolution_note.sql` and `supabase/migrations/20261001161000_crew_tonight_member_read.sql` on prod after merge. Verify with `supabase/verify/pulse_report_resolution_note.sql` and `supabase/verify/crew_tonight_member_read.sql`. Do not close #85, #86, or #109.
 
 ## Ownership
 

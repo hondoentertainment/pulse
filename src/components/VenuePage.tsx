@@ -63,6 +63,8 @@ import { OpenNowChip } from '@/components/OpenNowChip'
 import { TextInviteButton } from '@/components/TextInviteButton'
 import { HopNextRow } from '@/components/HopNextRow'
 import { CrewTonightPicker } from '@/components/CrewTonightPicker'
+import { formatCrewImHere, type CrewPresenceRow } from '@/lib/crew-im-here'
+import type { OwnerReplyNoticeInput } from '@/lib/in-app-notify'
 import { PulseThreadActions } from '@/components/PulseThreadActions'
 import { shareVenueFromSurface } from '@/lib/sharing'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
@@ -119,6 +121,8 @@ interface VenuePageProps {
   onSameAgree?: (pulseId: string, venueId: string) => void
   onBlockUser?: (userId: string, venueId?: string) => void
   onCrewTonight?: (venueId: string, memberIds: string[]) => void
+  crewHere?: readonly CrewPresenceRow[]
+  onOwnerReplyNotices?: (replies: OwnerReplyNoticeInput[]) => void
   onDoorPin?: (venueId: string, pulseId: string) => void
   catalogVenues?: Venue[]
   claims?: VenueClaim[]
@@ -163,6 +167,8 @@ export function VenuePage({
   onSameAgree,
   onBlockUser,
   onCrewTonight,
+  crewHere = [],
+  onOwnerReplyNotices,
   onDoorPin,
   catalogVenues = [],
   claims = [],
@@ -182,6 +188,8 @@ export function VenuePage({
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
+  const notifyHighlight = searchParams.get('highlight')
+  const highlightPulseId = searchParams.get('pulse')
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
@@ -223,7 +231,14 @@ export function VenuePage({
     let cancelled = false
     const load = () => {
       void listOwnerRepliesForVenue(venue.id).then((rows) => {
-        if (!cancelled) setOwnerReplies(rows)
+        if (cancelled) return
+        setOwnerReplies(rows)
+        onOwnerReplyNotices?.(rows.map((row) => ({
+          id: row.id,
+          venueId: row.venueId,
+          pulseId: row.pulseId,
+          createdAt: row.createdAt,
+        })))
       })
     }
     load()
@@ -232,7 +247,7 @@ export function VenuePage({
       cancelled = true
       window.removeEventListener('focus', load)
     }
-  }, [venue.id])
+  }, [onOwnerReplyNotices, venue.id])
 
   useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
@@ -564,6 +579,26 @@ export function VenuePage({
           venues={listHopNextVenues(catalogVenues.length > 0 ? catalogVenues : [venue], venue)}
           onVenueClick={(next) => navigate(`/venue/${next.id}`)}
         />
+        {notifyHighlight === 'surge' && (
+          <p role="status" data-testid="notify-highlight" className="rounded-xl border-2 border-primary bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground">
+            Surging now · {venue.name}
+          </p>
+        )}
+        {notifyHighlight === 'pulse' && (
+          <p
+            role="status"
+            data-testid="notify-highlight"
+            id={highlightPulseId ? `pulse-${highlightPulseId}` : undefined}
+            className="rounded-xl border-2 border-primary bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground"
+          >
+            Friend pulse · {venue.name}
+          </p>
+        )}
+        {crewHere.length > 0 && (
+          <p className="text-sm font-semibold text-foreground" data-testid="crew-im-here">
+            Crew tonight · {formatCrewImHere(crewHere)}
+          </p>
+        )}
         {onCrewTonight && (
           <CrewTonightPicker
             followedPeople={(currentUser?.friends ?? []).map((id) => ({
