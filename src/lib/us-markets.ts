@@ -39,7 +39,6 @@ export function getUsMarkets(venues: Venue[]): UsMarket[] {
         venueCount: venueCounts[location.name.toLowerCase()] ?? 0,
       }
     })
-    .filter(market => market.venueCount > 0 || market.key === 'seattle')
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -50,4 +49,11 @@ export function getMarketByKey(markets: UsMarket[], key: string): UsMarket | nul
 export function getVenuesForMarket(venues: Venue[], market: UsMarket | null): Venue[] {
   if (!market) return venues
   return venues.filter(venue => venue.city === market.city && venue.state === market.state)
+}
+
+export function getMarketBrowseLocation(
+  market: UsMarket | null,
+  deviceLocation: { lat: number; lng: number } | null,
+) {
+  return market ? { lat: market.lat, lng: market.lng } : deviceLocation
 }

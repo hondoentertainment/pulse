@@ -234,8 +234,8 @@ export function TrendingTab({
           {venues.length === 0 && (
             <div className="max-w-2xl mx-auto px-4 pt-4">
               <div className="rounded-2xl border border-border bg-card/70 p-6 text-center">
-                <p className="font-semibold">No venues loaded yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Try refreshing, enabling location, or checking your Supabase connection.</p>
+                <p className="font-semibold">No venue listings available here yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Choose another city or check back later.</p>
               </div>
             </div>
           )}

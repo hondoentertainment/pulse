@@ -123,7 +123,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return
   }
 
-  const rows = (Array.isArray(data) ? data : []) as PulseRow[]
+  const rows = (Array.isArray(data) ? data : []).filter(
+    (row): row is PulseRow =>
+      typeof row === 'object' &&
+      row !== null &&
+      'id' in row &&
+      'user_id' in row &&
+      'venue_id' in row,
+  )
   ok(res, {
     pulses: rows.map(toAppPulse),
     limit,

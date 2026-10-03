@@ -9,6 +9,7 @@ import type { EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { MapEnergyPills } from '@/components/MapEnergyPills'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
+import { MarketSelector } from '@/components/MarketSelector'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
 import { FirstOpenCoach } from '@/components/FirstOpenCoach'
@@ -56,6 +57,7 @@ import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import type { MapInventoryLayer } from '@/lib/map-filters'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { cn } from '@/lib/utils'
+import { getMarketByKey, getMarketBrowseLocation } from '@/lib/us-markets'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -88,6 +90,9 @@ export function MainTabRouter() {
   const handlers = useAppHandlers()
   const {
     activeTab,
+    selectedMarketKey,
+    setSelectedMarketKey,
+    availableMarkets,
     venues,
     visibleVenues,
     moderatedPulses,
@@ -115,6 +120,11 @@ export function MainTabRouter() {
     notifications,
     setNotifications,
   } = state
+
+  const browseLocation = useMemo(
+    () => getMarketBrowseLocation(getMarketByKey(availableMarkets, selectedMarketKey), userLocation),
+    [availableMarkets, selectedMarketKey, userLocation],
+  )
 
   const {
     handleReaction,
@@ -243,6 +253,11 @@ export function MainTabRouter() {
   const [mapEnergyLevels, setMapEnergyLevels] = useState<EnergyFilter[]>([])
   const [mapNearMe, setMapNearMe] = useState(false)
   const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
+  useEffect(() => {
+    setInventoryLayer(selectedMarketKey === 'seattle' ? 'curated' : 'all')
+    setMapNearMe(false)
+    setMapEnergyLevels([])
+  }, [selectedMarketKey])
   const [showFirstOpenCoach, setShowFirstOpenCoach] = useState(() => shouldShowFirstOpenCoach())
   const [surgingReady, setSurgingReady] = useState(false)
   const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
@@ -405,10 +420,17 @@ export function MainTabRouter() {
                 : 'space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6',
             )}
           >
+            <MarketSelector value={selectedMarketKey} markets={availableMarkets} onChange={setSelectedMarketKey} />
+            {visibleVenues.length === 0 && (
+              <p role="status" className="py-3 text-sm text-muted-foreground">
+                No venue listings available here yet. Choose another city or check back later.
+              </p>
+            )}
+            {visibleVenues.length > 0 && <>
             <TonightHomeHeader
               venues={tonightVenues}
               pulses={visiblePulses}
-              userLocation={userLocation}
+              userLocation={browseLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
               followedVenueIds={followedVenues.map((venue) => venue.id)}
               pinnedVenueIds={pinnedVenueIds}
@@ -459,10 +481,11 @@ export function MainTabRouter() {
                 <MapSearch
                   venues={visibleVenues}
                   onVenueSelect={handleVenueClick}
-                  userLocation={userLocation}
+                  userLocation={browseLocation}
                   compact
                 />
                 <MapInventoryPills
+                  seattle={selectedMarketKey === 'seattle'}
                   inventoryLayer={inventoryLayer}
                   nearMeActive={mapNearMe}
                   onInventoryLayerChange={setInventoryLayer}
@@ -484,8 +507,9 @@ export function MainTabRouter() {
                 <div className="relative h-[46vh] min-h-[300px] shrink-0" role="region" aria-labelledby="tonight-home-heading">
                   <div className="absolute inset-0 overflow-hidden rounded-[20px] bg-[#080a0f]">
                   <InteractiveMap
+                    key={selectedMarketKey}
                     venues={mapVenues}
-                    userLocation={userLocation}
+                    userLocation={browseLocation}
                     onVenueClick={handleMapPinClick}
                     onShareVenue={handleShareVenue}
                     isTracking={isTracking}
@@ -542,8 +566,9 @@ export function MainTabRouter() {
                 )}
               </>
             )}
+            </>}
           </motion.div>
-          {mapSurface === 'map' && surgingReady && (
+          {mapSurface === 'map' && surgingReady && visibleVenues.length > 0 && (
             <div className="fixed inset-x-0 z-30 mx-auto w-full max-w-2xl bg-background px-4 pt-2 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]">
               <div className="max-h-[7.5rem] overflow-y-auto">
                 <SurgingNearbyList

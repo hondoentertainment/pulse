@@ -94,8 +94,8 @@ export function AppRoutes() {
     locationName, isTracking, realtimeLocation, userLocation,
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
-    selectedMarketKey: _selectedMarketKey, setSelectedMarketKey: _setSelectedMarketKey,
-    availableMarkets: _availableMarkets,
+    selectedMarketKey, setSelectedMarketKey,
+    availableMarkets,
     unreadNotificationCount,
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
@@ -239,6 +239,9 @@ export function AppRoutes() {
     locationPermissionDenied,
     currentTime,
     queuedPulseCount,
+    selectedMarketKey,
+    markets: availableMarkets,
+    onMarketChange: setSelectedMarketKey,
   }
 
   // MainTabRouter / SubPageRouter read activeTab / subPage from app state.

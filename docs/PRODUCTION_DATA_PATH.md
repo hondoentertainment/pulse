@@ -45,5 +45,14 @@ After the Seattle catalog migration and deploy:
 1. Open the production Vercel URL.
 2. Confirm the Map tab shows the Seattle catalog (33 curated + 500 OSM, 533 total) — not an empty canvas and not only the 33-venue fixture fallback.
 3. Spot-check Neumos (curated-seed) plus an OSM bar — pins and venue detail should open.
-4. If `VITE_LAUNCHED_CITIES=Seattle,WA`, other markets must not appear.
+4. Other supported U.S. markets remain selectable. With `VITE_LAUNCHED_CITIES=Seattle,WA`, they show zero listings until their catalog is launched.
 5. Submit or inspect a live venue report to verify Supabase aggregates refresh.
+
+## Read-Only Coverage Audit
+
+Run `node --env-file=.env.local scripts/check-venue-coverage.mjs` to count real
+venue rows by city and check the live-intelligence RPC without writing data.
+On October 3, 2026 the production read returned 533 Seattle venues and no other
+cities. Nationwide market selection does not imply nationwide real listings.
+The local Supabase project was not linked, so migration history still needs
+verification before applying any migrations.
