@@ -54,7 +54,7 @@ const VenueMetadataRoute = lazy(() =>
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const { activeTab, navigateToTab, navigateToVenue } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -138,12 +138,15 @@ export function AppRoutes() {
     locationPermissionDenied,
     currentTime,
     queuedPulseCount,
+    selectedMarketKey,
+    markets: availableMarkets,
+    onMarketChange: setSelectedMarketKey,
   }
 
   const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
     <>
       <AppHeader {...headerProps} />
-      <MainTabRouter tab={tab} />
+      <MainTabRouter tab={tab} onVenueSelect={(venue) => venue && navigateToVenue(venue)} />
     </>
   )
 

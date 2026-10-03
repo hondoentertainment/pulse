@@ -96,6 +96,13 @@ export function LoginScreen() {
       className="min-h-dvh overflow-x-hidden bg-background text-foreground [background-image:radial-gradient(circle_at_20%_-10%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_28rem),radial-gradient(circle_at_90%_20%,color-mix(in_oklch,var(--accent)_16%,transparent),transparent_24rem)] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))]"
       aria-labelledby="login-title"
     >
+      <a
+        href="#login-title"
+        onClick={() => document.getElementById('login-title')?.focus()}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-[calc(1rem+env(safe-area-inset-top,0px))] focus:z-50 focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to sign in
+      </a>
       <div className="mx-auto flex min-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2.5rem)] w-full max-w-md flex-col">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -122,7 +129,7 @@ export function LoginScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={motionTransition(0.04)}
           >
-            <h1 id="login-title" className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl">
+            <h1 id="login-title" tabIndex={-1} className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl">
               Your daily state, in 10 seconds.
             </h1>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
@@ -135,9 +142,14 @@ export function LoginScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={motionTransition(0.08)}
             className="mt-8 space-y-4"
+            aria-describedby={authError && !isPlaceholder ? 'login-auth-error' : undefined}
           >
             {authError && !isPlaceholder && (
-              <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs font-medium text-destructive">
+              <p
+                id="login-auth-error"
+                role="alert"
+                className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs font-medium text-destructive"
+              >
                 {authError}
               </p>
             )}
@@ -158,7 +170,7 @@ export function LoginScreen() {
               <>
                 <Button
                   size="lg"
-                  className="h-14 w-full rounded-2xl text-base font-semibold shadow-lg shadow-primary/20"
+                  className="h-14 w-full touch-manipulation rounded-2xl text-base font-semibold shadow-lg shadow-primary/20 active:scale-[0.98]"
                   variant="default"
                   onClick={handleGoogle}
                   disabled={busy}
@@ -192,7 +204,7 @@ export function LoginScreen() {
 
                 <Button
                   size="lg"
-                  className="h-14 w-full rounded-2xl text-base font-semibold"
+                  className="h-14 w-full touch-manipulation rounded-2xl text-base font-semibold active:scale-[0.98]"
                   variant="secondary"
                   onClick={handleApple}
                   disabled={busy}
@@ -275,7 +287,11 @@ export function LoginScreen() {
           className="-mx-1 mt-6 shrink-0"
         >
           <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preview</p>
-          <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1 pl-0.5 pr-4">
+          <div
+            className="scrollbar-hide flex gap-3 overflow-x-auto pb-1 pl-0.5 pr-4"
+            role="region"
+            aria-label="App preview cards"
+          >
             <div className="w-[min(18rem,calc(100vw-2.5rem))] shrink-0 rounded-[1.5rem] border border-border/80 bg-card p-4 shadow-lg">
               <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
                 <p className="text-xs font-bold opacity-90">Today&apos;s signal</p>

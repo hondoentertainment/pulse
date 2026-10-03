@@ -39,7 +39,6 @@ export function getUsMarkets(venues: Venue[]): UsMarket[] {
         venueCount: venueCounts[location.name.toLowerCase()] ?? 0,
       }
     })
-    .filter(market => market.venueCount > 0 || market.key === 'seattle')
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 

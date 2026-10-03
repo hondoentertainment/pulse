@@ -3,6 +3,8 @@ import { useAppState, ALL_USERS } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import type { TabId } from './BottomNav'
+import type { Venue } from '@/lib/types'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -19,11 +21,11 @@ const tabMotion = {
   transition: { duration: 0.2 },
 }
 
-export function MainTabRouter() {
+export function MainTabRouter({ tab, onVenueSelect }: { tab?: TabId; onVenueSelect?: (venue: Venue | null) => void } = {}) {
   const state = useAppState()
   const handlers = useAppHandlers()
   const {
-    activeTab,
+    activeTab: stateActiveTab,
     venues,
     visibleVenues,
     moderatedPulses,
@@ -36,7 +38,7 @@ export function MainTabRouter() {
     unitSystem,
     trendingSubTab,
     setTrendingSubTab,
-    setSelectedVenue,
+    setSelectedVenue: setStateSelectedVenue,
     setSubPage,
     realtimeLocation,
     isTracking,
@@ -49,6 +51,8 @@ export function MainTabRouter() {
     isFollowed,
     pulsesWithUsers,
   } = state
+  const activeTab = tab ?? stateActiveTab
+  const setSelectedVenue = onVenueSelect ?? setStateSelectedVenue
 
   const {
     handleReaction,

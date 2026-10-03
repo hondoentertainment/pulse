@@ -11,10 +11,14 @@ and live-intelligence data.
   the `get_live_venue_intelligence` RPC.
 - The app's U.S. market selector works with both data sources as long as venues
   include `city`, `state`, `location_lat`, and `location_lng`.
-- If Supabase returns zero venues or cannot return venue data, the app
-  temporarily falls back to the national prototype catalog and emits a
-  `venue_data_fallback` analytics event. This keeps discovery usable while
-  production venue seeding or RPC access is completed.
+- Production does not load prototype venues or simulated activity. Empty
+  markets remain selectable and show an empty state. Fixtures load only in
+  development or explicitly configured visual previews.
+- Read-only verification on 2026-10-03 found 533 publicly readable venues,
+  all in Seattle, WA. The live-intelligence RPC returned successfully.
+  Nationwide selection does not imply nationwide listing coverage.
+- Migration history could not be checked: the local Supabase CLI is not linked.
+  Verify the project and migration history before running a database push.
 
 ## Required Migration
 
@@ -33,6 +37,15 @@ supabase/migrations/20260429000000_realtime_venue_intelligence.sql
 ```
 
 ## Production Verification
+
+Run the read-only coverage audit with the target project's public credentials:
+
+```powershell
+node --env-file=.env.local scripts/check-venue-coverage.mjs
+```
+
+This paginates all publicly readable venue rows and checks the live RPC. It does
+not verify private rows or migration history, and does not write data.
 
 After migration and deploy:
 

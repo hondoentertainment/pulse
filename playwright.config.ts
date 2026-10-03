@@ -25,7 +25,8 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${previewPort}`,
     url: baseURL,
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
+    timeout: 180_000,
     env: {
       ...process.env,
       VITE_E2E_AUTH_BYPASS: 'true',

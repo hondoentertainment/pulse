@@ -65,7 +65,11 @@ function LiveScorePreview({ score }: { score: number }) {
       style={{
         background: `linear-gradient(135deg, color-mix(in oklch, ${color} 22%, transparent), color-mix(in oklch, var(--primary) 12%, transparent))`,
       }}
+      aria-label={`Live signal score ${score}, ${scoreBucketLabel(bucket)}`}
     >
+      <p className="sr-only" aria-live="polite">
+        Live signal score {score}, {scoreBucketLabel(bucket)}
+      </p>
       <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live signal</p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>

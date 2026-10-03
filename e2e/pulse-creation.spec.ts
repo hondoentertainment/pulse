@@ -1,92 +1,41 @@
 import { expect, test } from '@playwright/test'
 import { completeOnboarding } from './fixtures/onboarding'
 
-test.describe('Pulse creation flow', () => {
+test.describe('Venue discovery and pulse creation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
     await completeOnboarding(page)
+    await page.getByRole('combobox', { name: 'Select U.S. market' }).click()
+    await page.getByRole('option', { name: /Miami, FL/ }).click()
+    await page.getByRole('button', { name: 'Open LIV', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Back to venues' }).first()).toBeVisible()
   })
 
-  test('opens the create-pulse dialog from a venue', async ({ page }) => {
-    // Try clicking a trending venue card if visible
-    const venueCard = page
-      .locator('[class*="venue"], [class*="card"]')
-      .first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
-      test.skip(true, 'No venue cards available without seeded backend data')
-      return
-    }
-
-    await venueCard.click()
-
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
-    await expect(createBtn).toBeVisible({ timeout: 10_000 })
-    await createBtn.click()
-
-    // Dialog title
-    await expect(page.locator('text=/Create Pulse at/i').first()).toBeVisible({
-      timeout: 5_000,
-    })
+  test('opens a pulse for the selected venue', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Pulse', exact: true }).first().click()
+    await expect(page.getByRole('heading', { name: 'Create Pulse at LIV' })).toBeVisible()
   })
 
-  test('can fill caption and select energy', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
-      test.skip(true, 'No venue cards available without seeded backend data')
-      return
-    }
-
-    await venueCard.click()
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
-    await createBtn.click()
-
-    const caption = page.getByPlaceholder(/What's the vibe/i)
-    await expect(caption).toBeVisible({ timeout: 5_000 })
+  test('accepts a caption and cancels without submitting', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Pulse', exact: true }).first().click()
+    const caption = page.getByPlaceholder("What's the vibe?")
     await caption.fill('Testing the vibe')
-
-    // The Post Pulse button should exist
-    await expect(page.getByRole('button', { name: /Post Pulse/i })).toBeVisible()
+    await expect(caption).toHaveValue('Testing the vibe')
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Create Pulse at LIV' })).toBeHidden()
   })
 
-  test('cancel closes the dialog without submitting', async ({ page }) => {
-    const venueCard = page.locator('[class*="venue"], [class*="card"]').first()
-    const cardVisible = await venueCard
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false)
-
-    if (!cardVisible) {
-      test.skip(true, 'No venue cards available without seeded backend data')
-      return
-    }
-
-    await venueCard.click()
-    const createBtn = page.getByRole('button', { name: /Create Pulse/i }).first()
-    await createBtn.click()
-
-    const cancel = page.getByRole('button', { name: /^Cancel$/i })
-    await expect(cancel).toBeVisible({ timeout: 5_000 })
-    await cancel.click()
-
-    await expect(page.locator('text=/Create Pulse at/i').first()).not.toBeVisible({
-      timeout: 5_000,
-    })
+  test('persists the chosen market after refresh', async ({ page }) => {
+    await page.getByRole('button', { name: 'Back to venues' }).first().click()
+    await page.reload()
+    await expect(page.getByRole('combobox', { name: 'Select U.S. market' })).toContainText('Miami, FL')
+    await expect(page.getByRole('button', { name: 'Open LIV', exact: true })).toBeVisible()
   })
 
-  // TODO: requires Supabase credentials + a seeded venue to exercise the
-  // full post-to-backend round trip. Skip until the E2E env is wired up.
-  test.skip('submits a pulse and shows it in the feed (requires backend)', async () => {
-    // Left intentionally empty.
+  test('opens the map from the selected market', async ({ page }) => {
+    await page.getByRole('button', { name: 'Back to venues' }).first().click()
+    await page.getByRole('button', { name: 'Map', exact: true }).click()
+    await expect(page).toHaveURL(/\/map$/)
+    await expect(page.locator('canvas').first()).toBeVisible()
   })
 })

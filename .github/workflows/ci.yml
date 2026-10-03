@@ -122,12 +122,11 @@ jobs:
         env:
           VITE_E2E_AUTH_BYPASS: 'true'
           VITE_APP_MODE: signal
-        run: npx playwright test e2e/smoke.spec.ts
+        run: npx playwright test e2e/smoke.spec.ts e2e/accessibility.spec.ts --reporter=line
 
   smoke-preview-venue:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -184,7 +183,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

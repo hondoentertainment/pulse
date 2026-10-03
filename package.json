@@ -17,6 +17,8 @@
         "test:smoke:venue": "playwright test e2e/pulse-creation.spec.ts e2e/search.spec.ts",
         "test:e2e:signal": "playwright test e2e/signal-smoke.spec.ts",
         "test:e2e": "playwright test",
+        "test:a11y": "playwright test e2e/accessibility.spec.ts",
+        "lighthouse:signal": "node scripts/lighthouse-signal.mjs",
         "audit": "npm audit --audit-level=high",
         "bundle-size": "node scripts/check-bundle-size.mjs",
         "release-check": "npm run lint && npm run test && npm run build && npm run audit",
@@ -139,14 +141,14 @@
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react-swc": "^4.3.0",
-        "@vitest/coverage-v8": "4.0.18",
+        "@vitest/coverage-v8": "4.1.11",
         "eslint": "^9.28.0",
         "eslint-plugin-jsx-a11y": "^6.10.2",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
         "jsdom": "^29.0.1",
-        "sharp": "^0.34.5",
+        "sharp": "^0.35.5",
         "svgo": "^4.0.1",
         "tailwindcss": "^4.1.11",
         "typescript": "~5.7.2",
@@ -154,7 +156,7 @@
         "vite": "^7.2.6",
         "vite-plugin-image-optimizer": "^2.0.3",
         "vite-plugin-pwa": "^1.2.0",
-        "vitest": "^4.0.18"
+        "vitest": "4.1.11"
     },
     "workspaces": {
         "packages": [

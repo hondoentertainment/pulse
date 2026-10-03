@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext, type ReactNode } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalPreference } from './use-local-preference'
 import type {
   Venue,
   Pulse,
@@ -202,8 +202,8 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useKV<boolean>('hasCompletedOnboarding', false)
-  const [selectedMarketKey, setSelectedMarketKey] = useKV<string>('selectedMarketKey', 'seattle')
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useLocalPreference<boolean>('hasCompletedOnboarding', false)
+  const [selectedMarketKey, setSelectedMarketKey] = useLocalPreference<string>('selectedMarketKey', 'seattle')
   const [activeTab, setActiveTab] = useState<TabId>('trending')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
