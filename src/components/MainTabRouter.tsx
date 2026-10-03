@@ -57,6 +57,7 @@ import { funnelActor, trackFunnel } from '@/lib/funnel-events'
 import type { MapInventoryLayer } from '@/lib/map-filters'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { cn } from '@/lib/utils'
+import { getMarketByKey, getMarketBrowseLocation } from '@/lib/us-markets'
 
 const InteractiveMap = lazy(() => import('@/components/InteractiveMap').then(m => ({ default: m.InteractiveMap })))
 const NotificationFeed = lazy(() => import('@/components/NotificationFeed').then(m => ({ default: m.NotificationFeed })))
@@ -119,6 +120,11 @@ export function MainTabRouter() {
     notifications,
     setNotifications,
   } = state
+
+  const browseLocation = useMemo(
+    () => getMarketBrowseLocation(getMarketByKey(availableMarkets, selectedMarketKey), userLocation),
+    [availableMarkets, selectedMarketKey, userLocation],
+  )
 
   const {
     handleReaction,
@@ -424,7 +430,7 @@ export function MainTabRouter() {
             <TonightHomeHeader
               venues={tonightVenues}
               pulses={visiblePulses}
-              userLocation={userLocation}
+              userLocation={browseLocation}
               savedVenueIds={favoriteVenues.map((venue) => venue.id)}
               followedVenueIds={followedVenues.map((venue) => venue.id)}
               pinnedVenueIds={pinnedVenueIds}
@@ -475,7 +481,7 @@ export function MainTabRouter() {
                 <MapSearch
                   venues={visibleVenues}
                   onVenueSelect={handleVenueClick}
-                  userLocation={userLocation}
+                  userLocation={browseLocation}
                   compact
                 />
                 <MapInventoryPills
@@ -501,8 +507,9 @@ export function MainTabRouter() {
                 <div className="relative h-[46vh] min-h-[300px] shrink-0" role="region" aria-labelledby="tonight-home-heading">
                   <div className="absolute inset-0 overflow-hidden rounded-[20px] bg-[#080a0f]">
                   <InteractiveMap
+                    key={selectedMarketKey}
                     venues={mapVenues}
-                    userLocation={userLocation}
+                    userLocation={browseLocation}
                     onVenueClick={handleMapPinClick}
                     onShareVenue={handleShareVenue}
                     isTracking={isTracking}
