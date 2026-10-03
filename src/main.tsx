@@ -1,13 +1,23 @@
 import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from 'react-error-boundary'
-import '@github/spark/spark'
+import { QueryClientProvider } from '@tanstack/react-query'
 
 import App from './App.tsx'
 import { AppBootstrap } from './AppBootstrap.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
+import { queryClient } from './lib/query-client'
 
 import './main.css'
+
+if (typeof document !== 'undefined') {
+  document.title = 'Pulse — where the energy is right now'
+}
+
+// Spark workbench runtime is serve-only. Venue persist lives in AppProviders.
+if (import.meta.env.DEV) {
+  void import('@github/spark/spark')
+}
 
 const Analytics = lazy(() =>
   import('@vercel/analytics/react').then((module) => ({ default: module.Analytics })),
@@ -21,13 +31,10 @@ function isLocalPreviewHost() {
   return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 }
 
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { queryClient, queryPersister } from './lib/query-client'
-
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <AppBootstrap>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister }}>
+      <QueryClientProvider client={queryClient}>
         <App />
         {!isLocalPreviewHost() && (
           <Suspense fallback={null}>
@@ -35,7 +42,7 @@ createRoot(document.getElementById('root')!).render(
             <SpeedInsights />
           </Suspense>
         )}
-      </PersistQueryClientProvider>
+      </QueryClientProvider>
     </AppBootstrap>
   </ErrorBoundary>,
 )

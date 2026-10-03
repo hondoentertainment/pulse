@@ -1,6 +1,6 @@
 # Routing & Navigation
 
-How users move through Pulse. Two product shells exist with different routing models.
+How users move through Pulse. The app is venue + map only.
 
 ---
 
@@ -8,25 +8,7 @@ How users move through Pulse. Two product shells exist with different routing mo
 
 | Shell | Mounted from | Router |
 |-------|--------------|--------|
-| **Signal** (current) | `src/App.tsx` | Internal router in `signal/SignalApp.tsx` |
-| **Venue discovery** | `src/AppRoutes.tsx` (swap entry) | React Router v7 |
-
-To switch products, change what `App.tsx` renders after auth.
-
----
-
-## Signal app routes
-
-`signal/SignalApp.tsx`:
-
-| Path | Screen |
-|------|--------|
-| `/home` | Daily check-in |
-| `/trends` | Trend chart |
-| `/history` | Check-in history |
-| `/settings` | Signal settings |
-
-Uses its own bottom nav — independent of `BottomNav.tsx`.
+| **Venue + map** | `src/App.tsx` → `VenueApp` | React Router v7 (`AppRoutes.tsx`) |
 
 ---
 
@@ -36,14 +18,13 @@ Uses its own bottom nav — independent of `BottomNav.tsx`.
 
 ### Main tabs
 
-| Path | Tab ID | Component |
-|------|--------|-----------|
-| `/` | `trending` | `TrendingTab` |
-| `/discover` | `discover` | `DiscoverTab` |
-| `/map` | `map` | `InteractiveMap` |
-| `/notifications` | `notifications` | `NotificationFeed` |
-| `/profile` | `profile` | `ProfileTab` |
-| `/video` | `video` | `VideoFeed` (flagged) |
+| Path | Tab ID | Nav label | Component |
+|------|--------|-----------|-----------|
+| `/` or `/map` | `map` | Map | `InteractiveMap` + surging nearby |
+| `/trending` | `trending` | Trending | `TrendingTab` |
+| `/discover` | `discover` | Pulse | `DiscoverTab` |
+| `/notifications` | `notifications` | Friends | `NotificationFeed` |
+| `/profile` | `profile` | You | `ProfileTab` |
 
 ### Sub-pages
 
@@ -66,8 +47,12 @@ Uses its own bottom nav — independent of `BottomNav.tsx`.
 
 | Path | Component |
 |------|-----------|
+| `/auth` | `AuthGate` (write actions only — not discovery) |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` (read-only tonight’s live reviews) |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
+| `/ops` | `OpsQueuePage` (admin claims + report triage; ProtectedRoute) |
+| `/?here=:venueId` | Map tab focuses that pin (I’m here). Signed-in may open create. |
 
 ### Deep links (native)
 
@@ -108,11 +93,12 @@ Prefer URL-driven navigation for production (shareable links, deep links).
 
 ## Auth gates
 
+Map + venue browse is public after onboarding. Auth does **not** wall discovery.
+
 | Component | Behavior |
 |-----------|----------|
-| `LoginScreen` | Shown when no session (Signal entry) |
-| `AuthGate` | Supabase OAuth / magic link (venue entry) |
-| `ProtectedRoute` | React Router wrapper — redirects unauthenticated |
+| `AuthGate` | `/auth` only — Create Pulse, live reviews, inbox, claims |
+| `ProtectedRoute` | React Router wrapper — redirects unauthenticated users to `/auth` |
 | `OnboardingFlow` | First-run wizard before main shell |
 
 E2E tests bypass auth with `VITE_E2E_AUTH_BYPASS=true`.

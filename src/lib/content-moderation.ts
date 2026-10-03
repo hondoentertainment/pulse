@@ -35,6 +35,7 @@ export type ReportReason =
   | 'harassment'
   | 'misinformation'
   | 'fake_location'
+  | 'hide'
   | 'other'
 
 export interface ContentReport {
@@ -76,6 +77,7 @@ export const REPORT_REASONS: { value: ReportReason; label: string; description: 
   { value: 'harassment', label: 'Harassment', description: 'Bullying or targeted abuse' },
   { value: 'misinformation', label: 'Misinformation', description: 'False venue or energy info' },
   { value: 'fake_location', label: 'Fake Location', description: 'User is not actually at this venue' },
+  { value: 'hide', label: 'Hide this pulse', description: 'Hide from my Tonight feed' },
   { value: 'other', label: 'Other', description: 'Something else' },
 ]
 
@@ -177,9 +179,16 @@ export function filterModeratedPulses(
   pulses: Pulse[],
   currentUserId: string,
   blocks: UserBlock[],
-  mutes: UserMute[]
+  mutes: UserMute[],
+  reports: ContentReport[] = [],
 ): Pulse[] {
+  const hiddenIds = new Set(
+    reports
+      .filter((report) => report.reporterId === currentUserId && report.targetType === 'pulse')
+      .map((report) => report.targetId),
+  )
   return pulses.filter(p => {
+    if (hiddenIds.has(p.id)) return false
     if (isBlocked(blocks, currentUserId, p.userId)) return false
     if (isMuted(mutes, currentUserId, p.userId)) return false
     return true

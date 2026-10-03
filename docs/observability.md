@@ -75,6 +75,25 @@ Additional env vars:
 - `VITE_AMPLITUDE_API_KEY` — required for the Amplitude adapter.
 - `VITE_POSTHOG_API_KEY` / `VITE_POSTHOG_HOST` — required for PostHog.
 
+### Guest → first-pulse funnel (#92)
+
+Exact event names (also listed in `REGISTERED_EVENTS`). Payloads are `guest` + optional `venueId` / `method` only — no email, name, or `userId`.
+
+| Event | When | Props |
+|-------|------|-------|
+| `guest_map_view` | Map tab opens | `guest: boolean` |
+| `venue_open` | `/venue/:id` mounts | `guest`, `venueId`, `fromShare?` |
+| `auth_start` | `/auth` shown (`redirect`), Google, or magic-link tap (`otp`) | `guest: true`, `method` |
+| `first_pulse_create` | First successful pulse for this user | `guest: false`, `venueId` |
+
+`guest` is `true` when there is no session (placeholder/demo mode counts as signed-in for local). Helper: `src/lib/funnel-events.ts` (`trackFunnel`).
+
+Share arrival (`/venue/:id?from=share`) fires `venue_open` with `fromShare: true`. The auth page fires `auth_start`. The first successful create fires `first_pulse_create`. If `VITE_ANALYTICS_BACKEND` is unset in production, the adapter is a no-op (WC-0.5 is human env work — do not add a new vendor key from the repo).
+
+### Realtime reflection (WC-2)
+
+When a live review is flushed into the local pulse cache (the list Surging and the map read), the client records `created_at` → flush time as `pulse_reflection` (`latencyMs`, `p95Ms`, `sampleCount`, `surface: 'surging'`). The same sample is an `info` log (`action: pulse.reflection`) and a Sentry breadcrumb through the existing bridge. No new observability SaaS. A dashboard alert for channel errors above 1% of sessions is still a human Sentry rule.
+
 ---
 
 ## 3. Logging

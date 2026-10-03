@@ -9,6 +9,7 @@
 import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap } from '@/lib/auth/rls-helpers'
+import { isVenueSurgeMuted } from '@/lib/surge-prefs'
 
 export type FollowTargetKind = 'user' | 'venue'
 
@@ -19,6 +20,7 @@ export interface Follow {
   targetUserId: string | null
   targetVenueId: string | null
   createdAt: string
+  pinnedAt: string | null
 }
 
 interface FollowRow {
@@ -29,6 +31,7 @@ interface FollowRow {
   target_venue_id: string | null
   created_at: string
   deleted_at: string | null
+  pinned_at?: string | null
 }
 
 function rowToFollow(row: FollowRow): Follow {
@@ -39,6 +42,7 @@ function rowToFollow(row: FollowRow): Follow {
     targetUserId: row.target_user_id,
     targetVenueId: row.target_venue_id,
     createdAt: row.created_at,
+    pinnedAt: row.pinned_at ?? null,
   }
 }
 
@@ -119,21 +123,68 @@ export async function unfollowUser(targetUserId: string): Promise<void> {
 
 export async function followVenue(venueId: string): Promise<Follow> {
   const followerId = await requireUserId({ action: 'follow this venue' })
-  const result = await supabase
+  const base = {
+    follower_id: followerId,
+    target_kind: 'venue' as const,
+    target_user_id: null,
+    target_venue_id: venueId,
+    deleted_at: null,
+  }
+  const muted = isVenueSurgeMuted(venueId)
+  const upsertFollow = (row: typeof base & { surge_muted?: boolean }) => supabase
     .from('follows')
-    .upsert(
-      {
-        follower_id: followerId,
-        target_kind: 'venue',
-        target_user_id: null,
-        target_venue_id: venueId,
-        deleted_at: null,
-      },
-      { onConflict: 'follower_id,target_venue_id' },
-    )
+    .upsert(row, { onConflict: 'follower_id,target_venue_id' })
     .select(SELECT_COLUMNS)
     .single()
+  let result = await upsertFollow(muted ? { ...base, surge_muted: true } : base)
+  if (result.error && muted && /surge_muted/i.test(result.error.message ?? '')) {
+    result = await upsertFollow(base)
+  }
   return rowToFollow(unwrap<FollowRow>(result))
+}
+
+export async function listPinnedVenues(followerId: string): Promise<string[]> {
+  try {
+    const result = await fromAlive('follows', 'target_venue_id, pinned_at')
+      .eq('follower_id', followerId)
+      .eq('target_kind', 'venue')
+      .not('pinned_at', 'is', null)
+    if (result.error || !result.data) return []
+    return (result.data as { target_venue_id: string }[])
+      .map((r) => r.target_venue_id)
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+export async function pinFollowedVenue(venueId: string): Promise<void> {
+  const followerId = await requireUserId({ action: 'pin this room' })
+  const pinned = await listPinnedVenues(followerId)
+  if (pinned.includes(venueId)) {
+    await supabase
+      .from('follows')
+      .update({ pinned_at: null })
+      .eq('follower_id', followerId)
+      .eq('target_kind', 'venue')
+      .eq('target_venue_id', venueId)
+      .is('deleted_at', null)
+    return
+  }
+  if (pinned.length >= 3) {
+    throw new Error('Pin up to 3 rooms for My night')
+  }
+  await followVenue(venueId)
+  const result = await supabase
+    .from('follows')
+    .update({ pinned_at: new Date().toISOString() })
+    .eq('follower_id', followerId)
+    .eq('target_kind', 'venue')
+    .eq('target_venue_id', venueId)
+    .is('deleted_at', null)
+  if (result.error) {
+    throw Object.assign(new Error(result.error.message), { cause: result.error })
+  }
 }
 
 export async function unfollowVenue(venueId: string): Promise<void> {

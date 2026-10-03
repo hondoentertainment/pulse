@@ -20,6 +20,8 @@ export interface VenueClaim {
   createdAt: string
   verifiedAt?: string
   rejectedReason?: string
+  evidence?: string
+  notes?: string
 }
 
 export interface VenueAnnouncement {
@@ -87,7 +89,8 @@ export function createVenueClaim(
   userId: string,
   businessName: string,
   businessEmail: string,
-  verificationMethod: 'email' | 'phone' | 'document' = 'email'
+  verificationMethod: 'email' | 'phone' | 'document' = 'email',
+  evidence?: string,
 ): VenueClaim {
   return {
     id: `claim-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -98,6 +101,8 @@ export function createVenueClaim(
     verificationMethod,
     status: 'pending',
     createdAt: new Date().toISOString(),
+    evidence,
+    notes: businessName,
   }
 }
 

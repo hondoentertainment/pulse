@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Broadcast, Sparkle } from '@phosphor-icons/react'
 import type { Pulse, Venue } from '@/lib/types'
-import { getEnergyColor } from '@/lib/pulse-engine'
+import { getEnergyColor, getEnergyLabel } from '@/lib/pulse-engine'
 import { cn } from '@/lib/utils'
 
 interface VenueReelProps {
@@ -62,6 +62,7 @@ export const VenueReel = memo(function VenueReel({ venues, pulses, onVenueClick 
           {reelVenues.map((venue, index) => {
             const photo = photoByVenueId.get(venue.id)
             const color = getEnergyColor(venue.pulseScore)
+            const energyLabel = getEnergyLabel(venue.pulseScore)
             const hasLiveReports = (venue.liveSummary?.reportCount ?? 0) > 0
 
             return (
@@ -72,7 +73,7 @@ export const VenueReel = memo(function VenueReel({ venues, pulses, onVenueClick 
                 transition={{ delay: index * 0.025 }}
                 onClick={() => onVenueClick(venue)}
                 className="group w-[74px] shrink-0 text-center"
-                aria-label={`Open ${venue.name}`}
+                aria-label={`Open ${venue.name}, ${energyLabel}, score ${Math.round(venue.pulseScore)} of 100`}
               >
                 <div
                   className="relative mx-auto h-[68px] w-[68px] rounded-full p-[2px]"
@@ -113,6 +114,7 @@ export const VenueReel = memo(function VenueReel({ venues, pulses, onVenueClick 
                   </div>
                 </div>
                 <p className="mt-1.5 truncate text-[11px] font-medium text-foreground">{venue.name}</p>
+                <p className="text-[10px] text-muted-foreground">{energyLabel}</p>
               </motion.button>
             )
           })}

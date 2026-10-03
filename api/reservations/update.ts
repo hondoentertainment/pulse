@@ -9,7 +9,7 @@
  * Body: { reservation_id: uuid, status: string, note?: string }
  */
 
-import { authenticate, isVenueStaff } from '../_lib/auth'
+import { authenticate, isVenueStaff } from '../_lib/auth.js'
 import {
   badRequest,
   forbidden,
@@ -20,9 +20,9 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { getServiceSupabase } from '../_lib/supabase-server'
-import { isString, isUuid, requireFields } from '../_lib/validate'
+} from '../_lib/http.js'
+import { getServiceSupabase } from '../_lib/supabase-server.js'
+import { isString, isUuid, requireFields } from '../_lib/validate.js'
 
 const TRANSITIONS: Record<string, string[]> = {
   requested: ['confirmed', 'cancelled'],

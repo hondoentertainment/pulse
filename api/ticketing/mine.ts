@@ -16,9 +16,9 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { extractBearer, verifySupabaseJwt } from '../_lib/auth'
-import { createUserClient } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { extractBearer, verifySupabaseJwt } from '../_lib/auth.js'
+import { createUserClient } from '../_lib/supabase-server.js'
 
 export default async function handler(
   req: RequestLike,

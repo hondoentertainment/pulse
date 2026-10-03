@@ -3,10 +3,10 @@ import { useEffect } from 'react'
 import { getEnergyLabel } from '@/lib/pulse-engine'
 
 function getIGColor(score: number): string {
-  if (score >= 80) return '#E1306C'
-  if (score >= 60) return '#F77737'
-  if (score >= 30) return '#FCAF45'
-  return '#833AB4'
+  if (score >= 75) return '#fa598c'
+  if (score >= 50) return '#ffb847'
+  if (score >= 25) return '#59c79e'
+  return '#8c8c94'
 }
 
 interface PulseScoreProps {
@@ -100,7 +100,7 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
         </motion.div>
       </div>
       
-      {showLabel && (
+      {showLabel ? (
         <motion.div
           key={label}
           initial={{ opacity: 0, y: -5 }}
@@ -109,6 +109,8 @@ export function PulseScore({ score, size = 'md', showLabel = true }: PulseScoreP
         >
           {label}
         </motion.div>
+      ) : (
+        <span className="sr-only">{label}, score {score} out of 100</span>
       )}
     </div>
   )

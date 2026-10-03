@@ -136,13 +136,6 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 | `us-markets.ts` | City/market definitions |
 | `global-venues.ts` | Global venue catalog |
 
-## Signal product (alternate shell)
-
-| Module | Purpose |
-|--------|---------|
-| `signal-data.ts` | Signal app data layer |
-| `signal-insights.ts` | Daily check-in insights |
-
 ## Platform & native
 
 | Module | Purpose |
@@ -152,6 +145,22 @@ See [Scoring Algorithm](scoring-algorithm.md) for algorithm detail.
 | `payment-processing.ts` | Payment flow helpers |
 | `stripe-client.ts` / `stripe-loader.ts` | Stripe.js loading |
 | `white-label.ts` | White-label configuration |
+
+## Next-steps product (#84–#87)
+
+| Module | Purpose |
+|--------|---------|
+| `guest-discovery.ts` | Guest browse + write `/auth` redirect; close composer |
+| `im-here.ts` | `/?here=` map focus + signed-in create |
+| `im-here-confirm.ts` | Shared I’m-here check-in, presence, and Web Push glance |
+| `cold-start.ts` | Launch 33 tip + `pulse_map_interactive` timing |
+| `tonight-home.ts` | Tonight ranking + teach-the-loop empty |
+| `neighborhood-geo.ts` | Seattle hood inference + saved fallback |
+| `catalog-quality.ts` | Hide bad / OSM-dupe pins from Tonight |
+| `trust-glance.ts` | Freshness / verified / density chips |
+| `install-affordance.ts` | Home-screen PWA prompt |
+| `ops-client.ts` | `/ops` claims + report triage |
+| `funnel-events.ts` | `guest_map_view`, `venue_open`, `auth_start`, `first_pulse_create` (no PII) |
 
 ## Config flags
 

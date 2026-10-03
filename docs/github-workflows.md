@@ -27,7 +27,8 @@ Runs on every push and pull request to `main`/`master`.
 | `test` | 10 min | `npm ci` → `npm run test` | Vitest unit suite |
 | `build` | 15 min | `npm ci` → `npm run build` | TypeScript + Vite production build |
 | `typecheck-strict` | 15 min | `npx tsc -b` | Strict TS (continue-on-error) |
-| `smoke-preview` | 20 min | build + Playwright | `VITE_E2E_AUTH_BYPASS=true` |
+| `smoke-preview-venue` | 20 min | Playwright venue smoke | Required shipping check |
+| `smoke-preview` | 5 min | Alias — needs `smoke-preview-venue` | Satisfies stale branch protection |
 | `dependency-audit` | 10 min | `npm audit --audit-level=high` | Uploads JSON report artifact |
 
 ### Concurrency

@@ -8,6 +8,7 @@ import {
   isE2EAuthBypassEnabled,
   supabase,
 } from '@/lib/supabase'
+import { authRedirectBaseUrl } from '@/lib/auth-redirect'
 import { createFallbackProfile, fetchOrCreateProfile } from '@/lib/auth-profile'
 
 /** Re-export for tests and callers that branch on demo vs real backend. */
@@ -62,11 +63,6 @@ function createPreviewAuthState() {
     session: createBypassSession(previewUser),
     profile: createFallbackProfile(previewUser),
   }
-}
-
-function authRedirectBaseUrl(): string {
-  if (typeof window === 'undefined') return ''
-  return `${window.location.origin}${window.location.pathname.replace(/\/$/, '') || ''}`
 }
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {

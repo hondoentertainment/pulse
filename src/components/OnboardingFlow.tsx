@@ -6,6 +6,7 @@ import { Lightning, MapPin, Users, Fire, Compass, ArrowRight, Check } from '@pho
 import { motion, AnimatePresence } from 'framer-motion'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { applyReferralCode } from '@/lib/creators-client'
+import { ALL_SEATTLE_TIP, COLD_START_HEADLINE, COLD_START_SUBLINE } from '@/lib/cold-start'
 
 interface OnboardingFlowProps {
   onComplete: (preferences: OnboardingPreferences) => void
@@ -114,13 +115,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               className="text-center space-y-8 max-w-sm"
             >
               <div className="space-y-2">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center">
-                  <Lightning size={40} weight="fill" className="text-white" />
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary">
+                  <Lightning size={40} weight="fill" className="text-primary-foreground" />
                 </div>
-                <h1 className="text-3xl font-bold mt-6">Welcome to Pulse</h1>
+                <h1 className="mt-6 text-3xl font-bold tracking-tight">Welcome to Pulse</h1>
+                <p className="text-2xl font-bold text-white">{COLD_START_HEADLINE}</p>
                 <p className="text-foreground/75">
-                  Real-time energy ratings for your city's best spots
+                  {COLD_START_SUBLINE}
                 </p>
+                <p className="text-xs text-muted-foreground">{ALL_SEATTLE_TIP}</p>
               </div>
 
               <div className="space-y-4">
@@ -137,7 +140,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ))}
               </div>
 
-              <Button size="lg" className="w-full" onClick={nextStep}>
+              <Button size="lg" className="h-12 w-full rounded-full text-[15px] font-bold" onClick={nextStep}>
                 Get Started
                 <ArrowRight size={18} className="ml-2" />
               </Button>
@@ -380,16 +383,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2, stiffness: 200 }}
-                className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center"
+                className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary"
               >
-                <Check size={48} weight="bold" className="text-white" />
+                <Check size={48} weight="bold" className="text-primary-foreground" />
               </motion.div>
 
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold">You're all set!</h2>
-                <p className="text-foreground/75">
-                  Time to discover what's buzzing near you
+                <h2 className="text-2xl font-bold tracking-tight">{COLD_START_HEADLINE}</h2>
+                <p className="text-muted-foreground">
+                  {COLD_START_SUBLINE}
                 </p>
+                <div className="mx-auto h-28 w-full rounded-2xl border border-border bg-card" aria-hidden />
+                <p className="text-xs text-muted-foreground">{ALL_SEATTLE_TIP}</p>
               </div>
 
               <div className="space-y-2 text-sm text-foreground/75">
@@ -401,8 +406,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 )}
               </div>
 
-              <Button size="lg" className="w-full" onClick={handleComplete}>
-                <Lightning size={20} weight="fill" className="mr-2" />
+              <Button size="lg" className="h-12 w-full rounded-full text-[15px] font-bold" onClick={handleComplete}>
                 Start Exploring
               </Button>
             </motion.div>

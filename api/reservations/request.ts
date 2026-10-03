@@ -15,7 +15,7 @@
  * }
  */
 
-import { authenticate } from '../_lib/auth'
+import { authenticate } from '../_lib/auth.js'
 import {
   badRequest,
   handlePreflight,
@@ -25,12 +25,12 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { calculatePlatformFeeCents } from '../_lib/fees'
-import { rateLimit } from '../_lib/rate-limit'
-import { createPaymentIntent } from '../_lib/stripe'
-import { getServiceSupabase } from '../_lib/supabase-server'
-import { isIsoDate, isNonNegativeInt, isPositiveInt, isUuid, requireFields } from '../_lib/validate'
+} from '../_lib/http.js'
+import { calculatePlatformFeeCents } from '../_lib/fees.js'
+import { rateLimit } from '../_lib/rate-limit.js'
+import { createPaymentIntent } from '../_lib/stripe.js'
+import { getServiceSupabase } from '../_lib/supabase-server.js'
+import { isIsoDate, isNonNegativeInt, isPositiveInt, isUuid, requireFields } from '../_lib/validate.js'
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (handlePreflight(req, res)) return

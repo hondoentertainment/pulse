@@ -3,7 +3,6 @@ import {
   getPersonalizedVenues,
   getVenueRecommendationReason,
   getMoodVenues,
-  type MoodType,
   type PersonalizationContext,
   type ScoredVenue,
 } from '../personalization-engine'

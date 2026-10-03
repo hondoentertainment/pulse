@@ -8,33 +8,16 @@ Reference for React components in `src/components/`. Use this when locating UI f
 
 ## Entry points
 
-Pulse has two product shells. Only one is mounted from `src/App.tsx` at a time.
+Pulse mounts one product shell: venue + map.
 
-### Current entry (`App.tsx`)
+### Current entry (`App.tsx` → `VenueApp` → `AppRoutes.tsx`)
 
-```
-LoginScreen (unauthenticated)
-    └── SignalApp (authenticated)
-            Routes: /home, /trends, /history, /settings
-```
-
-| Component | Path | Role |
-|-----------|------|------|
-| `LoginScreen` | `LoginScreen.tsx` | Root auth UI |
-| `SignalApp` | `signal/SignalApp.tsx` | Self-contained router + bottom nav |
-| `SignalOnboarding` | `signal/SignalOnboarding.tsx` | Signal first-run onboarding |
-| `SignalCheckIn` | `signal/SignalCheckIn.tsx` | Daily check-in flow |
-| `SignalChart` | `signal/SignalChart.tsx` | Trend visualization |
-| `FirstWinDialog` | `signal/FirstWinDialog.tsx` | First-check-in celebration |
-
-### Venue discovery shell (`AppRoutes.tsx`)
-
-The full nightlife discovery experience. **Not mounted from `App.tsx` today** — swap the entry in `App.tsx` to use `AppRoutes` when switching products.
+The nightlife discovery experience.
 
 ```
 AppRoutes (React Router)
 ├── OnboardingFlow (first launch)
-├── AuthGate (Supabase sign-in)
+├── AuthGate (`/auth` only — create / reviews / inbox / claims)
 ├── Main tabs via MainTabRouter
 │     trending | discover | map | notifications | profile
 ├── SubPageRouter (secondary pages)
@@ -52,7 +35,7 @@ AppRoutes (React Router)
 | `BottomNav` | `BottomNav.tsx` | 5-tab primary navigation |
 | `AppHeader` | `AppHeader.tsx` | Location/market header |
 | `OnboardingFlow` | `OnboardingFlow.tsx` | First-run preferences |
-| `AuthGate` | `AuthGate.tsx` | Supabase auth gate |
+| `AuthGate` | `AuthGate.tsx` | Sign-in for write actions (`/auth`) |
 | `ProtectedRoute` | `ProtectedRoute.tsx` | Generic React Router auth guard |
 | `PageSkeleton` | `PageSkeleton.tsx` | Loading gate |
 
@@ -89,8 +72,10 @@ AppRoutes (React Router)
 | Path | Component |
 |------|-----------|
 | `/` | Redirect to active tab |
+| `/auth` | `AuthGate` (guest create / reviews / inbox / claims) |
 | `/discover`, `/map`, `/trending`, `/notifications`, `/profile` | Tab views |
 | `/venue/:venueId` | `VenueRoute` → `VenuePage` |
+| `/venue/:venueId/inbox` | `VenueInboxRoute` → `VenueInboxPage` |
 | `/admin/venues/:id/metadata` | `VenueMetadataRoute` |
 | Sub-page paths | `SubPageRouter` |
 
@@ -212,7 +197,16 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `InteractiveMap` | Main map with clustering |
+| `InteractiveMap` | Main map with clustering, live-review heatmap, and live toast |
+| `MapLiveReviewToast` | Floating `Live · venue · snippet` overlay on the map |
+| `SurgingNearbyList` | Last-hour live review cards under the map |
+| `TonightHomeHeader` | Tonight · neighborhood + X tabs (Tonight / Live / Map) + For you rows |
+| `TonightEmptyState` | Teach map → venue → pulse |
+| `LivePulseTimeline` | City-wide X timeline of last-90-min venue pulses |
+| `TrustPinChips` | Freshness / Verified or Claimed / density chips |
+| `InstallAffordance` | Add to home screen on the map tab |
+| `ShareArrivalCard` | Shared-link landing + I’m here |
+| `OpsQueuePage` | `/ops` claim verify/reject + report dismiss/resolve |
 | `MapboxBaseLayer` | Mapbox tile layer |
 | `MapFilters` | Energy/category filters |
 | `MapSearch` | Map-integrated search |
@@ -255,7 +249,13 @@ Gated by `VITE_VIDEO_FEED_ENABLED`. See [Video Feed](video-feed.md).
 | Component | Purpose |
 |-----------|---------|
 | `PulseCard` | Pulse in feed |
-| `CreatePulseDialog` | Create pulse modal |
+| `CreatePulseDialog` | Create pulse modal (X composer + Uber Post · 1 tap) |
+| `LiveReviewFeedCard` | Timeline pulse: avatar · name · @venue · time · action row |
+| `FeedTabBar` | X underline tabs (`src/components/ux/`) |
+| `FilterPill` | Uber floating filter chip |
+| `PulseActionRow` | Boost · reply · share icon row |
+| `ComposerVenueChip` | Venue attachment chip in composer |
+| `TimelineAvatar` | Letter / photo avatar for feed rows |
 | `PulseMediaCarousel` | Pulse photo/video carousel |
 | `PulseScore` | Energy score display |
 | `StoryRing` | Story avatar ring |

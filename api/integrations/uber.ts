@@ -21,9 +21,9 @@ import {
   tooManyRequests,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { asLatLng, asNumber, isPlainObject } from '../_lib/validate'
-import { clientKey, rateLimit } from '../_lib/rate-limit'
+} from '../_lib/http.js'
+import { asLatLng, asNumber, isPlainObject } from '../_lib/validate.js'
+import { clientKey, rateLimit } from '../_lib/rate-limit.js'
 
 interface UberEstimateRequest {
   pickup: { lat: number; lng: number }

@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { CircleNotch } from '@phosphor-icons/react'
+import { buildAuthPath } from '@/lib/auth-return-intent'
 
 interface ProtectedRouteProps {
   /** The content to render when the user is authenticated */
@@ -61,7 +62,8 @@ export function ProtectedRoute({
 
   // Redirect unauthenticated users, preserving the intended destination
   if (!user) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />
+    const intended = `${location.pathname}${location.search}`
+    return <Navigate to={buildAuthPath(intended) || redirectTo} replace />
   }
 
   return <>{children}</>

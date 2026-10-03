@@ -31,6 +31,7 @@ Reference for custom React hooks in `src/hooks/`. Hooks bridge domain logic (`sr
 | Hook | File | Purpose |
 |------|------|---------|
 | `useRealtimeLocation` | `use-realtime-location.ts` | GPS tracking with accuracy indicators |
+| `useMapLiveReviews` | `use-map-live-reviews.ts` | New live-review arrivals → map toast (visible venues only) |
 | `useMapbox` | `use-mapbox.ts` | Mapbox GL map instance lifecycle |
 | `useRouteNavigation` | `use-route-navigation.ts` | URL ↔ tab/sub-page navigation helpers |
 

@@ -22,9 +22,9 @@ import {
   type RequestLike,
   type ResponseLike,
   getHeader,
-} from '../_lib/http'
-import { verifyWebhookSignature } from '../_lib/stripe'
-import { getServiceSupabase } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { verifyWebhookSignature } from '../_lib/stripe.js'
+import { getServiceSupabase } from '../_lib/supabase-server.js'
 
 export const config = { api: { bodyParser: false } }
 

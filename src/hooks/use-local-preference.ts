@@ -13,7 +13,7 @@ export function useLocalPreference<T extends string | boolean>(key: string, init
     try {
       localStorage.setItem(key, JSON.stringify(value))
     } catch {
-      // Storage may be unavailable in private or restricted browser contexts.
+      // Storage can be unavailable in private or restricted browser contexts.
     }
   }, [key, value])
   return [value, setValue] as const

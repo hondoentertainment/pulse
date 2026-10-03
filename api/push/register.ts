@@ -4,7 +4,7 @@
  *
  * Body: { token: string, platform: 'ios' | 'android', deviceId?: string, appVersion?: string }
  */
-import { getAuthenticatedUserId } from '../_lib/auth'
+import { getAuthenticatedUserId } from '../_lib/auth.js'
 
 type RequestLike = {
   method?: string

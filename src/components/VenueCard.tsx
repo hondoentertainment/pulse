@@ -9,6 +9,8 @@ import { formatDistance } from '@/lib/units'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { getPreTrendingLabel } from '@/lib/venue-trending'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
+import { EnergyBadge } from '@/components/EnergyBadge'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 import { motion } from 'framer-motion'
 
 interface VenueCardProps {
@@ -22,13 +24,16 @@ interface VenueCardProps {
   onToggleFollow?: (venueId: string) => void
   showPreTrendingLabel?: boolean
   mediaUrl?: string
+  liveReviewCount?: number
 }
 
-export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel, mediaUrl }: VenueCardProps) {
+export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, onToggleFavorite, isFollowed, onToggleFollow, showPreTrendingLabel, mediaUrl, liveReviewCount = 0 }: VenueCardProps) {
   const { unitSystem } = useUnitPreference()
   const preTrendingLabel = showPreTrendingLabel && venue.preTrending ? getPreTrendingLabel(venue) : null
   const contextualLabel = venue.pulseScore >= 25 ? getContextualLabel(venue) : ''
   const liveReportCount = venue.liveSummary?.reportCount ?? 0
+  const reviewOrReportCount = liveReviewCount > 0 ? liveReviewCount : liveReportCount
+  const reviewLabel = liveReviewCount > 0 ? 'Reviews' : 'Reports'
   
   return (
     <motion.div
@@ -71,14 +76,17 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
                     Following
                   </Badge>
                 )}
-                {liveReportCount > 0 && (
+                {reviewOrReportCount > 0 && (
                   <Badge variant="outline" className="border-white/25 bg-black/35 text-xs text-white backdrop-blur">
                     <Broadcast size={11} weight="fill" className="mr-1" />
                     Live
                   </Badge>
                 )}
               </div>
-              <h3 className="mt-1 truncate text-2xl font-bold text-white drop-shadow">{venue.name}</h3>
+              <div className="mt-1 flex items-center gap-2">
+                <h3 className="truncate text-2xl font-bold text-white drop-shadow">{venue.name}</h3>
+                <EnergyBadge label={getEnergyLabel(venue.pulseScore)} className="shrink-0" />
+              </div>
             </div>
             <div className="rounded-2xl bg-black/45 p-2 backdrop-blur">
               <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
@@ -163,8 +171,8 @@ export function VenueCard({ venue, distance, onClick, isJustPopped, isFavorite, 
             />
             <MetricPill
               icon={<Broadcast size={13} weight="fill" />}
-              label="Reports"
-              value={liveReportCount > 0 ? String(liveReportCount) : 'None'}
+              label={reviewLabel}
+              value={reviewOrReportCount > 0 ? String(reviewOrReportCount) : 'None'}
             />
           </div>
         </div>

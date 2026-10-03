@@ -243,9 +243,11 @@ describe('VenueQuickActions', () => {
     render(
       <VenueQuickActions
         onCheckIn={() => {}}
+        onShare={() => {}}
         onDirections={() => {}}
         onRide={() => {}}
         onReserve={() => {}}
+        onWatchSurge={() => {}}
         onSave={() => {}}
         isSaved={false}
       />
@@ -261,9 +263,11 @@ describe('VenueQuickActions', () => {
     render(
       <VenueQuickActions
         onCheckIn={onCheckIn}
+        onShare={() => {}}
         onDirections={() => {}}
         onRide={() => {}}
         onReserve={() => {}}
+        onWatchSurge={() => {}}
         onSave={() => {}}
         isSaved={false}
       />
@@ -345,7 +349,7 @@ describe('VenueLivePanel', () => {
       },
       confidenceDetails: {},
       doorMode: {
-        lineStatus: 'moving',
+        lineStatus: 'moving' as const,
         entryConfidence: 80,
         guestListStatus: null,
         tableMinimum: null,

@@ -1,26 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Venue, PulseWithUser, User, PresenceData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
-import { PulseScore } from '@/components/PulseScore'
 import { PulseCard } from '@/components/PulseCard'
 import { ScoreBreakdown } from '@/components/ScoreBreakdown'
 import { ShareSheet } from '@/components/ShareSheet'
 import { VenueLivePanel } from '@/components/VenueLivePanel'
 import { QuickReportSheet } from '@/components/QuickReportSheet'
 import { VenueActionPanel } from '@/components/VenueActionPanel'
-import { Plus, MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
+import { MapPin, ArrowLeft, Clock, Star, Phone, Globe, HeartStraight, CalendarCheck, ShareNetwork } from '@phosphor-icons/react'
 import { formatDistance } from '@/lib/units'
-import { formatTimeAgo } from '@/lib/pulse-engine'
-import { generateVenueShareCard, type ShareCard } from '@/lib/sharing'
+import { formatTimeAgo, getEnergyLabel } from '@/lib/pulse-engine'
+import { generateVenueShareCard, getVenueSharePreviewUrl, type ShareCard } from '@/lib/sharing'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { AnimatedEmptyState } from './AnimatedEmptyState'
 import { WhoIsHereRow } from './WhoIsHereRow'
-import { VenueDetailHero } from './VenueDetailHero'
 import type { ContentReport } from '@/lib/content-moderation'
 // Phase 2: Venue star moment
 import { LiveCrowdIndicator } from './LiveCrowdIndicator'
@@ -31,6 +29,44 @@ import { VenueActivityStream } from './VenueActivityStream'
 import VenueMemoryCard from './VenueMemoryCard'
 import { getContextualLabel } from '@/lib/time-contextual-scoring'
 import { trackEvent } from '@/lib/analytics'
+import { track } from '@/lib/observability/analytics'
+import { funnelActor, trackFunnel } from '@/lib/funnel-events'
+import { LiveNowStrip } from '@/components/LiveNowStrip'
+import { listOwnerRepliesForVenue } from '@/lib/data/owner-replies'
+import type { OwnerInboxReply } from '@/lib/owner-inbox'
+import { VenueSurgeMuteButton } from '@/components/VenueSurgeMuteButton'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { energyScoreColor, getLiveNowReviews, venueStatusLine } from '@/lib/live-reviews'
+import { LiveReviewFeedCard } from '@/components/LiveReviewFeedCard'
+import { authorHandle, venueHandle } from '@/lib/venue-handle'
+import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
+import { FollowVenueButton } from '@/components/FollowVenueButton'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { ShareArrivalCard } from '@/components/ShareArrivalCard'
+import { HereNowCount } from '@/components/HereNowCount'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { FollowUserButton } from '@/components/FollowUserButton'
+import { getVenueInviteShareUrl, INVITE_FRIEND_COPY } from '@/lib/invite-friend'
+import { venueMapsHref, MAPS_CTA } from '@/lib/venue-maps'
+import { listHopNextVenues } from '@/lib/hop-next'
+import { doorRollupLabel } from '@/lib/door-rollup'
+import { canPinFromTheDoor, DOOR_PIN_CTA, DOOR_PIN_LABEL, type VenueDoorPin } from '@/lib/door-pin'
+import { CREW_TONIGHT_COPY } from '@/lib/crew-tonight'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { VenueClaim } from '@/lib/venue-owner'
+import { VenueCoverPhoto } from '@/components/VenueCoverPhoto'
+import { OpenNowChip } from '@/components/OpenNowChip'
+import { TextInviteButton } from '@/components/TextInviteButton'
+import { HopNextRow } from '@/components/HopNextRow'
+import { CrewTonightPicker } from '@/components/CrewTonightPicker'
+import { formatCrewImHere, type CrewPresenceRow } from '@/lib/crew-im-here'
+import type { OwnerReplyNoticeInput } from '@/lib/in-app-notify'
+import { PulseThreadActions } from '@/components/PulseThreadActions'
+import { shareVenueFromSurface } from '@/lib/sharing'
 import { getVenueActionCtas, type VenueActionCta } from '@/lib/venue-action-ctas'
 import { launchIntegrationUrl } from '@/lib/integrations'
 import { isVenueSurgeWatched, toggleVenueSurgeWatch } from '@/lib/venue-surge-watch'
@@ -44,10 +80,20 @@ import {
   type LiveReport,
 } from '@/lib/live-intelligence'
 import { seedVenueOperatorStatus } from '@/lib/venue-operator-live'
-import { useCurrentTime } from '@/hooks/use-current-time'
 import { hasSupabaseConfig } from '@/lib/supabase'
 import { fetchVenueLiveReportsFromSupabase, submitVenueLiveReportToSupabase } from '@/lib/supabase-api'
 import { queryClient } from '@/lib/query-client'
+import { computeVenueSignal } from '@/lib/venue-signal'
+import { buildWorthGoingSummary } from '@/lib/worth-going'
+import { WorthGoingSummary } from '@/components/WorthGoingSummary'
+import { ArrivalPrompt } from '@/components/ArrivalPrompt'
+import {
+  confirmArrival,
+  getArrivalWatchStatus,
+  reportArrivalMismatch,
+  startArrivalWatch,
+  type ArrivalWatch,
+} from '@/lib/arrival-prompt'
 
 interface VenuePageProps {
   venue: Venue
@@ -68,6 +114,24 @@ interface VenuePageProps {
   onReportPulse?: (report: ContentReport) => void
   onToggleFavorite: () => void
   onToggleFollow?: () => void
+  onPinMyNight?: () => void
+  onHidePulse?: (pulseId: string) => void
+  onFollowUser?: (userId: string) => void
+  onPulseReply?: (pulseId: string, venueId: string) => void
+  onSameAgree?: (pulseId: string, venueId: string) => void
+  onBlockUser?: (userId: string, venueId?: string) => void
+  onCrewTonight?: (venueId: string, memberIds: string[]) => void
+  crewHere?: readonly CrewPresenceRow[]
+  onOwnerReplyNotices?: (replies: OwnerReplyNoticeInput[]) => void
+  onDoorPin?: (venueId: string, pulseId: string) => void
+  catalogVenues?: Venue[]
+  claims?: VenueClaim[]
+  doorPin?: VenueDoorPin | null
+  replies?: PulseReply[]
+  agrees?: PulseAgree[]
+  myNightPinned?: boolean
+  invitePrimed?: boolean
+  hereNow?: { count: number; friends: { userId: string; username: string | null }[] }
   presenceData?: PresenceData | null
   onOpenPresence: () => void
   onOpenIntegrations?: () => void
@@ -84,7 +148,7 @@ export function VenuePage({
   userLocation,
   unitSystem,
   locationName,
-  isTracking,
+  isTracking: _isTracking,
   hasRealtimeLocation,
   isFavorite,
   isFollowed,
@@ -96,6 +160,24 @@ export function VenuePage({
   onReportPulse,
   onToggleFavorite,
   onToggleFollow,
+  onPinMyNight,
+  onHidePulse,
+  onFollowUser,
+  onPulseReply,
+  onSameAgree,
+  onBlockUser,
+  onCrewTonight,
+  crewHere = [],
+  onOwnerReplyNotices,
+  onDoorPin,
+  catalogVenues = [],
+  claims = [],
+  doorPin = null,
+  replies = [],
+  agrees = [],
+  myNightPinned = false,
+  invitePrimed = false,
+  hereNow,
   presenceData,
   onOpenPresence,
   onOpenIntegrations,
@@ -103,14 +185,22 @@ export function VenuePage({
   hasMoreVenuePulses,
   isLoadingMoreVenuePulses,
 }: VenuePageProps) {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
+  const notifyHighlight = searchParams.get('highlight')
+  const highlightPulseId = searchParams.get('pulse')
+  const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
+  const [ownerReplies, setOwnerReplies] = useState<OwnerInboxReply[]>([])
   const [liveData, setLiveData] = useState<VenueLiveData | null>(null)
   const [isWatchingSurge, setIsWatchingSurge] = useState(false)
-  const currentTime = useCurrentTime()
+  const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
+  const [arrivalTick, setArrivalTick] = useState(0)
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
-  const heroMediaUrl = venuePulses.find(pulse => pulse.photos?.[0])?.photos?.[0]
 
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
@@ -138,13 +228,97 @@ export function VenuePage({
   }, [refreshLiveData])
 
   useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      void listOwnerRepliesForVenue(venue.id).then((rows) => {
+        if (cancelled) return
+        setOwnerReplies(rows)
+        onOwnerReplyNotices?.(rows.map((row) => ({
+          id: row.id,
+          venueId: row.venueId,
+          pulseId: row.pulseId,
+          createdAt: row.createdAt,
+        })))
+      })
+    }
+    load()
+    window.addEventListener('focus', load)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+    }
+  }, [onOwnerReplyNotices, venue.id])
+
+  useEffect(() => {
     setIsWatchingSurge(isVenueSurgeWatched(venue.id))
   }, [venue.id])
+
+  useEffect(() => {
+    if (!arrivalWatch) return
+    const timer = window.setInterval(() => setArrivalTick((tick) => tick + 1), 15_000)
+    return () => window.clearInterval(timer)
+  }, [arrivalWatch])
+
+  const venueSignal = useMemo(
+    () => computeVenueSignal({
+      venue,
+      pulses: venuePulses,
+      liveReports: Array.isArray(serverLiveReports) ? serverLiveReports : [],
+      liveData,
+    }),
+    [liveData, serverLiveReports, venue, venuePulses],
+  )
+  const worthGoing = useMemo(() => buildWorthGoingSummary(venueSignal, venue), [venue, venueSignal])
+  const showArrivalPrompt = Boolean(
+    arrivalWatch &&
+    arrivalTick >= 0 &&
+    getArrivalWatchStatus(arrivalWatch) === 'ready',
+  )
+
+  useEffect(() => {
+    if (!showArrivalPrompt || !arrivalWatch) return
+    trackEvent({ type: 'arrival_prompt_shown', timestamp: Date.now(), venueId: arrivalWatch.venueId })
+  }, [arrivalWatch, showArrivalPrompt])
+
+  useEffect(() => {
+    if (!fromShare || typeof document === 'undefined') return
+    const node = document.getElementById('energy')
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ block: 'center' })
+    }
+  }, [fromShare, venue.id])
+
+  useEffect(() => {
+    track('venue_viewed', { venueId: venue.id, source: fromShare ? 'share' : 'deeplink' })
+    trackFunnel('venue_open', {
+      venueId: venue.id,
+      guest: funnelActor({ hasSession: Boolean(session), isPlaceholder }).guest,
+      fromShare,
+    })
+  }, [fromShare, isPlaceholder, session, venue.id])
+
+  const liveNowReviews = useMemo(
+    () => getLiveNowReviews(venuePulses, venue.id),
+    [venue.id, venuePulses],
+  )
+  const historyPulses = useMemo(() => {
+    const liveIds = new Set(liveNowReviews.map((pulse) => pulse.id))
+    return venuePulses.filter((pulse) => !liveIds.has(pulse.id))
+  }, [liveNowReviews, venuePulses])
 
   const handleShare = () => {
     const card = generateVenueShareCard(venue)
     setShareCard(card)
     setShareOpen(true)
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getVenueSharePreviewUrl(venue.id))
+      toast.success('Venue link copied')
+    } catch {
+      toast.error('Could not copy link')
+    }
   }
 
   const actionCtas = getVenueActionCtas(venue, {
@@ -227,8 +401,13 @@ export function VenuePage({
   }
 
   const submitLiveReport = async (type: LiveReport['type'], value: unknown) => {
-    if (!currentUser) {
-      toast.error('Sign in to report live intel')
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.intel.title, { description: WRITE_AUTH_COPY.intel.description })
+      navigate(authRedirect ?? '/auth')
       return
     }
 
@@ -261,74 +440,243 @@ export function VenuePage({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
-      <VenueDetailHero
-        venue={venue}
-        mediaUrl={heroMediaUrl}
-        isFavorite={isFavorite}
-        isFollowed={isFollowed}
-        onBack={onBack}
-        onShare={handleShare}
-        onToggleFavorite={onToggleFavorite}
-        onToggleFollow={onToggleFollow}
-      />
-
-      <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              aria-label="Back to venues"
-              className="min-h-11 min-w-11 p-2 hover:bg-secondary rounded-lg transition-colors touch-manipulation active:scale-[0.98]"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{venue.name}</h1>
-              {venue.pulseScore >= 25 && getContextualLabel(venue) && (
-                <p className="text-sm text-accent font-medium italic mt-0.5">{getContextualLabel(venue)}</p>
-              )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                {venue.category && (
-                  <span className="font-mono uppercase">{venue.category}</span>
-                )}
-                {distance !== undefined && (
-                  <>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <MapPin size={14} weight="fill" />
-                      <span>{formatDistance(distance, unitSystem)} away</span>
-                    </div>
-                  </>
-                )}
+    <div className={fromShare
+      ? 'min-h-screen bg-background pb-[calc(16rem+env(safe-area-inset-bottom,0px))]'
+      : 'min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom,0px))]'}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mx-auto max-w-2xl space-y-3 px-4 pb-6 pt-6"
+      >
+        <div>
+          <button
+            onClick={onBack}
+            aria-label="Back to Map"
+            className="mb-3 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={18} />
+            Map
+          </button>
+          {!fromShare && <VenueCoverPhoto venue={venue} />}
+          {!fromShare && (
+          <h1 className="text-[28px] font-bold leading-9 tracking-tight text-foreground">{venue.name}</h1>
+          )}
+          {!fromShare && (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <OpenNowChip venue={venue} />
+            {doorRollupLabel(venuePulses, venue.id) && (
+              <span className="inline-flex min-h-7 items-center rounded-full border border-border px-2.5 text-[11px] font-semibold">
+                {doorRollupLabel(venuePulses, venue.id)}
+              </span>
+            )}
+          </div>
+          )}
+          <p className="sr-only">{venueHandle(venue.name)}</p>
+          {!fromShare && (() => {
+            const placeStatus = venueStatusLine(venue)
+            const verified = Boolean(
+              venue.claimVerified ||
+              venue.verifiedCheckInCount ||
+              venuePulses.some((pulse) => pulse.locationVerified),
+            )
+            const line = [
+              placeStatus,
+              venue.claimVerified ? 'Claimed' : verified ? 'Verified' : null,
+            ].filter(Boolean).join(' · ')
+            return line ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">{line}</p>
+            ) : null
+          })()}
+        </div>
+        {fromShare && (
+          <ShareArrivalCard venue={venue} pulses={venuePulses} userLocation={userLocation} />
+        )}
+        {!fromShare && (() => {
+          const recent10m = venuePulses.filter(p => Date.now() - new Date(p.createdAt).getTime() < 10 * 60 * 1000).length
+          const delta = recent10m * 8
+          return (
+            <Card className={`${UX_CARD} p-3.5`}>
+              <div className="flex flex-nowrap items-center gap-3.5">
+                <p className="shrink-0 text-[40px] font-bold tabular-nums leading-[44px] text-foreground">
+                  {venue.pulseScore}
+                </p>
+                <div className="min-w-0">
+                  <p className="text-[16px] font-semibold" style={{ color: energyScoreColor(venue.pulseScore) }}>
+                    {getEnergyLabel(venue.pulseScore)}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                    {delta > 0 && <span>+{delta} / 10m ·</span>}
+                    <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} inline />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
+            </Card>
+          )
+        })()}
+
+        {hereNow && (
+          <HereNowCount count={hereNow.count} friends={hereNow.friends} />
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            onClick={onCreatePulse}
+            className={fromShare
+              ? 'h-12 min-w-0 flex-[2] rounded-[14px] border border-white/15 bg-background text-[14px] font-semibold text-foreground'
+              : `${UX_CTA} min-w-0 flex-[2]`}
+          >
+            I’m here · Pulse
+          </Button>
+          {onToggleFollow && (
+            <FollowVenueButton
+              following={Boolean(isFollowed)}
+              onClick={onToggleFollow}
+            />
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
+            onClick={() => {
+              const inviteUrl = getVenueInviteShareUrl(venue.id)
+              void shareVenueFromSurface(venue, {
+                writeText: async (text) => {
+                  await navigator.clipboard.writeText(`${inviteUrl}\n${text}`)
+                },
+              }).then((result) => {
+                if (result === 'copied') toast.success('Invite link copied')
+              })
+            }}
+          >
+            {INVITE_FRIEND_COPY.cta}
+          </button>
+          {onPinMyNight && (
+            <button
+              type="button"
+              className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
+              onClick={onPinMyNight}
+            >
+              Pin My night
+            </button>
+          )}
+          <a
+            href={venueMapsHref({
+              lat: venue.location.lat,
+              lng: venue.location.lng,
+              name: venue.name,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-11 items-center justify-center rounded-[14px] border border-white/15 px-3 text-center text-[14px] font-semibold text-foreground"
+          >
+            {MAPS_CTA}
+          </a>
+          <TextInviteButton venueId={venue.id} venueName={venue.name} />
+        </div>
+        <HopNextRow
+          venues={listHopNextVenues(catalogVenues.length > 0 ? catalogVenues : [venue], venue)}
+          onVenueClick={(next) => navigate(`/venue/${next.id}`)}
+        />
+        {notifyHighlight === 'surge' && (
+          <p role="status" data-testid="notify-highlight" className="rounded-xl border-2 border-primary bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground">
+            Surging now · {venue.name}
+          </p>
+        )}
+        {notifyHighlight === 'pulse' && (
+          <p
+            role="status"
+            data-testid="notify-highlight"
+            id={highlightPulseId ? `pulse-${highlightPulseId}` : undefined}
+            className="rounded-xl border-2 border-primary bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground"
+          >
+            Friend pulse · {venue.name}
+          </p>
+        )}
+        {crewHere.length > 0 && (
+          <p className="text-sm font-semibold text-foreground" data-testid="crew-im-here">
+            Crew tonight · {formatCrewImHere(crewHere)}
+          </p>
+        )}
+        {onCrewTonight && (
+          <CrewTonightPicker
+            followedPeople={(currentUser?.friends ?? []).map((id) => ({
+              id,
+              username: id.slice(0, 8),
+            }))}
+            ownerId={currentUser?.id}
+            pinned={myNightPinned}
+            onSave={(ids) => onCrewTonight(venue.id, ids)}
+            onInvite={() => {
+              void navigator.clipboard?.writeText(getVenueInviteShareUrl(venue.id))
+              toast.success(CREW_TONIGHT_COPY.share)
+            }}
+          />
+        )}
+
+        <LiveNowStrip
+          venueId={venue.id}
+          pulses={venuePulses}
+          venueName={venue.name}
+          onSelect={setSelectedLiveReview}
+          doorPin={doorPin}
+          ownerReplies={ownerReplies}
+        />
+
+        <details className="relative z-10 mt-1 rounded-xl border border-border bg-card px-3.5 py-3">
+          <summary className="cursor-pointer text-[14px] font-medium text-foreground">
+            More venue details
+          </summary>
+          <div className="mt-4 space-y-6">
+            {venue.pulseScore >= 25 && getContextualLabel(venue) && (
+              <p className="text-sm font-medium italic text-accent">{getContextualLabel(venue)}</p>
+            )}
+            {distance !== undefined && (
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                <MapPin size={14} weight="fill" />
+                {formatDistance(distance, unitSystem)} away
+              </p>
+            )}
+            {locationName && (
+              <p className="text-xs text-muted-foreground">
+                {locationName}
+                {hasRealtimeLocation ? ' · LIVE' : ''}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
               {onToggleFollow && (
                 <button
                   onClick={onToggleFollow}
-                  aria-label={isFollowed ? "Unfollow venue" : "Follow venue"}
-                  className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
-                  title={isFollowed ? "Unfollow" : "Follow"}
+                  aria-label={isFollowed ? 'Unfollow venue' : 'Follow venue'}
+                  className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
                 >
                   <HeartStraight
                     size={24}
-                    weight={isFollowed ? "fill" : "regular"}
-                    className={isFollowed ? "text-primary" : "text-muted-foreground"}
+                    weight={isFollowed ? 'fill' : 'regular'}
+                    className={isFollowed ? 'text-primary' : 'text-muted-foreground'}
                   />
                 </button>
               )}
+              {isFollowed && <VenueSurgeMuteButton venueId={venue.id} />}
               <button
                 onClick={handleShare}
                 aria-label="Share venue"
-                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
+                className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
               >
                 <ShareNetwork size={24} className="text-muted-foreground" />
               </button>
               <button
+                onClick={() => { void handleCopyLink() }}
+                aria-label="Copy venue link"
+                className="min-h-11 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                Copy link
+              </button>
+              <button
                 onClick={onToggleFavorite}
-                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-secondary transition-colors touch-manipulation active:scale-[0.98]"
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-secondary"
               >
                 <Star
                   size={24}
@@ -336,38 +684,32 @@ export function VenuePage({
                   className={isFavorite ? 'text-accent' : 'text-muted-foreground'}
                 />
               </button>
-              <PulseScore score={venue.pulseScore} size="sm" showLabel={false} />
             </div>
-          </div>
-          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
-            {locationName && (
-              <div className="flex items-center gap-1.5">
-                <MapPin size={12} weight="fill" className={cn(
-                  "transition-colors",
-                  isTracking ? "text-accent animate-pulse" : "text-muted-foreground"
-                )} />
-                <span>{locationName}</span>
-                {hasRealtimeLocation && (
-                  <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-md uppercase font-bold">
-                    LIVE
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="flex items-center gap-1.5">
-              <Clock size={12} weight="fill" className="text-accent" />
-              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <WorthGoingSummary summary={worthGoing} />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-2xl mx-auto px-4 py-6 space-y-6"
-      >
+        {showArrivalPrompt && arrivalWatch && (
+          <ArrivalPrompt
+            watch={arrivalWatch}
+            onConfirm={() => {
+              const next = confirmArrival(arrivalWatch.id)
+              setArrivalWatch(next)
+              trackEvent({ type: 'arrival_confirmed', timestamp: Date.now(), venueId: venue.id })
+              toast.success('Thanks — signal confirmed')
+            }}
+            onMismatch={(correction) => {
+              const next = reportArrivalMismatch(arrivalWatch.id, correction)
+              setArrivalWatch(next)
+              trackEvent({
+                type: 'mismatch_reported',
+                timestamp: Date.now(),
+                venueId: venue.id,
+                correction,
+              })
+              toast.success('Mismatch recorded')
+            }}
+          />
+        )}
+
         {(venue.location.address || venue.phone || venue.website || venue.hours) && (
           <>
             <Card className="p-4 space-y-4 bg-card border-border">
@@ -451,10 +793,10 @@ export function VenuePage({
 
         {/* Phase 2: Live Crowd Indicator */}
         <LiveCrowdIndicator
-          count={presenceData?.friendsHereNowCount ?? Math.floor(venue.pulseScore * 1.5)}
+          count={hereNow?.count ?? presenceData?.friendsHereNowCount ?? 0}
           trend={venue.pulseScore >= 70 ? 'rising' : venue.pulseScore >= 40 ? 'steady' : 'falling'}
-          friendCount={presenceData?.friendsNearbyCount ?? 0}
-          isEstimated={!presenceData}
+          friendCount={hereNow?.friends.length ?? presenceData?.friendsNearbyCount ?? 0}
+          isEstimated={false}
         />
 
         {/* Phase 4: Venue Memory Card */}
@@ -479,23 +821,11 @@ export function VenuePage({
           currentScore={venue.pulseScore}
         />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">Live Energy</h2>
-            {venue.lastPulseAt && (
-              <p className="text-sm text-muted-foreground">
-                Last pulse {formatTimeAgo(venue.lastPulseAt)}
-              </p>
-            )}
-          </div>
-          <Button
-            onClick={onCreatePulse}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus size={20} weight="bold" className="mr-2" />
-            Create Pulse
-          </Button>
-        </div>
+        {venue.lastPulseAt && (
+          <p className="text-sm text-muted-foreground">
+            Last pulse {formatTimeAgo(venue.lastPulseAt)}
+          </p>
+        )}
 
         {onStartCrewCheckIn && (
           <Button
@@ -505,6 +835,16 @@ export function VenuePage({
           >
             <CalendarCheck size={18} weight="bold" className="mr-2" />
             Check In With Crew
+          </Button>
+        )}
+
+        {isFeatureEnabled('venueInbox') && (
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/venue/${venue.id}/inbox`)}
+            className="w-full"
+          >
+            Venue inbox
           </Button>
         )}
 
@@ -533,7 +873,11 @@ export function VenuePage({
         <VenueQuickActions
           onCheckIn={onCreatePulse}
           onShare={handleShare}
-          onDirections={() => directionsAction && launchVenueAction(directionsAction)}
+          onDirections={() => {
+            const watch = startArrivalWatch(venue.id, venue.name)
+            setArrivalWatch(watch)
+            if (directionsAction) launchVenueAction(directionsAction)
+          }}
           onRide={() => rideAction && launchVenueAction(rideAction)}
           onReserve={() => {
             if (reserveAction) {
@@ -554,8 +898,6 @@ export function VenuePage({
           canReserve={Boolean(reserveAction || ticketAction)}
         />
 
-        <ScoreBreakdown venue={venue} pulses={venuePulses.map(p => ({ ...p }))} />
-
         {/* Phase 2: Activity Stream */}
         <VenueActivityStream
           venueId={venue.id}
@@ -564,22 +906,31 @@ export function VenuePage({
 
         <Separator />
 
+        <h2 className="text-[15px] font-bold">History</h2>
+
         {venuePulses.length === 0 ? (
           <AnimatedEmptyState
             variant="no-pulses"
             onAction={onCreatePulse}
-            actionLabel="Create Pulse"
+            actionLabel="Post live review"
           />
+        ) : historyPulses.length === 0 ? (
+          <p className="border-y border-border py-5 text-[15px] text-muted-foreground">Older reviews will appear here after they leave the live window.</p>
         ) : (
-          <div className="space-y-4">
-            {venuePulses.map((pulse) => (
-              <PulseCard
+          <div>
+            {historyPulses.map((pulse) => (
+              <LiveReviewFeedCard
                 key={pulse.id}
-                pulse={pulse}
-                allPulses={venuePulses}
-                onReaction={(type) => onReaction(pulse.id, type)}
-                currentUserId={currentUser?.id}
-                onReport={onReportPulse}
+                as="button"
+                energyRating={pulse.energyRating}
+                createdAt={pulse.createdAt}
+                caption={pulse.caption}
+                unverified={pulse.locationVerified === false}
+                displayName={pulse.user?.username || venue.name}
+                handle={authorHandle(pulse.user?.username, venue.name)}
+                avatarUrl={pulse.user?.profilePhoto}
+                onClick={() => setSelectedLiveReview(pulse)}
+                onBoost={() => onReaction(pulse.id, 'lightning')}
               />
             ))}
             {onLoadMoreVenuePulses && hasMoreVenuePulses ? (
@@ -594,7 +945,73 @@ export function VenuePage({
             ) : null}
           </div>
         )}
+          </div>
+        </details>
       </motion.div>
+
+      <Dialog open={Boolean(selectedLiveReview)} onOpenChange={(open) => { if (!open) setSelectedLiveReview(null) }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Live review</DialogTitle>
+            <DialogDescription>
+              Full on-site review at {venue.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLiveReview && (
+            <div className="space-y-3">
+              <PulseCard
+                pulse={selectedLiveReview}
+                allPulses={venuePulses}
+                onReaction={(type) => onReaction(selectedLiveReview.id, type)}
+                currentUserId={currentUser?.id}
+                onReport={onReportPulse}
+                venueName={venue.name}
+              />
+              <DoorChipRow value={selectedLiveReview.doorChips} readOnly />
+              <PulseThreadActions
+                pulseId={selectedLiveReview.id}
+                venueId={venue.id}
+                authorUserId={selectedLiveReview.userId}
+                viewerId={currentUser?.id}
+                doorChips={selectedLiveReview.doorChips}
+                replies={replies}
+                agrees={agrees}
+                onReply={(id) => onPulseReply?.(id, venue.id)}
+                onSame={(id) => onSameAgree?.(id, venue.id)}
+                onBlock={onBlockUser ? (userId) => onBlockUser(userId, venue.id) : undefined}
+              />
+              {canPinFromTheDoor({
+                userId: currentUser?.id,
+                venueId: venue.id,
+                claims,
+              }) && onDoorPin && (
+                <button
+                  type="button"
+                  className="text-[13px] font-semibold text-foreground"
+                  onClick={() => onDoorPin(venue.id, selectedLiveReview.id)}
+                >
+                  {doorPin?.pulseId === selectedLiveReview.id ? DOOR_PIN_LABEL : DOOR_PIN_CTA}
+                </button>
+              )}
+              {onFollowUser && selectedLiveReview.userId !== currentUser?.id && (
+                <FollowUserButton
+                  following={Boolean(currentUser?.friends?.includes(selectedLiveReview.userId))}
+                  onClick={() => onFollowUser(selectedLiveReview.userId)}
+                />
+              )}
+              {onHidePulse && (
+                <button
+                  type="button"
+                  className="text-[13px] font-semibold text-muted-foreground"
+                  onClick={() => onHidePulse(selectedLiveReview.id)}
+                >
+                  Hide this pulse
+                </button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ShareSheet
         open={shareOpen}

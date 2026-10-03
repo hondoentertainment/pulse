@@ -11,7 +11,13 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
-const { getCurrentUserFromProfile, getInitialCatalogState } = await import('../use-app-state')
+const {
+  createGuestBrowseUser,
+  getCurrentUserFromProfile,
+  getInitialCatalogState,
+  GUEST_BROWSE_USER_ID,
+  resolveAppUser,
+} = await import('../use-app-state')
 
 describe('app state bootstrap helpers', () => {
   it('bridges the auth profile into app user state', () => {
@@ -26,6 +32,9 @@ describe('app state bootstrap helpers', () => {
 
     expect(getCurrentUserFromProfile(profile)).toEqual(profile)
     expect(getCurrentUserFromProfile(null)).toBeUndefined()
+    expect(resolveAppUser(profile)).toEqual(profile)
+    expect(resolveAppUser(null)).toEqual(createGuestBrowseUser())
+    expect(resolveAppUser(undefined).id).toBe(GUEST_BROWSE_USER_ID)
   })
 
   it('keeps fallback catalog data available when Supabase is not configured', () => {

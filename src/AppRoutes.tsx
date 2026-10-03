@@ -1,11 +1,16 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Plus } from '@phosphor-icons/react'
 import { Toaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAppState } from '@/hooks/use-app-state'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
+import {
+  useRouteNavigation,
+  deriveActiveTab,
+  deriveSubPage,
+  isTabPath,
+} from '@/hooks/use-route-navigation'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useCurrentTime } from '@/hooks/use-current-time'
@@ -14,10 +19,17 @@ import { AppHeader } from '@/components/AppHeader'
 import { MainTabRouter } from '@/components/MainTabRouter'
 import { SubPageRouter } from '@/components/SubPageRouter'
 import { VenueRoute } from '@/components/VenueRoute'
+import { VenueInboxRoute } from '@/components/VenueInboxRoute'
 import { PageSkeleton } from '@/components/PageSkeleton'
+import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import type { OnboardingPreferences } from '@/components/OnboardingFlow'
+import { AUTH_PATH, isVenueDeepLinkPath, shouldBlockDiscoveryForAuth, shouldBypassFirstRunOnboarding } from '@/lib/guest-discovery'
+import { consumeAuthReturnPath, readPersistedAuthNext } from '@/lib/auth-return-intent'
+import { UX_FAB } from '@/lib/ux-chrome'
 
-// ── Lazy page imports ────────────────────────────────────────
+// ── Lazy page imports ────────────────────────
 // Each of these is a heavy, rarely-used surface; React.lazy() emits a separate
 // chunk so the initial bundle stays small.
 const OnboardingFlow = lazy(() =>
@@ -40,6 +52,12 @@ const VenueMetadataRoute = lazy(() =>
     default: m.VenueMetadataRoute,
   })),
 )
+const OpsQueuePage = lazy(() =>
+  import('@/components/OpsQueuePage').then((m) => ({ default: m.OpsQueuePage })),
+)
+const NeighborhoodPage = lazy(() =>
+  import('@/components/NeighborhoodPage').then((m) => ({ default: m.NeighborhoodPage })),
+)
 
 /**
  * AppRoutes — the tab / sub-page / modal switcher.
@@ -49,12 +67,20 @@ const VenueMetadataRoute = lazy(() =>
  * in `React.lazy` + `<Suspense>` so the initial page paint doesn't need to
  * parse them.
  *
- * **Note:** `src/App.tsx` currently mounts `SignalApp` after auth, not this router.
- * This file remains the venue / discovery experience for reuse or future entry switches.
+ * **Mounting:** `src/App.tsx` → `VenueApp` always mounts this router.
+ *
+ * **Guest browse:** map + venues are public after onboarding. AuthGate is
+ * only the `/auth` route for write actions (Create Pulse, live reviews,
+ * inbox, claims) — it must not replace the discovery shell.
+ *
+ * **URL ↔ state:** `MainTabRouter`/`SubPageRouter` render from `useAppState`
+ * (`activeTab` / `subPage`). A `useEffect` below syncs app state from the
+ * pathname so a direct load of `/discover`, `/events`, etc. renders the
+ * right surface instead of the default tab or a blank `SubPageRouter`.
  */
 export function AppRoutes() {
   const state = useAppState()
-  const { activeTab, navigateToTab, navigateToVenue } = useRouteNavigation()
+  const { activeTab, navigateToTab, location, navigate } = useRouteNavigation()
   const { session, isLoading: authLoading, isPlaceholder } = useSupabaseAuth()
   const currentTime = useCurrentTime()
 
@@ -65,7 +91,7 @@ export function AppRoutes() {
     socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
     venueForPulse,
-    locationName, isTracking, realtimeLocation,
+    locationName, isTracking, realtimeLocation, userLocation,
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
     selectedMarketKey, setSelectedMarketKey,
@@ -74,7 +100,42 @@ export function AppRoutes() {
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
+    setActiveTab, setSubPage,
   } = state
+  const [pulseDialogReady, setPulseDialogReady] = useState(false)
+  useEffect(() => {
+    if (createDialogOpen) setPulseDialogReady(true)
+  }, [createDialogOpen])
+
+  // URL → app-state sync. MainTabRouter/SubPageRouter render from useAppState,
+  // so without this a direct load / refresh of /discover, /events, etc. would
+  // show the default tab or a blank sub-page.
+  const pathname = location.pathname
+  const shareArrival = /^\/venue\/[^/]+\/?$/.test(pathname)
+    && (location.search.includes('from=share') || location.search.includes('from=invite'))
+  useEffect(() => {
+    if (isTabPath(pathname)) {
+      setActiveTab(deriveActiveTab(pathname))
+      setSubPage(null)
+      return
+    }
+    const sub = deriveSubPage(pathname)
+    if (sub) setSubPage(sub)
+  }, [pathname, setActiveTab, setSubPage])
+
+  // Magic-link / Google land on Site URL (origin `/`), not /auth.
+  // Consume persisted next= only when a session newly hydrates.
+  const hadSessionRef = useRef(false)
+  useEffect(() => {
+    if (authLoading) return
+    const justSignedIn = Boolean(session) && !hadSessionRef.current
+    hadSessionRef.current = Boolean(session)
+    if (!justSignedIn || pathname === AUTH_PATH) return
+    if (!readPersistedAuthNext()) return
+    const next = consumeAuthReturnPath({ search: location.search })
+    const current = `${pathname}${location.search}`
+    if (next && next !== current) navigate(next, { replace: true })
+  }, [authLoading, location.search, navigate, pathname, session])
 
   const handlers = useAppHandlers()
   const { handleCreatePulse, handleSubmitPulse, handleStoryReact } = handlers
@@ -84,8 +145,19 @@ export function AppRoutes() {
     if (navigator.vibrate) navigator.vibrate([15])
   }
 
-  // ── Onboarding gate ──────────────────────────────────────
-  if (hasCompletedOnboarding === false) {
+  // Share /venue/:id deep links skip first-run onboarding. Plain `/` does not.
+  const bypassFirstRun = shouldBypassFirstRunOnboarding({
+    pathname,
+    search: location.search,
+  })
+  useEffect(() => {
+    if (bypassFirstRun && hasCompletedOnboarding === false) {
+      setHasCompletedOnboarding(true)
+    }
+  }, [bypassFirstRun, hasCompletedOnboarding, setHasCompletedOnboarding])
+
+  // ── Onboarding gate ──────────────────────
+  if (hasCompletedOnboarding === false && !bypassFirstRun) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <OnboardingFlow
@@ -102,8 +174,17 @@ export function AppRoutes() {
     )
   }
 
-  // ── Auth gate (only when real Supabase credentials are configured) ──
-  if (!isPlaceholder && !session && !authLoading && hasCompletedOnboarding) {
+  // Sign-in is opt-in for write actions. Do not replace map + venues.
+  if (pathname === AUTH_PATH) {
+    if (authLoading) {
+      return <PageSkeleton />
+    }
+    // Real sessions can leave /auth. Guests — including local placeholder
+    // mode — must stay here when Follow / write sends them to sign in.
+    if (session) {
+      const next = consumeAuthReturnPath({ search: location.search })
+      return <Navigate to={next} replace />
+    }
     return (
       <Suspense fallback={<PageSkeleton />}>
         <AuthGate />
@@ -111,13 +192,33 @@ export function AppRoutes() {
     )
   }
 
-  // ── Loading gate ─────────────────────────────────────────
-  if (!venues || !currentUser || !pulses) {
+  if (shouldBlockDiscoveryForAuth({
+    isPlaceholder,
+    hasSession: Boolean(session),
+    authLoading,
+    hasCompletedOnboarding: Boolean(hasCompletedOnboarding),
+  })) {
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <AuthGate />
+      </Suspense>
+    )
+  }
+
+  // ── Loading gate ─────────────────────────
+  // A shared /venue/:id should paint that room's energy without waiting
+  // for the full Seattle catalog. Other routes still wait.
+  const venueDeepLink = isVenueDeepLinkPath(pathname)
+  if ((!venues || !currentUser || !pulses) && !venueDeepLink) {
+    const onMap = pathname === '/' || pathname === '/map'
+    return onMap ? <MapHomeSkeleton /> : <PageSkeleton />
+  }
+  if (!currentUser) {
     return <PageSkeleton />
   }
 
-  // ── Admin dashboard ──────────────────────────────────────
-  if (showAdminDashboard && socialDashboardEnabled) {
+  // ── Admin dashboard ──────────────────────
+  if (showAdminDashboard && socialDashboardEnabled && venues && pulses) {
     return (
       <Suspense fallback={<PageSkeleton />}>
         <SocialPulseDashboard
@@ -143,21 +244,41 @@ export function AppRoutes() {
     onMarketChange: setSelectedMarketKey,
   }
 
-  const wrapTab = (tab: 'trending' | 'discover' | 'map' | 'notifications' | 'profile') => (
+  // MainTabRouter / SubPageRouter read activeTab / subPage from app state.
+  const wrapTab = () => (
     <>
-      <AppHeader {...headerProps} />
-      <MainTabRouter tab={tab} onVenueSelect={(venue) => venue && navigateToVenue(venue)} />
+      {activeTab !== 'map' && <AppHeader {...headerProps} />}
+      <MainTabRouter />
     </>
   )
 
-  // ── Main shell with routes ───────────────────────────────
+  // ── Main shell with routes ───────────────────────
   return (
     <main className="min-h-screen bg-background pb-20">
+      <OfflineBanner />
       <Toaster position="top-center" theme="dark" />
 
       <Routes>
+        {/* Neighborhood pages — guest-safe, no GPS */}
+        <Route
+          path="/n/:slug"
+          element={(
+            <Suspense fallback={<PageSkeleton />}>
+              <NeighborhoodPage />
+            </Suspense>
+          )}
+        />
+
         {/* Venue detail page */}
         <Route path="/venue/:venueId" element={<VenueRoute />} />
+        <Route
+          path="/venue/:venueId/inbox"
+          element={(
+            <ProtectedRoute>
+              <VenueInboxRoute />
+            </ProtectedRoute>
+          )}
+        />
 
         {/* Admin-only: structured venue metadata editor. Non-admins get a 403
             rendered by VenueMetadataRoute itself. */}
@@ -169,27 +290,38 @@ export function AppRoutes() {
             </Suspense>
           }
         />
+        <Route
+          path="/ops"
+          element={(
+            <ProtectedRoute>
+              <Suspense fallback={<PageSkeleton />}>
+                <OpsQueuePage />
+              </Suspense>
+            </ProtectedRoute>
+          )}
+        />
 
         {/* Sub-pages */}
-        <Route path="/events" element={<SubPageRouter page="events" />} />
-        <Route path="/crews" element={<SubPageRouter page="crews" />} />
-        <Route path="/achievements" element={<SubPageRouter page="achievements" />} />
-        <Route path="/insights" element={<SubPageRouter page="insights" />} />
-        <Route path="/neighborhoods" element={<SubPageRouter page="neighborhoods" />} />
-        <Route path="/playlists" element={<SubPageRouter page="playlists" />} />
-        <Route path="/settings" element={<SubPageRouter page="settings" />} />
-        <Route path="/integrations" element={<SubPageRouter page="integrations" />} />
-        <Route path="/moderation" element={<SubPageRouter page="moderation" />} />
-        <Route path="/challenges" element={<SubPageRouter page="challenges" />} />
-        <Route path="/my-tickets" element={<SubPageRouter page="my-tickets" />} />
-        <Route path="/night-planner" element={<SubPageRouter page="night-planner" />} />
+        <Route path="/events" element={<SubPageRouter />} />
+        <Route path="/crews" element={<SubPageRouter />} />
+        <Route path="/achievements" element={<SubPageRouter />} />
+        <Route path="/insights" element={<SubPageRouter />} />
+        <Route path="/neighborhoods" element={<SubPageRouter />} />
+        <Route path="/playlists" element={<SubPageRouter />} />
+        <Route path="/settings" element={<SubPageRouter />} />
+        <Route path="/integrations" element={<SubPageRouter />} />
+        <Route path="/moderation" element={<SubPageRouter />} />
+        <Route path="/challenges" element={<SubPageRouter />} />
+        <Route path="/my-tickets" element={<SubPageRouter />} />
+        <Route path="/night-planner" element={<SubPageRouter />} />
 
-        {/* Main tabs */}
-        <Route path="/discover" element={wrapTab('discover')} />
-        <Route path="/map" element={wrapTab('map')} />
-        <Route path="/notifications" element={wrapTab('notifications')} />
-        <Route path="/profile" element={wrapTab('profile')} />
-        <Route path="/" element={wrapTab('trending')} />
+        {/* Main tabs — map is the production home */}
+        <Route path="/discover" element={wrapTab()} />
+        <Route path="/map" element={wrapTab()} />
+        <Route path="/trending" element={wrapTab()} />
+        <Route path="/notifications" element={wrapTab()} />
+        <Route path="/profile" element={wrapTab()} />
+        <Route path="/" element={wrapTab()} />
 
         {/* Catch-all: redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -214,26 +346,33 @@ export function AppRoutes() {
         unreadNotifications={unreadNotificationCount}
       />
 
-      <Suspense fallback={null}>
-        <CreatePulseDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          venue={venueForPulse}
-          onSubmit={handleSubmitPulse}
-        />
-      </Suspense>
+      {pulseDialogReady && (
+        <Suspense fallback={null}>
+          <CreatePulseDialog
+            open={createDialogOpen}
+            onClose={() => setCreateDialogOpen(false)}
+            venue={venueForPulse}
+            userLocation={userLocation ?? realtimeLocation ?? null}
+            onSubmit={handleSubmitPulse}
+          />
+        </Suspense>
+      )}
 
+      {!shareArrival && (
       <motion.button
+        type="button"
+        data-testid="create-pulse-fab"
+        aria-label="Create Pulse"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {
           if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id)
         }}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/50 flex items-center justify-center z-40"
-        style={{ boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)' }}
+        className={UX_FAB}
       >
         <Plus size={28} weight="bold" />
       </motion.button>
+      )}
     </main>
   )
 }

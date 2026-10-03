@@ -30,6 +30,7 @@ vi.mock('@phosphor-icons/react', () => ({
   VideoCamera: (p: any) => <span data-testid="icon-VideoCamera" {...p} />,
   CheckCircle: (p: any) => <span data-testid="icon-CheckCircle" {...p} />,
   Hash: (p: any) => <span data-testid="icon-Hash" {...p} />,
+  ImageSquare: (p: any) => <span data-testid="icon-ImageSquare" {...p} />,
 }))
 
 vi.mock('@github/spark/hooks', () => ({
@@ -128,10 +129,10 @@ describe('CreatePulseDialog', () => {
         onSubmit={onSubmit}
       />
     )
-    expect(screen.queryByText(/Create Pulse at Test Venue/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Quick pulse/)).not.toBeInTheDocument()
   })
 
-  it('renders venue name in title when open', () => {
+  it('renders Figma create copy when open', () => {
     render(
       <CreatePulseDialog
         open
@@ -140,22 +141,26 @@ describe('CreatePulseDialog', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText(/Create Pulse at The Buzzy Bar/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Quick pulse/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Cancel$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Post$/i })).toBeInTheDocument()
+    expect(screen.getByText(/The Buzzy Bar · from map pin/)).toBeInTheDocument()
+    expect(screen.getByText('Add photo (optional)')).toBeInTheDocument()
+    expect(screen.getByText(/draft never lost/i)).toBeInTheDocument()
   })
 
-  it('fills caption and enforces 140 char cap', () => {
+  it('fills caption and enforces 280 char cap', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={makeVenue()} onSubmit={vi.fn()} />
     )
     const textarea = screen.getByPlaceholderText(/What's the vibe/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'Amazing night!' } })
     expect(textarea.value).toBe('Amazing night!')
-    expect(screen.getByText(/14\/140/)).toBeInTheDocument()
+    expect(screen.getByText(/14 \/ 120/)).toBeInTheDocument()
 
-    // Exceed 140 — should be capped
     const long = 'a'.repeat(200)
     fireEvent.change(textarea, { target: { value: long } })
-    expect(textarea.value.length).toBe(140)
+    expect(textarea.value.length).toBe(120)
   })
 
   it('updates energy via slider interaction', () => {
@@ -193,7 +198,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.click(screen.getByText('Set Buzzing'))
     fireEvent.click(screen.getByText('Add Photo'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -201,7 +206,8 @@ describe('CreatePulseDialog', () => {
     const payload = onSubmit.mock.calls[0][0]
     expect(payload.energyRating).toBe('buzzing')
     expect(payload.caption).toBe('Great vibes')
-    expect(payload.photos.length).toBe(1)
+    expect(payload.kind).toBe('review')
+    expect(payload.photos.length).toBe(0)
     expect(onClose).toHaveBeenCalled()
   })
 
@@ -218,7 +224,7 @@ describe('CreatePulseDialog', () => {
     fireEvent.change(screen.getByPlaceholderText(/What's the vibe/i), {
       target: { value: 'this has badword inside' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalled()
@@ -226,7 +232,7 @@ describe('CreatePulseDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('Cancel button calls onClose without submitting', () => {
+  it('Close button calls onClose without submitting', () => {
     const onClose = vi.fn()
     const onSubmit = vi.fn()
     render(
@@ -247,8 +253,7 @@ describe('CreatePulseDialog', () => {
     render(
       <CreatePulseDialog open onClose={vi.fn()} venue={null} onSubmit={onSubmit} />
     )
-    // Button still renders; click should be a no-op
-    fireEvent.click(screen.getByRole('button', { name: /Post Pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Post · 1 tap/i }))
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled()
     })

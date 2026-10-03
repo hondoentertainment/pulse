@@ -19,10 +19,10 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { checkContent } from '../_lib/moderation'
-import { checkRateLimit } from '../_lib/rate-limit'
-import { countVideoPulsesForUserSince, insertVideoPulse, type VideoPulseRow } from '../_lib/store'
+} from '../_lib/http.js'
+import { checkContent } from '../_lib/moderation.js'
+import { checkRateLimit } from '../_lib/rate-limit.js'
+import { countVideoPulsesForUserSince, insertVideoPulse, type VideoPulseRow } from '../_lib/store.js'
 
 const MAX_BYTES = 50 * 1024 * 1024
 const MAX_DURATION_MS = 3 * 60 * 1000 // 3 min hard cap

@@ -1,4 +1,4 @@
-import type { Venue, EnergyRating } from './types'
+import type { Venue, EnergyRating } from './types.js'
 
 /**
  * Events & Scheduling Engine

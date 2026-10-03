@@ -22,8 +22,8 @@ import {
   setCors,
   requireAdmin,
   jsonError,
-} from './_shared'
-import { getStore, CreatorPayoutRow } from './_store'
+} from './_shared.js'
+import { getStore, CreatorPayoutRow } from './_store.js'
 
 const MIN_PAYOUT_CENTS = 2500 // $25
 
@@ -38,7 +38,7 @@ type MaybeStripe = {
 async function loadStripeHelper(): Promise<MaybeStripe> {
   try {
     // Dynamic import so tests / environments without the helper still work.
-    const mod = (await import('../_lib/stripe')) as MaybeStripe
+    const mod = (await import('../_lib/stripe.js')) as MaybeStripe
     return mod
   } catch {
     return {}

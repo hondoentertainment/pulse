@@ -6,6 +6,24 @@ const { createAdminClientMock } = vi.hoisted(() => ({
   createAdminClientMock: vi.fn(),
 }))
 
+vi.mock('../../_lib/supabase-server.js', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>(
+    '../../_lib/supabase-server',
+  )
+  return {
+    ...actual,
+    createAdminClient: () => createAdminClientMock(),
+  }
+})
+vi.mock('../../_lib/supabase-server.ts', async () => {
+  const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>(
+    '../../_lib/supabase-server',
+  )
+  return {
+    ...actual,
+    createAdminClient: () => createAdminClientMock(),
+  }
+})
 vi.mock('../../_lib/supabase-server', async () => {
   const actual = await vi.importActual<typeof import('../../_lib/supabase-server')>(
     '../../_lib/supabase-server',

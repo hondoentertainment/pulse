@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { MapPin, Bell, Star, Lightning, Plus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { ReactNode } from 'react'
+import { UX_CTA } from '@/lib/ux-chrome'
 
 type EmptyStateVariant = 'no-pulses' | 'no-notifications' | 'no-favorites' | 'no-nearby' | 'offline'
 
@@ -14,10 +15,10 @@ interface EmptyStateConfig {
 
 const variants: Record<EmptyStateVariant, EmptyStateConfig> = {
     'no-pulses': {
-        icon: <Lightning size={48} weight="duotone" className="text-accent" />,
+        icon: <Lightning size={48} weight="duotone" className="text-primary" />,
         title: "No pulses yet",
-        description: "Be the first to share the vibe! Post a pulse and let others know what's happening.",
-        ctaText: "Drop a Pulse"
+        description: "Map → venue → pulse. Browse a real Seattle pin, then post when you’re there.",
+        ctaText: "Open the map"
     },
     'no-notifications': {
         icon: <Bell size={48} weight="duotone" className="text-muted-foreground" />,
@@ -25,7 +26,7 @@ const variants: Record<EmptyStateVariant, EmptyStateConfig> = {
         description: "When friends post pulses or react to yours, you'll see it here."
     },
     'no-favorites': {
-        icon: <Star size={48} weight="duotone" className="text-accent" />,
+        icon: <Star size={48} weight="duotone" className="text-primary" />,
         title: "No favorites yet",
         description: "Star venues you love to keep track of their energy levels.",
         ctaText: "Explore Venues"
@@ -33,7 +34,7 @@ const variants: Record<EmptyStateVariant, EmptyStateConfig> = {
     'no-nearby': {
         icon: <MapPin size={48} weight="duotone" className="text-muted-foreground" />,
         title: "No venues nearby",
-        description: "We couldn't find any venues in your area. Try expanding your search."
+        description: "Open the map, zoom to All Seattle, tap a real pin, then pulse when you’re there."
     },
     'offline': {
         icon: <Lightning size={48} weight="duotone" className="text-destructive" />,
@@ -54,24 +55,24 @@ export function EmptyState({ variant, onAction }: EmptyStateProps) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16 px-8 text-center"
+            className="flex flex-col items-center justify-center px-8 py-16 text-center"
         >
             <motion.div
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", delay: 0.1 }}
-                className="mb-6 p-6 rounded-full bg-secondary/50"
+                className="mb-6 rounded-full border border-border bg-card p-6"
             >
                 {config.icon}
             </motion.div>
 
-            <h3 className="text-xl font-bold mb-2">{config.title}</h3>
-            <p className="text-sm text-muted-foreground max-w-[250px] mb-6">
+            <h3 className="mb-2 text-xl font-bold">{config.title}</h3>
+            <p className="mb-6 max-w-[250px] text-[15px] text-muted-foreground">
                 {config.description}
             </p>
 
             {config.ctaText && onAction && (
-                <Button onClick={onAction} className="gap-2">
+                <Button onClick={onAction} className={`${UX_CTA} gap-2`}>
                     <Plus size={18} weight="bold" />
                     {config.ctaText}
                 </Button>

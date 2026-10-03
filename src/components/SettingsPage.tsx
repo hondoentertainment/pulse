@@ -10,7 +10,7 @@ import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import {
   ArrowLeft, Bell, Eye, EyeSlash, Ruler, Shield, Palette,
   Export, Trash, UsersFour, TrendUp, Sparkle, EnvelopeSimple, Info, WifiSlash,
-  Translate, DownloadSimple, Eyeglasses, MapPin,
+  Translate, DownloadSimple, Eyeglasses, MapPin, Flag,
 } from '@phosphor-icons/react'
 import { US_CITY_LOCATIONS } from '@/lib/us-venues'
 import { toast } from 'sonner'
@@ -20,6 +20,12 @@ import { getHighContrastMode, setHighContrastMode, type HighContrastMode, prefer
 import { getInstallState, showInstallPrompt, listenForInstallPrompt } from '@/lib/pwa'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { useState, useEffect } from 'react'
+import { listMyPulseReports, type PulseReportRow } from '@/lib/data/pulses'
+import { USE_SUPABASE_BACKEND } from '@/lib/data'
+import { META_GLASSES_COMPANION_COPY } from '@/lib/meta-glasses-companion'
+import { describeVenueSurgePushStub } from '@/lib/venue-surge-watch'
+import { readQuietHours, writeQuietHours, type QuietHours } from '@/lib/surge-prefs'
+import { saveQuietHoursOnServer } from '@/lib/data/surge-prefs'
 import { motion } from 'framer-motion'
 
 interface SettingsPageProps {
@@ -39,10 +45,27 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
   const [currentLocale, setCurrentLocale] = useState<Locale>(getLocale())
   const [contrastMode, setContrastMode] = useState<HighContrastMode>(getHighContrastMode())
   const [canInstallPwa, setCanInstallPwa] = useState(false)
+  const [myReports, setMyReports] = useState<PulseReportRow[]>([])
   const installState = getInstallState()
+  const surgeStub = describeVenueSurgePushStub()
 
   useEffect(() => {
     return listenForInstallPrompt(() => setCanInstallPwa(true))
+  }, [])
+
+  useEffect(() => {
+    if (!USE_SUPABASE_BACKEND) return
+    let cancelled = false
+    void listMyPulseReports()
+      .then((rows) => {
+        if (!cancelled) setMyReports(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setMyReports([])
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -183,6 +206,44 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
                 className="data-[state=checked]:bg-primary"
               />
             </SettingRow>
+
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-sm font-medium">{META_GLASSES_COMPANION_COPY.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                {META_GLASSES_COMPANION_COPY.body}
+              </p>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Flag size={18} weight="fill" className="text-destructive" />
+              <Label className="font-bold">My reports</Label>
+            </div>
+            {!USE_SUPABASE_BACKEND ? (
+              <p className="text-xs text-muted-foreground">
+                Sign in with Supabase to list reports you filed. They persist in pulse_reports.
+              </p>
+            ) : myReports.length === 0 ? (
+              <p className="text-xs text-muted-foreground">You have not reported any live reviews yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {myReports.map((report) => (
+                  <li key={report.id} className="rounded-lg bg-secondary/50 p-3 text-xs">
+                    <p className="font-medium text-foreground">{report.reason} · {report.status ?? 'pending'}</p>
+                    <p className="text-muted-foreground mt-1">Review {report.pulse_id}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <SurgeQuietHoursFields />
+            <p className="text-[11px] text-muted-foreground">
+              Followed-venue Electric alerts use Web Push when Vercel already has VAPID keys.
+              Missing keys stay a no-op. Mute a venue from its page. Signal Web Push is not restored.
+              Local watch list: {surgeStub.storageKey}.
+            </p>
           </Card>
         </motion.div>
 
@@ -523,6 +584,59 @@ export function SettingsPage({ currentUser, onBack, onUpdateUser, onCityChange, 
             </div>
           </Card>
         </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function SurgeQuietHoursFields() {
+  const [hours, setHours] = useState<QuietHours>(() => readQuietHours())
+
+  const save = (next: QuietHours) => {
+    setHours(next)
+    writeQuietHours(next)
+    void saveQuietHoursOnServer(next).then((ok) => {
+      if (!ok) {
+        toast.message('Quiet hours saved on this device', {
+          description: 'They apply to Web Push after a subscription exists and the quiet-hours columns are applied. Missing VAPID keys stay a no-op.',
+        })
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-foreground">Surge quiet hours (Seattle)</p>
+      <p className="text-[11px] text-muted-foreground">
+        Local hours 0–23. Leave both empty for none. 22 to 7 is overnight. {META_GLASSES_COMPANION_COPY.quietHoursNote}
+      </p>
+      <div className="flex gap-2">
+        <label className="text-[11px] text-muted-foreground">
+          Start
+          <input
+            aria-label="Quiet hours start"
+            inputMode="numeric"
+            value={hours.start ?? ''}
+            onChange={(event) => {
+              const start = event.target.value === '' ? null : Number(event.target.value)
+              save({ ...hours, start: Number.isInteger(start) ? start : null })
+            }}
+            className="mt-1 block h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+          />
+        </label>
+        <label className="text-[11px] text-muted-foreground">
+          End
+          <input
+            aria-label="Quiet hours end"
+            inputMode="numeric"
+            value={hours.end ?? ''}
+            onChange={(event) => {
+              const end = event.target.value === '' ? null : Number(event.target.value)
+              save({ ...hours, end: Number.isInteger(end) ? end : null })
+            }}
+            className="mt-1 block h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+          />
+        </label>
       </div>
     </div>
   )

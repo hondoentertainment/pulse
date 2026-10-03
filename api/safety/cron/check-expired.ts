@@ -15,7 +15,7 @@
  * (or the classic `Authorization: Bearer <CRON_SECRET>`). We check it.
  */
 
-import { sendPush, sendSms } from '../../_lib/notify'
+import { sendPush, sendSms } from '../../_lib/notify.js'
 import {
   getServiceClient,
   methodNotAllowed,
@@ -24,7 +24,7 @@ import {
   setCors,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
+} from '../../_lib/safety-server.js'
 
 interface ContactSnapshotEntry {
   id?: string

@@ -17,11 +17,11 @@ import {
   fail,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { consume } from '../_lib/rate-limit'
-import { asEnum, isPlainObject } from '../_lib/validate'
-import { checkContent, type ContentKind } from '../_lib/moderation'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { consume } from '../_lib/rate-limit.js'
+import { asEnum, isPlainObject } from '../_lib/validate.js'
+import { checkContent, type ContentKind } from '../_lib/moderation.js'
 
 const CONTENT_KINDS = ['pulse', 'comment', 'profile_bio', 'venue_description'] as const
 

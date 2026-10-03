@@ -24,10 +24,25 @@ import { isPromotionActive, recordImpression, recordClick } from '@/lib/promoted
 import { createStory } from '@/lib/stories'
 import { initiateCrewCheckIn, getUserCrews, getActiveCrewCheckIns } from '@/lib/crew-mode'
 import type { TabId } from '@/components/BottomNav'
+import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { venueComposePath } from '@/lib/auth-return-intent'
+import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 
-import { CheckInData, USE_SUPABASE_BACKEND } from '@/lib/data'
+import { CheckInData, CrewTonightData, DoorPinData, FollowData, PulseAgreeData, PulseData, PulseReplyData, USE_SUPABASE_BACKEND, UserBlockData, VenueFollowData } from '@/lib/data'
+import { createReport } from '@/lib/content-moderation'
+import { HIDE_PULSE_REASON } from '@/lib/pulse-hide'
+import { FRIEND_FOLLOW_COPY } from '@/lib/friends-follow'
+import { nextFollowedVenueIds, VENUE_FOLLOW_COPY } from '@/lib/venue-follows'
+import { checkPulseRateLimit, pulseRateLimitFromUnknown } from '@/lib/pulse-rate-limit'
+import { offerPushNotifyAfter } from '@/lib/push-notify-affordance'
 import { getUserIdOrNull } from '@/lib/auth/require-auth'
+import { inAppNotifyHref, mergeOwnerReplyNotices, type OwnerReplyNoticeInput } from '@/lib/in-app-notify'
+import { evaluateLocationProof, validateLiveReviewCaption } from '@/lib/live-reviews'
+import { getVenueSharePreviewUrl } from '@/lib/sharing'
+import { track } from '@/lib/observability/analytics'
+import { trackFunnel } from '@/lib/funnel-events'
 
 function milesBetween(
   a: { lat: number; lng: number },
@@ -45,7 +60,8 @@ function milesBetween(
 
 export function useAppHandlers() {
   const state = useAppState()
-  const { updateProfile } = useSupabaseAuth()
+  const navigate = useNavigate()
+  const { updateProfile, session, isPlaceholder } = useSupabaseAuth()
   const {
     venues,
     pulses,
@@ -62,6 +78,7 @@ export function useAppHandlers() {
     setCrewCheckIns,
     setPromotions,
     setContentReports,
+    setUserBlocks,
     venueForPulse,
     setVenueForPulse,
     setCreateDialogOpen,
@@ -71,6 +88,18 @@ export function useAppHandlers() {
   } = state
 
   const handleCreatePulse = useCallback((venueId: string) => {
+    const authRedirect = getCreatePulseAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: venueComposePath(venueId),
+    })
+    if (authRedirect) {
+      closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
+      toast.error(WRITE_AUTH_COPY.create.title, { description: WRITE_AUTH_COPY.create.description })
+      navigate(authRedirect)
+      return
+    }
+
     if (!venues || !currentUser || !pulses) return
     const venue = venues.find(v => v.id === venueId)
     if (!venue) return
@@ -83,16 +112,47 @@ export function useAppHandlers() {
     }
     setVenueForPulse(venue)
     setCreateDialogOpen(true)
-  }, [currentUser, pulses, setCreateDialogOpen, setVenueForPulse, venues])
+  }, [currentUser, isPlaceholder, navigate, pulses, session, setCreateDialogOpen, setVenueForPulse, venues])
 
-  const handleSubmitPulse = useCallback(async (data: { energyRating: EnergyRating; caption: string; photos: string[]; video?: string; hashtags?: string[] }) => {
-    if (!venueForPulse || !currentUser || !venues) return
+  const handleSubmitPulse = useCallback(async (data: {
+    energyRating: EnergyRating
+    caption: string
+    photos: string[]
+    video?: string
+    hashtags?: string[]
+    kind?: 'pulse' | 'review'
+    locationVerified?: boolean
+    doorChips?: DoorChip[]
+  }) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect) {
+      closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
+      toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
+      navigate(writeRedirect)
+      return { error: WRITE_AUTH_COPY.review.description }
+    }
+
+    if (!venueForPulse || !currentUser || !venues) return { error: 'Pick a venue first' }
+
+    const wantsReview = (data.kind ?? 'review') === 'review' && data.caption.trim().length > 0
+    const captionCheck = wantsReview
+      ? validateLiveReviewCaption(data.caption)
+      : { ok: true as const, caption: (data.caption ?? '').trim() }
+    if (!captionCheck.ok) {
+      toast.error(captionCheck.error ?? 'Caption is required for a live review')
+      return { error: captionCheck.error ?? 'Caption is required for a live review' }
+    }
 
     if (USE_SUPABASE_BACKEND) {
       const userId = await getUserIdOrNull()
       if (!userId) {
-        toast.error('Sign in required', { description: 'Sign in to post a pulse to the live feed.' })
-        return
+        closeComposerForAuthRedirect({ setCreateDialogOpen, setVenueForPulse })
+        toast.error(WRITE_AUTH_COPY.review.title, { description: WRITE_AUTH_COPY.review.description })
+        navigate(writeRedirect ?? '/auth')
+        return { error: WRITE_AUTH_COPY.review.description }
       }
     }
 
@@ -103,11 +163,26 @@ export function useAppHandlers() {
 
     const abuseSignals = detectAbuse(currentUser.id, recentActions)
     const highSeverity = abuseSignals.find(s => s.severity === 'high')
-    if (highSeverity) { toast.error('Pulse blocked for safety checks', { description: highSeverity.description }); return }
+    if (highSeverity) {
+      toast.error('Pulse blocked for safety checks', { description: highSeverity.description })
+      return { error: highSeverity.description }
+    }
     if (abuseSignals.some(s => s.severity === 'medium')) toast.warning('Unusual posting pattern detected', { description: 'Please keep pulses authentic to avoid temporary restrictions' })
 
     const rateCheck = checkUserRateLimit(currentUser.id, 'pulse_create')
-    if (!rateCheck.allowed) { toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` }); return }
+    if (!rateCheck.allowed) {
+      toast.error('Slow down!', { description: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` })
+      return { error: `Try again in ${Math.ceil(rateCheck.retryAfterMs / 1000)}s` }
+    }
+    const windowCheck = checkPulseRateLimit({
+      userId: currentUser.id,
+      venueId: venueForPulse.id,
+      pulses: pulses || [],
+    })
+    if (!windowCheck.allowed) {
+      toast.error(windowCheck.message)
+      return { error: windowCheck.message }
+    }
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000)
@@ -119,6 +194,9 @@ export function useAppHandlers() {
     const venuePulsesToday = (pulses || []).filter(p => p.venueId === venueForPulse.id && new Date(p.createdAt).toISOString().split('T')[0] === today)
     const isPioneer = venuePulsesToday.length === 0
 
+    const locationProof = evaluateLocationProof(userLocation, venueForPulse.location)
+    const locationVerified = data.locationVerified ?? locationProof.locationVerified
+
     const newPulse = {
       id: `pulse-${Date.now()}`,
       userId: currentUser.id,
@@ -127,7 +205,7 @@ export function useAppHandlers() {
       photos: data.photos,
       video: data.video,
       energyRating: data.energyRating,
-      caption: data.caption,
+      caption: captionCheck.caption,
       hashtags: data.hashtags || [],
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
@@ -136,6 +214,10 @@ export function useAppHandlers() {
       isPending: true,
       credibilityWeight: userCredibility,
       isPioneer,
+      kind: wantsReview ? 'review' as const : 'pulse' as const,
+      locationVerified,
+      hasBody: true,
+      doorChips: sanitizeDoorChips(data.doorChips),
     }
 
     setPulses(current => { if (!current) return [newPulse]; return [newPulse, ...current] })
@@ -172,14 +254,72 @@ export function useAppHandlers() {
       lastPostDate: today,
     })
 
-    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first pulse here today.' })
-    toast.success('Pulse posted!', { description: `Your vibe at ${venueForPulse.name} is live` })
-    announce(`Pulse posted at ${venueForPulse.name}`)
+    if (isPioneer) toast.success('Pioneer! 🧗', { description: 'You dropped the first live review here today.' })
+    if (!locationVerified) {
+      toast.message('Posted as unverified', {
+        description: locationProof.reason === 'outside_radius'
+          ? 'You were outside the check-in radius.'
+          : 'Location was unavailable, so this review is unmarked.',
+      })
+    }
+    toast.success('Live review posted!', {
+      description: `Your vibe at ${venueForPulse.name} is live`,
+      action: {
+        label: 'Copy link',
+        onClick: () => {
+          const url = getVenueSharePreviewUrl(venueForPulse.id)
+          void navigator.clipboard?.writeText(url)
+        },
+      },
+    })
+    announce(`Live review posted at ${venueForPulse.name}`)
     if (navigator.vibrate) navigator.vibrate([20, 50, 20])
-    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: !!data.caption, hashtagCount: data.hashtags?.length || 0 })
+    trackEvent({ type: 'pulse_submit', timestamp: Date.now(), venueId: venueForPulse.id, energyRating: data.energyRating, hasPhoto: data.photos.length > 0, hasCaption: true, hashtagCount: data.hashtags?.length || 0 })
+    const priorCount = (pulses || []).filter((pulse) => pulse.userId === currentUser.id).length
+    const isFirstPulse = priorCount === 0
+    track('pulse_created', {
+      pulseId: newPulse.id,
+      venueId: venueForPulse.id,
+      hasPhoto: data.photos.length > 0,
+      hasCaption: true,
+      hashtagCount: data.hashtags?.length || 0,
+      energyRating: data.energyRating,
+      kind: newPulse.kind,
+      locationVerified,
+      isFirstPulse,
+    })
+    if (isFirstPulse) {
+      trackFunnel('first_pulse_create', { venueId: venueForPulse.id, guest: false })
+    }
 
-    const syncOnline = await uploadPulseToSupabase(newPulse)
-    if (!syncOnline) {
+    let syncOnline = false
+    try {
+      syncOnline = await uploadPulseToSupabase(newPulse)
+      if (!syncOnline) {
+        toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
+      } else {
+        void fetch('/api/push/notify-live', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            venueId: venueForPulse.id,
+            venueName: venueForPulse.name,
+            caption: captionCheck.caption,
+            energyRating: data.energyRating,
+            lat: venueForPulse.location.lat,
+            lng: venueForPulse.location.lng,
+          }),
+        }).catch(() => undefined)
+      }
+    } catch (err) {
+      const limit = pulseRateLimitFromUnknown(err)
+      if (limit) {
+        toast.error(limit)
+        return { error: limit }
+      }
       toast.message('Saved offline! The Service Worker will sync it when connection is restored.')
     }
 
@@ -237,9 +377,13 @@ export function useAppHandlers() {
   }, [
     crewCheckIns,
     currentUser,
+    isPlaceholder,
+    navigate,
     notificationSettings?.friendPulses,
     pulses,
+    session,
     setCreateDialogOpen,
+    setVenueForPulse,
     setHashtags,
     setNotifications,
     setPulses,
@@ -287,10 +431,16 @@ export function useAppHandlers() {
   }, [currentUser, setPulses])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
+    if (notification.venue) setSelectedVenue(notification.venue)
+    const href = inAppNotifyHref(notification)
+    if (href) {
+      navigate(href)
+      return
+    }
     if ((notification.type === 'friend_pulse' || notification.type === 'pulse_reaction') && notification.venue) setSelectedVenue(notification.venue)
     else if ((notification.type === 'trending_venue' || notification.type === 'friend_nearby') && notification.venue) setSelectedVenue(notification.venue)
     setActiveTab('trending')
-  }, [setActiveTab, setSelectedVenue])
+  }, [navigate, setActiveTab, setSelectedVenue])
 
   const handleAddFriend = useCallback((userId: string) => {
     if (!currentUser) return
@@ -314,13 +464,22 @@ export function useAppHandlers() {
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab)
     if (navigator.vibrate) navigator.vibrate([15])
-    const labels: Record<TabId, string> = { trending: 'Trending', discover: 'Discover', map: 'Map', notifications: 'Notifications', profile: 'Profile' }
+    const labels: Record<TabId, string> = { trending: 'Tonight', discover: 'Pulse', map: 'Map', notifications: 'Following', profile: 'You' }
     announce(`Switched to ${labels[tab]} tab`)
   }, [setActiveTab])
 
   const handlePulseReport = useCallback((report: ContentReport) => {
     setContentReports(current => [report, ...(current || [])])
     toast.success('Report submitted. Thanks for keeping Pulse safe.')
+    if (USE_SUPABASE_BACKEND && report.targetType === 'pulse') {
+      void PulseData.createPulseReport({
+        pulseId: report.targetId,
+        reason: report.reason,
+        details: report.description,
+      }).catch((err) => {
+        console.warn('[live-review] persist report failed', err)
+      })
+    }
   }, [setContentReports])
 
   const handlePromotionImpression = useCallback((promotionId: string) => {
@@ -360,20 +519,208 @@ export function useAppHandlers() {
   }, [currentUser, updateProfile])
 
   const handleToggleFollow = useCallback((venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
+    })
+    if (writeRedirect) {
+      toast.error(WRITE_AUTH_COPY.follow.title, { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
     if (!currentUser) return
     const followed = currentUser.followedVenues || []
-    if (followed.includes(venueId)) { 
-      toast.success('Unfollowed venue')
-      updateProfile({ followedVenues: followed.filter(id => id !== venueId) })
-    } else {
-      if (followed.length >= 10) { 
-        toast.error('Maximum 10 followed venues', { description: 'Unfollow one to add another' })
-        return 
-      }
-      toast.success('Following venue')
-      updateProfile({ followedVenues: [...followed, venueId] })
+    const next = nextFollowedVenueIds(followed, venueId)
+    if ('error' in next) {
+      toast.error(VENUE_FOLLOW_COPY.limitTitle, { description: VENUE_FOLLOW_COPY.limitDescription })
+      return
     }
-  }, [currentUser, updateProfile])
+    updateProfile({ followedVenues: next.ids })
+    if (USE_SUPABASE_BACKEND) {
+      void VenueFollowData.setVenueFollow(venueId, next.didFollow).catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'Could not update follow')
+        updateProfile({ followedVenues: followed })
+      })
+    }
+    if (next.didFollow) {
+      toast.success(VENUE_FOLLOW_COPY.followed)
+      offerPushNotifyAfter('follow')
+    } else {
+      toast.success(VENUE_FOLLOW_COPY.unfollowed)
+    }
+  }, [currentUser, isPlaceholder, navigate, session, updateProfile])
+
+  const handleHidePulse = useCallback((pulseId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.create.title, { description: 'Sign in to hide this pulse.' })
+      navigate(writeRedirect ?? '/auth')
+      return
+    }
+    handlePulseReport(createReport(currentUser.id, 'pulse', pulseId, HIDE_PULSE_REASON))
+  }, [currentUser, handlePulseReport, isPlaceholder, navigate, session])
+
+  const handleToggleFriendFollow = useCallback(async (userId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (writeRedirect) {
+      toast.error(FRIEND_FOLLOW_COPY.guest, { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
+    if (!currentUser || currentUser.id === userId) return
+    try {
+      const following = (currentUser.friends ?? []).includes(userId)
+      if (following) {
+        await FollowData.unfollowUser(userId)
+        updateProfile({ friends: (currentUser.friends ?? []).filter((id) => id !== userId) })
+      } else {
+        await FollowData.followUser(userId)
+        updateProfile({ friends: [...(currentUser.friends ?? []), userId] })
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not follow')
+    }
+  }, [currentUser, isPlaceholder, navigate, session, updateProfile])
+
+  const handlePinMyNight = useCallback(async (venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pin My night', { description: WRITE_AUTH_COPY.follow.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await FollowData.pinFollowedVenue(venueId)
+      toast.success('My night updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not pin room')
+    }
+  }, [isPlaceholder, navigate, session])
+
+  const handlePulseReply = useCallback(async (pulseId: string, venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?reply=${encodeURIComponent(pulseId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to reply', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await PulseReplyData.createPulseReply({ pulseId, venueId })
+      toast.success('Reply posted')
+    } catch (error) {
+      const limited = pulseRateLimitFromUnknown(error)
+      toast.error(limited ?? (error instanceof Error ? error.message : 'Could not reply'))
+    }
+  }, [isPlaceholder, navigate, session])
+
+  const handleSameAgree = useCallback(async (pulseId: string, venueId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?same=${encodeURIComponent(pulseId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to Same', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      const result = await PulseAgreeData.togglePulseAgree(pulseId)
+      toast.success(result === 'added' ? 'Same' : 'Same removed')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not Same')
+    }
+  }, [isPlaceholder, navigate, session])
+
+  const handleBlockUser = useCallback(async (userId: string, venueId?: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: venueId ? `/venue/${encodeURIComponent(venueId)}` : '/',
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to block this person', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await UserBlockData.blockUser(userId)
+      setUserBlocks((current) => {
+        const next = current ?? []
+        if (next.some((row) => row.blockedUserId === userId)) return next
+        return [...next, {
+          id: `block-${userId}`,
+          blockerId: currentUser?.id ?? '',
+          blockedUserId: userId,
+          createdAt: new Date().toISOString(),
+        }]
+      })
+      toast.success('Blocked — their pulses leave your Tonight')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not block')
+    }
+  }, [currentUser?.id, isPlaceholder, navigate, session, setUserBlocks])
+
+  const handleOwnerReplyNotices = useCallback((replies: OwnerReplyNoticeInput[]) => {
+    setNotifications((current) => mergeOwnerReplyNotices(current ?? [], replies))
+  }, [setNotifications])
+
+  const handleCrewTonight = useCallback(async (venueId: string, memberUserIds: string[]) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}?crew=1`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pick a crew', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await CrewTonightData.saveCrewTonight({
+        venueId,
+        memberUserIds,
+        followedUserIds: currentUser?.friends ?? [],
+      })
+      toast.success('Crew tonight saved')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save crew')
+    }
+  }, [currentUser?.friends, isPlaceholder, navigate, session])
+
+  const handleDoorPin = useCallback(async (venueId: string, pulseId: string) => {
+    const writeRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${encodeURIComponent(venueId)}`,
+    })
+    if (writeRedirect) {
+      toast.error('Sign in to pin from the door', { description: WRITE_AUTH_COPY.create.description })
+      navigate(writeRedirect)
+      return
+    }
+    try {
+      await DoorPinData.pinVenueDoorPulse({ venueId, pulseId })
+      toast.success('Pinned from the door')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not pin')
+    }
+  }, [isPlaceholder, navigate, session])
 
   return useMemo(() => ({
     handleCreatePulse,
@@ -388,13 +735,24 @@ export function useAppHandlers() {
     handlePromotionImpression,
     handlePromotionClick,
     handleStartCrewCheckIn,
+    handleHidePulse,
+    handlePinMyNight,
     handleToggleFavorite,
     handleToggleFollow,
+    handleToggleFriendFollow,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
+    handleOwnerReplyNotices,
   }), [
     handleAddFriend,
     handleCreatePulse,
     handleEventsUpdate,
+    handleHidePulse,
     handleNotificationClick,
+    handlePinMyNight,
     handlePromotionClick,
     handlePromotionImpression,
     handlePulseReport,
@@ -405,5 +763,12 @@ export function useAppHandlers() {
     handleTabChange,
     handleToggleFavorite,
     handleToggleFollow,
+    handleToggleFriendFollow,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
+    handleOwnerReplyNotices,
   ])
 }

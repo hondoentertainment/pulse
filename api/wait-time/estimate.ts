@@ -14,8 +14,8 @@ import {
   toWaitTimeRow,
   type WaitTimePulseRow,
   type WaitTimeInputRow,
-} from '../../src/lib/wait-time-estimator'
-import type { VenueWaitTime } from '../../src/lib/types'
+} from '../../src/lib/wait-time-estimator.js'
+import type { VenueWaitTime } from '../../src/lib/types.js'
 
 type RequestLike = {
   method?: string

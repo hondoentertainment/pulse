@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext, type ReactNode } from 'react'
-import { useLocalPreference } from './use-local-preference'
+import { useLocalPreference } from '@/hooks/use-local-preference'
 import type {
   Venue,
   Pulse,
@@ -23,11 +23,11 @@ import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { useNotificationSettings } from '@/hooks/use-notification-settings'
 import { useRealtimeLocation } from '@/hooks/use-realtime-location'
 import { useVenueSurgeTracker } from '@/hooks/use-venue-surge-tracker'
-import { createEvent } from '@/lib/events'
+import { unreadYouBadgeCount } from '@/lib/in-app-notify'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
-import { fetchEventsFromApi, postEventToApi } from '@/lib/server-api'
+import { fetchEventsFromApi } from '@/lib/server-api'
 import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
 import { hasSupabaseConfig, isVisualPreviewEnabled, supabase } from '@/lib/supabase'
 import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
@@ -37,6 +37,7 @@ import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
 import { loadPrototypeCatalog, loadSimulatedLocation } from '@/lib/prototype-catalog'
+import { filterVenuesByLaunchedMarkets, parseLaunchedCities } from '@/lib/geo-launch'
 import {
   ALL_US_MARKETS_KEY,
   getMarketByKey,
@@ -45,7 +46,8 @@ import {
   type UsMarket,
 } from '@/lib/us-markets'
 import { fetchProfilesByIds } from '@/lib/auth-profile'
-import { hasSupabaseEnv } from '@/lib/data'
+import { FollowData, hasSupabaseEnv, PulseData, USE_SUPABASE_BACKEND, VenueFollowData } from '@/lib/data'
+import { mapPulseReportsToContentReports, mergeInboxReports } from '@/lib/owner-inbox'
 
 export type SubPage =
   | 'events'
@@ -118,6 +120,7 @@ export interface AppState {
   contentReports: ContentReport[] | undefined
   setContentReports: (fn: ((r: ContentReport[] | undefined) => ContentReport[]) | ContentReport[]) => void
   userBlocks: UserBlock[] | undefined
+  setUserBlocks: (fn: ((b: UserBlock[] | undefined) => UserBlock[]) | UserBlock[]) => void
   userMutes: UserMute[] | undefined
 
   // User
@@ -201,10 +204,29 @@ export function getCurrentUserFromProfile(profile: User | null): User | undefine
   return profile ?? undefined
 }
 
+/** Local browse identity so guests can reach map + venues without a session. */
+export const GUEST_BROWSE_USER_ID = 'guest-browse'
+
+export function createGuestBrowseUser(): User {
+  return {
+    id: GUEST_BROWSE_USER_ID,
+    username: 'guest',
+    friends: [],
+    favoriteVenues: [],
+    followedVenues: [],
+    createdAt: '1970-01-01T00:00:00.000Z',
+  }
+}
+
+export function resolveAppUser(profile: User | null | undefined): User {
+  return profile ?? createGuestBrowseUser()
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useLocalPreference<boolean>('hasCompletedOnboarding', false)
-  const [selectedMarketKey, setSelectedMarketKey] = useLocalPreference<string>('selectedMarketKey', 'seattle')
-  const [activeTab, setActiveTab] = useState<TabId>('trending')
+  const [selectedMarketKeyRaw, setSelectedMarketKey] = useLocalPreference<string>('selectedMarketKey', 'seattle')
+  const selectedMarketKey = selectedMarketKeyRaw ?? 'seattle'
+  const [activeTab, setActiveTab] = useState<TabId>('map')
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [presenceSheetOpen, setPresenceSheetOpen] = useState(false)
   const [subPage, setSubPage] = useState<SubPage>(null)
@@ -229,23 +251,51 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     distanceFilter: 0.001,
   })
 
-  const { profile: supabaseProfile } = useSupabaseAuth()
+  const { profile: supabaseProfile, session } = useSupabaseAuth()
 
-  const [currentUser, setCurrentUser] = useState<User | undefined>(undefined)
+  const [currentUser, setCurrentUser] = useState<User | undefined>(() => createGuestBrowseUser())
   const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
   const hasTrackedVenueFallback = useRef(false)
 
-  // Bridge Supabase Profile -> Local State
+  // Bridge Supabase Profile -> Local State. Guests keep a browse identity
+  // so the map shell is not stuck on the loading gate without a session.
   useEffect(() => {
-    setCurrentUser(getCurrentUserFromProfile(supabaseProfile))
+    setCurrentUser(resolveAppUser(supabaseProfile))
   }, [supabaseProfile])
 
+  useEffect(() => {
+    const userId = supabaseProfile?.id
+    if (!USE_SUPABASE_BACKEND || !session || !userId) return
+    let cancelled = false
+    void VenueFollowData.listMyVenueFollows(userId).then((ids) => {
+      if (cancelled) return
+      setCurrentUser((current) => current ? { ...current, followedVenues: ids } : current)
+    })
+    void FollowData.listFollowedUsers(userId).then((ids) => {
+      if (cancelled) return
+      setCurrentUser((current) => current ? { ...current, friends: ids } : current)
+    }).catch(() => undefined)
+    void PulseData.listMyPulseReports().then((rows) => {
+      if (cancelled) return
+      setContentReports((current) => mergeInboxReports(
+        mapPulseReportsToContentReports(rows),
+        current,
+      ))
+    }).catch(() => undefined)
+    void import('@/lib/data').then(({ UserBlockData }) => (
+      UserBlockData.listMyBlocks().then((rows) => {
+        if (!cancelled) setUserBlocks(rows)
+      }).catch(() => undefined)
+    ))
+    return () => {
+      cancelled = true
+    }
+  }, [session, supabaseProfile?.id])
+
+  const launchedCitiesRaw = import.meta.env.VITE_LAUNCHED_CITIES ?? ''
   const launchedCities = useMemo(
-    () => (import.meta.env.VITE_LAUNCHED_CITIES ?? '')
-      .split(',')
-      .map((city: string) => city.trim())
-      .filter(Boolean),
-    []
+    () => launchedCitiesRaw.split(/[;|]/).map((city: string) => city.trim()).filter(Boolean),
+    [launchedCitiesRaw]
   )
 
   const [pulses, setPulses] = useState<Pulse[] | undefined>(hasSupabaseConfig ? undefined : [])
@@ -259,7 +309,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [playlists, setPlaylists] = useState<PulsePlaylist[]>([])
   const [promotions, setPromotions] = useState<PromotedVenue[]>([])
   const [contentReports, setContentReports] = useState<ContentReport[]>([])
-  const [userBlocks] = useState<UserBlock[]>([])
+  const [userBlocks, setUserBlocks] = useState<UserBlock[]>([])
   const [userMutes] = useState<UserMute[]>([])
 
   // ── Side-effects ─────────────────────────────────────────
@@ -316,32 +366,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queryKey: ['venues'],
     queryFn: fetchVenuesFromSupabase,
     enabled: hasSupabaseConfig,
-    staleTime: 10_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
   const { data: serverPulses } = useQuery({
     queryKey: ['pulses'],
     queryFn: fetchPulsesFromSupabase,
     enabled: hasSupabaseConfig,
-    staleTime: 5_000,
-    refetchInterval: 15_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
-  // Seed demo events / promotions
+  // Never seed fake events. Promotions stay local demo-only.
   useEffect(() => {
-    if ((!events || events.length === 0) && (!Array.isArray(serverEvents) || serverEvents.length === 0)) {
-      if (venues && venues.length > 0) {
-        const now = new Date()
-        const demoEvents = [
-          createEvent(venues[0].id, 'user-2', 'Friday Night DJ Set', 'Live DJ spinning house & techno all night', 'dj_set', new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString()),
-          createEvent(venues[1]?.id || venues[0].id, 'user-3', 'Trivia Tuesday', 'Test your knowledge — prizes for top 3 teams!', 'trivia', new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 27 * 60 * 60 * 1000).toISOString()),
-          createEvent(venues[2]?.id || venues[0].id, 'user-4', 'Happy Hour Special', '$5 cocktails and half-price apps', 'happy_hour', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString()),
-        ]
-        setEvents(demoEvents)
-        Promise.allSettled(demoEvents.map(e => postEventToApi(e))).catch(() => { })
-      }
-    }
     if (!promotions || promotions.length === 0) {
       if (venues && venues.length > 2) {
         setPromotions([
@@ -350,7 +388,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         ])
       }
     }
-  }, [events, promotions, serverEvents, venues])
+  }, [promotions, venues])
 
   // Hydrate local KV state from React Query
   useEffect(() => {
@@ -359,7 +397,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (Array.isArray(serverVenues) && serverVenues.length > 0) {
-      setVenues(serverVenues)
+      const markets = parseLaunchedCities(launchedCitiesRaw)
+      setVenues(filterVenuesByLaunchedMarkets(serverVenues, markets))
       return
     }
 
@@ -375,7 +414,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         })
       }
     }
-  }, [hasFetchedServerVenues, prototypeVenues, serverVenues, setVenues, venues])
+  }, [hasFetchedServerVenues, launchedCitiesRaw, prototypeVenues, serverVenues, setVenues, venues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)
@@ -415,7 +454,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [userLocation]
   )
 
-  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true)
+  useVenueSurgeTracker(venues || [], userLocation, notificationSettings?.trendingVenues ?? true, setNotifications)
 
   useEffect(() => {
     if (hasSupabaseConfig || realtimeLocation || simulatedLocation || locationPermissionDenied) return
@@ -588,8 +627,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   // ── Derived values ───────────────────────────────────────
   const moderatedPulses = useMemo(
-    () => filterModeratedPulses(pulses || [], currentUser?.id || '', userBlocks || [], userMutes || []),
-    [currentUser?.id, pulses, userBlocks, userMutes]
+    () => filterModeratedPulses(pulses || [], currentUser?.id || '', userBlocks || [], userMutes || [], contentReports || []),
+    [contentReports, currentUser?.id, pulses, userBlocks, userMutes]
   )
 
   const [pulseAuthorsById, setPulseAuthorsById] = useState<Record<string, User>>({})
@@ -641,7 +680,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [currentUser, pulseAuthorsById],
   )
   const unreadNotificationCount = useMemo(
-    () => (notifications || []).filter(n => !n.read).length,
+    () => unreadYouBadgeCount(notifications || []),
     [notifications]
   )
 
@@ -720,7 +759,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     playlists, setPlaylists,
     promotions, setPromotions,
     contentReports, setContentReports,
-    userBlocks, userMutes,
+    userBlocks, setUserBlocks, userMutes,
     currentUser, setCurrentUser,
     userLocation, locationName, locationError: locationError ?? undefined, isTracking,
     realtimeLocation: realtimeLocationValue, locationPermissionDenied, setLocationPermissionDenied,
@@ -759,6 +798,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     promotions,
     contentReports,
     userBlocks,
+    setUserBlocks,
     userMutes,
     currentUser,
     userLocation,

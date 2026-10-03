@@ -1,0 +1,98 @@
+/**
+ * Guest discovery policy.
+ *
+ * Map + venue browse is public. Auth gates write surfaces only:
+ * Create Pulse, live reviews, inbox, and claims — not discovery.
+ */
+
+import { AUTH_PATH as AUTH_RETURN_PATH, buildAuthPath } from './auth-return-intent'
+
+export const AUTH_PATH = AUTH_RETURN_PATH
+
+export const DISCOVERY_AUTH_GATE_COPY = "Sign in to discover what's buzzing near you"
+
+/**
+ * Share and venue deep links skip first-run onboarding.
+ * A plain first open of `/` still shows Welcome / “What’s your scene?”.
+ * Direct /venue/:id loads can paint before the full catalog. Inbox stays on the normal shell.
+ */
+export function isVenueDeepLinkPath(pathname: string | null | undefined): boolean {
+  const path = (pathname ?? '').split('?')[0].replace(/\/$/, '')
+  return /^\/venue\/[^/]+$/.test(path)
+}
+
+export function shouldBypassFirstRunOnboarding(input: {
+  pathname?: string | null
+  search?: string | null
+}): boolean {
+  const pathname = (input.pathname ?? '').split('?')[0]
+  if (/^\/venue\/[^/]+\/?$/.test(pathname)) return true
+  const raw = input.search ?? ''
+  const query = raw.startsWith('?') ? raw.slice(1) : raw
+  const from = new URLSearchParams(query).get('from')
+  return from === 'share' || from === 'invite'
+}
+
+/**
+ * Whether the post-onboarding shell should be replaced by AuthGate.
+ * Always false: guests must reach map + venues after Start Exploring.
+ */
+export function shouldBlockDiscoveryForAuth(_input?: {
+  isPlaceholder?: boolean
+  hasSession?: boolean
+  authLoading?: boolean
+  hasCompletedOnboarding?: boolean
+}): boolean {
+  return false
+}
+
+/**
+ * Create Pulse (and other write actions) require a real session when
+ * Supabase is configured. Placeholder/demo mode stays usable without auth.
+ */
+export function getCreatePulseAuthRedirect(input: {
+  isPlaceholder: boolean
+  hasSession: boolean
+  next?: string | null
+}): string | null {
+  if (input.isPlaceholder || input.hasSession) return null
+  return buildAuthPath(input.next)
+}
+
+/**
+ * Guest check-in, live review, and live intel must land on `/auth`
+ * (not toast-only). Same gate as Create Pulse.
+ */
+export function getWriteAuthRedirect(input: {
+  isPlaceholder: boolean
+  hasSession: boolean
+  next?: string | null
+}): string | null {
+  return getCreatePulseAuthRedirect(input)
+}
+
+export const AUTH_GATE_COPY = {
+  title: 'Sign in to Pulse',
+  why: 'Post a pulse or follow a room — about 10 seconds.',
+  emailPlaceholder: 'you@email.com',
+  magicLink: 'Send magic link',
+  browse: 'Keep browsing the map',
+} as const
+
+export const WRITE_AUTH_COPY = {
+  checkIn: { title: 'Sign in required', description: 'Sign in to check in.' },
+  review: { title: 'Sign in required', description: 'Sign in to post a live review.' },
+  intel: { title: 'Sign in required', description: 'Sign in to report live intel.' },
+  create: { title: 'Sign in to Pulse', description: 'Post a pulse or follow a room — about 10 seconds.' },
+  follow: { title: 'Sign in to follow', description: 'Follow a venue to see its latest live pulses tonight.' },
+  claim: { title: 'Sign in required', description: 'Sign in to claim this venue.' },
+} as const
+
+/** Close the composer whenever a write action redirects to /auth. */
+export function closeComposerForAuthRedirect(setters: {
+  setCreateDialogOpen?: (open: boolean) => void
+  setVenueForPulse?: (venue: null) => void
+}): void {
+  setters.setCreateDialogOpen?.(false)
+  setters.setVenueForPulse?.(null)
+}

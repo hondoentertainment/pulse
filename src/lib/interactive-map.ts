@@ -1,4 +1,6 @@
 import type { Venue } from './types'
+import { DOWNTOWN_SEATTLE, LAUNCH_33_CENTER } from './neighborhood-geo'
+import { isCuratedVenue } from './map-filters'
 
 export interface MapPoint {
   lat: number
@@ -26,12 +28,118 @@ export interface VenueCluster {
 }
 
 export const MIN_ZOOM = 0.6
+/** Compact 320px heatmap must zoom out past MIN_ZOOM to keep Launch 33 on screen. */
+export const FIT_MIN_ZOOM = 0.04
 export const MAX_ZOOM = 4.5
 export const ZOOM_STEP = 1.35
 export const MAP_SCALE = 500000
+/** A guest outside this radius is not "near" the Seattle catalog. */
+export const CATALOG_NEAR_MILES = 30
 
-export function clampZoom(value: number) {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value))
+export const PIN_STROKE = {
+  highlighted: 'white',
+  claimed: '#5EEAD4',
+  curated: '#F7D774',
+  default: 'oklch(0.15 0 0)',
+} as const
+
+/** Claimed venues are visually distinct from curated gold rings. */
+export function pinStrokeForVenue(
+  venue: Pick<Venue, 'claimVerified' | 'inventorySource' | 'seeded'>,
+  highlighted = false,
+): { stroke: string; strokeWidth: number; claimed: boolean } {
+  if (highlighted) {
+    return { stroke: PIN_STROKE.highlighted, strokeWidth: 3, claimed: venue.claimVerified === true }
+  }
+  if (venue.claimVerified) {
+    return { stroke: PIN_STROKE.claimed, strokeWidth: 2.6, claimed: true }
+  }
+  if (isCuratedVenue(venue)) {
+    return { stroke: PIN_STROKE.curated, strokeWidth: 2.4, claimed: false }
+  }
+  return { stroke: PIN_STROKE.default, strokeWidth: 1.5, claimed: false }
+}
+
+export type MapCameraReason = 'user' | 'launch33' | 'catalog' | 'downtown'
+
+export interface MapCamera {
+  center: MapPoint
+  zoom: number
+  followUser: boolean
+  reason: MapCameraReason
+}
+
+export function clampZoom(value: number, min = MIN_ZOOM, max = MAX_ZOOM) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function isLaunchPin(venue: Pick<Venue, 'inventorySource' | 'seeded'>): boolean {
+  if (venue.inventorySource === 'curated-seed') return true
+  if (venue.inventorySource === 'osm') return false
+  return venue.seeded === true
+}
+
+/** True when GPS is inside the Seattle catalog (or Launch 33 if the catalog is empty). */
+export function isLocationNearCatalog(
+  location: MapPoint | null | undefined,
+  venues: Array<Pick<Venue, 'location'>> = [],
+  maxMiles = CATALOG_NEAR_MILES,
+): boolean {
+  if (!location) return false
+  const anchors = venues.length > 0
+    ? venues.slice(0, 40).map((venue) => venue.location)
+    : [LAUNCH_33_CENTER, DOWNTOWN_SEATTLE]
+  return anchors.some((anchor) => (
+    calculateDistance(location.lat, location.lng, anchor.lat, anchor.lng) <= maxMiles
+  ))
+}
+
+/**
+ * Map camera when GPS is denied, far from Seattle, or still loading.
+ * Never invents pulses — only picks a real catalog / Launch 33 / Downtown center.
+ */
+export function resolveMapCamera(input: {
+  userLocation?: MapPoint | null
+  venues?: Array<Pick<Venue, 'location' | 'inventorySource' | 'seeded'>>
+} = {}): MapCamera {
+  const venues = input.venues ?? []
+  const launch = venues.filter((venue) => isLaunchPin(venue))
+  const focus = launch.length > 0 ? launch : venues
+
+  if (input.userLocation && isLocationNearCatalog(input.userLocation, focus)) {
+    return {
+      center: clampCenter(input.userLocation),
+      zoom: 1,
+      followUser: true,
+      reason: 'user',
+    }
+  }
+
+  if (focus.length > 0) {
+    const sample = focus.slice(0, 12)
+    const lat = sample.reduce((sum, venue) => sum + venue.location.lat, 0) / sample.length
+    const lng = sample.reduce((sum, venue) => sum + venue.location.lng, 0) / sample.length
+    return {
+      center: clampCenter({ lat, lng }),
+      zoom: 1,
+      followUser: false,
+      reason: 'catalog',
+    }
+  }
+
+  return {
+    center: LAUNCH_33_CENTER,
+    zoom: 1,
+    followUser: false,
+    reason: 'launch33',
+  }
+}
+
+/** Near-me radius origin: real GPS, else Launch 33 so pins stay on screen. */
+export function resolveNearMeOrigin(
+  userLocation: MapPoint | null | undefined,
+): MapPoint {
+  return userLocation ?? LAUNCH_33_CENTER
 }
 
 export function clampCenter(value: MapPoint): MapPoint {
@@ -233,24 +341,30 @@ export function clusterVenueRenderPoints(
   const singles: VenueRenderPoint[] = []
 
   clustersData.forEach(c => {
-    if (c.properties?.cluster) {
+    const props = c.properties
+    if (props && 'cluster' in props && props.cluster) {
       // It's a cluster
-      const leaves = clusterIndex!.getLeaves(c.properties.cluster_id, Infinity)
-      const venues = leaves.map(l => l.properties.point as VenueRenderPoint)
+      const leaves = clusterIndex!.getLeaves(props.cluster_id, Infinity)
+      const venues = leaves.flatMap((leaf) => {
+        const leafProps = leaf.properties
+        if (!leafProps || !('point' in leafProps) || !leafProps.point) return []
+        return [leafProps.point as VenueRenderPoint]
+      })
+      if (venues.length === 0) return
       
       const x = venues.reduce((sum, v) => sum + v.x, 0) / venues.length
       const y = venues.reduce((sum, v) => sum + v.y, 0) / venues.length
       const maxPulseScore = venues.reduce((max, v) => Math.max(max, v.venue.pulseScore), 0)
 
       clusters.push({
-        id: `cluster-${c.properties.cluster_id}`,
+        id: `cluster-${props.cluster_id}`,
         x,
         y,
         venues,
         maxPulseScore,
       })
-    } else {
-      singles.push(c.properties.point)
+    } else if (props && 'point' in props) {
+      singles.push(props.point)
     }
   })
 
@@ -322,7 +436,12 @@ export function getPreviewVenuePoints(params: {
     .slice(0, limit)
 }
 
-export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
+export function getFittedViewport(
+  venues: Venue[],
+  dimensions: MapDimensions,
+  options?: { minZoom?: number },
+) {
+  const minZoom = options?.minZoom ?? MIN_ZOOM
   const focusVenues = venues.slice(0, 100)
   if (focusVenues.length === 0) return null
 
@@ -332,7 +451,7 @@ export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
         lat: focusVenues[0].location.lat,
         lng: focusVenues[0].location.lng,
       },
-      zoom: 2,
+      zoom: clampZoom(2, minZoom),
     }
   }
 
@@ -358,6 +477,6 @@ export function getFittedViewport(venues: Venue[], dimensions: MapDimensions) {
       lat: (minLat + maxLat) / 2,
       lng: (minLng + maxLng) / 2,
     }),
-    zoom: clampZoom(Math.min(zoomByLat, zoomByLng)),
+    zoom: clampZoom(Math.min(zoomByLat, zoomByLng), minZoom),
   }
 }

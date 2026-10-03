@@ -9,7 +9,7 @@
  *   code: string (6 digits)
  */
 
-import { hashOtpCode } from '../../_lib/notify'
+import { hashOtpCode } from '../../_lib/notify.js'
 import {
   authenticate,
   badRequest,
@@ -22,8 +22,8 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../../_lib/safety-server'
-import { asString, isPlainObject } from '../../_lib/validate'
+} from '../../_lib/safety-server.js'
+import { asString, isPlainObject } from '../../_lib/validate.js'
 
 interface ConfirmBody {
   contactId: string

@@ -11,8 +11,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { EnergySlider } from './EnergySlider'
+import { EnergyPills } from './EnergyPills'
 import { EnergyRating, Venue, Hashtag, HashtagSuggestionContext } from '@/lib/types'
-import { X, VideoCamera, CheckCircle, Hash } from '@phosphor-icons/react'
+import { X, CheckCircle, Hash } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { compressVideo, formatFileSize, getCompressionRatio } from '@/lib/video-compression'
@@ -21,24 +22,44 @@ import { moderateServer } from '@/lib/moderation-client'
 import { track } from '@/lib/observability/analytics'
 import { suggestHashtags, getTimeOfDay, getDayOfWeek } from '@/lib/seeded-hashtags'
 import { useKV } from '@github/spark/hooks'
+import {
+  evaluateLocationProof,
+  validateLiveReviewCaption,
+  type LocationProof,
+} from '@/lib/live-reviews'
+import {
+  clearPulseDraft,
+  QUICK_PULSE_CAPTION_MAX,
+  readPulseDraft,
+  writePulseDraft,
+} from '@/lib/pulse-draft'
+import { UX_CARD, UX_CTA } from '@/lib/ux-chrome'
+import { compressPulsePhotoFile } from '@/lib/pulse-photo'
+import { DoorChipRow } from '@/components/DoorChipRow'
+import { toggleDoorChip, type DoorChip } from '@/lib/door-chips'
 
 interface CreatePulseDialogProps {
   open: boolean
   onClose: () => void
   venue: Venue | null
+  userLocation?: { lat: number; lng: number } | null
   onSubmit: (data: {
     energyRating: EnergyRating
     caption: string
     photos: string[]
     video?: string
     hashtags?: string[]
-  }) => void
+    kind: 'review' | 'pulse'
+    locationVerified: boolean
+    doorChips?: DoorChip[]
+  }) => void | Promise<void | { error?: string }>
 }
 
 export function CreatePulseDialog({
   open,
   onClose,
   venue,
+  userLocation = null,
   onSubmit
 }: CreatePulseDialogProps) {
   const [energyRating, setEnergyRating] = useState<EnergyRating>('chill')
@@ -50,9 +71,12 @@ export function CreatePulseDialog({
     buzzing: null,
     electric: null
   })
+  const [doorChips, setDoorChips] = useState<DoorChip[]>([])
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [video, setVideo] = useState<string | null>(null)
   const [videoDuration, setVideoDuration] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isCompressing, setIsCompressing] = useState(false)
   const [compressionProgress, setCompressionProgress] = useState(0)
   const [originalSize, setOriginalSize] = useState<number>(0)
@@ -61,6 +85,24 @@ export function CreatePulseDialog({
   const hasSubmittedFirstPulse = useRef<boolean>(false)
   const [allHashtags] = useKV<Hashtag[]>('hashtags', [])
   const [suggestedGroups, setSuggestedGroups] = useState<{ hashtags: Hashtag[]; label: string }[]>([])
+
+  useEffect(() => {
+    if (!open || !venue) return
+    const draft = readPulseDraft()
+    if (draft && draft.venueId === venue.id) {
+      setEnergyRating(draft.energyRating)
+      setCaption(draft.caption)
+    }
+  }, [open, venue])
+
+  useEffect(() => {
+    if (!open || !venue) return
+    writePulseDraft({
+      venueId: venue.id,
+      energyRating,
+      caption,
+    })
+  }, [open, venue, energyRating, caption])
 
   useEffect(() => {
     if (venue && allHashtags && allHashtags.length > 0) {
@@ -93,8 +135,20 @@ export function CreatePulseDialog({
     })
   }
 
+  const locationProof: LocationProof = evaluateLocationProof(userLocation, venue?.location)
+
   const handleSubmit = async () => {
     if (!venue) return
+
+    const trimmed = caption.trim()
+    const wantsReview = trimmed.length > 0
+    const captionCheck = wantsReview
+      ? validateLiveReviewCaption(trimmed)
+      : { ok: true as const, caption: trimmed }
+    if (!captionCheck.ok) {
+      toast.error(captionCheck.error ?? 'Caption is required')
+      return
+    }
 
     const photos = Object.values(energyPhotos).filter((photo): photo is string => photo !== null)
 
@@ -105,6 +159,7 @@ export function CreatePulseDialog({
     }
 
     setIsSubmitting(true)
+    setSubmitError(null)
 
     // Authoritative server-side moderation check before persisting.
     if (caption && caption.trim().length > 0) {
@@ -119,21 +174,34 @@ export function CreatePulseDialog({
       }
     }
 
-    await onSubmit({
+    const result = await onSubmit({
       energyRating,
-      caption,
+      caption: captionCheck.caption,
       photos,
       video: video || undefined,
-      hashtags: selectedHashtags
+      hashtags: selectedHashtags,
+      kind: wantsReview ? 'review' : 'pulse',
+      locationVerified: locationProof.locationVerified,
+      doorChips,
     })
+    if (result && typeof result === 'object' && result.error) {
+      setIsSubmitting(false)
+      setSubmitError(result.error)
+      toast.error(result.error)
+      return
+    }
+    clearPulseDraft()
 
     track('pulse_created', {
       pulseId: `pulse-${Date.now()}`,
       venueId: venue.id,
       hasPhoto: photos.length > 0,
+      hasCaption: true,
       hashtagCount: selectedHashtags.length,
       energyRating,
       isFirstPulse: !hasSubmittedFirstPulse.current,
+      kind: 'review',
+      locationVerified: locationProof.locationVerified,
     })
     hasSubmittedFirstPulse.current = true
 
@@ -156,17 +224,22 @@ export function CreatePulseDialog({
     onClose()
   }
 
-  const handlePhotoUpload = (energy: EnergyRating) => {
-    const mockPhotos = [
-      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
-    ]
-    const randomPhoto = mockPhotos[Math.floor(Math.random() * mockPhotos.length)]
-    setEnergyPhotos(prev => ({
-      ...prev,
-      [energy]: randomPhoto
-    }))
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target?.files?.[0]
+    if (event.target) event.target.value = ''
+    if (!file) return
+    try {
+      const dataUrl = await compressPulsePhotoFile(file)
+      setEnergyPhotos({
+        dead: null,
+        chill: null,
+        buzzing: null,
+        electric: null,
+        [energyRating]: dataUrl,
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not add photo')
+    }
   }
 
   const removePhoto = (energy: EnergyRating) => {
@@ -274,57 +347,110 @@ export function CreatePulseDialog({
     }
   }
 
+  const photoCount = Object.values(energyPhotos).filter(Boolean).length
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">
-            Create Pulse at {venue?.name}
-          </DialogTitle>
+      <DialogContent
+        fullscreen
+        hideClose
+        data-surface="composer"
+        className="flex flex-col gap-5 overflow-y-auto bg-background pt-5"
+      >
+        <DialogHeader className="gap-0 text-left">
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-11 text-[15px] font-semibold text-muted-foreground touch-manipulation"
+            >
+              Cancel
+            </button>
+            <DialogTitle className="sr-only">Quick pulse</DialogTitle>
+            <button
+              type="button"
+              onClick={() => { void handleSubmit() }}
+              disabled={isSubmitting || isCompressing}
+              className="min-h-11 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground touch-manipulation disabled:opacity-50"
+            >
+              {isSubmitting ? 'Posting...' : 'Post'}
+            </button>
+          </div>
           <DialogDescription className="sr-only">
-            Share the current energy, add a caption, photos, video, and hashtags.
+            {venue ? `${venue.name} · from map pin` : 'What’s the vibe right now?'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium mb-3 block">How's the energy?</label>
-            <EnergySlider 
-              value={energyRating} 
+            <p className="text-[26px] font-bold text-foreground">Post live review</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {venue ? `${venue.name} · What’s the vibe right now?` : 'What’s the vibe right now?'}
+            </p>
+          </div>
+          <EnergyPills value={energyRating} onChange={setEnergyRating} />
+          <div className={`${UX_CARD} p-3.5`}>
+            <label htmlFor="create-pulse-caption" className="sr-only">
+              Caption
+            </label>
+            <Textarea
+              id="create-pulse-caption"
+              placeholder="What's the vibe right now?"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value.slice(0, QUICK_PULSE_CAPTION_MAX))}
+              maxLength={QUICK_PULSE_CAPTION_MAX}
+              rows={3}
+              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-[14px] leading-5 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
+              aria-required="true"
+              aria-describedby="create-pulse-caption-count create-pulse-location-proof"
+            />
+            <p id="create-pulse-caption-count" className="mt-2 text-[11px] text-muted-foreground">
+              {caption.length} / {QUICK_PULSE_CAPTION_MAX} chars
+            </p>
+          </div>
+          <DoorChipRow
+            value={doorChips}
+            onToggle={(chip) => setDoorChips((current) => toggleDoorChip(current, chip))}
+          />
+          <div className="hidden">
+            <EnergySlider
+              value={energyRating}
               onChange={setEnergyRating}
               energyPhotos={energyPhotos}
-              onAddPhoto={handlePhotoUpload}
+              onAddPhoto={() => photoInputRef.current?.click()}
               onRemovePhoto={removePhoto}
             />
           </div>
+        </div>
+
+        <div className="space-y-3.5 py-1">
 
           {video && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Video</label>
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="relative rounded-lg overflow-hidden bg-secondary aspect-video"
+                className="relative aspect-video overflow-hidden rounded-[18px] bg-secondary"
               >
                 <video
                   src={video}
                   controls
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 >
                   Your browser does not support the video tag.
                 </video>
                 <button
                   onClick={removeVideo}
                   aria-label="Remove video"
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center hover:bg-black transition-colors"
+                  className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 hover:bg-black transition-colors"
                 >
                   <X size={16} weight="bold" className="text-white" />
                 </button>
-                <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
+                <div className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 font-mono text-xs text-white">
                   {Math.round(videoDuration)}s
                 </div>
                 {compressedSize > 0 && originalSize > 0 && (
-                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono flex items-center gap-1">
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 font-mono text-xs text-white">
                     <CheckCircle size={12} weight="fill" className="text-accent" />
                     {formatFileSize(compressedSize)}
                   </div>
@@ -349,7 +475,15 @@ export function CreatePulseDialog({
           )}
 
           {!video && !isCompressing && (
-            <div className="flex gap-2">
+            <div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                id="pulse-photo-upload"
+              />
               <input
                 ref={videoInputRef}
                 type="file"
@@ -358,110 +492,127 @@ export function CreatePulseDialog({
                 className="hidden"
                 id="video-upload"
               />
-              <label htmlFor="video-upload" className="flex-1">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  asChild
-                >
-                  <span>
-                    <VideoCamera size={20} weight="fill" className="mr-2" />
-                    Add Video (max 30s)
-                  </span>
-                </Button>
-              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (photoCount < 1) {
+                    photoInputRef.current?.click()
+                    return
+                  }
+                  videoInputRef.current?.click()
+                }}
+                className={`${UX_CARD} flex min-h-24 w-full flex-col items-center justify-center gap-1 px-3.5 py-3 text-center transition-colors hover:border-primary/60`}
+              >
+                {photoCount > 0 ? (
+                  <>
+                    <p className="text-sm font-semibold text-foreground">
+                      {photoCount} photo{photoCount === 1 ? '' : 's'} added
+                    </p>
+                    <p className="text-xs text-muted-foreground">Tap to add another · shows in Live now</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-foreground">Add photo (optional)</p>
+                    <p className="text-xs text-muted-foreground">Shows in Live now</p>
+                  </>
+                )}
+              </button>
             </div>
           )}
 
-          <div className="space-y-2">
-            <label htmlFor="create-pulse-caption" className="text-sm font-medium">
-              Caption <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <Textarea
-              id="create-pulse-caption"
-              placeholder="What's the vibe?"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value.slice(0, 140))}
-              maxLength={140}
-              rows={3}
-              className="resize-none"
-              aria-describedby="create-pulse-caption-count"
-            />
-            <p id="create-pulse-caption-count" className="text-xs text-muted-foreground text-right">
-              {caption.length}/140
-            </p>
+          <div id="create-pulse-location-proof" className="flex items-center gap-2">
+            {locationProof.reason === 'verified' ? (
+              <>
+                <span className="inline-flex items-center rounded-full border border-[rgba(89,199,158,0.55)] bg-[rgba(89,199,158,0.18)] px-3 py-[7px] text-[12px] font-medium text-[#59c79e]">
+                  Near venue ✓
+                </span>
+                <span className="text-[12px] text-muted-foreground">Location verified</span>
+              </>
+            ) : (
+              <>
+                <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                  Unverified
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {locationProof.reason === 'outside_radius'
+                    ? 'Outside check-in radius — will post unverified.'
+                    : 'Location off — you can still post, marked unverified.'}
+                </span>
+              </>
+            )}
           </div>
 
           {suggestedGroups.length > 0 && (
-            <div className="space-y-3">
-              {suggestedGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Hash size={14} weight="bold" className="text-muted-foreground" />
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {group.label}
-                    </label>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.hashtags.map((hashtag) => {
-                      const isSelected = selectedHashtags.includes(hashtag.name)
-                      const isSeeded = hashtag.seeded
-                      
-                      return (
-                        <motion.button
-                          key={hashtag.id}
-                          type="button"
-                          onClick={() => toggleHashtag(hashtag.name)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Badge
-                            variant={isSelected ? "default" : "outline"}
-                            className={`cursor-pointer transition-all ${
-                              isSelected 
-                                ? 'bg-primary text-primary-foreground border-primary' 
-                                : 'hover:border-primary/50'
-                            } ${
-                              isSeeded && !isSelected ? 'border-dashed' : ''
-                            }`}
+            <details className="rounded-xl border border-border bg-card p-3.5">
+              <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+                Hashtags (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                {suggestedGroups.map((group, groupIndex) => (
+                  <div key={groupIndex} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Hash size={14} weight="bold" className="text-muted-foreground" />
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {group.label}
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.hashtags.map((hashtag) => {
+                        const isSelected = selectedHashtags.includes(hashtag.name)
+                        const isSeeded = hashtag.seeded
+
+                        return (
+                          <motion.button
+                            key={hashtag.id}
+                            type="button"
+                            onClick={() => toggleHashtag(hashtag.name)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                           >
-                            <span className="mr-1">{hashtag.emoji}</span>
-                            #{hashtag.name}
-                          </Badge>
-                        </motion.button>
-                      )
-                    })}
+                            <Badge
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'hover:border-primary/50'
+                              } ${
+                                isSeeded && !isSelected ? 'border-dashed' : ''
+                              }`}
+                            >
+                              <span className="mr-1">{hashtag.emoji}</span>
+                              #{hashtag.name}
+                            </Badge>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {selectedHashtags.length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedHashtags.length}/5 hashtags selected
-                  </p>
-                </div>
-              )}
-            </div>
+                ))}
+                {selectedHashtags.length > 0 && (
+                  <div className="border-t border-border pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {selectedHashtags.length}/5 hashtags selected
+                    </p>
+                  </div>
+                )}
+              </div>
+            </details>
           )}
 
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 bg-primary hover:bg-primary/90"
-              onClick={handleSubmit}
-              disabled={isSubmitting || isCompressing}
-            >
-              {isSubmitting ? 'Posting...' : 'Post Pulse'}
-            </Button>
-          </div>
+          {submitError && (
+            <p role="alert" className="text-sm font-semibold text-destructive">{submitError}</p>
+          )}
+          <Button
+            className={`${UX_CTA} sticky bottom-0`}
+            aria-label="Post · 1 tap"
+            onClick={handleSubmit}
+            disabled={isSubmitting || isCompressing}
+          >
+            {isSubmitting ? 'Posting...' : 'Post live review'}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Photo optional · draft never lost
+          </p>
         </div>
       </DialogContent>
     </Dialog>

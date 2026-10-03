@@ -41,11 +41,85 @@ const ENERGY_COLORS: Record<string, string> = {
   Dead: '#607D8B',
 }
 
+export function getPublicAppOrigin(options: {
+  env?: Record<string, string | undefined>
+  locationOrigin?: string | null
+} = {}): string {
+  const env = options.env ?? (
+    typeof import.meta !== 'undefined'
+      ? (import.meta as { env?: Record<string, string | undefined> }).env
+      : undefined
+  ) ?? {}
+  const locationOrigin = Object.prototype.hasOwnProperty.call(options, 'locationOrigin')
+    ? options.locationOrigin
+    : (typeof window !== 'undefined' ? window.location.origin : undefined)
+  if (locationOrigin && /^https?:\/\//.test(locationOrigin)) {
+    return locationOrigin.replace(/\/$/, '')
+  }
+  const fromEnv = env.VITE_PUBLIC_APP_URL
+  if (fromEnv && /^https?:\/\//.test(fromEnv)) {
+    return fromEnv.replace(/\/$/, '')
+  }
+  return 'https://pulse-chi-nine.vercel.app'
+}
+
 /**
  * Generate a deep link URL for a venue.
  */
-export function getVenueDeepLink(venueId: string, baseUrl: string = 'https://pulse.app'): string {
-  return `${baseUrl}/venue/${venueId}`
+export function getVenueDeepLink(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/venue/${venueId}`
+}
+
+export function getVenueSharePreviewUrl(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/api/share/venue?venueId=${encodeURIComponent(venueId)}`
+}
+
+export function getVenueShareOgImageUrl(
+  venueId: string,
+  baseUrl: string = getPublicAppOrigin(),
+): string {
+  return `${baseUrl.replace(/\/$/, '')}/api/share/og?venueId=${encodeURIComponent(venueId)}`
+}
+
+/** Landing used by crawlers + humans after a shared link. */
+export function getVenueShareLandingPath(venueId: string): string {
+  return `/venue/${venueId}?from=share`
+}
+
+/** “I'm here · open map” — focuses the home map on this pin. */
+export { getImHereMapPath, parseHereVenueId, resolveImHereAction } from './im-here'
+
+export interface ShareOgCard {
+  title: string
+  energyLine: string
+  caption: string
+  eyebrow: string
+  cta: string
+}
+
+export function buildShareOgCard(input: {
+  venueName: string
+  energyLabel: string
+  freshness?: string
+  caption?: string
+}): ShareOgCard {
+  const freshness = input.freshness?.trim()
+  const energyLine = freshness
+    ? `${input.energyLabel} · ${freshness}`
+    : input.energyLabel
+  return {
+    title: input.venueName,
+    energyLine,
+    caption: (input.caption ?? '').trim(),
+    eyebrow: 'Someone shared a venue',
+    cta: "I'm here · open map",
+  }
 }
 
 /**
@@ -67,7 +141,7 @@ export function generateVenueShareCard(venue: Venue): ShareCard {
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getVenueDeepLink(venue.id),
+    url: getVenueSharePreviewUrl(venue.id),
   }
 }
 
@@ -83,7 +157,21 @@ export function generatePulseShareCard(pulse: Pulse, venue: Venue, username: str
     energyLabel: label,
     energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
     score: venue.pulseScore,
-    url: getPulseDeepLink(pulse.id),
+    url: getVenueSharePreviewUrl(venue.id),
+  }
+}
+
+export function generateJustReviewedShareCard(venue: Venue, caption: string): ShareCard {
+  const label = getEnergyLabel(venue.pulseScore)
+  const snippet = caption.trim()
+  return {
+    title: `Just reviewed ${venue.name}`,
+    description: snippet || `${label} right now on Pulse`,
+    imageText: `${venue.name}\nJust reviewed · ${label}`,
+    energyLabel: label,
+    energyColor: ENERGY_COLORS[label] ?? ENERGY_COLORS.Dead,
+    score: venue.pulseScore,
+    url: getVenueSharePreviewUrl(venue.id),
   }
 }
 
@@ -180,6 +268,48 @@ export function buildNativeShareData(card: ShareCard): { title: string; text: st
     title: card.title,
     text: card.description,
     url: card.url,
+  }
+}
+
+export type ShareVenueResult = 'shared' | 'copied' | 'cancelled' | 'failed'
+
+/**
+ * Guest-safe share from Tonight / map / venue using `/api/share/venue` + OG.
+ */
+export async function shareVenueFromSurface(
+  venue: Venue,
+  extras: {
+    share?: (data: ShareData) => Promise<void>
+    writeText?: (text: string) => Promise<void>
+    canShare?: boolean
+  } = {},
+): Promise<ShareVenueResult> {
+  const card = generateVenueShareCard(venue)
+  const payload = buildNativeShareData(card)
+  const shareFn = extras.share
+    ?? (typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+      ? (data: ShareData) => navigator.share(data)
+      : undefined)
+  const canShare = extras.canShare
+    ?? (typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+  if (canShare && shareFn) {
+    try {
+      await shareFn(payload)
+      return 'shared'
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'
+    }
+  }
+  const writeText = extras.writeText
+    ?? (typeof navigator !== 'undefined' && navigator.clipboard
+      ? (text: string) => navigator.clipboard.writeText(text)
+      : undefined)
+  if (!writeText) return 'failed'
+  try {
+    await writeText(card.url)
+    return 'copied'
+  } catch {
+    return 'failed'
   }
 }
 

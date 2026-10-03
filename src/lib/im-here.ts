@@ -1,0 +1,125 @@
+/**
+ * “I'm here · open map” deep-link helpers.
+ *
+ * `/?here=:venueId` focuses the home map on that pin.
+ * Signed-in users also start the create path; guests can view the pin
+ * and hit `/auth` only when they try to write.
+ */
+
+import { getCreatePulseAuthRedirect } from './guest-discovery'
+import { venueComposePath } from './auth-return-intent'
+import { isCuratedVenue, type MapInventoryLayer } from './map-filters'
+import type { Venue } from './types'
+
+export const HERE_QUERY_PARAM = 'here'
+export const CREATE_QUERY_PARAM = 'create'
+/** Neighborhood/block zoom so I’m-here is not left on the city-wide heatmap. */
+export const IM_HERE_PIN_ZOOM = 2.4
+
+export function parseHereVenueId(
+  search: string | { get(name: string): string | null },
+): string | null {
+  const value = typeof search === 'string'
+    ? new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get(HERE_QUERY_PARAM)
+    : search.get(HERE_QUERY_PARAM)
+  const venueId = value?.trim()
+  return venueId ? venueId : null
+}
+
+export function wantsImHereCreate(
+  search: string | { get(name: string): string | null },
+): boolean {
+  const value = typeof search === 'string'
+    ? new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get(CREATE_QUERY_PARAM)
+    : search.get(CREATE_QUERY_PARAM)
+  return value === '1' || value === 'true'
+}
+
+export function getImHereMapPath(
+  venueId: string,
+  options: { create?: boolean } = {},
+): string {
+  const params = new URLSearchParams()
+  params.set(HERE_QUERY_PARAM, venueId)
+  if (options.create) params.set(CREATE_QUERY_PARAM, '1')
+  return `/?${params.toString()}`
+}
+
+export function resolveImHereAction(input: {
+  venueId: string
+  isPlaceholder: boolean
+  hasSession: boolean
+}): {
+  mapPath: string
+  openCreate: boolean
+  authRedirect: string | null
+} {
+  const authRedirect = getCreatePulseAuthRedirect({
+    isPlaceholder: input.isPlaceholder,
+    hasSession: input.hasSession,
+    next: venueComposePath(input.venueId),
+  })
+  return {
+    mapPath: getImHereMapPath(input.venueId),
+    openCreate: authRedirect === null,
+    authRedirect,
+  }
+}
+
+export function findImHereVenue(
+  venues: readonly Venue[] | undefined,
+  hereVenueId: string | null,
+): Venue | null {
+  if (!hereVenueId || !venues?.length) return null
+  return venues.find((venue) => venue.id === hereVenueId) ?? null
+}
+
+export function inventoryLayerForImHere(
+  venue: Pick<Venue, 'inventorySource' | 'seeded'> | null,
+  current: MapInventoryLayer,
+): MapInventoryLayer {
+  if (!venue) return current
+  if (!isCuratedVenue(venue)) return 'all'
+  return current
+}
+
+/**
+ * Focus the pin on first match. If the first pass was guest (no create)
+ * and a session later hydrates, open create without losing the pin.
+ */
+export function resolveImHereOpen(input: {
+  alreadyOpenedVenueId: string | null
+  alreadyOpenedCreate: boolean
+  venueId: string
+  openCreate: boolean
+}): { focus: boolean; create: boolean } {
+  if (input.alreadyOpenedVenueId !== input.venueId) {
+    return { focus: true, create: input.openCreate }
+  }
+  if (input.openCreate && !input.alreadyOpenedCreate) {
+    return { focus: false, create: true }
+  }
+  return { focus: false, create: false }
+}
+
+export function resolveImHereMapZoom(currentZoom: number | null | undefined): number {
+  const current = typeof currentZoom === 'number' && Number.isFinite(currentZoom)
+    ? currentZoom
+    : 0
+  return Math.max(IM_HERE_PIN_ZOOM, current)
+}
+
+/**
+ * All-Seattle heatmap keeps a top-5 slice and energy/near-me filters can
+ * drop the shared pin. I’m-here must still render that venue.
+ */
+export function retainFocusedVenue<T extends { id: string }>(
+  visible: readonly T[],
+  catalog: readonly T[] | undefined,
+  focusVenueId: string | null | undefined,
+): T[] {
+  if (!focusVenueId) return [...visible]
+  if (visible.some((venue) => venue.id === focusVenueId)) return [...visible]
+  const focused = catalog?.find((venue) => venue.id === focusVenueId)
+  return focused ? [focused, ...visible] : [...visible]
+}

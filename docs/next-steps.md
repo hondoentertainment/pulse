@@ -1,0 +1,88 @@
+# Pulse next steps — Figma → shipped surfaces
+
+Maps issues **#84–#87** plus the soon stack (PWA / trust chips / ops / analytics / catalog) onto in-app surfaces. Signal stays removed.
+
+Figma: [Uber UX Targets](https://www.figma.com/design/wsJG3tGvfsLuUcVRfKpqS4?node-id=6-2) (`node-id=6-2`). Visual overlay: [Uber × X UX](uber-x-ux.md).
+
+## Issue mapping
+
+| Issue | Figma / intent | Surfaces | Notes |
+|-------|----------------|----------|-------|
+| **#84** Hardening | First session + guest write + live create | `getWriteAuthRedirect`, `closeComposerForAuthRedirect`, `CreatePulseDialog`, `markMapInteractive`, Launch 33 default | Guest check-in/create **closes the composer** and navigates `/auth` (never toast-only). Cold-start helper: Performance marks `pulse_nav_start` → `pulse_map_interactive`. Target **&lt;2s feel** with Launch 33 first; All Seattle + Surging rail deferred via `requestIdleCallback`. Measure in DevTools or `formatColdStartDebug()`. Signed-in create still optimistic + realtime (`use-map-live-reviews`). No new Signal paths. |
+| **#85** Trust | Owner inbox v2 (`6:83`) | `/venue/:id/inbox`, `venue_claims` RLS, `/ops`, `docs/runbooks/venue-claims-ops.md` | Claim + evidence → pending visible to claimant. **Pending does not unlock inbox.** Verified claim or `venue_staff` unlocks tonight’s reviews, reply (local), dismiss (local + `GET/PATCH /api/pulses/report?venueId=`). Inbox loads server `pulse_reports` for the venue. Guest/unverified blocked. Claims refetch on window focus. |
+| **#86** Growth | Share deep link (`6:74`) | `/api/share/venue`, `/api/share/og`, `/?here=:id`, `ShareArrivalCard` | In-app share/copy uses `/api/share/venue?venueId=` so crawlers get venue name + freshness OG. Humans land on `/venue/:id?from=share`. **I’m here** focuses the pin; a signed-in tap also runs the venue confirm (presence + `POST /api/push/notify-im-here`) once per 90-minute window. Guests **view** the pin and do not push; writes still `/auth`. |
+| **#87** For tonight | Home (`6:62`) | `TonightHomeHeader`, `neighborhood-geo`, `catalog-quality` | Visible `Tonight · {hood}` + time/Launch 33 / last-city subtitle. Ranks start-here + heating-up from live energy + distance + time of day. When nothing is surging, teach-the-loop empty state + catalog Start here. Real Seattle catalog only. |
+| **#90** PWA / offline | Reliability (`6:92`) | `InstallAffordance`, `OfflineBanner`, `MapHomeSkeleton` | Map-home install card when eligible, plus a non-blocking browser-menu / iOS Share path. Offline banner + draft + skeleton bars; Keep browsing. |
+| **#89** Trust v2 | Trust at a glance (`6:2`) | `TrustPinChips` on surging pins + hover + Tonight + Surging | Freshness / Verified or **Claimed** / density on heatmap pins. Claimed pins use a teal stroke distinct from curated gold. Never invented. |
+| **#91 Moderation ops** | — | `/ops`, runbook | Gated admin queue: venue **name**, verify/reject, dismiss/**resolve** reports. SQL helpers if no admin role. |
+| **#92 Analytics funnel** | — | `guest_map_view`, `venue_open`, `auth_start`, `first_pulse_create` | Exact names from #92. `guest` boolean, no PII. See [observability.md](observability.md#guest--first-pulse-funnel-92). |
+| **#93 Catalog quality** | — | `catalog-quality.ts`, `compareTonightRank`, `npm run catalog-quality` | Neighborhood + Launch 33 / All Seattle labels. Tonight prefers curated when tied. Soft-hide bad / OSM-dupe pins from ranking only. **No mass prod deletes.** |
+
+## Cold-start measurement
+
+1. Hard reload `/` (Launch 33 default — `inventoryLayer: 'curated'`).
+2. DevTools → Performance → look for `pulse_map_interactive` / measure `pulse_cold_start`.
+3. Target: mark under ~2000ms on a mid phone. All Seattle clustering and the Surging rail wait until after first paint (`scheduleAllSeattleRelease`).
+
+### Device profiles (WC-11)
+
+These are the budgets to check. This repo does not add a second city.
+
+| Profile | What to throttle | Expect |
+|---------|------------------|--------|
+| Mid phone | Pixel 6a class, 4G, CPU 4× in DevTools, hard reload `/` | `pulse_map_interactive` around 2s. Launch 33 pins only until idle. |
+| Newer phone | Current iPhone, wifi, no throttle | Comfortably under 2000ms. Same Launch 33 first paint. |
+| Slow phone | Older Android, CPU 6×, Slow 3G | Map still paints the curated set first. All Seattle and the Surging rail stay deferred so the mark is not waiting on the OSM catalog. |
+
+## Follow-ups blocked on credentials / admin
+
+- Signing in on prod to prove the live-review loop (no credentials invented here).
+- Applying `20260911000000_owner_report_triage.sql` on `xeldqwhztcnnvazmshzh` if owner dismiss should persist beyond localStorage.
+- Applying `20260912120000_venue_follows_push_claim_rate.sql` only (web columns on existing `push_tokens`, domain-match claim, pulse rate-limit). Reuses `follows` + `push_tokens` + `notifications`. Verify with `supabase/verify/follows.sql`, `push_tokens.sql`, `notifications.sql`, `venue_claim_domain.sql`, `pulse_rate_limit.sql`. Do **not** create `venue_follows` / `web_push_subscriptions`. Do **not** reuse leftover `signal_push_subscriptions`. Claim-verified badge (`venues.claim_verified` + `venue_claim_badges`) is already on prod — do not re-apply. Pending still does not unlock inbox.
+- Setting Vercel env `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (generate locally; do not invent prod secrets). Missing keys = honest no-op.
+- Setting `app_metadata.role = admin` for `/ops` (domain-match claims can verify without this).
+- Confirming OG cards on a real iMessage/Slack crawl (share URL is now `/api/share/venue?venueId=`; needs a production deploy + phone).
+- Custom domain attach + branded magic-link: [custom-domain.md](runbooks/custom-domain.md). Live URL stays `https://pulse-chi-nine.vercel.app/` until a human attaches DNS. **Roadmap #13 is skipped** until the owner names a domain — do not buy or attach one from this repo.
+- Apply `supabase/migrations/20260914000000_next15_usage.sql` on `xeldqwhztcnnvazmshzh` (door_chips, follows.pinned_at, here-now RPCs). Verify with `supabase/verify/next15_usage.sql`.
+- Do **not** change Supabase Site URL from this repo. Return-to-intent is client `next=` + localStorage after magic-link/Google land on the existing origin.
+- First-night invites still need a human to send them. Do not close #85/#86.
+
+## Next-15 usage (this PR)
+
+Return-to-intent, tonight digest / quiet-night (VAPID optional), here-now count, one photo, door chips, invite link, `/n/:slug` for **every** hood already tagged on Seattle venues (not only Capitol Hill / Ballard / Georgetown / SoDo), neighborhood share + OG via existing `/api/share/venue?n=` + crawler rewrite on `/n/:slug`, last-5 recents on Tonight/map, My night pins, owner one-tap reply, hide pulse, friends follow, events overlay from existing `events` only. Hourly Vercel cron for `/api/cron/night-coach` uses existing `CRON_SECRET` (missing = honest no-op). No new keys, no custom domain, no fake events. Prod SQL for `door_chips` / `pinned_at` / `venue_here_now_*` is already applied — do not recreate that migration.
+
+## Twitter-class slices (repo, 2026-09-24)
+
+Agent code only. Track 0 stays human: #64 live loop, #85/#86 phone proof (do not close), Supabase Site URL, analytics keys (WC-0.5), first-night invites, branch protection if the agent lacks admin.
+
+| Slice | What landed |
+|-------|-------------|
+| WC-1 | `buildTonightHome` / `compareTonightRank` — freshness, distance, time-of-day, followed venues with a pulse in the last 90m float when nearby, ≤8 cards. Empty Tonight CTA calls the existing auth-gated compose path. |
+| WC-2 | `pulse_reflection` when a live review hits the local cache Surging reads. p95 is logged; Sentry breadcrumb uses the existing bridge. |
+| WC-3 | Electric cross + `venue_surge_notices` rate limit + `follows.surge_muted` + `push_tokens` quiet hours. [#109](https://github.com/hondoentertainment/pulse/issues/109). Missing VAPID stays `{ reason: 'missing_vapid' }`. Do not generate keys in git. Do not close #66. |
+| WC-5 | Location-verified pulses in the 90m window outrank otherwise comparable unverified pulses. |
+| WC-6 | `venue_owner_replies` shown on Live now. Dismiss still PATCHes `/api/pulses/report`. #85 stays open. |
+| WC-8 | `ShareArrivalCard` install affordance only when `isPwaInstallEligible`. Post a live review goes to `/auth` for guests. Funnel events stay `guest_map_view` → `venue_open` → `auth_start` → `first_pulse_create`. |
+| WC-9 | Capitol Hill focus-hood badge and empty copy from the existing launch seed. No ownership edits. |
+
+Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on prod after merge (Supabase MCP or SQL editor). Verify with `supabase/verify/venue_surge_owner_replies.sql`.
+
+## Twitter-class slices (repo, 2026-10-01)
+
+Still Seattle venue + map only. No second city, no new keys, no Signal restore.
+
+| Slice | What landed |
+|-------|-------------|
+| WC-4 | Venue surges, friend pulses, and owner replies collapse per venue per hour. Tap opens `/venue/:id?highlight=` or `/venue/:id/inbox?highlight=reply`. Unread badge is on the You tab and counts groups, not a storm. |
+| WC-7 | A report hides that pulse for the reporter in the same turn. `/ops` resolve and dismiss require a reason, stored on `pulse_reports.resolution_note`. Same admin role as before. |
+| WC-10 | Crew tonight stays 2–4 followed people on one pinned venue. Members see each other’s I’m-here. Guests and other crews get an empty list. |
+| WC-11 | Hard reload of `/` paints Launch 33, then idle-releases All Seattle. `pulse_map_interactive` is marked when the canvas draws. Budget 2000ms. Device profiles above. |
+| WC-12 | Map, Tonight, and the composer take arrow keys. Reduced motion skips map inertia and tab slides. Contrast media query lifts muted text. Energy meaning is the word, not the emoji. |
+| WC-13 | Checklist only: [second-city-readiness.md](second-city-readiness.md). Do not launch a second city. |
+
+Apply `supabase/migrations/20261001160000_pulse_report_resolution_note.sql` and `supabase/migrations/20261001161000_crew_tonight_member_read.sql` on prod after merge. Verify with `supabase/verify/pulse_report_resolution_note.sql` and `supabase/verify/crew_tonight_member_read.sql`. Do not close #85, #86, or #109.
+
+## Ownership
+
+- Owner: Pulse product / map + live reviews
+- Last reviewed: 2026-09-24

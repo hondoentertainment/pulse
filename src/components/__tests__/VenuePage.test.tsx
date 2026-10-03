@@ -62,16 +62,15 @@ vi.mock('@phosphor-icons/react', () => ({
   Car: (p: any) => <span data-testid="icon-Car" {...p} />,
   CalendarCheck: (p: any) => <span data-testid="icon-CalendarCheck" {...p} />,
   ShareNetwork: (p: any) => <span data-testid="icon-ShareNetwork" {...p} />,
+  ChatCircle: (p: any) => <span data-testid="icon-ChatCircle" {...p} />,
   Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
   SealCheck: (p: any) => <span data-testid="icon-SealCheck" {...p} />,
   Ticket: (p: any) => <span data-testid="icon-Ticket" {...p} />,
-  Lightning: (p: any) => <span data-testid="icon-Lightning" {...p} />,
   BookmarkSimple: (p: any) => <span data-testid="icon-BookmarkSimple" {...p} />,
   CalendarBlank: (p: any) => <span data-testid="icon-CalendarBlank" {...p} />,
   Broadcast: (p: any) => <span data-testid="icon-Broadcast" {...p} />,
   Queue: (p: any) => <span data-testid="icon-Queue" {...p} />,
   CaretDown: (p: any) => <span data-testid="icon-CaretDown" {...p} />,
-  SealCheck: (p: any) => <span data-testid="icon-SealCheck" {...p} />,
   Users: (p: any) => <span data-testid="icon-Users" {...p} />,
   ListChecks: (p: any) => <span data-testid="icon-ListChecks" {...p} />,
   ChartBar: (p: any) => <span data-testid="icon-ChartBar" {...p} />,
@@ -108,6 +107,7 @@ vi.mock('@/lib/time-contextual-scoring', () => ({
 vi.mock('@/lib/sharing', () => ({
   generateVenueShareCard: () => ({ title: 'Share', description: 'desc' }),
   getPulseDeepLink: () => 'https://pulse.app/p/1',
+  getVenueSharePreviewUrl: () => 'https://pulse.app/api/share/venue?venueId=1',
 }))
 vi.mock('@/lib/live-intelligence', () => ({
   getVenueLiveData: () => null,
@@ -263,15 +263,15 @@ describe.skip('VenuePage', () => {
     expect(screen.getAllByText(/123 Main St/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows the Create Pulse CTA', () => {
+  it('shows the I’m here · Pulse CTA', () => {
     render(<VenuePage {...baseProps()} />)
-    expect(screen.getAllByRole('button', { name: /Create Pulse/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /I’m here · Pulse/i }).length).toBeGreaterThan(0)
   })
 
-  it('calls onCreatePulse when Create Pulse is clicked', () => {
+  it('calls onCreatePulse when I’m here · Pulse is clicked', () => {
     const onCreatePulse = vi.fn()
     render(<VenuePage {...baseProps()} onCreatePulse={onCreatePulse} />)
-    const buttons = screen.getAllByRole('button', { name: /Create Pulse/ })
+    const buttons = screen.getAllByRole('button', { name: /I’m here · Pulse/i })
     fireEvent.click(buttons[0])
     expect(onCreatePulse).toHaveBeenCalled()
   })
@@ -298,7 +298,7 @@ describe.skip('VenuePage', () => {
 
   it('check-in/create pulse still renders without currentUser (auth-gated reporting)', () => {
     render(<VenuePage {...baseProps()} currentUser={null} />)
-    expect(screen.getAllByRole('button', { name: /Create Pulse/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /I’m here · Pulse/i }).length).toBeGreaterThan(0)
     // Venue memory card should NOT render when there is no user
     expect(screen.queryByTestId('venue-memory')).not.toBeInTheDocument()
   })

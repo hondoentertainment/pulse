@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Pulse, User, Venue } from '@/lib/types'
 import { CaretLeft, Megaphone, Users, Disc, CurrencyDollar, ShieldCheck, Sparkle } from '@phosphor-icons/react'
 import { buildOwnerDashboard, createAnnouncement, type VenueAnnouncement } from '@/lib/venue-owner'
+import { getTonightLiveReviews, snippetCaption } from '@/lib/live-reviews'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { VenueOwnerDashboard as VenueOwnerDashboardCard } from '@/components/VenueOwnerDashboard'
 import {
   formatGuestListStatus,
@@ -144,6 +146,26 @@ export function OwnerDashboardPage({
             )}
           </div>
         </div>
+
+        {isFeatureEnabled('venueInbox') && (
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <h2 className="font-bold">Tonight’s live reviews</h2>
+            <p className="text-xs text-muted-foreground">
+              Read-only preview. Full inbox at /venue/{selectedVenue.id}/inbox requires a verified claim or staff role.
+            </p>
+            {getTonightLiveReviews(pulses, selectedVenue.id).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No live reviews tonight yet.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {getTonightLiveReviews(pulses, selectedVenue.id).slice(0, 8).map((pulse) => (
+                  <li key={pulse.id}>
+                    {pulse.energyRating} · {snippetCaption(pulse.caption, 120)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <VenueOwnerDashboardCard
           dashboard={dashboard}

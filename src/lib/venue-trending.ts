@@ -1,4 +1,5 @@
 import { Venue, Pulse, VenueAnalytics } from './types'
+import { isLiveReview } from './live-reviews'
 
 export const TRENDING_THRESHOLDS = {
   MIN_UNIQUE_USERS: 3,
@@ -25,6 +26,7 @@ interface VenuePulseStats {
   uniqueUsers: Set<string>
   recentUniqueUsers: Set<string>
   velocity: number
+  recentReviewCount: number
 }
 
 function createEmptyStats(): VenuePulseStats {
@@ -35,6 +37,7 @@ function createEmptyStats(): VenuePulseStats {
     uniqueUsers: new Set(),
     recentUniqueUsers: new Set(),
     velocity: 0,
+    recentReviewCount: 0,
   }
 }
 
@@ -63,6 +66,7 @@ function buildVenuePulseStats(pulses: Pulse[], now: Date): Map<string, VenuePuls
       stats.recent.push(pulse)
       stats.recentUniqueUsers.add(pulse.userId)
       stats.velocity += ENERGY_VALUES[pulse.energyRating]
+      if (isLiveReview(pulse)) stats.recentReviewCount += 1
     } else if (createdAtMs > thirtyMinutesAgoMs) {
       stats.previous.push(pulse)
       stats.velocity -= ENERGY_VALUES[pulse.energyRating]
@@ -110,7 +114,11 @@ export function getTrendingSections(
       (stats?.recent.length ?? 0) >= TRENDING_THRESHOLDS.MIN_PULSES_15MIN &&
       venue.pulseScore >= 50
     )
-  }).sort((a, b) => b.pulseScore - a.pulseScore)
+  }).sort((a, b) => {
+    const reviewDelta = (statsByVenue.get(b.id)?.recentReviewCount ?? 0) - (statsByVenue.get(a.id)?.recentReviewCount ?? 0)
+    if (b.pulseScore !== a.pulseScore) return b.pulseScore - a.pulseScore
+    return reviewDelta
+  })
   
   const justPopped = venues.filter(venue => {
     const velocity = getVelocity(venue)
@@ -120,7 +128,9 @@ export function getTrendingSections(
       venue.pulseScore >= 40
     )
   }).sort((a, b) => {
-    return getVelocity(b) - getVelocity(a)
+    const velocityDelta = getVelocity(b) - getVelocity(a)
+    if (velocityDelta !== 0) return velocityDelta
+    return (statsByVenue.get(b.id)?.recentReviewCount ?? 0) - (statsByVenue.get(a.id)?.recentReviewCount ?? 0)
   })
   
   const gainingEnergy = venues.filter(venue => {
@@ -135,7 +145,10 @@ export function getTrendingSections(
       venue.pulseScore >= TRENDING_THRESHOLDS.GAINING_ENERGY_THRESHOLD &&
       velocity > 0
     )
-  }).sort((a, b) => b.pulseScore - a.pulseScore)
+  }).sort((a, b) => {
+    if (b.pulseScore !== a.pulseScore) return b.pulseScore - a.pulseScore
+    return (statsByVenue.get(b.id)?.recentReviewCount ?? 0) - (statsByVenue.get(a.id)?.recentReviewCount ?? 0)
+  })
   
   const expectedToBeBusy = venues.filter(venue => {
     return (
@@ -150,7 +163,7 @@ export function getTrendingSections(
     sections.push({
       title: 'Trending Now',
       venues: trendingNow.slice(0, 5),
-      description: 'Live verified activity from multiple users',
+      description: 'Live verified activity from multiple users, ranked with fresh review volume',
       updatedAt
     })
   }

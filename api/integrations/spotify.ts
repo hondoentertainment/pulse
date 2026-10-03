@@ -29,10 +29,10 @@ import {
   getHeader,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { clientKey, rateLimit } from '../_lib/rate-limit'
-import { verifySupabaseJwt } from '../_lib/auth'
-import { asEnum, asNumber, asString } from '../_lib/validate'
+} from '../_lib/http.js'
+import { clientKey, rateLimit } from '../_lib/rate-limit.js'
+import { verifySupabaseJwt } from '../_lib/auth.js'
+import { asEnum, asNumber, asString } from '../_lib/validate.js'
 
 type SpotifyTokenResponse = { access_token: string; expires_in: number }
 

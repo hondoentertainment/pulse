@@ -1,13 +1,33 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { Venue } from '@/lib/types'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Venue, type Pulse } from '@/lib/types'
 import { PulseScore } from '@/components/PulseScore'
+import { MapLiveReviewToast } from '@/components/MapLiveReviewToast'
+import { TrustPinChips } from '@/components/TrustPinChips'
+import { OpenNowChip } from '@/components/OpenNowChip'
+import { buildTrustGlance, compactTrustPinChips, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '@/lib/trust-glance'
+import { markMapInteractive } from '@/lib/cold-start'
+import { prefersReducedMotion } from '@/lib/accessibility'
+import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
+import {
+  buildMapLiveToast,
+  buildVenueActivityMap,
+  compareVenueMapActivity,
+  getVenueMapActivityFromLive,
+  type MapLiveToast,
+  type VenueMapActivity,
+} from '@/lib/map-live-reviews'
 import { MapFilters, type EnergyFilter, type MapFiltersState } from '@/components/MapFilters'
+import {
+  collectNeighborhoods,
+  filterMapVenues,
+  shouldClusterMapMarkers,
+} from '@/lib/map-filters'
 import { MapSearch } from '@/components/MapSearch'
 import { GPSIndicator } from '@/components/GPSIndicator'
 import {
   MapPin, NavigationArrow, Plus, Minus, CaretDown, CaretUp,
   BeerBottle, MusicNotes, ForkKnife, Coffee, Martini, Confetti,
-  Users, Fire, Lightning
+  Users, Fire, Lightning, ShareNetwork
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -15,18 +35,28 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistance } from '@/lib/units'
+import { getEnergyAriaLabel } from '@/lib/accessibility'
+import { getEnergyLabel } from '@/lib/pulse-engine'
 import { useUnitPreference } from '@/hooks/use-unit-preference'
 import { triggerHapticFeedback } from '@/lib/haptics'
+import { PresenceData } from '@/lib/data'
+import { formatHereNowCount } from '@/lib/here-now'
 import {
   buildVenueRenderPoints,
   clampCenter,
   clampZoom,
   clusterVenueRenderPoints,
+  FIT_MIN_ZOOM,
   getFittedViewport,
   getHeadingDelta,
   getPreviewVenuePoints,
+  isLocationNearCatalog,
+  pinStrokeForVenue,
+  resolveMapCamera,
   type VenueRenderPoint
 } from '@/lib/interactive-map'
+import { MapEmptyOverlay } from '@/components/MapEmptyOverlay'
+import { resolveImHereMapZoom, retainFocusedVenue } from '@/lib/im-here'
 
 interface InteractiveMapProps {
   venues: Venue[]
@@ -35,35 +65,92 @@ interface InteractiveMapProps {
   isTracking?: boolean
   locationAccuracy?: number
   locationHeading?: number | null
+  pulses?: Pulse[]
+  /** `heatmap` hides search/smart-route chrome so the map tab can match Figma. */
+  chrome?: 'full' | 'heatmap'
+  energyLevels?: EnergyFilter[]
+  onEnergyLevelsChange?: (levels: EnergyFilter[]) => void
+  nearMe?: boolean
+  onNearMeChange?: (active: boolean) => void
+  inventoryLayer?: 'curated' | 'all'
+  onInventoryLayerChange?: (layer: 'curated' | 'all') => void
+  bloomVenueId?: string | null
+  /** Deep-link / I’m-here pin to center on. */
+  focusVenueId?: string | null
+  onShareVenue?: (venue: Venue) => void
 }
 
 const ZOOM_STEP = 1.35
 const MAP_SCALE = 500000
+const EMPTY_PULSES: Pulse[] = []
+const HEATMAP_FIT = { minZoom: FIT_MIN_ZOOM }
 
-export function InteractiveMap({
+export const InteractiveMap = memo(function InteractiveMap({
   venues,
   userLocation,
   onVenueClick,
   isTracking = false,
   locationAccuracy,
-  locationHeading
+  locationHeading,
+  pulses = EMPTY_PULSES,
+  chrome = 'full',
+  energyLevels,
+  onEnergyLevelsChange,
+  nearMe,
+  onNearMeChange,
+  inventoryLayer: inventoryLayerProp,
+  onInventoryLayerChange,
+  bloomVenueId = null,
+  focusVenueId = null,
+  onShareVenue,
 }: InteractiveMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const [zoom, setZoom] = useState(1)
-  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [zoom, setZoom] = useState(() => resolveMapCamera().zoom)
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(() => resolveMapCamera().center)
   const [hoveredVenue, setHoveredVenue] = useState<Venue | null>(null)
+  const [hoverHereNow, setHoverHereNow] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
-  const [followUser, setFollowUser] = useState(true)
+  const [followUser, setFollowUser] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null) // Optimization: Reuse canvas
   const [filters, setFilters] = useState<MapFiltersState>({
     energyLevels: [],
     categories: [],
-    maxDistance: Infinity
+    maxDistance: Infinity,
+    neighborhoods: [],
+    inventoryLayer: 'curated',
   })
   const [nearMeActive, setNearMeActive] = useState(false)
+
+  useEffect(() => {
+    if (energyLevels) {
+      setFilters((current) => ({ ...current, energyLevels }))
+    }
+  }, [energyLevels])
+
+  useEffect(() => {
+    if (nearMe !== undefined) {
+      setNearMeActive(nearMe)
+    }
+  }, [nearMe])
+
+  useEffect(() => {
+    if (inventoryLayerProp) {
+      setFilters((current) => ({ ...current, inventoryLayer: inventoryLayerProp }))
+    }
+  }, [inventoryLayerProp])
+
+  const applyEnergyLevels = (levels: EnergyFilter[]) => {
+    setFilters((current) => ({ ...current, energyLevels: levels }))
+    onEnergyLevelsChange?.(levels)
+  }
+
+  const applyNearMe = (active: boolean) => {
+    setNearMeActive(active)
+    onNearMeChange?.(active)
+  }
   const [showLegend, setShowLegend] = useState(false)
   const [showFullHeatmap, setShowFullHeatmap] = useState(false)
   const [comparedVenueIds, setComparedVenueIds] = useState<string[]>([])
@@ -75,7 +162,24 @@ export function InteractiveMap({
   const [isCameraMoving, setIsCameraMoving] = useState(false)
   const onboardingStorageKey = 'pulse-map-onboarding-v1'
   const { unitSystem } = useUnitPreference()
-  const loadingTimeoutRef = useRef<number | null>(null)
+  const { toast: incomingLiveToast, dismissToast } = useMapLiveReviews(pulses, venues)
+  const activityByVenueId = useMemo(
+    () => buildVenueActivityMap(venues, pulses),
+    [venues, pulses],
+  )
+  const activityFor = useCallback((venue: Venue): VenueMapActivity => {
+    return activityByVenueId.get(venue.id) ?? getVenueMapActivityFromLive(venue, undefined)
+  }, [activityByVenueId])
+  const [pinnedLiveToast, setPinnedLiveToast] = useState<MapLiveToast | null>(null)
+  const liveToast = pinnedLiveToast ?? incomingLiveToast
+  const handleDismissLiveToast = useCallback(() => {
+    setPinnedLiveToast(null)
+    dismissToast()
+  }, [dismissToast])
+  const handleOpenLiveToast = useCallback((next: MapLiveToast) => {
+    const venue = venues.find((item) => item.id === next.venueId)
+    if (venue) onVenueClick(venue)
+  }, [venues, onVenueClick])
   const cameraSettleTimeoutRef = useRef<number | null>(null)
   const venueSelectTimeoutRef = useRef<number | null>(null)
   const hoverClearTimeoutRef = useRef<number | null>(null)
@@ -107,31 +211,54 @@ export function InteractiveMap({
   }, [])
 
   useEffect(() => {
-    // If no location after 3s, default to first venue or SF
-    loadingTimeoutRef.current = window.setTimeout(() => {
-      if (!center && !userLocation && venues.length > 0) {
-        setCenter({ lat: venues[0].location.lat, lng: venues[0].location.lng })
-        setFollowUser(false)
-      }
-    }, 3000)
+    const camera = resolveMapCamera({ userLocation, venues })
+    setCenter((current) => current ?? camera.center)
+    if (camera.followUser) {
+      setFollowUser(true)
+      setCenter(camera.center)
+      setZoom((current) => current || camera.zoom)
+    }
+  }, [userLocation, venues])
 
+  useEffect(() => {
+    if (userLocation && followUser && isLocationNearCatalog(userLocation, venues)) {
+      setCenter(userLocation)
+    }
+  }, [userLocation, followUser, venues])
+
+  useEffect(() => {
+    if (!focusVenueId) return
+    const venue = venues.find((item) => item.id === focusVenueId)
+    if (!venue?.location) return
+    setFollowUser(false)
+    setCenter({ lat: venue.location.lat, lng: venue.location.lng })
+    setZoom((current) => clampZoom(resolveImHereMapZoom(current)))
+    setHoveredVenue(venue)
+  }, [focusVenueId, venues])
+
+  useEffect(() => {
+    if (!hoveredVenue) {
+      setHoverHereNow(0)
+      return
+    }
+    let cancelled = false
+    void PresenceData.fetchHereNowCount(hoveredVenue.id)
+      .then((count) => {
+        if (!cancelled) setHoverHereNow(count)
+      })
+      .catch(() => {
+        if (!cancelled) setHoverHereNow(0)
+      })
     return () => {
-      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
+      cancelled = true
     }
-  }, [center, userLocation, venues])
+  }, [hoveredVenue])
 
   useEffect(() => {
-    if (userLocation && followUser) {
-      setCenter(userLocation)
-      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
-    }
-  }, [userLocation, followUser])
-
-  useEffect(() => {
-    if (userLocation && !center) {
+    if (userLocation && !center && isLocationNearCatalog(userLocation, venues)) {
       setCenter(userLocation)
     }
-  }, [userLocation, center])
+  }, [userLocation, center, venues])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -187,13 +314,6 @@ export function InteractiveMap({
     return ((θ * 180) / Math.PI + 360) % 360
   }
 
-  const getEnergyLevelFromScore = (score: number): string => {
-    if (score >= 80) return 'electric'
-    if (score >= 60) return 'buzzing'
-    if (score >= 30) return 'chill'
-    return 'dead'
-  }
-
   const getCategoryIcon = (category?: string) => {
     switch (category?.toLowerCase()) {
       case 'bar': return BeerBottle
@@ -216,6 +336,8 @@ export function InteractiveMap({
   }
 
   const getLiveIntelLabel = (venue: Venue) => {
+    const activity = activityFor(venue)
+    if (activity.countLabel) return activity.countLabel
     const live = venue.liveSummary
     if (!live || live.reportCount === 0) return null
     if (live.waitTime !== null && live.waitTime <= 5) return 'Walk right in'
@@ -227,64 +349,46 @@ export function InteractiveMap({
   }
 
   const filteredVenues = useMemo(() => {
-    const filtered = venues.filter((venue) => {
-      if (filters.energyLevels.length > 0) {
-        const energyLevel = getEnergyLevelFromScore(venue.pulseScore) as Exclude<EnergyFilter, 'all'>
-        if (!filters.energyLevels.includes(energyLevel)) {
-          return false
-        }
-      }
-
-      if (filters.categories.length > 0 && venue.category) {
-        if (!filters.categories.includes(venue.category)) {
-          return false
-        }
-      }
-
-      if (filters.maxDistance !== Infinity && userLocation) {
-        const distance = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.location.lat,
-          venue.location.lng
-        )
-        if (distance > filters.maxDistance) {
-          return false
-        }
-      }
-      // Near Me filter (0.5 mile radius)
-      if (nearMeActive && userLocation) {
-        const distance = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.location.lat,
-          venue.location.lng
-        )
-        if (distance > 0.5) {
-          return false
-        }
-      }
-
-      return true
+    const filtered = filterMapVenues({
+      venues,
+      filters,
+      userLocation,
+      nearMe: nearMeActive,
     })
 
-    // Progressive disclosure: show top 5 surging venues by default
-    if (!showFullHeatmap && !nearMeActive && filters.energyLevels.length === 0 && filters.categories.length === 0) {
-      // Only nearby venues (within 50mi of center or user) sorted by pulseScore
-      const nearby = userLocation
+    const extraFiltersOn =
+      filters.energyLevels.length > 0 ||
+      filters.categories.length > 0 ||
+      (filters.neighborhoods?.length ?? 0) > 0
+    const layer = filters.inventoryLayer ?? 'curated'
+
+    // All-Seattle + no extra filters: keep the old top-5 surging preview
+    // unless the user asked for the full catalog.
+    if (
+      layer === 'all' &&
+      !showFullHeatmap &&
+      !nearMeActive &&
+      !extraFiltersOn
+    ) {
+      const nearby = userLocation && isLocationNearCatalog(userLocation, filtered)
         ? filtered
           .filter(v => calculateDistance(userLocation.lat, userLocation.lng, v.location.lat, v.location.lng) < 50)
-          .sort((a, b) => b.pulseScore - a.pulseScore)
-        : filtered.sort((a, b) => b.pulseScore - a.pulseScore)
-      return nearby.slice(0, 5)
+          .sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
+        : filtered.sort((a, b) => compareVenueMapActivity(activityFor(a), activityFor(b)))
+      const sliced = (nearby.length > 0 ? nearby : filtered).slice(0, 5)
+      return retainFocusedVenue(sliced, venues, focusVenueId)
     }
 
-    return filtered
-  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap])
+    return retainFocusedVenue(filtered, venues, focusVenueId)
+  }, [venues, filters, userLocation, nearMeActive, showFullHeatmap, activityFor, focusVenueId])
 
-  const availableCategories = Array.from(
-    new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
-  ).sort()
+  const availableCategories = useMemo(
+    () => Array.from(
+      new Set(venues.map((v) => v.category).filter((c): c is string => !!c))
+    ).sort(),
+    [venues],
+  )
+  const availableNeighborhoods = useMemo(() => collectNeighborhoods(venues), [venues])
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -302,17 +406,22 @@ export function InteractiveMap({
   useEffect(() => {
     if (!canvasRef.current || !center) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const frame = window.requestAnimationFrame(() => {
+      const canvas = canvasRef.current
+      if (!canvas || !center) return
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
 
-    canvas.width = dimensions.width * window.devicePixelRatio
-    canvas.height = dimensions.height * window.devicePixelRatio
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+      canvas.width = dimensions.width * window.devicePixelRatio
+      canvas.height = dimensions.height * window.devicePixelRatio
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
 
-    drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+      drawHeatmap(ctx, filteredVenues, center, zoom, dimensions)
+      markMapInteractive()
+    })
+    return () => window.cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredVenues, center, zoom, dimensions])
+  }, [filteredVenues, center, zoom, dimensions, activityByVenueId])
 
   const latLngToPixel = (
     lat: number,
@@ -371,7 +480,7 @@ export function InteractiveMap({
   }
 
   const startInertia = () => {
-    if (!center) return
+    if (!center || prefersReducedMotion()) return
     const MIN_VELOCITY = 0.0000008
     const FRICTION_PER_FRAME = 0.9
     let lastTime = performance.now()
@@ -456,27 +565,17 @@ export function InteractiveMap({
     if (!heatmapCtx) return
 
     venueList.forEach((venue) => {
-      if (venue.pulseScore <= 0) return
+      const activity = activityFor(venue)
+      if (activity.heatScore <= 0) return
 
       const pos = latLngToPixel(venue.location.lat, venue.location.lng, mapCenter, mapZoom, dims)
-      const intensity = Math.min(venue.pulseScore / 100, 1)
-      const radius = Math.max(40 * mapZoom * (0.5 + intensity * 0.5), 20)
+      const intensity = Math.min(activity.heatScore / 100, 1)
+      const radius = Math.max(40 * mapZoom * (0.5 + intensity * 0.5) * activity.radiusFactor, 20)
+      const { r, g, b } = activity.heatColor
 
       const gradient = heatmapCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius)
-
-      if (venue.pulseScore >= 80) {
-        gradient.addColorStop(0, `rgba(217, 70, 239, ${intensity * 1.0})`) // Neon Fuchsia - boosted
-        gradient.addColorStop(0.5, `rgba(217, 70, 239, ${intensity * 0.6})`)
-      } else if (venue.pulseScore >= 60) {
-        gradient.addColorStop(0, `rgba(244, 63, 94, ${intensity * 0.9})`) // Neon Rose - boosted
-        gradient.addColorStop(0.5, `rgba(244, 63, 94, ${intensity * 0.5})`)
-      } else if (venue.pulseScore >= 30) {
-        gradient.addColorStop(0, `rgba(14, 165, 233, ${intensity * 0.8})`) // Neon Sky - boosted
-        gradient.addColorStop(0.5, `rgba(14, 165, 233, ${intensity * 0.4})`)
-      } else {
-        gradient.addColorStop(0, `rgba(99, 102, 241, ${intensity * 0.6})`) // Indigo - boosted
-        gradient.addColorStop(0.5, `rgba(99, 102, 241, ${intensity * 0.3})`)
-      }
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${intensity * 1.0})`)
+      gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${intensity * 0.55})`)
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
       heatmapCtx.fillStyle = gradient
@@ -541,13 +640,39 @@ export function InteractiveMap({
   }
 
   const handleCenterOnUser = () => {
-    if (userLocation) {
-      triggerHapticFeedback('medium')
-      setExpandedClusterId(null)
-      setCenter(userLocation)
-      setZoom(1)
-      setFollowUser(true)
-    }
+    triggerHapticFeedback('medium')
+    setExpandedClusterId(null)
+    const camera = resolveMapCamera({ userLocation, venues: filteredVenues.length > 0 ? filteredVenues : venues })
+    setCenter(camera.center)
+    setZoom(camera.zoom)
+    setFollowUser(camera.followUser)
+  }
+
+  const fitOptions = chrome === 'heatmap' ? HEATMAP_FIT : undefined
+
+  const handleShowSeattle = () => {
+    const focus = filteredVenues.length > 0 ? filteredVenues : venues
+    const viewport = getFittedViewport(focus, dimensions, fitOptions)
+    const camera = resolveMapCamera({ userLocation: null, venues: focus })
+    stopInertia()
+    triggerHapticFeedback('medium')
+    setExpandedClusterId(null)
+    setCenter(viewport?.center ?? camera.center)
+    setZoom(viewport?.zoom ?? camera.zoom)
+    setFollowUser(false)
+  }
+
+  const handleClearMapFilters = () => {
+    applyEnergyLevels([])
+    applyNearMe(false)
+    setFilters((current) => ({
+      ...current,
+      energyLevels: [],
+      categories: [],
+      neighborhoods: [],
+      maxDistance: Infinity,
+    }))
+    handleShowSeattle()
   }
 
   const handleToggleFullHeatmap = () => {
@@ -668,27 +793,35 @@ export function InteractiveMap({
 
     switch (e.key) {
       case 'ArrowUp':
+        e.preventDefault()
         setCenter({ ...center, lat: center.lat + panAmount })
         setFollowUser(false)
         break
       case 'ArrowDown':
+        e.preventDefault()
         setCenter({ ...center, lat: center.lat - panAmount })
         setFollowUser(false)
         break
       case 'ArrowLeft':
+        e.preventDefault()
         setCenter({ ...center, lng: center.lng - panAmount })
         setFollowUser(false)
         break
       case 'ArrowRight':
+        e.preventDefault()
         setCenter({ ...center, lng: center.lng + panAmount })
         setFollowUser(false)
         break
       case '+':
       case '=':
+        e.preventDefault()
         handleZoomIn()
         break
       case '-':
+        e.preventDefault()
         handleZoomOut()
+        break
+      default:
         break
     }
   }
@@ -728,7 +861,7 @@ export function InteractiveMap({
   }
 
   const handleFitToVenues = () => {
-    const viewport = getFittedViewport(filteredVenues, dimensions)
+    const viewport = getFittedViewport(filteredVenues, dimensions, fitOptions)
     if (!viewport) return
     stopInertia()
     triggerHapticFeedback('medium')
@@ -737,8 +870,10 @@ export function InteractiveMap({
     setFollowUser(false)
   }
 
+  const mapMeasured = dimensions.width >= 8 && dimensions.height >= 8
+
   const venueRenderPoints = useMemo<VenueRenderPoint[]>(() => {
-    if (!center) return []
+    if (!center || !mapMeasured) return []
     return buildVenueRenderPoints({
       venues: filteredVenues,
       center,
@@ -746,9 +881,29 @@ export function InteractiveMap({
       dimensions,
       userLocation
     })
-  }, [center, filteredVenues, zoom, dimensions, userLocation])
+  }, [center, filteredVenues, zoom, dimensions, userLocation, mapMeasured])
 
-  const shouldClusterMarkers = zoom < 1.05 && !isDragging
+  const autoFitRef = useRef(false)
+  useEffect(() => {
+    if (!mapMeasured || !center || filteredVenues.length === 0) return
+    if (venueRenderPoints.length > 0) {
+      autoFitRef.current = true
+      return
+    }
+    if (autoFitRef.current) return
+    const viewport = getFittedViewport(filteredVenues, dimensions, fitOptions)
+    if (!viewport) return
+    autoFitRef.current = true
+    setCenter(viewport.center)
+    setZoom(viewport.zoom)
+    setFollowUser(false)
+  }, [center, filteredVenues, venueRenderPoints.length, dimensions, mapMeasured, fitOptions])
+
+  const shouldClusterMarkers = shouldClusterMapMarkers({
+    zoom,
+    isDragging,
+    inventoryLayer: filters.inventoryLayer ?? 'curated',
+  })
 
   const clusteredMapData = useMemo(() => {
     return clusterVenueRenderPoints(venueRenderPoints, zoom, shouldClusterMarkers)
@@ -807,7 +962,12 @@ export function InteractiveMap({
     return ids
   }, [clusteredMapData.singles, isDragging, isCameraMoving, zoom, hoveredVenue, accessibilityMode])
 
-  const activeFilterCount = filters.energyLevels.length + filters.categories.length + (filters.maxDistance !== Infinity ? 1 : 0)
+  const activeFilterCount =
+    filters.energyLevels.length +
+    filters.categories.length +
+    (filters.neighborhoods?.length ?? 0) +
+    ((filters.inventoryLayer ?? 'curated') === 'all' ? 1 : 0) +
+    (filters.maxDistance !== Infinity ? 1 : 0)
 
   const previewVenues = useMemo(() => {
     if (!center) return [] as VenueRenderPoint[]
@@ -828,21 +988,27 @@ export function InteractiveMap({
 
   const bestNextVenue = previewVenues[0] ?? null
 
+  const inventoryLayer = filters.inventoryLayer ?? 'curated'
   const mapModeLabel = nearMeActive
     ? 'Near Me'
     : activeFilterCount > 0
       ? 'Filtered'
-      : showFullHeatmap
-        ? 'Full Map'
-        : 'Top Surges'
+      : inventoryLayer === 'curated'
+        ? 'Launch 33'
+        : showFullHeatmap
+          ? 'All Seattle'
+          : 'Top Surges'
   const mapSummary = activeFilterCount > 0
     ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
-    : showFullHeatmap
-      ? `${filteredVenues.length} venues in view`
-      : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
+    : inventoryLayer === 'curated'
+      ? `${filteredVenues.length} curated launch venues`
+      : showFullHeatmap
+        ? `${filteredVenues.length} venues in view`
+        : `Showing the ${filteredVenues.length} strongest ${filteredVenues.length === 1 ? 'signal' : 'signals'} nearby`
   const showCuratedToggle = !nearMeActive
     && filters.energyLevels.length === 0
     && filters.categories.length === 0
+    && (filters.neighborhoods?.length ?? 0) === 0
     && filters.maxDistance === Infinity
 
   useEffect(() => {
@@ -892,10 +1058,28 @@ export function InteractiveMap({
   return (
     <div
       ref={containerRef}
+      role="application"
+      data-surface="map"
+      aria-label="Venue map. Use arrow keys to pan, plus and minus to zoom. Energy is labeled in words."
       className="relative w-full h-full rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
+      <nav aria-label="Venues on this map" className="sr-only">
+        <ul>
+          {filteredVenues.map((venue) => (
+            <li key={`map-list-${venue.id}`}>
+              <button
+                type="button"
+                onClick={() => onVenueClick(venue)}
+              >
+                {getEnergyAriaLabel(venue.pulseScore, getEnergyLabel(venue.pulseScore), venue.name)}
+                {venue.neighborhood ? `, ${venue.neighborhood}` : ''}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
       <canvas
         ref={canvasRef}
         className={cn(
@@ -973,14 +1157,16 @@ export function InteractiveMap({
         ))}
 
         {clusteredMapData.singles.map(({ venue, x, y }) => {
+          const activity = activityFor(venue)
           const baseSize = accessibilityMode ? 24 : 18
-          const scale = venue.pulseScore > 0 ? 1 + (venue.pulseScore / 100) : 1
+          const scale = activity.heatScore > 0 ? 1 + (activity.heatScore / 100) : 1
           const markerSize = baseSize * zoom * scale * 0.6
           const isHighlighted = hoveredVenue?.id === venue.id
-          const isHighEnergy = venue.pulseScore >= 80
-          const hasRecentActivity = venue.lastActivity
+          const isHighEnergy = activity.heatScore >= 80
+          const isBlooming = bloomVenueId === venue.id || incomingLiveToast?.venueId === venue.id
+          const hasRecentActivity = isBlooming || activity.hasFreshReview || (venue.lastActivity
             ? (Date.now() - new Date(venue.lastActivity).getTime()) < 10 * 60 * 1000
-            : venue.pulseScore >= 50
+            : activity.heatScore >= 50)
 
           const Icon = getCategoryIcon(venue.category)
           const iconSize = markerSize * 1.2
@@ -995,8 +1181,9 @@ export function InteractiveMap({
                     r={markerSize * 2.5}
                     fill={getEnergyColor(venue.pulseScore)}
                     opacity={0.15}
-                    className="animate-pulse-glow"
-                    style={{ animationDuration: '3s' }}
+                    className={isBlooming ? 'animate-ping' : 'animate-pulse-glow'}
+                    style={{ animationDuration: isBlooming ? '1.2s' : '3s' }}
+                    data-bloom={isBlooming ? 'true' : undefined}
                   />
                   <circle
                     cx={x}
@@ -1004,8 +1191,8 @@ export function InteractiveMap({
                     r={markerSize * 1.8}
                     fill={getEnergyColor(venue.pulseScore)}
                     opacity={0.25}
-                    className="animate-pulse"
-                    style={{ animationDuration: '2s' }}
+                    className={isBlooming ? 'animate-ping' : 'animate-pulse'}
+                    style={{ animationDuration: isBlooming ? '1.2s' : '2s' }}
                   />
                 </>
               )}
@@ -1014,13 +1201,27 @@ export function InteractiveMap({
                 cx={x}
                 cy={y}
                 r={markerSize}
-                fill={venue.pulseScore > 0 ? getEnergyColor(venue.pulseScore) : 'oklch(0.25 0.05 260)'}
-                stroke={isHighlighted ? 'white' : 'oklch(0.15 0 0)'}
-                strokeWidth={isHighlighted ? 3 : 1.5}
+                fill={activity.heatScore > 0 ? getEnergyColor(activity.heatScore) : 'oklch(0.25 0.05 260)'}
+                stroke={pinStrokeForVenue(venue, isHighlighted).stroke}
+                strokeWidth={pinStrokeForVenue(venue, isHighlighted).strokeWidth}
                 className="transition-all duration-300"
-                filter={venue.pulseScore >= 30 ? `drop-shadow(0 0 ${venue.pulseScore >= 80 ? '8px' : '4px'} ${venue.pulseScore >= 80 ? 'rgba(217, 70, 239, 0.6)' : venue.pulseScore >= 60 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(14, 165, 233, 0.4)'})` : undefined}
+                data-claimed={venue.claimVerified ? 'true' : undefined}
+                filter={activity.heatScore >= 30 ? `drop-shadow(0 0 ${activity.heatScore >= 80 ? '8px' : '4px'} ${activity.heatScore >= 80 ? 'rgba(255, 45, 120, 0.6)' : activity.heatScore >= 60 ? 'rgba(255, 138, 0, 0.5)' : 'rgba(0, 209, 255, 0.4)'})` : undefined}
               />
 
+              <text
+                x={x + markerSize * 0.85}
+                y={y - markerSize * 0.7}
+                textAnchor="middle"
+                fill="white"
+                fontSize={Math.max(9, markerSize * 0.55)}
+                fontWeight="700"
+                stroke="oklch(0.15 0 0)"
+                strokeWidth={2}
+                paintOrder="stroke"
+              >
+                {getEnergyLabel(venue.pulseScore).charAt(0)}
+              </text>
               <foreignObject
                 x={x - iconSize / 2}
                 y={y - iconSize / 2}
@@ -1112,31 +1313,13 @@ export function InteractiveMap({
         })()}
       </svg>
 
-      {/* Empty State Message */}
-      {venueRenderPoints.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <Card className="bg-card/95 backdrop-blur-md border-border p-6 text-center max-w-xs shadow-2xl">
-            <MapPin size={32} weight="fill" className="mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-bold text-foreground mb-1">No Venues in View</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Zoom out or pan to discover nearby spots
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="pointer-events-auto"
-              onClick={handleCenterOnUser}
-            >
-              <NavigationArrow size={14} weight="fill" className="mr-1.5" />
-              Center on Me
-            </Button>
-          </Card>
-        </motion.div>
-      )}
+      <MapEmptyOverlay
+        catalogCount={venues.length}
+        filteredCount={filteredVenues.length}
+        inViewCount={mapMeasured ? venueRenderPoints.length : -1}
+        onShowCatalog={handleShowSeattle}
+        onClearFilters={handleClearMapFilters}
+      />
 
       {clusteredMapData.clusters.map((cluster) => (
         <div
@@ -1166,7 +1349,7 @@ export function InteractiveMap({
           >
             <div className="w-14 h-14" />
           </button>
-          {!isCameraMoving && (
+          {chrome === 'full' && !isCameraMoving && (
             <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-10">
               <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1 shadow-lg">
                 <p className="text-[10px] font-semibold text-foreground">
@@ -1203,7 +1386,8 @@ export function InteractiveMap({
       ))}
 
       {clusteredMapData.singles.map(({ venue, x, y, distance }) => {
-        const showLabel = labelVenueIds.has(venue.id) || venue.pulseScore >= 75
+        const activity = activityFor(venue)
+        const showLabel = labelVenueIds.has(venue.id) || activity.heatScore >= 75 || activity.liveReviewCount > 0
         const isHovered = hoveredVenue?.id === venue.id
 
         return (
@@ -1217,9 +1401,13 @@ export function InteractiveMap({
             }}
           >
             <button
+              type="button"
               className="pointer-events-auto relative z-20 cursor-pointer hover:scale-110 transition-transform"
+              aria-label={getEnergyAriaLabel(venue.pulseScore, getEnergyLabel(venue.pulseScore), venue.name)}
               onMouseEnter={() => setHoveredVenue(venue)}
               onMouseLeave={() => setHoveredVenue(null)}
+              onFocus={() => setHoveredVenue(venue)}
+              onBlur={() => setHoveredVenue(null)}
               onClick={() => {
                 triggerHapticFeedback('medium')
                 onVenueClick(venue)
@@ -1227,8 +1415,22 @@ export function InteractiveMap({
             >
               <div className="w-10 h-10" />
             </button>
+            {shouldShowSurgingPinChips({
+              liveReviewCount: activity.liveReviewCount,
+              isCameraMoving,
+            }) && (
+              <div
+                className="absolute top-full mt-1 left-1/2 -translate-x-1/2 pointer-events-none z-10"
+                data-testid={`trust-pin-chips-${venue.id}`}
+              >
+                <TrustPinChips
+                  chips={compactTrustPinChips(buildTrustGlance(venue, pulses, Date.now(), activity).chips)}
+                />
+                <div className="mt-1 flex justify-center"><OpenNowChip venue={venue} /></div>
+              </div>
+            )}
             <AnimatePresence>
-              {showLabel && (
+              {chrome === 'full' && showLabel && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8, y: 5 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1249,6 +1451,28 @@ export function InteractiveMap({
                     venue.pulseScore >= 70 && "border-accent/50"
                   )}>
                     <p className="text-xs font-bold">{venue.name}</p>
+                    <p className="text-[10px] font-semibold text-foreground">
+                      {getEnergyLabel(activity.heatScore)} · {activity.heatScore}
+                    </p>
+                    {activity.countLabel && (
+                      <button
+                        type="button"
+                        className="pointer-events-auto mt-1 rounded-full bg-[#fa598c] px-2 py-0.5 text-[10px] font-semibold text-white"
+                        aria-label={`Live reviews at ${venue.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          triggerHapticFeedback('light')
+                          if (activity.latest) {
+                            setPinnedLiveToast(buildMapLiveToast(activity.latest, venue))
+                            dismissToast()
+                          } else {
+                            onVenueClick(venue)
+                          }
+                        }}
+                      >
+                        {activity.countLabel}
+                      </button>
+                    )}
                     <div className="flex items-center gap-2">
                       {venue.category && (
                         <p className="text-[10px] text-muted-foreground uppercase font-mono">
@@ -1275,9 +1499,15 @@ export function InteractiveMap({
       })}
 
       <AnimatePresence>
-        {hoveredVenue && !isDragging && !isCameraMoving && (() => {
+        {shouldShowMapTrustHover({
+          hasHoveredVenue: Boolean(hoveredVenue),
+          isDragging,
+          isCameraMoving,
+        }) && hoveredVenue && (() => {
           const pos = getVenuePixelPosition(hoveredVenue)
           if (!pos) return null
+          const compact = chrome === 'heatmap'
+          const glance = buildTrustGlance(hoveredVenue, pulses)
 
           const distance = userLocation
             ? calculateDistance(
@@ -1288,8 +1518,8 @@ export function InteractiveMap({
             )
             : undefined
 
-          const tooltipWidth = 240
-          const tooltipHeight = 100
+          const tooltipWidth = compact ? 220 : 240
+          const tooltipHeight = compact ? (onShareVenue ? 96 : 72) : 100
           const padding = 16
 
           let left = pos.x
@@ -1311,7 +1541,7 @@ export function InteractiveMap({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute pointer-events-none z-50"
+              className="absolute z-50 pointer-events-none"
               style={{
                 left,
                 top,
@@ -1340,26 +1570,44 @@ export function InteractiveMap({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
-                          {hoveredVenue.category || 'Venue'}
-                        </Badge>
-                        {getLiveIntelLabel(hoveredVenue) && (
-                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
-                            {getLiveIntelLabel(hoveredVenue)}
+                      {!compact && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-accent/30 text-accent bg-accent/5">
+                            {hoveredVenue.category || 'Venue'}
                           </Badge>
-                        )}
-                        {distance !== undefined && (
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {formatDistance(distance, unitSystem)}
-                          </span>
-                        )}
-                      </div>
+                          {getLiveIntelLabel(hoveredVenue) && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono border-primary/30 text-primary bg-primary/5">
+                              {getLiveIntelLabel(hoveredVenue)}
+                            </Badge>
+                          )}
+                          {distance !== undefined && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {formatDistance(distance, unitSystem)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />
+                    {!compact && <PulseScore score={hoveredVenue.pulseScore} size="sm" showLabel={false} />}
                   </div>
+                  <TrustPinChips chips={glance.chips} />
+                  <OpenNowChip venue={hoveredVenue} />
+                  {onShareVenue && (
+                    <button
+                      type="button"
+                      aria-label={`Share ${hoveredVenue.name}`}
+                      className="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-semibold text-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onShareVenue(hoveredVenue)
+                      }}
+                    >
+                      <ShareNetwork size={12} />
+                      Share
+                    </button>
+                  )}
 
-                  {hoveredVenue.location.address && (
+                  {!compact && hoveredVenue.location.address && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin size={12} weight="fill" />
                       <p className="text-[10px] line-clamp-1">
@@ -1368,20 +1616,21 @@ export function InteractiveMap({
                     </div>
                   )}
 
-                  {/* Social Signals / Stats simulated */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Users size={12} />
-                        <span className="font-medium">{Math.floor(hoveredVenue.pulseScore * 1.5 + 5)} here</span>
+                  {!compact && (
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Users size={12} />
+                          <span className="font-medium">{formatHereNowCount(hoverHereNow)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
+                          <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Lightning size={12} className={hoveredVenue.pulseScore > 50 ? "text-yellow-500" : ""} />
-                        <span className="font-medium">{hoveredVenue.pulseScore > 80 ? "Trending" : hoveredVenue.pulseScore > 50 ? "Active" : "Quiet"}</span>
-                      </div>
+                      <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
                     </div>
-                    <span className="text-[10px] text-primary font-bold cursor-pointer hover:underline">View</span>
-                  </div>
+                  )}
                 </div>
                 {/* Pointer arrow */}
                 <div
@@ -1394,7 +1643,7 @@ export function InteractiveMap({
         })()}
       </AnimatePresence>
 
-      <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+      {chrome === 'full' && <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
         <div className="max-w-xl pointer-events-auto">
           <Card className="bg-card/92 backdrop-blur-xl border-border/80 shadow-2xl overflow-hidden">
             <div className="p-2.5">
@@ -1418,101 +1667,113 @@ export function InteractiveMap({
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">{mapSummary}</p>
                 </div>
-                {showCuratedToggle && (
+                <div className="flex shrink-0 gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleToggleFullHeatmap}
-                    className="h-8 shrink-0 px-3 text-[11px] font-semibold"
+                    onClick={() => {
+                      triggerHapticFeedback('light')
+                      const next = (filters.inventoryLayer ?? 'curated') === 'curated' ? 'all' : 'curated'
+                      setFilters((current) => ({ ...current, inventoryLayer: next }))
+                      onInventoryLayerChange?.(next)
+                      if (next === 'all') setShowFullHeatmap(true)
+                    }}
+                    className="h-8 px-3 text-[11px] font-semibold"
                   >
-                    {showFullHeatmap ? "Top only" : "Show all"}
+                    {(filters.inventoryLayer ?? 'curated') === 'curated' ? 'Launch 33' : 'All Seattle'}
                   </Button>
-                )}
+                  {showCuratedToggle && (filters.inventoryLayer ?? 'curated') === 'all' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleToggleFullHeatmap}
+                      className="h-8 px-3 text-[11px] font-semibold"
+                    >
+                      {showFullHeatmap ? 'Top only' : 'Show all'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Quick Filter Chips */}
+        {/* Quick Filter Chips — Figma Enhanced: Electric / Buzzing / Near me */}
         <div className="mt-2 flex max-w-xl gap-2 overflow-x-auto pb-1 pointer-events-auto [scrollbar-width:none]">
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              if (filters.categories.includes('bar')) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'bar') }))
+              if (filters.energyLevels.includes('electric')) {
+                applyEnergyLevels(filters.energyLevels.filter(e => e !== 'electric'))
               } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'bar'] }))
+                applyEnergyLevels([...filters.energyLevels, 'electric'])
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
-              filters.categories.includes('bar')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
+              filters.energyLevels.includes('electric')
+                ? "bg-primary text-primary-foreground"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
-            <BeerBottle size={14} weight="fill" className="inline mr-1" />
-            Bars
+            Electric
           </button>
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              const hasClub = filters.categories.includes('club') || filters.categories.includes('nightclub')
-              if (hasClub) {
-                setFilters(f => ({ ...f, categories: f.categories.filter(c => c !== 'club' && c !== 'nightclub') }))
+              if (filters.energyLevels.includes('buzzing')) {
+                applyEnergyLevels(filters.energyLevels.filter(e => e !== 'buzzing'))
               } else {
-                setFilters(f => ({ ...f, categories: [...f.categories, 'club', 'nightclub'] }))
+                applyEnergyLevels([...filters.energyLevels, 'buzzing'])
               }
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
-              filters.categories.includes('club') || filters.categories.includes('nightclub')
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
+              filters.energyLevels.includes('buzzing')
+                ? "bg-[var(--energy-buzzing)] text-white"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
-            <MusicNotes size={14} weight="fill" className="inline mr-1" />
-            Clubs
+            Buzzing
           </button>
           <button
             onClick={() => {
               triggerHapticFeedback('light')
-              setNearMeActive(!nearMeActive)
+              applyNearMe(!nearMeActive)
             }}
             className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
+              "shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]",
               nearMeActive
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
+                ? "bg-accent text-accent-foreground"
+                : "border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground"
             )}
           >
-            <MapPin size={14} weight="fill" className="inline mr-1" />
-            Near Me
+            Near me
           </button>
-          <button
-            onClick={() => {
-              triggerHapticFeedback('light')
-              const hasHot = filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-              if (hasHot) {
-                setFilters(f => ({ ...f, energyLevels: f.energyLevels.filter(e => e !== 'electric' && e !== 'buzzing') }))
-              } else {
-                setFilters(f => ({ ...f, energyLevels: [...f.energyLevels, 'electric', 'buzzing'] }))
-              }
-            }}
-            className={cn(
-              "shrink-0 px-3.5 min-h-10 rounded-full text-xs font-medium transition-all touch-manipulation active:scale-[0.98]",
-              "border backdrop-blur-md shadow-sm",
-              filters.energyLevels.includes('electric') || filters.energyLevels.includes('buzzing')
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-card/90 text-foreground border-border hover:bg-secondary"
-            )}
-          >
-            <Fire size={14} weight="fill" className="inline mr-1" />
-            Hot
-          </button>
+          {availableNeighborhoods.slice(0, 8).map((name) => {
+            const selected = (filters.neighborhoods ?? []).includes(name)
+            return (
+              <button
+                key={name}
+                onClick={() => {
+                  triggerHapticFeedback('light')
+                  const current = filters.neighborhoods ?? []
+                  const next = selected
+                    ? current.filter((item) => item !== name)
+                    : [...current, name]
+                  setFilters((state) => ({ ...state, neighborhoods: next }))
+                }}
+                className={cn(
+                  'shrink-0 px-3 min-h-10 rounded-full text-xs font-semibold transition-all touch-manipulation active:scale-[0.98]',
+                  selected
+                    ? 'bg-white text-black'
+                    : 'border border-[#40404D] bg-[#1F1F24] text-[#9E9EAD] hover:text-foreground',
+                )}
+              >
+                {name}
+              </button>
+            )
+          })}
         </div>
 
         {showOnboardingTips && (
@@ -1548,14 +1809,28 @@ export function InteractiveMap({
             </div>
           </Card>
         )}
+      </div>}
+
+      <div className="pointer-events-none absolute top-3 left-3 right-3 z-40">
+        <div className="pointer-events-auto max-w-xl">
+          <AnimatePresence>
+            <MapLiveReviewToast
+              toast={liveToast}
+              onDismiss={handleDismissLiveToast}
+              onOpen={handleOpenLiveToast}
+            />
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Consolidated Map Controls */}
-      <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
+      {chrome === 'full' && <div className="absolute bottom-28 right-3 flex flex-col items-end gap-2 z-20">
         <Button
           size="sm"
           variant={accessibilityMode ? "default" : "secondary"}
           className="self-end h-10 px-3 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
+          aria-pressed={accessibilityMode}
+          aria-label={accessibilityMode ? 'Disable high-contrast map markers' : 'Enable high-contrast map markers'}
           onClick={() => {
             triggerHapticFeedback('light')
             setAccessibilityMode((prev) => !prev)
@@ -1587,6 +1862,7 @@ export function InteractiveMap({
           filters={filters}
           onChange={setFilters}
           availableCategories={availableCategories}
+          availableNeighborhoods={availableNeighborhoods}
         />
 
         {/* Unified Control Group */}
@@ -1638,7 +1914,7 @@ export function InteractiveMap({
                 )}
                 onClick={() => {
                   triggerHapticFeedback('light')
-                  setNearMeActive(!nearMeActive)
+                  applyNearMe(!nearMeActive)
                 }}
                 title="Near me (0.5 mi)"
                 aria-label="Toggle near me venues"
@@ -1653,9 +1929,9 @@ export function InteractiveMap({
         <div className="text-[10px] font-mono text-muted-foreground text-center bg-card/80 backdrop-blur-sm rounded px-2 py-1 shadow-sm">
           {zoom.toFixed(1)}x
         </div>
-      </div>
+      </div>}
 
-      {previewVenues.length > 0 && (
+      {chrome === 'full' && previewVenues.length > 0 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[min(94%,720px)] pointer-events-none">
           {bestNextVenue && (
             <Card className="pointer-events-auto mb-2 p-2.5 bg-card/95 backdrop-blur-sm border border-border shadow-lg">
@@ -1728,6 +2004,7 @@ export function InteractiveMap({
           </AnimatePresence>
           <div className="flex gap-2 overflow-x-auto pb-1 px-1">
             {previewVenues.map((point) => {
+              const previewActivity = activityFor(point.venue)
               const isCompared = comparedVenueIds.includes(point.venue.id)
               const headingDelta = (locationHeading !== null && locationHeading !== undefined && userLocation)
                 ? getHeadingDelta(calculateBearing(
@@ -1768,8 +2045,13 @@ export function InteractiveMap({
                               {formatDistance(point.distance, unitSystem)}
                             </p>
                           )}
+                          {previewActivity.countLabel && (
+                            <p className="mt-1 text-[10px] font-semibold text-[#fa598c]">
+                              {previewActivity.countLabel}
+                            </p>
+                          )}
                         </div>
-                        <PulseScore score={point.venue.pulseScore} size="xs" showLabel={false} />
+                        <PulseScore score={previewActivity.heatScore} size="xs" showLabel={false} />
                       </div>
                     </button>
                     <Button
@@ -1800,11 +2082,13 @@ export function InteractiveMap({
       )}
 
       {/* Bottom Left Controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+      {chrome === 'full' && <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
         <GPSIndicator isTracking={isTracking} accuracy={locationAccuracy} />
 
         {(filters.energyLevels.length > 0 ||
           filters.categories.length > 0 ||
+          (filters.neighborhoods?.length ?? 0) > 0 ||
+          (filters.inventoryLayer ?? 'curated') === 'all' ||
           filters.maxDistance !== Infinity) && (
             <Card className="bg-card/95 backdrop-blur-sm border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">
@@ -1817,8 +2101,11 @@ export function InteractiveMap({
         {/* Collapsible Legend */}
         <Card className="bg-card/95 backdrop-blur-sm border-border overflow-hidden">
           <button
+            type="button"
+            aria-expanded={showLegend}
+            aria-controls="map-energy-legend"
             onClick={() => setShowLegend(!showLegend)}
-            className="w-full px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+            className="w-full min-h-11 px-3 py-2 flex items-center justify-between hover:bg-secondary/50 transition-colors"
           >
             <span className="text-xs font-bold text-foreground">Energy Levels</span>
             {showLegend ? (
@@ -1836,7 +2123,7 @@ export function InteractiveMap({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+                <div id="map-energy-legend" className="px-3 pb-3 grid grid-cols-2 gap-2">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-[oklch(0.35_0.05_240)] border border-border" />
                     <span className="text-xs text-muted-foreground">Dead</span>
@@ -1858,8 +2145,8 @@ export function InteractiveMap({
             )}
           </AnimatePresence>
         </Card>
-      </div>
+      </div>}
 
     </div>
   )
-}
+})

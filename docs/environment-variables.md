@@ -24,7 +24,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_SUPABASE_ANON_KEY` | client + server | prod | Public anon key |
 | `SUPABASE_URL` | server | optional | Override for Edge Functions |
 | `SUPABASE_ANON_KEY` | server | optional | Override for Edge Functions |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | prod | Privileged DB access — **never expose** |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | prod | Privileged DB access — **never expose**. Alias: `SUPABASE_SERVICE_ROLE` |
 | `SUPABASE_DB_URL` | local CLI | migrations | Direct Postgres connection string |
 | `SUPABASE_ADMIN_EMAILS` | server | admin routes | Comma-separated admin allowlist |
 | `VITE_USE_SUPABASE_BACKEND` | client | optional | Force mock (`false`) or Supabase (`true`) |
@@ -47,7 +47,7 @@ Minimum for local dev: **no vars required** (mock data mode).
 | `VITE_CREATOR_ECONOMY_ENABLED` | `false` | Creator tab |
 | `VITE_VIDEO_FEED_ENABLED` | `false` | Video pulse feed |
 | `VITE_PULSE_READ_ONLY_MODE` | off | Disable writes during outage |
-| `VITE_LAUNCHED_CITIES` | empty | Geo launch allowlist |
+| `VITE_LAUNCHED_CITIES` | empty | Venue geo-gate. `Seattle,WA` is one market, not two tokens. |
 
 Full detail: [Feature Flags](feature-flags.md).
 
@@ -112,10 +112,18 @@ Full detail: [Feature Flags](feature-flags.md).
 
 | Variable | Scope | Description |
 |----------|-------|-------------|
+| `VITE_VAPID_PUBLIC_KEY` | client | Web Push application server key. Empty = subscribe UI no-ops honestly. |
+| `VAPID_PUBLIC_KEY` | server | Same public key for `web-push` / edge notify. |
+| `VAPID_PRIVATE_KEY` | server | Web Push private key. **Never** prefix `VITE_`. Do not invent prod values. |
+| `VAPID_SUBJECT` | server | Optional `mailto:` or site URL for VAPID (default `mailto:ops@pulse.local`) |
 | `FCM_SERVER_KEY` | server | Firebase Cloud Messaging (Android) |
 | `APNS_KEY_ID` | server | Apple Push Notification key |
 | `APNS_TEAM_ID` | server | Apple team ID |
 | `APNS_BUNDLE_ID` | server | iOS bundle identifier |
+
+Vercel production must **already** have `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VITE_VAPID_PUBLIC_KEY` (the same public key on both public vars). Do not generate or commit new VAPID secrets in a pull request. A human can generate a local pair with `npx web-push generate-vapid-keys` and paste it into Vercel, then rebuild. If either server key is missing, `notifyLivePulse` returns `{ attempted: false, reason: 'missing_vapid' }` and never fakes a send. Venue-surge delivery (Electric cross, ≤1/venue/2h) is tracked in GitHub issue #109 — not Signal #66.
+
+`CRON_SECRET` missing keeps `/api/cron/night-coach` an honest no-op. Do not invent that secret either.
 
 ---
 
@@ -124,7 +132,7 @@ Full detail: [Feature Flags](feature-flags.md).
 | Variable | Scope | Description |
 |----------|-------|-------------|
 | `VITE_SENTRY_DSN` | client | Error tracking |
-| `VITE_ANALYTICS_BACKEND` | client | `console`, `amplitude`, `posthog` |
+| `VITE_ANALYTICS_BACKEND` | client | `console`, `amplitude`, `posthog`. Unset in prod = no-op. WC-0.5 (human) wires a backend; do not add a new vendor key from the repo. |
 | `VITE_AMPLITUDE_API_KEY` | client | Amplitude project key |
 | `VITE_POSTHOG_API_KEY` | client | PostHog project key |
 | `VITE_POSTHOG_HOST` | client | PostHog ingest URL |
@@ -161,6 +169,7 @@ Full detail: [Feature Flags](feature-flags.md).
 | Variable | Scope | Description |
 |----------|-------|-------------|
 | `VITE_RESEARCH_FEEDBACK_URL` | client | Survey/Calendly link in Settings |
+| `CRON_SECRET` | server | Protects wait-time and safety crons |
 | `VITE_APP_VERSION` | client | App version for push registration |
 | `VITE_API_BASE_URL` | client | API base override (tests) |
 | `PROJECT_ROOT` | build | Vite project root override |

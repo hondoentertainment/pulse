@@ -29,6 +29,7 @@ describe('featureFlags defaults', () => {
     expect(featureFlags).toHaveProperty('socialDashboard')
     expect(featureFlags).toHaveProperty('smartMap')
     expect(featureFlags).toHaveProperty('safetyKit')
+    expect(featureFlags).toHaveProperty('venueInbox')
   })
 
   it('defaults to true for all flags when no env vars override', () => {

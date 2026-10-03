@@ -40,12 +40,12 @@ interface PushTokenRow {
 
 async function loadTokens(userId: string): Promise<PushTokenRow[]> {
   const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE
   if (!url || !key) return []
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/push_tokens?user_id=eq.${encodeURIComponent(userId)}&select=token,platform`,
+      `${url}/rest/v1/push_tokens?user_id=eq.${encodeURIComponent(userId)}&platform=in.(ios,android)&select=token,platform`,
       {
         headers: {
           apikey: key,

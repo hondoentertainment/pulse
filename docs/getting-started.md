@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you from a fresh clone to a running Pulse dev environment.
+This guide walks you from a fresh clone to a running **Pulse** (venue + map) dev environment. Pulse is venue-only — there is no Signal product or `VITE_APP_MODE` switch.
 
 ## Prerequisites
 
@@ -28,9 +28,15 @@ Copy the example env file and fill in values as needed:
 cp .env.example .env
 ```
 
-### Minimum for local dev (mock data)
+### Venue geo-gate (optional)
 
-No env vars are required. Without Supabase credentials the app boots against seeded mock fixtures in `src/lib/mock-data.ts`. You will see a console note:
+```env
+# VITE_LAUNCHED_CITIES=Seattle,WA   # venue geo-gate
+```
+
+### Minimum for local venue (no backend)
+
+No env vars are required. Without Supabase the app uses seeded mock fixtures in `src/lib/mock-data.ts`. You may see a console note:
 
 ```
 [pulse] USE_SUPABASE_BACKEND is OFF — reads/writes use local mock fixtures.
@@ -46,6 +52,8 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
 When both values are present and non-placeholder, the data layer automatically switches to Supabase. See [Data Layer](data-layer.md) for override flags.
+
+Magic-link and Google OAuth use `window.location.origin` (never a hardcoded localhost). In **Authentication → URL Configuration**, Site URL + Additional Redirect URLs must include `https://pulse-chi-nine.vercel.app/**` (and `http://localhost:5173/**` for `npm run dev`). Do not add `https://*.vercel.app/**`. See [Auth redirect URLs](runbooks/auth-redirect-urls.md).
 
 ### Optional client flags
 

@@ -34,13 +34,13 @@ import {
   unauthorized,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { calculatePlatformFeeCents } from '../_lib/fees'
-import { rateLimit } from '../_lib/rate-limit'
-import { createCheckoutSession } from '../_lib/stripe'
-import { createAdminClient } from '../_lib/supabase-server'
-import { verifySupabaseJwt } from '../_lib/auth'
-import { asHttpsUrl, asInteger, asUuid, isPlainObject } from '../_lib/validate'
+} from '../_lib/http.js'
+import { calculatePlatformFeeCents } from '../_lib/fees.js'
+import { rateLimit } from '../_lib/rate-limit.js'
+import { createCheckoutSession } from '../_lib/stripe.js'
+import { createAdminClient } from '../_lib/supabase-server.js'
+import { verifySupabaseJwt } from '../_lib/auth.js'
+import { asHttpsUrl, asInteger, asUuid, isPlainObject } from '../_lib/validate.js'
 
 interface TicketTypeDef {
   name: string

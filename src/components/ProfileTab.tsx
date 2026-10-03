@@ -10,6 +10,8 @@ import { createReferralInvite } from '@/lib/sharing'
 import { getCreatorTierProgress } from '@/lib/creator-economy'
 import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
 import { toast } from 'sonner'
+import { ScoutProgramCard } from '@/components/ScoutProgramCard'
+import { trackEvent } from '@/lib/analytics'
 
 interface ProfileTabProps {
   currentUser: User
@@ -32,7 +34,7 @@ export function ProfileTab({
   favoriteVenues,
   onVenueClick,
   onReaction,
-  onOpenSocialPulseDashboard,
+  onOpenSocialPulseDashboard: _onOpenSocialPulseDashboard,
   onOpenSettings,
   onOpenOwnerDashboard,
   onOpenCreatorDashboard,
@@ -215,6 +217,21 @@ export function ProfileTab({
           </button>
         </div>
       )}
+
+      <Separator />
+
+      <ScoutProgramCard
+        userId={currentUser.id}
+        onSubmitted={(application) => {
+          trackEvent({
+            type: 'scout_application_submitted',
+            timestamp: Date.now(),
+            userId: currentUser.id,
+            city: application.city,
+          })
+          toast.success('Scout application submitted')
+        }}
+      />
 
       <Separator />
 

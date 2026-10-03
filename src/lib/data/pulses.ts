@@ -9,8 +9,10 @@
 import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
-import type { EnergyRating, Pulse } from '@/lib/types'
+import type { EnergyRating, Pulse, PulseKind } from '@/lib/types'
+import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
+import { mapLiveReviewFields, validateLiveReviewCaption } from '@/lib/live-reviews'
 
 // ── Row <-> Domain mapping ───────────────────────────────────────────────
 
@@ -31,6 +33,10 @@ interface PulseRow {
   created_at: string
   expires_at: string
   deleted_at: string | null
+  kind?: string | null
+  location_verified?: boolean | null
+  has_body?: boolean | null
+  door_chips?: string[] | null
 }
 
 function rowToPulse(row: PulseRow): Pulse {
@@ -52,13 +58,16 @@ function rowToPulse(row: PulseRow): Pulse {
     expiresAt: row.expires_at,
     isPending: false,
     uploadError: false,
+    ...mapLiveReviewFields(row),
+    doorChips: sanitizeDoorChips(row.door_chips),
   }
 }
 
 const SELECT_COLUMNS = `
   id, user_id, venue_id, crew_id, photos, video_url,
   energy_rating, caption, hashtags, views, is_pioneer,
-  credibility_weight, reactions, created_at, expires_at, deleted_at
+  credibility_weight, reactions, created_at, expires_at, deleted_at,
+  kind, location_verified, has_body, door_chips
 `.trim()
 
 // ── Read queries ─────────────────────────────────────────────────────────
@@ -169,12 +178,31 @@ export interface CreatePulseInput {
   crewId?: string
   credibilityWeight?: number
   isPioneer?: boolean
+  kind?: PulseKind
+  locationVerified?: boolean
+  doorChips?: DoorChip[]
 }
 
 export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
-  const userId = await requireUserId({ action: 'post a pulse' })
+  const kind: PulseKind = input.kind ?? 'review'
+  if (kind === 'review') {
+    const captionCheck = validateLiveReviewCaption(input.caption)
+    if (!captionCheck.ok) {
+      throw new Error(captionCheck.error)
+    }
+  }
+
+  const userId = await requireUserId({ action: 'post a live review' })
   const createdAt = new Date()
   const expiresAt = new Date(createdAt.getTime() + PULSE_DECAY_MINUTES * 60 * 1000)
+
+  const gate = await supabase.rpc('assert_pulse_rate_limit', {
+    p_user_id: userId,
+    p_venue_id: input.venueId,
+  })
+  if (gate.error) {
+    throw Object.assign(new Error(gate.error.message), { cause: gate.error })
+  }
 
   const result = await supabase
     .from('pulses')
@@ -193,6 +221,9 @@ export async function createPulse(input: CreatePulseInput): Promise<Pulse> {
       reactions: { fire: [], eyes: [], skull: [], lightning: [] },
       created_at: createdAt.toISOString(),
       expires_at: expiresAt.toISOString(),
+      kind,
+      location_verified: input.locationVerified ?? false,
+      door_chips: sanitizeDoorChips(input.doorChips),
     })
     .select(SELECT_COLUMNS)
     .single()
@@ -214,4 +245,60 @@ export async function softDeletePulse(pulseId: string): Promise<void> {
   if (result.error) {
     throw Object.assign(new Error(result.error.message), { cause: result.error })
   }
+}
+
+export interface CreatePulseReportInput {
+  pulseId: string
+  reason: string
+  details?: string
+}
+
+export async function createPulseReport(input: CreatePulseReportInput): Promise<void> {
+  const userId = await requireUserId({ action: 'report this review' })
+  const result = await supabase
+    .from('pulse_reports')
+    .insert({
+      reporter_id: userId,
+      pulse_id: input.pulseId,
+      reason: input.reason,
+      details: input.details ?? null,
+      status: 'pending',
+    })
+  if (result.error) {
+    throw Object.assign(new Error(result.error.message), { cause: result.error })
+  }
+}
+
+export interface PulseReportRow {
+  id: string
+  pulse_id: string
+  reporter_id: string
+  reason: string
+  details: string | null
+  created_at: string
+  status?: string | null
+  reviewed_at?: string | null
+}
+
+export async function listMyPulseReports(): Promise<PulseReportRow[]> {
+  const userId = await requireUserId({ action: 'view your reports' })
+  const { data, error } = await supabase
+    .from('pulse_reports')
+    .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+    .eq('reporter_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error || !data) return []
+  return data as PulseReportRow[]
+}
+
+export async function listModerationPulseReports(): Promise<PulseReportRow[]> {
+  await requireUserId({ action: 'triage reports' })
+  const { data, error } = await supabase
+    .from('pulse_reports')
+    .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error || !data) return []
+  return data as PulseReportRow[]
 }

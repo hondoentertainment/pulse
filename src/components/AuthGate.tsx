@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
-import { Lightning, Envelope, CircleNotch } from '@phosphor-icons/react'
+import { track } from '@/lib/observability/analytics'
+import { trackFunnel } from '@/lib/funnel-events'
+import { AUTH_GATE_COPY } from '@/lib/guest-discovery'
+import { parseAuthNext, persistAuthNext } from '@/lib/auth-return-intent'
+import { Envelope, CircleNotch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import { UX_CTA, UX_HAIRLINE } from '@/lib/ux-chrome'
 
 export function AuthGate() {
   const { signInWithOAuth, signInWithOtp, authError, isLoading } = useSupabaseAuth()
+  const location = useLocation()
+
+  useEffect(() => {
+    const next = parseAuthNext(location.search)
+    if (next) persistAuthNext(next)
+  }, [location.search])
 
   const [email, setEmail] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -12,8 +24,15 @@ export function AuthGate() {
 
   const busy = isLoading || localLoading
 
+  useEffect(() => {
+    trackFunnel('auth_start', { guest: true, method: 'redirect' })
+    track('auth_started', { method: 'redirect' })
+  }, [])
+
   const handleGoogle = async () => {
     setLocalLoading(true)
+    trackFunnel('auth_start', { guest: true, method: 'google' })
+    track('auth_started', { method: 'google' })
     try {
       await signInWithOAuth('google')
     } finally {
@@ -24,6 +43,8 @@ export function AuthGate() {
   const handleMagicLink = async () => {
     if (!email.trim()) return
     setLocalLoading(true)
+    trackFunnel('auth_start', { guest: true, method: 'otp' })
+    track('auth_started', { method: 'otp' })
     try {
       await signInWithOtp(email.trim())
       setOtpSent(true)
@@ -35,51 +56,75 @@ export function AuthGate() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+    <div className="flex min-h-screen flex-col bg-background px-4 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-8"
+        className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center space-y-6"
       >
-        {/* Logo / branding */}
-        <div className="text-center space-y-3">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center">
-            <Lightning size={40} weight="fill" className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold">Welcome to Pulse</h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in to discover what's buzzing near you
-          </p>
+        <div className="space-y-3 text-center">
+          <h1 className="text-[28px] font-bold tracking-tight text-foreground">{AUTH_GATE_COPY.title}</h1>
+          <p className="text-[15px] leading-5 text-muted-foreground">{AUTH_GATE_COPY.why}</p>
         </div>
 
-        {/* Error display */}
         {authError && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {authError}
           </div>
         )}
 
-        {/* Magic link sent confirmation */}
         {otpSent && !authError && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary text-center"
+            className={`rounded-xl ${UX_HAIRLINE} border bg-card px-4 py-3 text-center text-sm text-foreground`}
           >
-            Check your email for the magic link!
+            Check your email for the magic link.
           </motion.div>
         )}
 
-        {/* Google OAuth */}
+        <div className="space-y-3">
+          <label className="sr-only" htmlFor="pulse-auth-email">Email</label>
+          <input
+            id="pulse-auth-email"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setOtpSent(false) }}
+            placeholder={AUTH_GATE_COPY.emailPlaceholder}
+            disabled={busy}
+            className="h-12 w-full rounded-full border border-border bg-card px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+          />
+          <button
+            onClick={handleMagicLink}
+            disabled={busy || !email.trim()}
+            className={`${UX_CTA} flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50`}
+          >
+            {busy ? (
+              <CircleNotch size={20} className="animate-spin" />
+            ) : (
+              <Envelope size={20} weight="bold" />
+            )}
+            {AUTH_GATE_COPY.magicLink}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
         <button
           onClick={handleGoogle}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-accent px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-border bg-card text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         >
           {busy ? (
             <CircleNotch size={20} className="animate-spin" />
           ) : (
-            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+            <svg viewBox="0 0 24 24" width={20} height={20} className="h-5 w-5 shrink-0" aria-hidden>
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                 fill="#4285F4"
@@ -101,38 +146,14 @@ export function AuthGate() {
           Continue with Google
         </button>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-xs text-muted-foreground uppercase tracking-wider">or</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
+        <Link
+          to="/"
+          className="flex h-11 items-center justify-center text-[15px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {AUTH_GATE_COPY.browse}
+        </Link>
 
-        {/* Magic link email */}
-        <div className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setOtpSent(false) }}
-            placeholder="your@email.com"
-            disabled={busy}
-            className="w-full rounded-2xl border border-white/10 bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all disabled:opacity-50"
-          />
-          <button
-            onClick={handleMagicLink}
-            disabled={busy || !email.trim()}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-r from-primary/80 to-accent/80 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:shadow-accent/35 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {busy ? (
-              <CircleNotch size={20} className="animate-spin" />
-            ) : (
-              <Envelope size={20} weight="bold" />
-            )}
-            Send Magic Link
-          </button>
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground leading-relaxed">
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
           By continuing you agree to Pulse's Terms of Service and Privacy Policy.
         </p>
       </motion.div>

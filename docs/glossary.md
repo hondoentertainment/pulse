@@ -18,7 +18,7 @@ Terms used across Pulse documentation and codebase.
 | **Surge** | Rapid increase in a venue's pulse score — triggers notifications. |
 | **Impact notification** | Alert when your pulse pushes a venue across an energy threshold. |
 | **My Spots** | Feed of pulses from venues you follow (up to 10). |
-| **Signal** | Alternate product shell focused on daily personal check-ins and trends. |
+| **Venue signal** | Unified live venue score (`venue-signal.v1`) from pulses and intel — not a separate product. |
 
 ## Scoring terms
 

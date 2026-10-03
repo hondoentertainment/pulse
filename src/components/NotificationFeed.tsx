@@ -13,15 +13,21 @@ interface NotificationFeedProps {
   pulses: Pulse[]
   venues: Venue[]
   onNotificationClick: (notification: GroupedNotification) => void
+  notifications?: Notification[]
+  onNotificationsChange?: (update: Notification[] | ((current: Notification[] | undefined) => Notification[])) => void
 }
 
 export function NotificationFeed({
   currentUser,
   pulses,
   venues,
-  onNotificationClick
+  onNotificationClick,
+  notifications: notificationsProp,
+  onNotificationsChange,
 }: NotificationFeedProps) {
-  const [notifications, setNotifications] = useKV<Notification[]>('notifications', [])
+  const [storedNotifications, setStoredNotifications] = useKV<Notification[]>('notifications', [])
+  const notifications = notificationsProp ?? storedNotifications
+  const setNotifications = onNotificationsChange ?? setStoredNotifications
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const { settings } = useNotificationSettings()
 
@@ -111,7 +117,8 @@ export function NotificationFeed({
   }, [setNotifications])
 
   const handleNotificationClick = useCallback((notification: GroupedNotification) => {
-    markAsRead(notification.id)
+    const ids = notification.groupedIds?.length ? notification.groupedIds : [notification.id]
+    ids.forEach((id) => markAsRead(id))
 
     if (notification.groupedUsers && notification.count && notification.count > 1) {
       const relatedNotifications = (notifications || []).filter(

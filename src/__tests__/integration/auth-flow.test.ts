@@ -81,32 +81,45 @@ describe('Auth flow integration', () => {
 
   // ── Sign-in via OAuth ────────────────────────────────────
   describe('sign-in flow', () => {
-    it('calls supabase.auth.signInWithOAuth with correct provider', async () => {
+    it('calls supabase.auth.signInWithOAuth with redirectTo from origin', async () => {
       mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: {}, error: null })
+      const { authRedirectBaseUrl } = await import('@/lib/auth-redirect')
+      const redirectTo = authRedirectBaseUrl({
+        origin: 'https://pulse-chi-nine.vercel.app',
+      })
 
       const { supabase } = await import('@/lib/supabase')
       await supabase.auth.signInWithOAuth({
         provider: 'google' as Provider,
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo },
       })
 
-      expect(mockSupabase.auth.signInWithOAuth).toHaveBeenCalledWith(
-        expect.objectContaining({ provider: 'google' }),
-      )
+      expect(redirectTo).toBe('https://pulse-chi-nine.vercel.app')
+      expect(mockSupabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: 'https://pulse-chi-nine.vercel.app' },
+      })
     })
 
-    it('calls supabase.auth.signInWithOtp with email', async () => {
+    it('calls supabase.auth.signInWithOtp with emailRedirectTo from origin', async () => {
       mockSupabase.auth.signInWithOtp.mockResolvedValue({ data: {}, error: null })
+      const { authRedirectBaseUrl } = await import('@/lib/auth-redirect')
+      const emailRedirectTo = authRedirectBaseUrl({
+        origin: 'https://pulse-chi-nine.vercel.app',
+      })
 
       const { supabase } = await import('@/lib/supabase')
       await supabase.auth.signInWithOtp({
         email: 'user@example.com',
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo },
       })
 
-      expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'user@example.com' }),
-      )
+      expect(emailRedirectTo).toBe('https://pulse-chi-nine.vercel.app')
+      expect(emailRedirectTo).not.toContain('localhost')
+      expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        options: { emailRedirectTo: 'https://pulse-chi-nine.vercel.app' },
+      })
     })
 
     it('propagates sign-in error from Supabase', async () => {

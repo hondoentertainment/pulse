@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Venue } from '@/lib/types'
 import { VenueEvent, getUserEvents, rsvpToEvent, predictEventSurge, getEventsSoon, RSVPStatus } from '@/lib/events'
 import { EventCard } from '@/components/EventCard'
+import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
+import { EVENTS_TONIGHT_EMPTY, EVENTS_TONIGHT_EMPTY_BODY } from '@/lib/events-tonight'
 import { CaretLeft, CalendarBlank } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -98,10 +100,13 @@ export function EventsPage({ venues, events, currentUserId, onBack, onEventUpdat
         {filteredEvents.length === 0 && (
           <div className="text-center py-12 space-y-3">
             <CalendarBlank size={48} className="mx-auto text-muted-foreground/50" />
-            <p className="text-muted-foreground">No events found</p>
-            <p className="text-sm text-muted-foreground/70">
-              {filter === 'mine' ? 'RSVP to events to see them here' : 'Check back later for upcoming events'}
-            </p>
+            <p className="text-muted-foreground">{EVENTS_TONIGHT_EMPTY}</p>
+            <p className="text-sm text-muted-foreground/70">{EVENTS_TONIGHT_EMPTY_BODY}</p>
+            <EmptySurgingStartHere
+              venues={venues}
+              onVenueClick={onVenueClick}
+              onBeFirstPulse={onVenueClick}
+            />
           </div>
         )}
       </div>

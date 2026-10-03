@@ -1,5 +1,4 @@
-import { TrendUp, MapTrifold, User, Bell, Compass } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
+import { youTabAriaLabel } from '@/lib/in-app-notify'
 
 export type TabId = 'trending' | 'discover' | 'map' | 'notifications' | 'profile'
 
@@ -11,64 +10,52 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onTabChange, unreadNotifications = 0 }: BottomNavProps) {
   const tabs = [
-    { id: 'trending' as const, icon: TrendUp, label: 'Trending' },
-    { id: 'discover' as const, icon: Compass, label: 'Discover' },
-    { id: 'map' as const, icon: MapTrifold, label: 'Map' },
-    { id: 'notifications' as const, icon: Bell, label: 'Notifications', badge: unreadNotifications },
-    { id: 'profile' as const, icon: User, label: 'Profile' }
+    { id: 'map' as const, label: 'Map' },
+    { id: 'trending' as const, label: 'Tonight' },
+    { id: 'discover' as const, label: 'Pulse' },
+    { id: 'notifications' as const, label: 'Following' },
+    { id: 'profile' as const, label: 'You', badge: unreadNotifications },
   ]
 
   return (
-    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom,0px)]">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background px-5 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-2"
+    >
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-center rounded-2xl border-t border-border bg-[#0f0f12]">
         {tabs.map((tab) => {
-          const Icon = tab.icon
           const isActive = activeTab === tab.id
 
           return (
             <button
               key={tab.id}
+              type="button"
               data-testid={`tab-${tab.label}`}
               onClick={() => onTabChange(tab.id)}
-              aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge} unread` : tab.label}
+              aria-label={tab.id === 'profile' ? youTabAriaLabel(tab.badge ?? 0) : tab.label}
               aria-current={isActive ? 'page' : undefined}
-              className="flex flex-col items-center justify-center flex-1 h-full min-h-11 relative touch-manipulation active:scale-[0.98]"
+              className="relative flex h-full min-h-11 w-[70px] touch-manipulation flex-col items-center justify-center gap-1"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/10 rounded-lg"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-              
-              <div className="relative z-10 flex flex-col items-center gap-1">
-                <div className="relative">
-                  <Icon
-                    size={24}
-                    weight={isActive ? 'fill' : 'regular'}
-                    className={`transition-colors ${
-                      isActive ? 'text-primary' : 'text-muted-foreground'
-                    }`}
-                  />
-                  {tab.badge !== undefined && tab.badge > 0 && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-[10px] font-bold"
-                    >
-                      {tab.badge > 9 ? '9+' : tab.badge}
-                    </motion.div>
-                  )}
-                </div>
+              <span className="relative">
                 <span
-                  className={`text-[11px] font-medium leading-none transition-colors ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  aria-hidden
+                  className={`block h-[5px] w-[5px] rounded-full ${
+                    isActive ? 'bg-foreground' : 'bg-[#3a3a40]'
                   }`}
-                >
-                  {tab.label}
-                </span>
-              </div>
+                />
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className="absolute -top-2 -right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {tab.badge > 9 ? '9+' : tab.badge}
+                  </span>
+                )}
+              </span>
+              <span
+                className={`text-[10px] leading-none ${
+                  isActive ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'
+                }`}
+              >
+                {tab.label}
+              </span>
             </button>
           )
         })}

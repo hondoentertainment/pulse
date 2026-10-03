@@ -120,6 +120,24 @@ describe('getTrendingSections', () => {
     expect(busySection).toBeUndefined()
   })
 
+  it('ranks equal-score venues by fresh live review volume', () => {
+    const venueA = makeVenue({ id: 'venue-a', pulseScore: 60 })
+    const venueB = makeVenue({ id: 'venue-b', pulseScore: 60 })
+    const now = Date.now()
+    const pulses = [
+      makePulse({ userId: 'u1', venueId: 'venue-a', kind: 'review', caption: 'a1', createdAt: new Date(now - 60 * 1000).toISOString() }),
+      makePulse({ userId: 'u2', venueId: 'venue-a', kind: 'review', caption: 'a2', createdAt: new Date(now - 90 * 1000).toISOString() }),
+      makePulse({ userId: 'u3', venueId: 'venue-a', kind: 'review', caption: 'a3', createdAt: new Date(now - 120 * 1000).toISOString() }),
+      makePulse({ userId: 'u7', venueId: 'venue-a', kind: 'review', caption: 'a4', createdAt: new Date(now - 80 * 1000).toISOString() }),
+      makePulse({ userId: 'u4', venueId: 'venue-b', kind: 'review', caption: 'b1', createdAt: new Date(now - 60 * 1000).toISOString() }),
+      makePulse({ userId: 'u5', venueId: 'venue-b', kind: 'review', caption: 'b2', createdAt: new Date(now - 90 * 1000).toISOString() }),
+      makePulse({ userId: 'u6', venueId: 'venue-b', kind: 'review', caption: 'b3', createdAt: new Date(now - 120 * 1000).toISOString() }),
+    ]
+    const sections = getTrendingSections([venueB, venueA], pulses)
+    const trending = sections.find(s => s.title === 'Trending Now')
+    expect(trending?.venues[0].id).toBe('venue-a')
+  })
+
   it('includes "Trending Now" when criteria met', () => {
     const venue = makeVenue({ pulseScore: 60 })
     const now = Date.now()

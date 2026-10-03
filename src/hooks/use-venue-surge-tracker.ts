@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Venue, Notification } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -19,9 +18,9 @@ const MAX_ALERTS_PER_VENUE = 3
 export function useVenueSurgeTracker(
   venues: Venue[],
   userLocation: { lat: number; lng: number } | null,
-  enabled: boolean
+  enabled: boolean,
+  setNotifications: (updater: (current: Notification[] | undefined) => Notification[]) => void,
 ) {
-  const [, setNotifications] = useKV<Notification[]>('notifications', [])
   const surgeStateRef = useRef<VenueSurgeState>({})
 
   useEffect(() => {
@@ -61,20 +60,25 @@ export function useVenueSurgeTracker(
 
           if (distance <= 5) {
             const notification: Notification = {
-              id: `notif-surge-${venue.id}-${Date.now()}`,
-              type: 'trending_venue',
+              id: `notif-surge-${venue.id}-${now}`,
+              type: 'venue_surge',
               userId: 'system',
               venueId: venue.id,
-              createdAt: new Date().toISOString(),
+              createdAt: new Date(now).toISOString(),
               read: false
             }
 
             setNotifications((current) => {
-              if (!current) return [notification]
-              return [notification, ...current]
+              const rows = current ?? []
+              if (rows.some((row) => row.id === notification.id || (
+                row.type === 'venue_surge' && row.venueId === venue.id && !row.read
+              ))) {
+                return rows
+              }
+              return [notification, ...rows]
             })
 
-            toast.success('🔥 Venue Surging!', {
+            toast.success('Venue surging', {
               description: `${venue.name} is popping off right now (${currentScore} energy)`,
               duration: 5000
             })

@@ -1,16 +1,24 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getVenueDeepLink,
   getPulseDeepLink,
   generateVenueShareCard,
   generatePulseShareCard,
+  generateJustReviewedShareCard,
   generateStoryShareText,
+  getPublicAppOrigin,
+  getVenueShareLandingPath,
+  getImHereMapPath,
+  getVenueSharePreviewUrl,
+  getVenueShareOgImageUrl,
+  buildShareOgCard,
   generateEnergyCardData,
   createReferralInvite,
   acceptReferralInvite,
   getReferralStats,
   buildNativeShareData,
   buildClipboardShareText,
+  shareVenueFromSurface,
 } from '../sharing'
 import type { Venue, Pulse } from '../types'
 
@@ -37,16 +45,40 @@ const pulse: Pulse = {
 }
 
 describe('deep links', () => {
-  it('generates venue deep link', () => {
-    expect(getVenueDeepLink('v1')).toBe('https://pulse.app/venue/v1')
+  it('uses the public Pulse origin when no window is present', () => {
+    expect(getPublicAppOrigin({ env: {}, locationOrigin: null })).toBe('https://pulse-chi-nine.vercel.app')
+    expect(getVenueDeepLink('v1', 'https://pulse-chi-nine.vercel.app')).toBe('https://pulse-chi-nine.vercel.app/venue/v1')
+    expect(getPublicAppOrigin({ locationOrigin: 'https://example.com/' })).toBe('https://example.com')
   })
 
   it('generates pulse deep link', () => {
-    expect(getPulseDeepLink('p1')).toBe('https://pulse.app/pulse/p1')
+    expect(getPulseDeepLink('p1', 'https://pulse.app')).toBe('https://pulse.app/pulse/p1')
   })
 
   it('supports custom base URL', () => {
     expect(getVenueDeepLink('v1', 'https://example.com')).toBe('https://example.com/venue/v1')
+  })
+
+  it('builds I’m-here map path and share landing that match the OG card', () => {
+    expect(getVenueShareLandingPath('v1')).toBe('/venue/v1?from=share')
+    expect(getImHereMapPath('v1')).toBe('/?here=v1')
+    expect(getVenueSharePreviewUrl('v1', 'https://pulse.example')).toBe(
+      'https://pulse.example/api/share/venue?venueId=v1',
+    )
+    expect(getVenueShareOgImageUrl('v1', 'https://pulse.example')).toBe(
+      'https://pulse.example/api/share/og?venueId=v1',
+    )
+    const card = buildShareOgCard({
+      venueName: 'Neumos',
+      energyLabel: 'Electric',
+      freshness: '12m ago',
+      caption: 'DJ just switched — floor is packed.',
+    })
+    expect(card.eyebrow).toBe('Someone shared a venue')
+    expect(card.title).toBe('Neumos')
+    expect(card.energyLine).toBe('Electric · 12m ago')
+    expect(card.caption).toContain('floor is packed')
+    expect(card.cta).toBe("I'm here · open map")
   })
 })
 
@@ -56,7 +88,7 @@ describe('generateVenueShareCard', () => {
     expect(card.title).toBe('Test Bar')
     expect(card.energyLabel).toBe('Electric')
     expect(card.score).toBe(80)
-    expect(card.url).toContain('/venue/v1')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
     expect(card.description).toContain('Bar')
     expect(card.description).toContain('New York')
   })
@@ -67,7 +99,14 @@ describe('generatePulseShareCard', () => {
     const card = generatePulseShareCard(pulse, venue, 'alice')
     expect(card.title).toContain('alice')
     expect(card.title).toContain('Test Bar')
-    expect(card.url).toContain('/pulse/p1')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
+  })
+
+  it('builds a just-reviewed card', () => {
+    const card = generateJustReviewedShareCard(venue, 'DJ just started')
+    expect(card.title).toContain('Just reviewed')
+    expect(card.description).toContain('DJ just started')
+    expect(card.url).toContain('/api/share/venue?venueId=v1')
   })
 })
 
@@ -133,5 +172,21 @@ describe('share helpers', () => {
     const text = buildClipboardShareText(card)
     expect(text).toContain(card.title)
     expect(text).toContain(card.url)
+  })
+
+  it('shares the /api/share/venue deep link from a surface', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    const result = await shareVenueFromSurface(venue, { share, canShare: true })
+    expect(result).toBe('shared')
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('/api/share/venue?venueId=v1'),
+    }))
+  })
+
+  it('copies the share URL when native share is unavailable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const result = await shareVenueFromSurface(venue, { canShare: false, writeText })
+    expect(result).toBe('copied')
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/api/share/venue?venueId=v1'))
   })
 })

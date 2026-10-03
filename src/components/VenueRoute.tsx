@@ -1,37 +1,53 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
-import { BottomNav } from '@/components/BottomNav'
-import { useRouteNavigation } from '@/hooks/use-route-navigation'
-import { USE_SUPABASE_BACKEND, VenueData, CheckInData } from '@/lib/data'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { CrewTonightData, USE_SUPABASE_BACKEND, VenueData, PresenceData } from '@/lib/data'
 import { useVenuePulsesInfinite } from '@/hooks/api/use-pulses'
 import { AuthRequiredError } from '@/lib/auth/require-auth'
 import { RlsDeniedError } from '@/lib/auth/rls-helpers'
 import type { Pulse, PulseWithUser, Venue } from '@/lib/types'
 import { toast } from 'sonner'
+import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import { parseComposeVenueId, venueComposePath } from '@/lib/auth-return-intent'
+import { isInviteArrival } from '@/lib/invite-friend'
+import { emptyHereNow, type HereNowSummary } from '@/lib/here-now'
+import { DoorPinData, FollowData, PulseAgreeData, PulseReplyData, VenueClaimData } from '@/lib/data'
+import type { PulseReply } from '@/lib/pulse-thread'
+import type { PulseAgree } from '@/lib/pulse-same'
+import type { VenueDoorPin } from '@/lib/door-pin'
+import type { VenueClaim } from '@/lib/venue-owner'
+import { confirmImHere } from '@/lib/im-here-confirm'
+import { rememberOpenedVenue } from '@/lib/recent-venues'
+import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
+import { resolveShareVenueReady } from '@/lib/share-landing'
+import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
+import { filterModeratedPulses } from '@/lib/content-moderation'
+import type { CrewPresenceRow } from '@/lib/crew-im-here'
 
 const VenuePage = lazy(() => import('@/components/VenuePage').then(m => ({ default: m.VenuePage })))
 
-const pageFallback = <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>
+const pageFallback = <MapHomeSkeleton />
 
 export function VenueRoute() {
   const { venueId } = useParams<{ venueId: string }>()
   const navigate = useNavigate()
-  const { activeTab, navigateToTab } = useRouteNavigation()
+  const location = useLocation()
   const state = useAppState()
   const handlers = useAppHandlers()
+  const { session, isPlaceholder } = useSupabaseAuth()
 
   const {
     venues,
     currentUser,
+    contentReports,
     moderatedPulses: _moderatedPulses,
     unitSystem,
     locationName,
     isTracking,
     realtimeLocation,
     userLocation,
-    unreadNotificationCount,
     isFavorite,
     isFollowed,
     integrationsEnabled,
@@ -47,13 +63,30 @@ export function VenueRoute() {
     handleCreatePulse,
     handleReaction,
     handlePulseReport,
+    handleHidePulse,
+    handlePinMyNight,
     handleToggleFavorite,
     handleToggleFollow,
+    handleToggleFriendFollow,
     handleStartCrewCheckIn,
+    handlePulseReply,
+    handleSameAgree,
+    handleBlockUser,
+    handleCrewTonight,
+    handleDoorPin,
+    handleOwnerReplyNotices,
   } = handlers
 
   // Live venue row + paginated pulses when Supabase backend is on.
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
+  const [serverLookupSettled, setServerLookupSettled] = useState(false)
+  const [hereNow, setHereNow] = useState<HereNowSummary>(emptyHereNow)
+  const [crewHere, setCrewHere] = useState<CrewPresenceRow[]>([])
+  const [replies, setReplies] = useState<PulseReply[]>([])
+  const [agrees, setAgrees] = useState<PulseAgree[]>([])
+  const [doorPin, setDoorPin] = useState<VenueDoorPin | null>(null)
+  const [claims, setClaims] = useState<VenueClaim[]>([])
+  const [myNightPinned, setMyNightPinned] = useState(false)
 
   const venuePulseQuery = useVenuePulsesInfinite(
     USE_SUPABASE_BACKEND ? venueId : undefined,
@@ -66,8 +99,12 @@ export function VenueRoute() {
   }, [USE_SUPABASE_BACKEND, venuePulseQuery.data?.pages, venuePulseQuery.isSuccess])
 
   useEffect(() => {
-    if (!USE_SUPABASE_BACKEND || !venueId) return
+    if (!USE_SUPABASE_BACKEND || !venueId) {
+      setServerLookupSettled(true)
+      return
+    }
     let cancelled = false
+    setServerLookupSettled(false)
 
     ;(async () => {
       try {
@@ -81,6 +118,8 @@ export function VenueRoute() {
         } else {
           console.warn('[pulse] VenuePage fresh fetch failed, using cached data', error)
         }
+      } finally {
+        if (!cancelled) setServerLookupSettled(true)
       }
     })()
 
@@ -89,10 +128,99 @@ export function VenueRoute() {
     }
   }, [venueId])
 
-  if (!venues || !currentUser || !venueId) return null
+  useEffect(() => {
+    if (!venueId || !session?.user?.id) {
+      setCrewHere([])
+      return
+    }
+    let cancelled = false
+    void CrewTonightData.listCrewImHere(venueId).then((rows) => {
+      if (!cancelled) setCrewHere(rows)
+    }).catch(() => {
+      if (!cancelled) setCrewHere([])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id, venueId])
 
-  const cachedVenue = venues.find(v => v.id === venueId) ?? null
+  useEffect(() => {
+    if (!venueId) return
+    let cancelled = false
+    void PulseReplyData.listRepliesForVenue(venueId).then((rows) => {
+      if (!cancelled) setReplies(rows)
+    }).catch(() => undefined)
+    void import('@/lib/data/pulses').then(({ listRecentPulsesAtVenue }) => (
+      listRecentPulsesAtVenue(venueId, 40).then((rows) => (
+        PulseAgreeData.listAgreesForPulses(rows.map((pulse) => pulse.id))
+      )).then((rows) => {
+        if (!cancelled) setAgrees(rows)
+      })
+    )).catch(() => undefined)
+    void DoorPinData.fetchVenueDoorPin(venueId).then((pin) => {
+      if (!cancelled) setDoorPin(pin)
+    }).catch(() => undefined)
+    if (session?.user?.id) {
+      void VenueClaimData.listMyVenueClaims(session.user.id).then((rows) => {
+        if (!cancelled) setClaims(rows)
+      }).catch(() => undefined)
+      void FollowData.listPinnedVenues(session.user.id).then((ids) => {
+        if (!cancelled) setMyNightPinned(ids.includes(venueId))
+      }).catch(() => undefined)
+    }
+    void PresenceData.fetchHereNowSummary(venueId, Boolean(session))
+      .then((summary) => {
+        if (!cancelled) setHereNow(summary)
+      })
+      .catch(() => {
+        if (!cancelled) setHereNow(emptyHereNow())
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [venueId, session])
+
+  const openedComposeFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!venueId) return
+    if (parseComposeVenueId(location.pathname, location.search) !== venueId) return
+    if (!session && !isPlaceholder) return
+    if (openedComposeFor.current === venueId) return
+    openedComposeFor.current = venueId
+    handleCreatePulse(venueId)
+  }, [handleCreatePulse, isPlaceholder, location.pathname, location.search, session, venueId])
+
+  useEffect(() => {
+    if (venueId) rememberOpenedVenue(venueId)
+  }, [venueId])
+
+  if (!currentUser || !venueId) return <MapHomeSkeleton />
+
+  const catalog = venues ?? []
+  const localShareId = localLaunchVenueIdForShareId(venueId)
+  const cachedVenue = catalog.find(v => v.id === venueId)
+    ?? (localShareId ? catalog.find(v => v.id === localShareId) ?? null : null)
   const venue = freshVenue ?? cachedVenue
+  const phase = resolveShareVenueReady({
+    cached: Boolean(cachedVenue),
+    fresh: Boolean(freshVenue),
+    catalogReady: Array.isArray(venues),
+    lookupSettled: serverLookupSettled || !USE_SUPABASE_BACKEND,
+  })
+  if (!venue && phase === 'pending') {
+    return (
+      <div className="min-h-screen bg-background" aria-busy="true" aria-label="Opening venue energy">
+        <div className="mx-auto max-w-2xl space-y-3 px-4 pb-6 pt-6">
+          <p className="text-[13px] font-semibold text-accent">Someone shared a venue</p>
+          <h1 className="text-[26px] font-bold text-foreground">Opening live energy</h1>
+          <p className="text-[13px] text-muted-foreground">
+            Loading this room. Guests can view it. Posting still goes to sign-in.
+          </p>
+          <div className="h-28 animate-pulse rounded-2xl bg-card" />
+        </div>
+      </div>
+    )
+  }
   if (!venue) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4">
@@ -103,30 +231,56 @@ export function VenueRoute() {
   }
 
   const cachedPulses = getPulsesWithUsers().filter(p => p.venueId === venue.id)
-  const venuePulses: PulseWithUser[] = serverPulseList !== null
+  const rawVenuePulses: PulseWithUser[] = serverPulseList !== null
     ? serverPulseList.map((pulse) => ({
         ...pulse,
         user: resolvePulseUser(pulse.userId),
         venue,
       }))
     : cachedPulses
+  const venuePulses = filterModeratedPulses(
+    rawVenuePulses,
+    currentUser?.id ?? '',
+    [],
+    [],
+    contentReports ?? [],
+  ) as PulseWithUser[]
   const distance = userLocation
     ? Math.sqrt(Math.pow(venue.location.lat - userLocation.lat, 2) + Math.pow(venue.location.lng - userLocation.lng, 2)) * 69
     : undefined
 
   const handleCheckIn = async () => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: venueComposePath(venue.id),
+    })
+    if (authRedirect) {
+      toast.error(WRITE_AUTH_COPY.checkIn.title, { description: WRITE_AUTH_COPY.checkIn.description })
+      navigate(authRedirect)
+      return
+    }
+
     if (USE_SUPABASE_BACKEND) {
       try {
-        await CheckInData.createCheckIn({
+        await confirmImHere({
           venueId: venue.id,
+          venueName: venue.name,
+          signedIn: true,
           lat: userLocation?.lat,
           lng: userLocation?.lng,
-          source: userLocation ? 'geo' : 'manual',
         })
-        toast.success('Checked in!', { description: venue.name })
+        const summary = await PresenceData.fetchHereNowSummary(venue.id, true).catch(() => emptyHereNow())
+        setHereNow(summary)
+        toast.success('I’m here · 90 min', { description: venue.name })
       } catch (error) {
         if (error instanceof AuthRequiredError) {
-          toast.error('Sign in to check in', { description: error.message })
+          toast.error(WRITE_AUTH_COPY.checkIn.title, { description: WRITE_AUTH_COPY.checkIn.description })
+          navigate(getWriteAuthRedirect({
+            isPlaceholder,
+            hasSession: false,
+            next: venueComposePath(venue.id),
+          }) ?? AUTH_PATH)
           return
         }
         if (error instanceof RlsDeniedError) {
@@ -162,7 +316,37 @@ export function VenueRoute() {
           onReportPulse={handlePulseReport}
           onToggleFavorite={() => handleToggleFavorite(venue.id)}
           onToggleFollow={() => handleToggleFollow(venue.id)}
-          presenceData={null}
+          onPinMyNight={() => handlePinMyNight(venue.id)}
+          onHidePulse={handleHidePulse}
+          onFollowUser={handleToggleFriendFollow}
+          onPulseReply={handlePulseReply}
+          onSameAgree={handleSameAgree}
+          onBlockUser={handleBlockUser}
+          onCrewTonight={handleCrewTonight}
+          crewHere={crewHere}
+          onOwnerReplyNotices={handleOwnerReplyNotices}
+          onDoorPin={async (vid, pid) => {
+            await handleDoorPin(vid, pid)
+            const pin = await DoorPinData.fetchVenueDoorPin(vid).catch(() => null)
+            setDoorPin(pin)
+          }}
+          catalogVenues={venues}
+          claims={claims}
+          doorPin={doorPin}
+          replies={replies}
+          agrees={agrees}
+          myNightPinned={myNightPinned}
+          invitePrimed={isInviteArrival(location.search)}
+          hereNow={hereNow}
+          presenceData={{
+            venueId: venue.id,
+            friendsHereNowCount: hereNow.count,
+            friendsNearbyCount: hereNow.friends.length,
+            familiarFacesCount: 0,
+            prioritizedAvatars: [],
+            lastPresenceUpdateAt: new Date().toISOString(),
+            isSuppressed: false,
+          }}
           onOpenPresence={() => setPresenceSheetOpen(true)}
           onOpenIntegrations={integrationsEnabled ? () => {
             setIntegrationVenue(venue)
@@ -175,11 +359,6 @@ export function VenueRoute() {
           isLoadingMoreVenuePulses={USE_SUPABASE_BACKEND ? venuePulseQuery.isFetchingNextPage : false}
         />
       </Suspense>
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={(tab) => navigateToTab(tab)}
-        unreadNotifications={unreadNotificationCount}
-      />
     </>
   )
 }

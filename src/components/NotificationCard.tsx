@@ -13,6 +13,28 @@ interface NotificationCardProps {
 export function NotificationCard({ notification, onClick }: NotificationCardProps) {
   const getNotificationContent = () => {
     switch (notification.type) {
+      case 'venue_surge': {
+        const name = notification.venue?.name ?? 'This venue'
+        const extra = notification.count && notification.count > 1 ? ` · ${notification.count} updates` : ''
+        return (
+          <p className="text-sm">
+            <span className="font-semibold text-foreground">{name}</span>
+            {` is surging${extra}`}
+          </p>
+        )
+      }
+
+      case 'owner_reply': {
+        const name = notification.venue?.name ?? 'This venue'
+        const extra = notification.count && notification.count > 1 ? ` · ${notification.count} replies` : ''
+        return (
+          <p className="text-sm">
+            Owner replied at <span className="font-semibold text-foreground">{name}</span>
+            {extra}
+          </p>
+        )
+      }
+
       case 'friend_pulse': {
         if (!notification.pulse || !notification.user || !notification.venue) return null
         const energyConfig = ENERGY_CONFIG[notification.pulse.energyRating]
@@ -330,11 +352,20 @@ export function NotificationCard({ notification, onClick }: NotificationCardProp
       transition={{ duration: 0.3 }}
     >
       <Card
+        role="button"
+        tabIndex={0}
+        aria-label={notification.type === 'owner_reply' ? 'Open owner reply' : notification.type === 'venue_surge' ? 'Open surging venue' : 'Open notification'}
         className={`p-4 cursor-pointer transition-all hover:bg-card/80 border-l-4 ${notification.read
             ? 'border-l-border'
             : 'border-l-accent bg-card/50'
           }`}
         onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onClick?.()
+          }
+        }}
       >
         {content}
       </Card>

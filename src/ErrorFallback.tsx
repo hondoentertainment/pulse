@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { trackError } from '@/lib/analytics'
-import { AlertTriangleIcon, RefreshCwIcon } from 'lucide-react'
+import { WarningCircle, ArrowClockwise } from '@phosphor-icons/react'
 
 interface ErrorFallbackProps {
   error: Error
@@ -18,10 +18,10 @@ export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps)
   }, [error])
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md" role="alert" aria-live="assertive">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
         <Alert variant="destructive" className="mb-6">
-          <AlertTriangleIcon aria-hidden />
+          <WarningCircle size={16} weight="fill" />
           <AlertTitle>Pulse hit a problem</AlertTitle>
           <AlertDescription>
             Something went wrong while loading the app. You can try again. If this keeps happening, refresh the page or come back later.
@@ -29,22 +29,17 @@ export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps)
         </Alert>
 
         <div className="mb-6 rounded-lg border bg-card p-4">
-          <h1 className="mb-2 text-sm font-semibold text-muted-foreground">Details</h1>
+          <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Details</h3>
           <pre className="max-h-32 overflow-auto rounded border bg-muted/50 p-3 text-xs text-destructive">
             {error.message}
           </pre>
         </div>
 
-        <Button
-          onClick={resetErrorBoundary}
-          className="h-12 w-full touch-manipulation active:scale-[0.98]"
-          variant="outline"
-          aria-label="Try again"
-        >
-          <RefreshCwIcon aria-hidden />
+        <Button onClick={resetErrorBoundary} className="w-full" variant="outline">
+          <ArrowClockwise size={16} weight="bold" />
           Try again
         </Button>
       </div>
-    </main>
+    </div>
   )
 }

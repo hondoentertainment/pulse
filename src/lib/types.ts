@@ -76,6 +76,9 @@ export interface Venue {
   }
   city?: string
   state?: string
+  neighborhood?: string
+  inventorySource?: 'curated-seed' | 'user' | 'import' | 'osm'
+  claimVerified?: boolean
   pulseScore: number
   lastPulseAt?: string
   category?: string
@@ -90,6 +93,9 @@ export interface Venue {
   }
   phone?: string
   website?: string
+  /** Catalog photo already on the venue row. Never scraped or invented. */
+  imageUrl?: string
+  ownerEmailDomain?: string
   preTrending?: boolean
   preTrendingLabel?: string
   seeded?: boolean
@@ -116,7 +122,23 @@ export interface Venue {
   }
   liveSummary?: VenueLiveSummary
   accessibilityFeatures?: AccessibilityFeature[]
+  dressCode?: VenueDressCode | null
+  coverChargeCents?: number | null
+  coverChargeNote?: string | null
+  indoorOutdoor?: VenueIndoorOutdoor | null
+  capacityHint?: number | null
+  contextualScore?: number
 }
+
+export type VenueDressCode =
+  | 'casual'
+  | 'smart_casual'
+  | 'upscale'
+  | 'formal'
+  | 'costume_required'
+  | 'no_code'
+
+export type VenueIndoorOutdoor = 'indoor' | 'outdoor' | 'both'
 
 export type ReactionType = 'fire' | 'eyes' | 'skull' | 'lightning'
 
@@ -134,6 +156,10 @@ export interface VenueLiveSummary {
   updatedAt: string
 }
 
+export type PulseKind = 'pulse' | 'review'
+
+export type DoorChip = 'line' | 'cover' | 'energy'
+
 export interface Pulse {
   id: string
   userId: string
@@ -141,6 +167,8 @@ export interface Pulse {
   photos: string[]
   video?: string
   energyRating: EnergyRating
+  /** Optional compose one-taps. Only line / cover / energy. */
+  doorChips?: DoorChip[]
   caption?: string
   hashtags?: string[]
   createdAt: string
@@ -157,6 +185,12 @@ export interface Pulse {
   credibilityWeight?: number
   crewId?: string
   isPioneer?: boolean
+  /** Discriminator: venue create writes `review`; legacy energy-only rows are `pulse`. */
+  kind?: PulseKind
+  /** True when GPS placed the author inside the venue check-in radius. */
+  locationVerified?: boolean
+  /** Derived from caption — true when the review has body text. */
+  hasBody?: boolean
 }
 
 export interface PulseWithUser extends Pulse {
@@ -164,7 +198,7 @@ export interface PulseWithUser extends Pulse {
   venue: Venue
 }
 
-export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact' | 'wave'
+export type NotificationType = 'friend_pulse' | 'pulse_reaction' | 'friend_nearby' | 'trending_venue' | 'impact' | 'wave' | 'venue_surge' | 'owner_reply'
 
 export interface Notification {
   id: string
@@ -189,6 +223,7 @@ export interface NotificationWithData extends Notification {
 export interface GroupedNotification extends NotificationWithData {
   groupedUsers?: User[]
   groupedReactionTypes?: ('fire' | 'eyes' | 'skull' | 'lightning')[]
+  groupedIds?: string[]
   count?: number
 }
 
@@ -196,25 +231,25 @@ export const ENERGY_CONFIG = {
   dead: {
     label: 'Dead',
     value: 0,
-    color: 'oklch(0.35 0.05 240)',
+    color: '#8c8c94',
     emoji: '💀'
   },
   chill: {
     label: 'Chill',
     value: 1,
-    color: 'oklch(0.60 0.15 150)',
+    color: '#59c79e',
     emoji: '😌'
   },
   buzzing: {
     label: 'Buzzing',
     value: 2,
-    color: 'oklch(0.70 0.22 60)',
+    color: '#ffb847',
     emoji: '🔥'
   },
   electric: {
     label: 'Electric',
     value: 3,
-    color: 'oklch(0.65 0.28 340)',
+    color: '#fa598c',
     emoji: '⚡'
   }
 } as const
@@ -222,6 +257,8 @@ export const ENERGY_CONFIG = {
 export const COOLDOWN_MINUTES = 120
 export const PULSE_DECAY_MINUTES = 90
 export const CHECK_IN_RADIUS_MILES = 0.062
+export const LIVE_NOW_WINDOW_MINUTES = 90
+export const LIVE_REVIEW_CAPTION_MAX = 280
 
 export type HashtagCategory = 'nightlife' | 'sports' | 'music' | 'food' | 'cafes' | 'general'
 export type HashtagVibeType = 'energetic' | 'chill' | 'social' | 'foodie' | 'cultural'

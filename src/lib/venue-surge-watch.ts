@@ -1,3 +1,11 @@
+/**
+ * Local venue-surge watch list.
+ *
+ * This is a preference stub for a future venue-surge push (Electric / followed
+ * venues). It is NOT Pulse Signal Web Push and does not register VAPID
+ * subscriptions. Delivery stays in-app (`useVenueSurgeTracker`) until a
+ * dedicated venue-alert issue is opened.
+ */
 const STORAGE_KEY = 'pulse:surge-watch-venues'
 
 function canReadStorage(storage?: Pick<Storage, 'getItem'> | null): storage is Pick<Storage, 'getItem'> {
@@ -48,4 +56,18 @@ export function toggleVenueSurgeWatch(
 
   storage.setItem(STORAGE_KEY, JSON.stringify([...current]))
   return current.has(venueId)
+}
+
+export function describeVenueSurgePushStub(): {
+  status: 'stub'
+  product: 'venue-surge'
+  signalWebPush: false
+  storageKey: string
+} {
+  return {
+    status: 'stub',
+    product: 'venue-surge',
+    signalWebPush: false,
+    storageKey: STORAGE_KEY,
+  }
 }

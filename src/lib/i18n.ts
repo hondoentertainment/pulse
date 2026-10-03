@@ -18,10 +18,10 @@ const translations: Record<Locale, TranslationMap> = {
   en: {
     // Navigation
     'nav.trending': 'Trending',
-    'nav.venues': 'Venues',
+    'nav.venues': 'Pulse',
     'nav.map': 'Map',
-    'nav.notifications': 'Notifications',
-    'nav.profile': 'Profile',
+    'nav.notifications': 'Friends',
+    'nav.profile': 'You',
 
     // Energy levels
     'energy.dead': 'Dead',

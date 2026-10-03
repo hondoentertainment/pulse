@@ -44,7 +44,7 @@ const clearTables = (): void => {
   }
 }
 
-vi.mock('../supabase-server', () => {
+vi.mock('../supabase-server.js', () => {
   // A chainable query builder: every method call returns the SAME proxy
   // so `.select().is().order().limit()` keeps threading through. `await`
   // (via `then`) yields the resolved `{ data, error }`, and
@@ -95,7 +95,7 @@ vi.mock('../supabase-server', () => {
   return { createUserClient }
 })
 
-vi.mock('../../integrations/uber', () => ({
+vi.mock('../../integrations/uber.js', () => ({
   default: async (
     _req: unknown,
     res: { status: (n: number) => unknown; json: (p: unknown) => void; setHeader?: (n: string, v: string) => void; end?: () => void },
@@ -113,7 +113,7 @@ vi.mock('../../integrations/uber', () => ({
   },
 }))
 
-vi.mock('../../integrations/lyft', () => ({
+vi.mock('../../integrations/lyft.js', () => ({
   default: async (
     _req: unknown,
     res: { status: (n: number) => unknown; json: (p: unknown) => void; setHeader?: (n: string, v: string) => void; end?: () => void },

@@ -31,10 +31,10 @@ import {
   ok,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth, decodeJwt } from '../_lib/auth'
-import { asEnum, asNumber, asString, isPlainObject } from '../_lib/validate'
-import { createUserClient, getSupabaseConfig } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { requireAuth, decodeJwt } from '../_lib/auth.js'
+import { asEnum, asNumber, asString, isPlainObject } from '../_lib/validate.js'
+import { createUserClient, getSupabaseConfig } from '../_lib/supabase-server.js'
 
 const DRESS_CODES = [
   'casual',

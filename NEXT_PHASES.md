@@ -1,30 +1,28 @@
 # Pulse — Codebase Review & Next Phases of Work
 
+> Last verified 2026-09-09. **Venue + map is the only product.** Pulse Signal was removed (no `VITE_APP_MODE`). See [PRD.md](PRD.md).
+
 ## Current State Assessment
 
 ### Project Overview
 
-Pulse is a nightlife/venue discovery PWA built with React 19, TypeScript, and Vite. It features an interactive map, real-time venue pulse scores, social features, crew coordination, stories, integrations (Spotify, Uber, Lyft), and a comprehensive venue analytics platform.
+**Pulse** is a nightlife venue + map PWA (map → venue → pulse → trending). The former Pulse Signal personal check-in product was removed.
 
 ### Scale
 
 | Metric | Count |
 |--------|-------|
-| Lines of TypeScript/TSX | ~60,243 |
-| Library modules (`src/lib/`) | 69 |
-| Components (`src/components/` + `ui/`) | 125+ |
-| Custom hooks (`src/hooks/`) | 19 |
-| Unit test files | 34+ |
-| Component test files | 6+ |
-| E2E smoke tests | 1 |
-| CI/CD workflows | 3 |
-| Total tests | 470+ |
+| Unit / component test files | 115 passing + 2 skipped (Vitest) |
+| Total unit tests | 1246 passing + 20 skipped |
+| Venue smoke | `npm run test:smoke:venue` (primary CI path) |
+| CI/CD workflows | 4 |
 
-### Build Status
+### Build Status (2026-09-01)
 
-- **Build:** Passes with chunk size warning (`react-vendor` ~672 KB)
-- **Lint:** Warnings present (mostly unused vars), tracked for cleanup
-- **Tests:** Actively maintained with expanding coverage
+- **Tests:** Green — including `analytics.test.ts` and `interactive-map.test.ts` (the old “failing tests” bullets were stale).
+- **Lint:** **0 errors**, ~184 warnings (unused import/var warnings cleared this cycle). Do not raise `--max-warnings`.
+- **Build:** Passes. First-paint work: keep Sentry off the critical path, stop Phosphor leaking into `react-vendor`, gate Spark `proxy.js` to `vite serve`.
+- **Bundle:** `react-vendor` no longer includes `@phosphor-icons/react`; Sentry is its own async chunk (not shared with `@vercel/analytics`). PWA precache ignores `proxy.js` / Mapbox.
 
 For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -37,27 +35,35 @@ For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### 1.1 Fix Failing Tests
 
-- [ ] `src/lib/__tests__/analytics.test.ts` — event tracking/filtering/clearing failures
-- [ ] `src/lib/__tests__/interactive-map.test.ts` — time-aware boost and clustering failures
+- [x] `src/lib/__tests__/analytics.test.ts` — passing (11 tests). The failure note was stale.
+- [x] `src/lib/__tests__/interactive-map.test.ts` — passing (7 tests). The failure note was stale.
+- [x] `npm test` — 115 files / 1246 tests passing (2026-09-01, this cycle)
 
 ### 1.2 Resolve Lint Errors
 
-- [ ] Fix any lint errors blocking clean CI
-- [ ] Triage warnings — fix unused imports/vars or prefix with `_`
-- [ ] Target: zero errors, warnings trending down each sprint
+- [x] Zero lint **errors** (`npm run lint` → 0 errors)
+- [x] Unused import/var warnings trimmed this cycle (prefix `_` or delete). Do not raise `--max-warnings`.
+- [x] Target: zero errors. Remaining warnings are mostly `any` / a11y; keep trending down.
 
 ### 1.3 Bundle Size Optimization
 
-| Chunk | Current Size | Target |
-|-------|-------------|--------|
-| `react-vendor` | ~672 KB | < 600 KB |
-| `sentry` | ~257 KB | Lazy load |
-| `index` | ~202 KB | Audit for code splitting |
-| Total precache | ~4 MB | < 3 MB |
+Measured 2026-09-01 after this slice (`vite build` / Signal default):
 
-- [ ] Evaluate lazy loading Sentry (initialize after first render)
-- [ ] Audit index chunk for components that should be route-split
-- [ ] Review PWA precache strategy — not all routes need precaching
+| Chunk | Raw | First paint? |
+|-------|-----|----------------|
+| `react-vendor` | ~193 kB | yes |
+| `index` | ~85 kB | yes |
+| `supabase` | ~174 kB | yes (auth) |
+| `observability` (`@vercel/*` only) | ~7.5 kB | yes |
+| `phosphor` | ~349 kB | **no** — loaded with Login/Signal/Venue |
+| `sentry` | ~448 kB | **no** — idle / error path |
+| `VenueApp` | ~111 kB | **yes** — the only product shell |
+| PWA precache | **~2.57 MB** (was ~4.1 MB) | under 3 MB |
+
+- [x] Lazy-load Sentry (idle init + separate chunk; do not bucket with Vercel analytics)
+- [x] Keep venue routes off the Signal entry graph (`VenueApp` lazy)
+- [x] PWA precache ignores Spark `proxy.js` and map vendor chunks
+- [x] Precache under 3 MB (~2.57 MB)
 
 ---
 
@@ -70,13 +76,16 @@ For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Priority components needing tests:
 
-- [ ] `OnboardingFlow` — first-run experience
-- [ ] `InteractiveMap` — core map interactions
-- [ ] `VenuePage` — venue detail rendering and actions
-- [ ] `BottomNav` / `MainTabRouter` — navigation
-- [ ] `CreatePulseDialog` — content creation flow
-- [ ] `GlobalSearch` — search experience
-- [ ] `NotificationFeed` — notifications rendering
+- [x] Signal: LoginScreen heading / auth-gated path
+- [x] Signal: AM/PM check-in writes `day_key` + `check_in_window`; same window cannot save twice; evening after noon
+- [x] Signal: weekly summary / tag patterns, CSV of this account’s rows, delete-my-data, pilot email
+- [ ] `OnboardingFlow` — first-run experience (venue; parked)
+- [ ] `InteractiveMap` — core map interactions (venue; parked)
+- [ ] `VenuePage` — venue detail rendering and actions (venue; parked)
+- [ ] `BottomNav` / `MainTabRouter` — navigation (venue; parked)
+- [ ] `CreatePulseDialog` — content creation flow (venue; parked)
+- [ ] `GlobalSearch` — search experience (venue; parked)
+- [ ] `NotificationFeed` — notifications rendering (venue; parked)
 
 **Progress:** UI primitives, cards, navigation, venue features, presentational components, and feeds/lists test files have been created and are passing.
 
@@ -126,9 +135,10 @@ Priority components needing tests:
 
 ### 3.4 Dead Code Audit
 
-- [ ] Audit modules with no component consumers (candidates: `white-label.ts`, `public-api.ts`, `twitter-ingestion.ts`)
-- [ ] Remove unused exports identified by lint warnings
-- [ ] Reduce bundle size through tree-shaking improvements
+- [x] Signal startup: Sentry/Vercel chunk split, Phosphor/`react-vendor` leak, Spark plugin serve-only, venue shell lazy-load (2026-09-01)
+- [x] Signal entry no longer mounts TanStack persist or Spark on the default path (`QueryClientProvider` only; Spark is `import.meta.env.DEV`; venue persist stays in `AppProviders`)
+- [ ] Audit venue-only modules with no Signal consumers (candidates: `white-label.ts`, `public-api.ts`, `twitter-ingestion.ts`) — **do not delete**; they stay flag-gated
+- [ ] Remove unused exports identified by remaining lint warnings
 
 ---
 
@@ -223,16 +233,16 @@ See [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md) for the detailed rollout plan
 
 ## Recommended Execution Order
 
-| Priority | Phase | Effort | Impact |
+| Priority | Phase | Status | Impact |
 |----------|-------|--------|--------|
-| 1 | Phase 1: Stabilization | 1–2 days | Unblocks CI, builds confidence |
-| 2 | Phase 3.4: Dead Code Audit | 1 day | Reduces bundle, simplifies codebase |
-| 3 | Phase 2.1–2.2: Core Test Coverage | 1–2 weeks | Prevents regressions |
-| 4 | Phase 3.1–3.3: Architecture | 1–2 weeks | Enables scaling |
-| 5 | Phase 4: Backend Integration | 2–4 weeks | Moves beyond prototype to product |
-| 6 | Phase 5: Production Readiness | 1–2 weeks | Required for launch |
-| 7 | Phase 6: Feature Polish | Ongoing | User experience refinement |
-| 8 | Phase 2.3–2.4: E2E & CI | 1 week | Long-term quality |
+| 1 | Phase 1: Stabilization | **Done for gates** — tests/lint-errors/build/Signal smoke. Unused-var warnings trimmed. | Unblocks CI |
+| 2 | Phase 3.4: Dead Code / Signal bundle | **Done for Signal entry** — persist/Spark off default path; venue modules stay. | Signal startup |
+| 3 | Phase 2.1–2.2: Core Test Coverage | **Signal flows covered this cycle**; venue component tests stay parked | Prevents regressions |
+| 4 | Phase 3.1–3.3: Architecture | Later | Enables scaling |
+| 5 | Phase 4: Backend Integration | Human ops for prod migrations (#64); code already Signal-first | Moves beyond prototype |
+| 6 | Phase 5: Production Readiness | Later — do not block on Apple Health / ticketing / Stripe | Launch bar |
+| 7 | Phase 6: Feature Polish | Parked for venue map/onboarding/pulse-creation | Venue UX only |
+| 8 | Phase 2.3–2.4: E2E & CI | Signal smoke exists; do not expand venue E2E unless a Signal smoke is missing | Long-term quality |
 
 ---
 

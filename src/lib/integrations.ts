@@ -1,4 +1,4 @@
-import type { Pulse, User, Venue, EnergyRating } from './types'
+import type { Pulse, User, Venue, EnergyRating } from './types.js'
 
 /** Phase 7.2 - Integration Ecosystem */
 

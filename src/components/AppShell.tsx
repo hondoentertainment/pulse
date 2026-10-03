@@ -9,6 +9,7 @@ import { useNativeAppBootstrap } from '@/hooks/use-native-app-bootstrap'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { calculatePresence } from '@/lib/presence-engine'
 import { calculateDistance } from '@/lib/pulse-engine'
+import { UX_FAB } from '@/lib/ux-chrome'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { MainTabRouter } from '@/components/MainTabRouter'
@@ -151,7 +152,7 @@ export function AppShell() {
         </Suspense>
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
         <Suspense fallback={null}>
-          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+          <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} userLocation={userLocation} onSubmit={handleSubmitPulse} />
         </Suspense>
       </>
     )
@@ -188,16 +189,16 @@ export function AppShell() {
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} unreadNotifications={unreadNotificationCount} />
       <Suspense fallback={null}>
-        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} onSubmit={handleSubmitPulse} />
+        <CreatePulseDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} venue={venueForPulse} userLocation={userLocation} onSubmit={handleSubmitPulse} />
       </Suspense>
 
       <motion.button
         data-testid="create-pulse-fab"
-        aria-label="Create a pulse"
+        aria-label="Post a live review"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { if (sortedVenues.length > 0) handleCreatePulse(sortedVenues[0].id) }}
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/40 flex items-center justify-center z-40 touch-manipulation"
+        className={`${UX_FAB} bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-[calc(1.25rem+env(safe-area-inset-right,0px))] touch-manipulation`}
       >
         <Plus size={28} weight="bold" />
       </motion.button>

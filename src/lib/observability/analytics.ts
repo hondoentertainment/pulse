@@ -69,13 +69,15 @@ export interface EventRegistry {
     hashtagCount?: number
     energyRating?: string
     isFirstPulse?: boolean
+    kind?: 'pulse' | 'review'
+    locationVerified?: boolean
   }
   pulse_viewed: {
     pulseId: string
     venueId?: string
     dwellMs?: number
     position?: number
-    feed?: 'home' | 'venue' | 'friends' | 'trending'
+    feed?: 'home' | 'venue' | 'friends' | 'trending' | 'live_now' | 'inbox'
   }
   reaction_added: {
     pulseId: string
@@ -85,7 +87,32 @@ export interface EventRegistry {
   // --- Venue ------------------------------------------------------------
   venue_viewed: {
     venueId: string
-    source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity'
+    source: 'map' | 'trending' | 'search' | 'notification' | 'deeplink' | 'friend_activity' | 'share' | 'im_here'
+  }
+  /** Lightweight activation funnel — console/debug or existing adapters only. */
+  funnel_step: {
+    step: 'guest_map' | 'venue' | 'auth' | 'first_pulse'
+    venueId?: string
+    guest?: boolean
+  }
+  guest_map_view: {
+    guest: boolean
+  }
+  venue_open: {
+    venueId: string
+    guest: boolean
+    fromShare?: boolean
+  }
+  auth_start: {
+    guest: boolean
+    method?: 'google' | 'otp' | 'redirect'
+  }
+  first_pulse_create: {
+    venueId: string
+    guest: false
+  }
+  auth_started: {
+    method?: 'google' | 'otp' | 'redirect'
   }
   check_in_completed: {
     venueId: string
@@ -111,6 +138,13 @@ export interface EventRegistry {
     /** Surge level at the moment the notification was dispatched. */
     surgeLevel?: 'rising' | 'hot' | 'peak'
     notificationId?: string
+  }
+  /** pulse created_at → local map/Surging cache flush. No new vendor. */
+  pulse_reflection: {
+    latencyMs: number
+    p95Ms: number
+    sampleCount: number
+    surface: 'surging'
   }
 }
 
@@ -331,11 +365,42 @@ export function clearSuperProps(): void {
  * @example
  * track('pulse_created', { pulseId, venueId, hasPhoto: true })
  */
+const FUNNEL_NO_PII = new Set([
+  'guest_map_view',
+  'venue_open',
+  'auth_start',
+  'first_pulse_create',
+])
+
+const PII_PROP_KEYS = new Set([
+  'userId',
+  'email',
+  'name',
+  'phone',
+  'displayName',
+  'fullName',
+  'username',
+])
+
+function omitPiiProps<T extends object>(props: T): T {
+  const next: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(props)) {
+    if (PII_PROP_KEYS.has(key)) continue
+    if (key === 'extra' && value && typeof value === 'object' && !Array.isArray(value)) {
+      next.extra = omitPiiProps(value)
+      continue
+    }
+    next[key] = value
+  }
+  return next as unknown as T
+}
+
 export function track<E extends EventName>(name: E, props: EventProps<E>): void {
   const merged = { ...superProps, ...props } as EventProps<E>
+  const safe = FUNNEL_NO_PII.has(name) ? omitPiiProps(merged) : merged
   const event: TrackedEvent<E> = {
     name,
-    props: merged,
+    props: safe,
     timestamp: Date.now(),
   }
   try {
@@ -348,10 +413,10 @@ export function track<E extends EventName>(name: E, props: EventProps<E>): void 
   logger.debug(`analytics:${name}`, {
     action: name,
     component: 'analytics',
-    userId: merged.userId,
-    sessionId: merged.sessionId,
-    route: merged.route,
-    extra: merged as unknown as Record<string, unknown>,
+    userId: FUNNEL_NO_PII.has(name) ? undefined : safe.userId,
+    sessionId: safe.sessionId,
+    route: safe.route,
+    extra: safe as unknown as Record<string, unknown>,
   })
 }
 
@@ -381,8 +446,15 @@ export const REGISTERED_EVENTS: EventName[] = [
   'pulse_viewed',
   'reaction_added',
   'venue_viewed',
+  'funnel_step',
+  'guest_map_view',
+  'venue_open',
+  'auth_start',
+  'first_pulse_create',
+  'auth_started',
   'check_in_completed',
   'search_performed',
   'friend_added',
   'surge_notification_opened',
+  'pulse_reflection',
 ]

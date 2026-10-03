@@ -23,8 +23,8 @@ import {
   getAuthUserId,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { checkRateLimit } from '../_lib/rate-limit'
+} from '../_lib/http.js'
+import { checkRateLimit } from '../_lib/rate-limit.js'
 
 const ALLOWED_MIME = ['video/mp4', 'video/webm', 'video/quicktime'] as const
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB

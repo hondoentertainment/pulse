@@ -1,0 +1,290 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useKV } from '@github/spark/hooks'
+import { useAppState } from '@/hooks/use-app-state'
+import { VenueInboxPage } from '@/components/VenueInboxPage'
+import { listMyVenueStaffRoles, type VenueStaffMembership } from '@/lib/data/venue-staff'
+import { listMyVenueClaims, submitVenueClaim, tryVerifyVenueClaimByEmailDomain } from '@/lib/data/venue-claims'
+import { CLAIM_DOMAIN_COPY, workEmailMatchesVenue } from '@/lib/claim-email-domain'
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
+import { AUTH_PATH, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
+import {
+  dismissReportsForPulse,
+  mapPulseReportsToContentReports,
+  mergeInboxReports,
+  shouldLoadOwnerInboxReports,
+} from '@/lib/owner-inbox'
+import { canAccessVenueInbox } from '@/lib/live-reviews'
+import { dismissReportsForPulseOnServer, listVenueReportsOnServer } from '@/lib/ops-client'
+import { createOwnerReplyOnServer } from '@/lib/data/owner-replies'
+import type { ContentReport } from '@/lib/content-moderation'
+import { createVenueClaim, verifyVenueClaim, type VenueClaim } from '@/lib/venue-owner'
+import { USE_SUPABASE_BACKEND, VenueData } from '@/lib/data'
+import type { Venue } from '@/lib/types'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { isE2EAuthBypassEnabled } from '@/lib/supabase'
+import { toast } from 'sonner'
+
+/** Playwright-only: sessionStorage key to seed a verified mock claim (no admin invent). */
+export const E2E_VERIFIED_CLAIM_KEY = 'pulse:e2e:verified-claim'
+
+export function VenueInboxRoute() {
+  const { venueId } = useParams<{ venueId: string }>()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const highlightReply = searchParams.get('highlight') === 'reply'
+  const { venues, currentUser, moderatedPulses, contentReports, setContentReports } = useAppState()
+  const { session, isPlaceholder, signInWithOtp, user } = useSupabaseAuth()
+  const [localClaims, setLocalClaims] = useKV<VenueClaim[]>('venue-claims', [])
+  const [serverClaims, setServerClaims] = useState<VenueClaim[]>([])
+  const [staffRoles, setStaffRoles] = useState<VenueStaffMembership[]>([])
+  const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
+  const [claimBusy, setClaimBusy] = useState(false)
+  const [serverReports, setServerReports] = useState<ContentReport[]>([])
+  const [claimsReady, setClaimsReady] = useState(false)
+
+  const cached = venues?.find((venue) => venue.id === venueId) ?? null
+  const venue = freshVenue ?? cached
+  const claims = useMemo(() => {
+    const base = USE_SUPABASE_BACKEND ? serverClaims : (localClaims ?? [])
+    // E2E-only: merge a verified claim from sessionStorage so smoke can prove
+    // unlock without racing Spark KV hydration or inventing /ops admin creds.
+    if (!isE2EAuthBypassEnabled || USE_SUPABASE_BACKEND || !currentUser?.id || !venueId) {
+      return base
+    }
+    let seedVenueId: string | null = null
+    try {
+      seedVenueId = sessionStorage.getItem(E2E_VERIFIED_CLAIM_KEY)
+    } catch {
+      return base
+    }
+    if (!seedVenueId || seedVenueId !== venueId) return base
+    if (base.some((claim) => (
+      claim.venueId === venueId
+      && claim.claimantUserId === currentUser.id
+      && claim.status === 'verified'
+    ))) {
+      return base
+    }
+    return [
+      verifyVenueClaim(
+        createVenueClaim(
+          venueId,
+          currentUser.id,
+          'E2E verified venue',
+          'e2e@pulse.test',
+          'email',
+          'E2E verified seed',
+        ),
+      ),
+      ...base,
+    ]
+  }, [currentUser?.id, localClaims, serverClaims, venueId])
+
+  useEffect(() => {
+    if (!USE_SUPABASE_BACKEND || !venueId) return
+    let cancelled = false
+    void VenueData.getVenue(venueId).then((row) => {
+      if (!cancelled && row) setFreshVenue(row)
+    }).catch(() => {
+      /* keep cached */
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [venueId])
+
+  useEffect(() => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect) {
+      navigate(authRedirect)
+    }
+  }, [isPlaceholder, navigate, session])
+
+
+  useEffect(() => {
+    if (!currentUser?.id || !isFeatureEnabled('venueInbox')) return
+    let cancelled = false
+    const loadClaims = async () => {
+      const [roles, rows] = await Promise.all([
+        listMyVenueStaffRoles(currentUser.id),
+        USE_SUPABASE_BACKEND ? listMyVenueClaims(currentUser.id) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setStaffRoles(roles)
+      if (rows) {
+        const sessionEmail = user?.email?.trim().toLowerCase()
+        const next = await Promise.all(rows.map(async (claim) => {
+          if (
+            claim.status === 'pending'
+            && sessionEmail
+            && claim.businessEmail
+            && sessionEmail === claim.businessEmail.toLowerCase()
+          ) {
+            const verified = await tryVerifyVenueClaimByEmailDomain(claim.id)
+            return verified ?? claim
+          }
+          return claim
+        }))
+        if (!cancelled) setServerClaims(next)
+      }
+      if (!cancelled) setClaimsReady(true)
+    }
+    void loadClaims()
+    const onFocus = () => {
+      if (!cancelled) void loadClaims()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [currentUser?.id, user?.email])
+
+  const inboxAllowed = canAccessVenueInbox({
+    userId: currentUser?.id,
+    venueId: venueId ?? '',
+    claims,
+    staffRoles,
+  })
+
+  useEffect(() => {
+    if (!venueId || !currentUser?.id || !isFeatureEnabled('venueInbox')) return
+    if (!shouldLoadOwnerInboxReports({
+      userId: currentUser.id,
+      venueId,
+      claims,
+      staffRoles,
+      claimsReady,
+    })) {
+      setServerReports([])
+      return
+    }
+    let cancelled = false
+    void listVenueReportsOnServer(venueId).then((rows) => {
+      if (!cancelled) setServerReports(mapPulseReportsToContentReports(rows))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [claims, claimsReady, currentUser?.id, staffRoles, venueId])
+
+  if (!venueId || !venue) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
+        <p className="text-muted-foreground">Venue not found</p>
+        <button type="button" className="text-primary underline" onClick={() => navigate('/')}>
+          Go home
+        </button>
+      </div>
+    )
+  }
+
+  const handleSubmitClaim = async (input: { evidence: string; notes?: string; workEmail?: string }) => {
+    const authRedirect = getWriteAuthRedirect({
+      isPlaceholder,
+      hasSession: Boolean(session),
+    })
+    if (authRedirect || !currentUser) {
+      toast.error(WRITE_AUTH_COPY.claim.title, { description: WRITE_AUTH_COPY.claim.description })
+      navigate(authRedirect ?? AUTH_PATH)
+      return
+    }
+    setClaimBusy(true)
+    try {
+      if (USE_SUPABASE_BACKEND) {
+        const claim = await submitVenueClaim({
+          venueId: venue.id,
+          evidence: input.evidence,
+          notes: input.notes,
+          workEmail: input.workEmail,
+          venue,
+        })
+        setServerClaims((current) => [
+          claim,
+          ...current.filter((row) => !(row.venueId === claim.venueId && row.claimantUserId === claim.claimantUserId)),
+        ])
+        const sessionEmail = user?.email?.trim().toLowerCase()
+        const workEmail = input.workEmail?.trim().toLowerCase()
+        if (workEmail && sessionEmail !== workEmail) {
+          await signInWithOtp(workEmail)
+          toast.success('Confirm your work email', {
+            description: CLAIM_DOMAIN_COPY.verifyAfterConfirm,
+          })
+        } else if (claim.status === 'verified') {
+          toast.success(CLAIM_DOMAIN_COPY.verified)
+        } else if (workEmail && !workEmailMatchesVenue(workEmail, venue)) {
+          toast.success('Claim submitted', {
+            description: CLAIM_DOMAIN_COPY.pendingNoMatch,
+          })
+        } else {
+          toast.success('Claim submitted', {
+            description: 'Inbox stays locked until a verified claim or staff role is on file.',
+          })
+        }
+      } else {
+        const claim = createVenueClaim(
+          venue.id,
+          currentUser.id,
+          input.notes || venue.name,
+          input.workEmail || '',
+          'email',
+          input.evidence,
+        )
+        setLocalClaims((current) => [claim, ...(current ?? [])])
+        toast.success('Claim submitted', {
+          description: 'Inbox stays locked until a verified claim or staff role is on file.',
+        })
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not submit claim')
+    } finally {
+      setClaimBusy(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {highlightReply && (
+        <p role="status" data-testid="notify-highlight" className="mx-auto max-w-2xl px-4 pt-4 text-sm font-semibold text-foreground">
+          Owner reply · highlighted in this inbox
+        </p>
+      )}
+    <VenueInboxPage
+      venue={venue}
+      pulses={moderatedPulses}
+      currentUser={currentUser ?? null}
+      claims={claims}
+      staffRoles={staffRoles}
+      onBack={() => navigate(`/venue/${venue.id}`)}
+      onSubmitClaim={handleSubmitClaim}
+      claimBusy={claimBusy}
+      reports={inboxAllowed ? mergeInboxReports(serverReports, contentReports ?? []) : []}
+      onDismissReports={(pulseId) => {
+        if (!inboxAllowed) return
+        setServerReports((current) => dismissReportsForPulse(current, pulseId))
+        setContentReports((current) => dismissReportsForPulse(current ?? [], pulseId))
+        void dismissReportsForPulseOnServer(pulseId).then((ok) => {
+          if (!ok) {
+            toast.error('Could not dismiss on the server', {
+              description: 'Local dismiss still applied. Apply owner report RLS or retry.',
+            })
+          }
+        })
+      }}
+      onOwnerReply={async (reply) => {
+        if (!inboxAllowed) return
+        const saved = await createOwnerReplyOnServer(reply)
+        if (!saved) {
+          toast.error('Reply stayed on this device', {
+            description: 'Live now shows it after a verified claim and venue_owner_replies are applied.',
+          })
+        }
+      }}
+    />
+    </div>
+  )
+}

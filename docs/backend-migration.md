@@ -53,16 +53,28 @@ historical migrations once they're in staging/prod.
 | `20260329000003_realtime.sql` | Publication for realtime channels |
 | `20260417000001_core_tables_and_soft_delete.sql` | **new** reactions/check_ins/follows + soft-delete + updated_at |
 | `20260417000002_rls_policies_enforcement.sql` | **new** full RLS policy set + admin bypass |
+| `20260910140000_venue_claims_and_report_queue.sql` | **new** venue_claims + pulse_reports.status |
+| `20260912000000_venue_claim_verified_badge.sql` | already on prod (`venues.claim_verified` + `venue_claim_badges`) |
+| `20260911000000_owner_report_triage.sql` | optional owner/staff report dismiss RLS |
+| `20260912120000_venue_follows_push_claim_rate.sql` | reuse follows/push_tokens/notifications; web-push columns; domain claim; pulse rate-limit |
 
 ## 3. Seeding data
 
-`supabase/seed.sql` inserts ~20 representative venues with deterministic
-UUIDs. `supabase db reset` runs seed automatically on local.
+`supabase/seed.sql` inserts ~20 representative US venues plus the Seattle
+launch safety-net rows. Its curated-seed UPDATE targets only the 33 curated
+UUIDs so it cannot rewrite OSM rows. `supabase db reset` applies migrations
+first, including `20260909120000_seattle_launch_venue_catalog.sql` (33 curated
+Seattle venues) and `20260909180000_seattle_osm_venue_catalog.sql` (500 OSM
+nightlife venues).
 
-For staging, run once after first migration:
+For production project `xeldqwhztcnnvazmshzh`, paste those migrations into the
+SQL editor (migration history versions there do not match repo filenames).
+Then run `supabase/verify/seattle_launch_venues.sql`. Paste `20260910140000_venue_claims_and_report_queue.sql` the same way and run `supabase/verify/venue_claims.sql`. For Following / Web Push / domain claim / pulse rate-limit, paste only `20260912120000_venue_follows_push_claim_rate.sql` (do **not** recreate `venues.claim_verified`) and run `supabase/verify/follows.sql`, `push_tokens.sql`, `notifications.sql`, `venue_claim_domain.sql`, `pulse_rate_limit.sql`.
+
+For a CLI-linked project whose history matches the repo:
 
 ```bash
-psql "$SUPABASE_DB_URL" -f supabase/seed.sql
+psql "$SUPABASE_DB_URL" -f supabase/migrations/20260909120000_seattle_launch_venue_catalog.sql
 ```
 
 **Profiles** are not seeded — they are auto-created on first sign-in by

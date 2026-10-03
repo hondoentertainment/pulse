@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CaretLeft, ShieldCheck } from '@phosphor-icons/react'
 import { REPORT_REASONS } from '@/lib/content-moderation'
 import type { ContentReport } from '@/lib/content-moderation'
+import { listModerationPulseReports } from '@/lib/data/pulses'
+import { USE_SUPABASE_BACKEND } from '@/lib/data'
 
 interface ModerationQueuePageProps {
   reports: ContentReport[]
@@ -14,13 +16,42 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
   const [reasonFilter, setReasonFilter] = useState<'all' | ContentReport['reason']>('all')
   const [query, setQuery] = useState('')
   const [triageMode, setTriageMode] = useState(true)
+  const [serverReports, setServerReports] = useState<ContentReport[]>([])
+
+  useEffect(() => {
+    if (!USE_SUPABASE_BACKEND) return
+    let cancelled = false
+    void listModerationPulseReports()
+      .then((rows) => {
+        if (cancelled) return
+        setServerReports(rows.map((row) => ({
+          id: row.id,
+          reporterId: row.reporter_id,
+          targetType: 'pulse' as const,
+          targetId: row.pulse_id,
+          reason: row.reason as ContentReport['reason'],
+          description: row.details ?? undefined,
+          createdAt: row.created_at,
+          status: (row.status as ContentReport['status'] | undefined) ?? 'pending',
+          reviewedAt: row.reviewed_at ?? undefined,
+        })))
+      })
+      .catch(() => {
+        if (!cancelled) setServerReports([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const mergedReports = serverReports.length > 0 ? serverReports : reports
 
   const sorted = useMemo(
     () => {
       if (!triageMode) {
-        return [...reports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        return [...mergedReports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       }
-      return [...reports].sort((left, right) => {
+      return [...mergedReports].sort((left, right) => {
         const leftPending = left.status === 'pending'
         const rightPending = right.status === 'pending'
         if (leftPending && !rightPending) return -1
@@ -31,7 +62,7 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
         return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       })
     },
-    [reports, triageMode]
+    [mergedReports, triageMode]
   )
   const filtered = useMemo(
     () => sorted.filter((report) => {

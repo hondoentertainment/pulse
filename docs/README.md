@@ -1,11 +1,12 @@
 # Pulse Documentation
 
-Central index for all Pulse project documentation. Start with [Getting Started](getting-started.md) if you are new to the repo.
+The shipping product is **Pulse** (venue + map). The former Pulse Signal check-in product was removed. Start with [Getting Started](getting-started.md) or [PRD.md](../PRD.md).
 
 ## Quick Links
 
 | I want to… | Start here |
 |------------|------------|
+| Understand Pulse | [PRD.md](../PRD.md) |
 | Run the app locally | [Getting Started](getting-started.md) |
 | Understand the architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | Find a React component | [Component Catalog](component-catalog.md) |
@@ -46,7 +47,7 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Bundle Budget](bundle-budget.md) | Chunk size limits and CI enforcement |
 | [Bundle Optimization](bundle-optimization.md) | Strategies for reducing client bundle weight |
 | [CI Gates](ci-gates.md) | Required checks and quality thresholds |
-| [Observability](observability.md) | Logging, analytics adapters, Sentry |
+| [Observability](observability.md) | Logging, analytics adapters, Sentry, #92 funnel events |
 | [Glossary](glossary.md) | Product and technical term definitions |
 
 ---
@@ -61,8 +62,12 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | [Differentiators](differentiators.md) | Weather boost, wait time, accessibility filter pack |
 | [PRODUCTION_ROLLOUT.md](../PRODUCTION_ROLLOUT.md) | Phased rollout from prototype to launch |
 | [NEXT_PHASES.md](../NEXT_PHASES.md) | Codebase review and phase-by-phase work plan |
-| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Prioritized follow-up work |
+| [RECOMMENDED_NEXT_STEPS.md](../RECOMMENDED_NEXT_STEPS.md) | Current ops queue |
+| [Uber UX Targets](uber-ux.md) | Figma Uber UX frames → map, create, share, inbox, offline |
+| [Uber × X UX](uber-x-ux.md) | Uber map chrome + X timeline tokens → components |
+| [Next steps #84–#87](next-steps.md) | Guest /auth, inbox, share, tonight, PWA, ops, funnel, catalog |
 | [VENTURE_NEXT_STEPS.md](VENTURE_NEXT_STEPS.md) | Venture-scale roadmap notes |
+| [Pulse Pro interview brief](pulse-pro-offer-research.md) | Offer research — no invented price |
 
 ### Feature PRDs (`docs/prd/`)
 
@@ -122,11 +127,16 @@ Central index for all Pulse project documentation. Start with [Getting Started](
 | Runbook | Scenario |
 |---------|----------|
 | [Auth Outage](runbooks/auth-outage.md) | Supabase Auth unavailable |
+| [Auth redirect URLs](runbooks/auth-redirect-urls.md) | Magic-link / OAuth `redirect_to` must allow `https://pulse-chi-nine.vercel.app/**` |
+| [Custom domain](runbooks/custom-domain.md) | Future first-party origin + branded auth mail (do not buy/change DNS here) |
 | [Bad Deploy](runbooks/bad-deploy.md) | Roll back a broken release |
 | [Content Moderation Bypass](runbooks/content-moderation-bypass.md) | Moderation pipeline failure |
 | [Data Loss](runbooks/data-loss.md) | Data corruption or accidental deletion |
 | [Supabase Outage](runbooks/supabase-outage.md) | Database or Realtime down |
 | [Surge Traffic](runbooks/surge-traffic.md) | Traffic spike handling |
+| [Venue Staging](runbooks/venue-staging.md) | Venue preview / production checks |
+| [Venue claims ops](runbooks/venue-claims-ops.md) | Verify claims + triage pulse_reports (`/ops` or SQL) |
+| [Meta glasses companion](runbooks/meta-glasses-companion.md) | Phone Web Push mirrored to Ray-Ban glasses (not a glasses SDK) |
 
 ---
 

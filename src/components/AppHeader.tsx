@@ -40,8 +40,8 @@ export function AppHeader({
                 Pulse
               </span>
             </h1>
-            <p className="text-sm text-foreground/80 mt-1">
-              Pick a spot with fresh crowd, line, and vibe intel.
+            <p className="text-sm text-muted-foreground mt-1">
+              Where the energy is — right now
             </p>
           </div>
           {onSearchClick && (

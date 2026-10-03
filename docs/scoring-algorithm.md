@@ -20,9 +20,21 @@ The UI shows the label and color; the numeric score drives sorting and surge det
 
 ---
 
+## Versioned VenueSignal (`venue-signal.v1`)
+
+`src/lib/venue-signal.ts` unifies pulses and live intel into one `VenueSignal`:
+
+- `model_configuration.version` — currently `venue-signal.v1`
+- decay windows: 90 minutes (pulses), 30 minutes (live intel)
+- confidence from recent report count + freshness
+- trend from `scoreVelocity` or pulse timing
+- 30s propagation SLA (`SIGNAL_PROPAGATION_SLA_MS`)
+
+Curated seed listings without live pulses/reports stay at score 0 with `sourceMix.curatedSeed`.
+
 ## Pulse score calculation
 
-`calculatePulseScore(pulses, useCredibilityWeighting?)` in `pulse-engine.ts`:
+`calculatePulseScore(pulses, useCredibilityWeighting?, nowMs?, decayMinutes?)` in `pulse-engine.ts`. `VenueSignal` passes the model clock and decay window.
 
 ### 1. Recency filter
 

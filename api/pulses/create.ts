@@ -2,7 +2,7 @@
  * POST /api/pulses/create
  *
  * Authenticated pulse-creation endpoint. Runs the caption through server-side
- * moderation, rate-limits to 10/hour/user, and inserts via Supabase using the
+ * moderation, rate-limits to 5/10min/user (SQL trigger is source of truth), and inserts via Supabase using the
  * caller's JWT so RLS policies are the source of truth for authorization.
  *
  * Distinct from the legacy `api/pulses.ts` (offline replay storage). New
@@ -16,15 +16,23 @@ import {
   fail,
   type RequestLike,
   type ResponseLike,
-} from '../_lib/http'
-import { requireAuth } from '../_lib/auth'
-import { consume } from '../_lib/rate-limit'
-import { asString, asEnum, isPlainObject } from '../_lib/validate'
-import { checkContent } from '../_lib/moderation'
-import { createUserClient } from '../_lib/supabase-server'
+} from '../_lib/http.js'
+import { requireAuth } from '../_lib/auth.js'
+import { consume } from '../_lib/rate-limit.js'
+import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
+import { checkContent } from '../_lib/moderation.js'
+import { createUserClient } from '../_lib/supabase-server.js'
+import { resolvePostedLocationVerified } from '../_lib/location-proof.js'
+import { notifyLivePulse } from '../_lib/web-push-live.js'
 
 type EnergyRating = 'dead' | 'chill' | 'buzzing' | 'electric'
 const ENERGY_RATINGS = ['dead', 'chill', 'buzzing', 'electric'] as const
+const PULSE_KINDS = ['pulse', 'review'] as const
+type PulseKind = (typeof PULSE_KINDS)[number]
+
+const LIVE_REVIEW_CAPTION_MIN = 1
+const LIVE_REVIEW_CAPTION_MAX = 280
+  const VENUE_COOLDOWN_MS = 2 * 60 * 1000
 
 type PulseCreateBody = {
   venueId: string
@@ -34,6 +42,10 @@ type PulseCreateBody = {
   video?: string | null
   hashtags?: string[]
   crewId?: string | null
+  kind?: PulseKind
+  locationVerified?: boolean
+  lat?: number
+  lng?: number
 }
 
 const PULSE_TTL_MS = 90 * 60 * 1000
@@ -65,6 +77,8 @@ const validateBody = (
     return { ok: false, error: `energyRating must be one of: ${ENERGY_RATINGS.join(', ')}` }
   }
 
+  const kind = (asEnum(body.kind, PULSE_KINDS) as PulseKind | null) ?? 'review'
+
   let caption: string | undefined
   if (body.caption !== undefined && body.caption !== null) {
     if (typeof body.caption !== 'string' || body.caption.length > 500) {
@@ -72,6 +86,19 @@ const validateBody = (
     }
     caption = body.caption.trim()
   }
+
+  if (kind === 'review') {
+    if (!caption || caption.length < LIVE_REVIEW_CAPTION_MIN) {
+      return { ok: false, error: 'caption is required for a live review' }
+    }
+    if (caption.length > LIVE_REVIEW_CAPTION_MAX) {
+      return { ok: false, error: `caption must be ${LIVE_REVIEW_CAPTION_MAX} characters or fewer for a live review` }
+    }
+  }
+
+  const locationVerified = body.locationVerified === true
+  const lat = typeof body.lat === 'number' && Number.isFinite(body.lat) ? body.lat : undefined
+  const lng = typeof body.lng === 'number' && Number.isFinite(body.lng) ? body.lng : undefined
 
   let crewId: string | null | undefined
   if (body.crewId !== undefined && body.crewId !== null) {
@@ -97,6 +124,10 @@ const validateBody = (
       video: video ?? null,
       hashtags: sanitizeStringArray(body.hashtags, 10, 64),
       crewId: crewId ?? null,
+      kind,
+      locationVerified,
+      lat,
+      lng,
     },
   }
 }
@@ -168,10 +199,68 @@ export default async function handler(
     reactions: { fire: [], eyes: [], skull: [], lightning: [] },
     created_at: createdAt,
     expires_at: expiresAt,
+    kind: validated.value.kind ?? 'review',
+    location_verified: validated.value.locationVerified ?? false,
   }
 
   try {
     const client = createUserClient(auth.context.token)
+
+    const gate = await client.rpc('assert_pulse_rate_limit', {
+      p_user_id: auth.context.userId,
+      p_venue_id: validated.value.venueId,
+    })
+    if (gate.error) {
+      const message = gate.error.message || 'Too many pulses'
+      fail(res, 429, 'rate_limited', message)
+      return
+    }
+
+    const cooldownCutoff = new Date(now.getTime() - VENUE_COOLDOWN_MS).toISOString()
+    const { data: recentAtVenue, error: cooldownError } = await client
+      .from('pulses')
+      .select('id')
+      .eq('user_id', auth.context.userId)
+      .eq('venue_id', validated.value.venueId)
+      .is('deleted_at', null)
+      .gte('created_at', cooldownCutoff)
+      .limit(1)
+
+    if (cooldownError) {
+      fail(res, 500, 'persist_failed', 'Failed to check review cooldown', {
+        details: cooldownError.message,
+      })
+      return
+    }
+    if (Array.isArray(recentAtVenue) && recentAtVenue.length > 0) {
+      fail(res, 429, 'venue_cooldown', 'Wait 2 minutes before another pulse at this venue')
+      return
+    }
+
+    let locationVerified = validated.value.locationVerified === true
+    const userLocation =
+      validated.value.lat !== undefined && validated.value.lng !== undefined
+        ? { lat: validated.value.lat, lng: validated.value.lng }
+        : null
+    const { data: venueRow } = await client
+      .from('venues')
+      .select('name, location_lat, location_lng')
+      .eq('id', validated.value.venueId)
+      .maybeSingle()
+    const venueLocation =
+      venueRow &&
+      typeof venueRow.location_lat === 'number' &&
+      typeof venueRow.location_lng === 'number'
+        ? { lat: venueRow.location_lat, lng: venueRow.location_lng }
+        : null
+    const proof = resolvePostedLocationVerified({
+      clientVerified: validated.value.locationVerified,
+      userLocation,
+      venueLocation,
+    })
+    locationVerified = proof.locationVerified
+    pulseRow.location_verified = locationVerified
+
     const { data, error } = await client
       .from('pulses')
       .insert(pulseRow)
@@ -184,6 +273,18 @@ export default async function handler(
       })
       return
     }
+
+    void notifyLivePulse({
+      venueId: validated.value.venueId,
+      venueName: typeof venueRow?.name === 'string' ? venueRow.name : 'Pulse',
+      caption: pulseRow.caption,
+      pulseId: typeof data?.id === 'string' ? data.id : id,
+      authorUserId: auth.context.userId,
+      energyRating: validated.value.energyRating,
+      venueLocation,
+    }).catch((err) => {
+      console.warn('[push] notify-live failed', err)
+    })
 
     res.setHeader('X-RateLimit-Limit', String(rl.limit))
     res.setHeader('X-RateLimit-Remaining', String(rl.remaining))

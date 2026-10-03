@@ -28,6 +28,54 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260417000010_video_pulses.sql` | video metadata, reports, storage bucket |
 | `20260428000000_venue_feedback_leadership.sql` | live reports, aggregates, pulse_reactions |
 | `20260429000000_realtime_venue_intelligence.sql` | score functions, wait times, intelligence |
+| `20260816000000_signal_core.sql` | Leftover unused Signal entries + profiles (not dropped) |
+| `20260816000001_signal_pilot_signups.sql` | Leftover unused Pulse Pro waitlist emails (not dropped) |
+| `20260816000002_signal_push_subscriptions.sql` | Leftover unused Web Push endpoints (not dropped) |
+| `20260825000000_venue_signal_seattle_launch.sql` | Seattle neighborhoods, venue_signals, scouts, arrivals |
+| `20260909000000_live_reviews.sql` | Live reviews + heatmap |
+| `20260909120000_seattle_launch_venue_catalog.sql` | Idempotent 33-venue Seattle catalog upsert |
+| `20260909180000_seattle_osm_venue_catalog.sql` | Idempotent 500-venue Seattle OSM nightlife catalog |
+| `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
+| `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
+| `20260912000000_venue_claim_verified_badge.sql` | `venues.claim_verified` + public `venue_claim_badges` |
+| `20260912120000_venue_follows_push_claim_rate.sql` | Reuses `follows` + `push_tokens` + `notifications`; web-push columns on `push_tokens`; domain-match claim RPC; pulse rate-limit trigger. Does **not** create `venue_follows` / `web_push_subscriptions`. |
+
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/follows.sql](../supabase/verify/follows.sql), [supabase/verify/push_tokens.sql](../supabase/verify/push_tokens.sql), [supabase/verify/notifications.sql](../supabase/verify/notifications.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql).
+
+---
+
+## Leftover Pulse Signal tables (unused)
+
+The Signal product was removed. These tables may still exist in shared databases. They are **not** used by the venue app. No drop migration was added.
+
+Owner-only RLS. `ON DELETE CASCADE` from `auth.users`.
+
+### `signal_entries`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `auth.users` |
+| `day_key` | TEXT | Local `YYYY-MM-DD` |
+| `check_in_window` | TEXT | `morning` \| `evening` |
+| `score` | INT | 0–100 |
+| `energy`, `mood`, `stress`, `sleep_quality` | INT | 1–10 |
+| `tags` | TEXT[] | Up to 3 in the UI |
+| `focus` | TEXT | energy / mood / focus / sleep |
+
+**Unique:** `(user_id, day_key, check_in_window)` — two check-ins per day max.
+
+### `signal_profiles`
+
+Reminder time/timezone/enabled plus tracking focus and goal. PK `user_id`.
+
+### `signal_pilot_signups`
+
+Idempotent Pulse Pro waitlist. Unique `(email, source)`.
+
+### `signal_push_subscriptions`
+
+Web Push endpoints (`endpoint`, `p256dh`, `auth`). Unique `endpoint`.
 
 ---
 
@@ -67,6 +115,11 @@ Venue catalog with live intelligence fields.
 | `last_pulse_at`, `last_activity` | TIMESTAMPTZ | |
 | `pre_trending`, `pre_trending_label` | BOOL/TEXT | Surge labels |
 | `seeded` | BOOL | Seed vs real venue |
+| `neighborhood` | TEXT | Launch neighborhood (Capitol Hill, Belltown, …) |
+| `inventory_source` | TEXT | `curated-seed` (launch 33) or `osm` (comprehensive Seattle catalog) |
+| `claim_verified` | BOOL | True only when a `venue_claims` row is `verified` (optional `20260912000000`) |
+| `owner_email_domain` | TEXT | Optional host for self-serve claim verify (`20260912120000`) |
+| `website` | TEXT | Public site; host used for domain-match claims |
 | `dress_code` | ENUM | casual, smart_casual, upscale, formal, etc. |
 | `cover_charge_cents` | INT | |
 | `accessibility_features` | TEXT[] | GIN-indexed |
@@ -77,6 +130,26 @@ Venue catalog with live intelligence fields.
 **Indexes:** GIST on `geom`, score indexes, category/city, accessibility GIN.
 
 **Realtime:** Yes. Score refreshed by `pulses_refresh_venue_intelligence` trigger.
+
+### `venue_signals`
+
+Versioned VenueSignal snapshot (`venue-signal.v1`). Client engine is source of truth; `refresh_venue_signal(venue_id)` writes a row for fan-out.
+
+| Column | Notes |
+|--------|-------|
+| `venue_id` | PK, FK → venues |
+| `model_configuration` | JSONB version + decay + 30s SLA |
+| `energy_score`, `confidence`, `trend` | Unified live score |
+| `freshness_minutes`, `source_mix`, `friction` | Worth-going inputs |
+| `computed_at` | TIMESTAMPTZ |
+
+### `scout_applications` / `scout_profiles`
+
+Scout MVP. Reputation is corroboration quality, not report volume.
+
+### `arrival_watches`
+
+Post-Go arrival window + mismatch correction.
 
 ### `venue_wait_times`
 
@@ -114,11 +187,30 @@ Geo-anchored posts at venues. Expire after 90 minutes.
 | `photos` | TEXT[] | Up to 3 |
 | `video_url`, `video_*` | various | Video metadata (max 50 MB) |
 | `energy_rating` | ENUM | dead, chill, buzzing, electric |
-| `caption`, `hashtags` | TEXT/TEXT[] | |
+| `caption`, `hashtags` | TEXT/TEXT[] | Live reviews require caption (1–280) at the API/app layer |
+| `kind` | TEXT | `pulse` (legacy energy-only) or `review` (live review). Default `pulse`. |
+| `location_verified` | BOOLEAN | True when GPS was inside check-in radius. Default false. |
+| `has_body` | BOOLEAN | Generated: caption present after trim |
 | `views`, `credibility_weight` | INT/FLOAT | |
 | `reactions` | JSONB | Legacy; synced from `pulse_reactions` |
 | `created_at`, `expires_at` | TIMESTAMPTZ | Default expiry: +90 min |
 | `deleted_at` | TIMESTAMPTZ | Soft-delete |
+
+**Migration:** `supabase/migrations/20260909000000_live_reviews.sql`
+
+### `pulse_reports`
+
+Persisted hide/report rows for pulses (MVP). Reporter can insert/select their own rows. Admins via `is_admin()`.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `reporter_id` | UUID | FK → profiles |
+| `pulse_id` | UUID | FK → pulses |
+| `reason` | TEXT | spam / inappropriate / harassment / misinformation / fake_location / other |
+| `details` | TEXT | Optional |
+| `created_at` | TIMESTAMPTZ | |
+| UNIQUE | `(reporter_id, pulse_id)` | One report per user per pulse |
 
 **Storage:** `pulse-videos` bucket (public read, owner-folder write).
 
@@ -162,13 +254,18 @@ Immutable geo-verified visit records.
 
 ### `follows`
 
-User→user or user→venue follows.
+User→user or user→venue follows. **Tonight Following + venue Follow reuse this table** (`target_kind = 'venue'`, `target_venue_id`). Soft-delete via `deleted_at`. Do not add `venue_follows`.
 
 | Column | Notes |
 |--------|-------|
+| `id` | UUID PK |
 | `follower_id` | FK → profiles |
 | `target_user_id` OR `target_venue_id` | Exactly one (CHECK) |
 | `target_kind` | user, venue |
+| `created_at`, `updated_at` | |
+| `deleted_at` | Soft unfollow |
+
+**RLS (prod, unchanged):** live rows are selectable (`deleted_at IS NULL` or admin). INSERT requires `auth.uid() = follower_id`. UPDATE/DELETE allow the follower or admin. No new policies.
 
 **Realtime:** Yes.
 
@@ -176,23 +273,34 @@ User→user or user→venue follows.
 
 | Column | Notes |
 |--------|-------|
+| `id` | UUID PK |
 | `user_id` | FK → profiles |
-| `type` | friend_pulse, pulse_reaction, friend_nearby, trending_venue, impact, wave |
+| `type` | enum: friend_pulse, pulse_reaction, friend_nearby, trending_venue, impact, wave |
 | `pulse_id`, `venue_id` | Optional FKs |
+| `reaction_type`, `energy_threshold`, `recommended_venue_id` | Optional |
 | `read` | BOOL |
+| `created_at`, `updated_at` | |
+
+Live-pulse fan-out inserts `friend_pulse` rows (service role). No user INSERT policy.
 
 **Realtime:** Yes. Owner SELECT/UPDATE only.
 
 ### `push_tokens`
 
+Native APNs/FCM **and** PWA Web Push. Do not add `web_push_subscriptions`.
+
 | Column | Notes |
 |--------|-------|
+| `id` | UUID PK |
 | `user_id` | FK → profiles |
-| `token` | UNIQUE per (user_id, token) |
-| `platform` | ios, android |
+| `token` | UNIQUE per (user_id, token). Web = Push endpoint URL |
+| `platform` | ios, android, **web** |
 | `device_id`, `app_version`, `last_seen_at` | |
+| `created_at`, `updated_at` | |
+| `p256dh`, `auth` | Additive Web Push keys (null on native) |
+| `lat`, `lng`, `scope` | Additive nearby / followed scope |
 
-**RLS:** Owner-only CRUD.
+**RLS (prod, unchanged):** owner-only CRUD (`auth.uid() = user_id`). Native senders skip `platform='web'`. No new policies. Do not reuse leftover `signal_push_subscriptions`.
 
 ### `video_reports`
 
@@ -223,6 +331,32 @@ Maps users to venue roles. **Note:** migrations define conflicting role enums �
 |-----------|-------|
 | `20260417000003` | owner, admin, staff |
 | `20260417000007` | admin, door, manager |
+
+### `venue_claims`
+
+Server source of truth for venue inbox access (`20260910140000`). Unique `(venue_id, user_id)`.
+
+| Column | Notes |
+|--------|-------|
+| `venue_id` | FK → venues |
+| `user_id` | FK → profiles |
+| `status` | `pending` \| `verified` \| `rejected` |
+| `evidence`, `notes` | Claimant text; admin notes on reject |
+| `work_email` | Optional work address for domain-match verify |
+| `work_email_confirmed_at` | Set when domain-match RPC verifies |
+| `reviewed_at` | Set when verified/rejected |
+
+RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row. Guests read claimed venue ids only via `venue_claim_badges` (no evidence / user ids).
+
+Self-serve verify: `try_verify_venue_claim_by_email_domain(claim_id)` — session email must equal `work_email` and the domain must match `website` host or `owner_email_domain`. Mismatch stays `pending`. Never verifies from pending alone.
+
+`venues.claim_verified` + `venue_claim_badges` are **already on prod**. This migration does not recreate them.
+
+Pulse create rate limits (same migration): max **5** pulses per user per **10 minutes**, and **1** per user+venue per **2 minutes**. Enforced by `pulses_enforce_rate_limit` + `assert_pulse_rate_limit`. Clients cannot bypass.
+
+### `pulse_reports` (queue columns)
+
+Existing hide/report table plus `status` (`pending` \| `reviewed` \| `actioned` \| `dismissed`) and `reviewed_at`.
 
 ### `venue_payout_accounts`
 

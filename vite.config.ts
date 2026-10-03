@@ -8,83 +8,149 @@ import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 import { ViteImageOptimizer } from 'vite-plugin-image-optimizer'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sparkKvLocalPlugin } from './vite-plugins/spark-kv-local'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
-const isVitest = process.env.VITEST === 'true'
 
 // https://vite.dev/config/
-export default defineConfig({
-  build: {
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          const normalizedId = id.replace(/\\/g, '/')
-          if (!normalizedId.includes('/node_modules/')) return
+export default defineConfig(({ command }) => {
+  const isVitest = process.env.VITEST === 'true'
+  const isDev = command === 'serve' && !isVitest
 
-          if (normalizedId.includes('/react/') || normalizedId.includes('/react-dom/')) {
-            return 'react-vendor'
-          }
-          if (normalizedId.includes('/framer-motion/')) {
-            return 'motion-vendor'
-          }
-          if (normalizedId.includes('/@radix-ui/')) {
-            return 'radix-vendor'
-          }
-          if (normalizedId.includes('/@tanstack/') || normalizedId.includes('/@supabase/')) {
-            return 'data-vendor'
-          }
-          if (normalizedId.includes('/@sentry/') || normalizedId.includes('/@vercel/')) {
-            return 'observability'
-          }
+  return {
+    // Spark workbench normally injects this in `vite serve`. Preview / CI builds
+    // need the same global or every useKV call throws a ReferenceError.
+    define: {
+      BASE_KV_SERVICE_URL: JSON.stringify('/_spark/kv'),
+    },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            const normalizedId = id.replace(/\\/g, '/')
+            if (!normalizedId.includes('/node_modules/')) return
+
+            // Phosphor first: `@phosphor-icons/react/dist/...` contains `/react/`
+            // and used to leak ~300 KB into react-vendor.
+            if (normalizedId.includes('/@phosphor-icons/')) {
+              return 'phosphor'
+            }
+            // Sentry must stay on its own async chunk so it is not pulled onto
+            // first paint with the statically imported `@vercel/analytics` module.
+            if (normalizedId.includes('/@sentry/')) {
+              return 'sentry'
+            }
+            if (normalizedId.includes('/@vercel/')) {
+              return 'observability'
+            }
+            if (normalizedId.includes('/framer-motion/')) {
+              return 'motion-vendor'
+            }
+            if (normalizedId.includes('/@radix-ui/')) {
+              return 'radix-vendor'
+            }
+            if (normalizedId.includes('/@tanstack/')) {
+              return 'query-vendor'
+            }
+            if (normalizedId.includes('/@supabase/')) {
+              return 'supabase'
+            }
+            if (normalizedId.includes('/mapbox-gl/')) {
+              return 'mapbox-gl'
+            }
+            if (normalizedId.includes('/recharts/') || normalizedId.includes('/d3-')) {
+              return 'charts-vendor'
+            }
+            if (
+              normalizedId.includes('/node_modules/react/') ||
+              normalizedId.includes('/node_modules/react-dom/') ||
+              normalizedId.includes('/node_modules/scheduler/')
+            ) {
+              return 'react-vendor'
+            }
+          },
         },
       },
     },
-  },
-  plugins: [
-    !isVitest && react(),
-    tailwindcss(),
-    // DO NOT REMOVE
-    createIconImportProxy() as PluginOption,
-    sparkPlugin() as PluginOption,
-    ViteImageOptimizer({
-      jpg: { quality: 75 },
-      png: { quality: 80 },
-      webp: { quality: 80 },
-    }) as PluginOption,
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      manifest: false, // Utilizing existing public/manifest.json
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
-            handler: 'NetworkOnly',
-            method: 'POST',
-            options: {
-              backgroundSync: {
-                name: 'pulse-sync-queue',
-                options: {
-                  maxRetentionTime: 24 * 60 // Retry for max 24 Hours
-                }
-              }
-            }
-          }
-        ]
-      }
-    }) as PluginOption,
-  ].filter(Boolean) as PluginOption[],
-  resolve: {
-    alias: {
-      '@': resolve(projectRoot, 'src')
-    }
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
-    exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**'],
-  },
-});
+    plugins: [
+      !isVitest && react(),
+      tailwindcss(),
+      // Local KV for preview/e2e (and as fallback when workbench KV is absent).
+      sparkKvLocalPlugin(),
+      // Icon proxy + Spark workbench plugins are serve-only. Shipping them in
+      // `vite build` re-emits dist/proxy.js (~1.5 MB) into the PWA precache.
+      (isDev || isVitest) && (createIconImportProxy() as PluginOption),
+      isDev && (sparkPlugin() as PluginOption),
+      ViteImageOptimizer({
+        jpg: { quality: 75 },
+        png: { quality: 80 },
+        webp: { quality: 80 },
+      }) as PluginOption,
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        manifest: false, // Utilizing existing public/manifest.json
+        workbox: {
+          importScripts: ['/push-sw.js'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          globIgnores: [
+            '**/proxy.js',
+            '**/package.json',
+            '**/*mapbox-gl*.js',
+            '**/*maplibre-gl*.js',
+            '**/*.map',
+          ],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/pulses.*/i,
+              handler: 'NetworkOnly',
+              method: 'POST',
+              options: {
+                backgroundSync: {
+                  name: 'pulse-sync-queue',
+                  options: {
+                    maxRetentionTime: 24 * 60, // Retry for max 24 Hours
+                  },
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'pulse-media',
+                expiration: {
+                  maxEntries: 80,
+                  maxAgeSeconds: 7 * 24 * 60 * 60,
+                },
+              },
+            },
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|webp|avif|gif)$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'pulse-images',
+                expiration: {
+                  maxEntries: 80,
+                  maxAgeSeconds: 7 * 24 * 60 * 60,
+                },
+              },
+            },
+          ],
+        },
+      }) as PluginOption,
+    ].filter(Boolean) as PluginOption[],
+    resolve: {
+      alias: {
+        '@': resolve(projectRoot, 'src'),
+      },
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test-setup.ts'],
+      exclude: ['e2e/**', 'tests/**', 'node_modules/**', 'dist/**'],
+    },
+  }
+})
