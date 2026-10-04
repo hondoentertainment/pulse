@@ -105,9 +105,10 @@ export function resolveHomeNeighborhood(
     persist?: boolean
   } = {},
 ): string {
-  const inferred = inferNeighborhoodFromGeo(userLocation)
+  const inferredRaw = inferNeighborhoodFromGeo(userLocation)
   const saved = new Set(savedVenueIds)
   const withHood = venues.filter((venue) => (venue.neighborhood ?? '').trim().length > 0)
+  const hoodNames = new Set(withHood.map((venue) => (venue.neighborhood ?? '').trim()))
   let venueNeighborhood: string | null = null
   if (withHood.length > 0) {
     const scored = withHood.map((venue) => {
@@ -121,17 +122,22 @@ export function resolveHomeNeighborhood(
     venueNeighborhood = scored[0]?.venue.neighborhood?.trim() || null
   }
 
+  const savedRaw = options.savedNeighborhood ?? readSavedNeighborhood()
+  const inferred = inferredRaw && (hoodNames.size === 0 || hoodNames.has(inferredRaw)) ? inferredRaw : null
+  const savedNeighborhood = savedRaw && (hoodNames.size === 0 || hoodNames.has(savedRaw)) ? savedRaw : null
+  const catalogCity = venues.find((venue) => (venue.city ?? '').trim())?.city?.trim() || null
+
   const neighborhood = resolveNeighborhoodFallback({
     inferred,
-    savedNeighborhood: options.savedNeighborhood ?? readSavedNeighborhood(),
-    savedCity: options.savedCity ?? readSavedCity(),
+    savedNeighborhood,
+    savedCity: options.savedCity ?? readSavedCity() ?? catalogCity,
     venueNeighborhood,
   })
 
   if (options.persist !== false && neighborhood) {
     persistHomePlace({
       neighborhood,
-      city: options.savedCity ?? readSavedCity() ?? 'Seattle',
+      city: options.savedCity ?? readSavedCity() ?? catalogCity ?? 'Seattle',
     })
   }
   return neighborhood || DEFAULT_LAUNCH_NEIGHBORHOOD

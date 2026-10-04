@@ -37,6 +37,8 @@ interface MapFiltersProps {
   onChange: (filters: MapFiltersState) => void
   availableCategories: string[]
   availableNeighborhoods?: string[]
+  curatedLabel?: string
+  allLabel?: string
 }
 
 const ENERGY_LEVELS = [
@@ -59,6 +61,8 @@ export function MapFilters({
   onChange,
   availableCategories,
   availableNeighborhoods = [...SEATTLE_LAUNCH_NEIGHBORHOODS],
+  curatedLabel = 'Launch 33',
+  allLabel = 'All Seattle',
 }: MapFiltersProps) {
   const neighborhoods = filters.neighborhoods ?? []
   const inventoryLayer: MapInventoryLayer = filters.inventoryLayer ?? 'curated'
@@ -352,7 +356,7 @@ export function MapFilters({
                             inventoryLayer === 'curated' && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
                           )}
                         >
-                          Launch 33
+                          {curatedLabel}
                         </Button>
                         <Button
                           variant={inventoryLayer === 'all' ? 'default' : 'outline'}
@@ -363,11 +367,13 @@ export function MapFilters({
                             inventoryLayer === 'all' && 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] border-0 text-white hover:opacity-90',
                           )}
                         >
-                          All Seattle
+                          {allLabel}
                         </Button>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Launch 33 keeps curated-seed venues on top. All Seattle adds OSM nightlife.
+                        {curatedLabel === 'Launch 33' && allLabel === 'All Seattle'
+                          ? 'Launch 33 keeps curated-seed venues on top. All Seattle adds OSM nightlife.'
+                          : `${curatedLabel} paints first. ${allLabel} waits until the map is idle.`}
                       </p>
                     </div>
 

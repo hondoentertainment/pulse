@@ -53,7 +53,7 @@ export function AppShell() {
     locationName, isTracking, realtimeLocation,
     locationPermissionDenied, queuedPulseCount,
     userLocation, unitSystem,
-    selectedMarketKey, setSelectedMarketKey, availableMarkets,
+    selectedMarketKey, setSelectedMarketKey, coastCities,
     presenceSheetOpen, setPresenceSheetOpen,
     storyViewerOpen, storyViewerStories,
     setStoryViewerOpen,
@@ -168,7 +168,7 @@ export function AppShell() {
         locationPermissionDenied={locationPermissionDenied}
         queuedPulseCount={queuedPulseCount}
         selectedMarketKey={selectedMarketKey}
-        markets={availableMarkets}
+        coastCities={coastCities}
         onMarketChange={setSelectedMarketKey}
       />
 

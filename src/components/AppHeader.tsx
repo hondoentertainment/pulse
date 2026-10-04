@@ -2,8 +2,8 @@ import { MapPin, Clock, MagnifyingGlass } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useCurrentTime } from '@/hooks/use-current-time'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ALL_US_MARKETS_KEY, type UsMarket } from '@/lib/us-markets'
+import { CoastCitySwitcher } from '@/components/CoastCitySwitcher'
+import type { CoastCity } from '@/lib/coast-cities'
 
 interface AppHeaderProps {
   locationName: string
@@ -13,7 +13,7 @@ interface AppHeaderProps {
   queuedPulseCount?: number
   onSearchClick?: () => void
   selectedMarketKey?: string
-  markets?: UsMarket[]
+  coastCities?: Array<Pick<CoastCity, 'key' | 'city'>>
   onMarketChange?: (key: string) => void
 }
 
@@ -25,7 +25,7 @@ export function AppHeader({
   queuedPulseCount = 0,
   onSearchClick,
   selectedMarketKey,
-  markets = [],
+  coastCities = [],
   onMarketChange,
 }: AppHeaderProps) {
   const currentTime = useCurrentTime()
@@ -55,24 +55,12 @@ export function AppHeader({
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {onMarketChange && selectedMarketKey && markets.length > 0 && (
-            <Select value={selectedMarketKey} onValueChange={onMarketChange}>
-              <SelectTrigger
-                size="sm"
-                className="h-8 w-[min(100%,13.5rem)] rounded-full border-border bg-card/70 px-2.5 text-xs"
-                aria-label="Select U.S. market"
-              >
-                <SelectValue placeholder="Choose city" />
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                <SelectItem value={ALL_US_MARKETS_KEY}>United States</SelectItem>
-                {markets.map((market) => (
-                  <SelectItem key={market.key} value={market.key}>
-                    {market.name} ({market.venueCount})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {onMarketChange && selectedMarketKey && coastCities.length > 0 && (
+            <CoastCitySwitcher
+              value={selectedMarketKey}
+              cities={coastCities}
+              onChange={onMarketChange}
+            />
           )}
           {locationName && (
             <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1">

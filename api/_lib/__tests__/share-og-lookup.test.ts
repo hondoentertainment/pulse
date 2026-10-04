@@ -90,11 +90,19 @@ describe('share OG catalog lookup', () => {
     expect(mocks.createAnonClient).toHaveBeenCalled()
   })
 
-  it('returns null when the venue row is missing', async () => {
-    const card = await loadShareOgEnergy(NEUMOS_ID, {
+  it('returns null when the venue row is missing and the id is not a curated seed', async () => {
+    const card = await loadShareOgEnergy('not-a-real-venue', {
       client: stubCatalogClient({ venue: null, pulse: null }),
     })
     expect(card).toBeNull()
+  })
+
+  it('resolves a known Seattle share id from the curated seed when Supabase has no row', async () => {
+    const card = await loadShareOgEnergy(NEUMOS_ID, {
+      client: stubCatalogClient({ venue: null, pulse: null }),
+    })
+    expect(card?.title).toBe('Neumos')
+    expect(card?.description).toContain('Seattle')
   })
 
   it('builds neighborhood OG from tagged Seattle slugs without a venue row', async () => {
@@ -103,5 +111,17 @@ describe('share OG catalog lookup', () => {
     expect(card?.energyLine).toBe('Tonight · Seattle')
     expect(await loadShareNeighborhoodOg('fremont')).toMatchObject({ title: 'Fremont' })
     expect(await loadShareNeighborhoodOg('portland')).toBeNull()
+    const pearl = await loadShareNeighborhoodOg('pearl-district')
+    expect(pearl?.title).toBe('Pearl District')
+    expect(pearl?.energyLine).toBe('Tonight · Portland')
+  })
+
+  it('resolves a Portland curated room on the same share lookup when Supabase has no row', async () => {
+    const card = await loadShareOgEnergy('pdx-crystal-ballroom', {
+      client: stubCatalogClient({ venue: null, pulse: null }),
+    })
+    expect(card?.title).toBe('Crystal Ballroom')
+    expect(card?.description).toContain('Portland')
+    expect(card?.description).not.toContain('pulse-')
   })
 })

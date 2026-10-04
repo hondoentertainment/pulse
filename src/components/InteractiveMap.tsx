@@ -6,6 +6,7 @@ import { TrustPinChips } from '@/components/TrustPinChips'
 import { OpenNowChip } from '@/components/OpenNowChip'
 import { buildTrustGlance, compactTrustPinChips, shouldShowMapTrustHover, shouldShowSurgingPinChips } from '@/lib/trust-glance'
 import { markMapInteractive } from '@/lib/cold-start'
+import { coastInventoryLabels } from '@/lib/coast-cities'
 import { prefersReducedMotion } from '@/lib/accessibility'
 import { useMapLiveReviews } from '@/hooks/use-map-live-reviews'
 import {
@@ -989,14 +990,15 @@ export const InteractiveMap = memo(function InteractiveMap({
   const bestNextVenue = previewVenues[0] ?? null
 
   const inventoryLayer = filters.inventoryLayer ?? 'curated'
+  const inventoryLabels = coastInventoryLabels(venues.find((venue) => venue.city)?.city)
   const mapModeLabel = nearMeActive
     ? 'Near Me'
     : activeFilterCount > 0
       ? 'Filtered'
       : inventoryLayer === 'curated'
-        ? 'Launch 33'
+        ? inventoryLabels.curated
         : showFullHeatmap
-          ? 'All Seattle'
+          ? inventoryLabels.all
           : 'Top Surges'
   const mapSummary = activeFilterCount > 0
     ? `${filteredVenues.length} matching ${filteredVenues.length === 1 ? 'spot' : 'spots'}`
@@ -1680,7 +1682,7 @@ export const InteractiveMap = memo(function InteractiveMap({
                     }}
                     className="h-8 px-3 text-[11px] font-semibold"
                   >
-                    {(filters.inventoryLayer ?? 'curated') === 'curated' ? 'Launch 33' : 'All Seattle'}
+                    {(filters.inventoryLayer ?? 'curated') === 'curated' ? inventoryLabels.curated : inventoryLabels.all}
                   </Button>
                   {showCuratedToggle && (filters.inventoryLayer ?? 'curated') === 'all' && (
                     <Button
@@ -1863,6 +1865,8 @@ export const InteractiveMap = memo(function InteractiveMap({
           onChange={setFilters}
           availableCategories={availableCategories}
           availableNeighborhoods={availableNeighborhoods}
+          curatedLabel={inventoryLabels.curated}
+          allLabel={inventoryLabels.all}
         />
 
         {/* Unified Control Group */}

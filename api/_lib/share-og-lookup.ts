@@ -7,6 +7,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient, createAnonClient } from './supabase-server.js'
 import { buildNeighborhoodShareOg, buildShareOgEnergy, type ShareOgEnergy } from './share-og.js'
 import { resolveTaggedNeighborhoodPage } from '../../src/lib/neighborhood-slugs.js'
+import { getSeattleLaunchVenues, localLaunchVenueIdForShareId } from '../../src/lib/seattle-launch-venues.js'
+import { getPortlandLaunchVenues } from '../../src/lib/portland-launch-venues.js'
+import { getSanFranciscoLaunchVenues } from '../../src/lib/san-francisco-launch-venues.js'
 
 export type ShareCatalogClient = Pick<SupabaseClient, 'from'>
 
@@ -35,7 +38,23 @@ export async function loadShareOgEnergy(
     .limit(1)
     .maybeSingle()
 
-  if (!data || typeof data.name !== 'string') return null
+  if (!data || typeof data.name !== 'string') {
+    const localId = localLaunchVenueIdForShareId(venueId) ?? venueId
+    const curated = [
+      ...getSeattleLaunchVenues(),
+      ...getPortlandLaunchVenues(),
+      ...getSanFranciscoLaunchVenues(),
+    ].find((venue) => venue.id === venueId || venue.id === localId)
+    if (!curated) return null
+    return buildShareOgEnergy({
+      venueName: curated.name,
+      neighborhood: curated.neighborhood,
+      city: curated.city,
+      category: curated.category,
+      pulseScore: 0,
+      nowMs: options.nowMs,
+    })
+  }
 
   return buildShareOgEnergy({
     venueName: data.name,
@@ -54,5 +73,5 @@ export async function loadShareNeighborhoodOg(
 ): Promise<ShareOgEnergy | null> {
   const page = resolveTaggedNeighborhoodPage(slug)
   if (!page) return null
-  return buildNeighborhoodShareOg(page)
+  return buildNeighborhoodShareOg({ name: page.name, slug: page.slug, city: page.city })
 }

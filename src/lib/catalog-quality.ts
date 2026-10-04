@@ -34,14 +34,49 @@ export function hasValidSeattleCoords(venue: Pick<Venue, 'location'>): boolean {
     && lng >= BAD_PIN_MIN_LNG && lng <= BAD_PIN_MAX_LNG
 }
 
+const COAST_CITY_BOXES: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
+  seattle: {
+    minLat: BAD_PIN_MIN_LAT,
+    maxLat: BAD_PIN_MAX_LAT,
+    minLng: BAD_PIN_MIN_LNG,
+    maxLng: BAD_PIN_MAX_LNG,
+  },
+  portland: { minLat: 45.47, maxLat: 45.6, minLng: -122.75, maxLng: -122.55 },
+  'san francisco': { minLat: 37.73, maxLat: 37.84, minLng: -122.53, maxLng: -122.38 },
+}
+
+/** Seattle bbox when the row has no city. Portland and San Francisco use their own boxes. */
+export function hasValidCatalogCoords(
+  venue: Pick<Venue, 'location'> & { city?: string | null },
+): boolean {
+  const lat = venue.location?.lat
+  const lng = venue.location?.lng
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+  if (lat === 0 && lng === 0) return false
+  const city = (venue.city ?? '').trim().toLowerCase()
+  const box = city ? COAST_CITY_BOXES[city] : undefined
+  if (box) {
+    return lat >= box.minLat && lat <= box.maxLat && lng >= box.minLng && lng <= box.maxLng
+  }
+  if (!city) return hasValidSeattleCoords(venue)
+  return false
+}
+
 export function isGenericVenueName(name: string | undefined): boolean {
   const normalized = (name ?? '').trim().toLowerCase()
   if (!normalized) return true
   return GENERIC_NAMES.has(normalized)
 }
 
-export function inventoryLabel(venue: Pick<Venue, 'inventorySource' | 'seeded'>): string {
-  return isCuratedVenue(venue) ? 'Launch 33' : 'All Seattle'
+export function inventoryLabel(
+  venue: Pick<Venue, 'inventorySource' | 'seeded'> & { city?: string | null },
+): string {
+  const city = (venue.city ?? '').trim().toLowerCase()
+  const curated = isCuratedVenue(venue)
+  if (city === 'portland') return curated ? 'Curated Portland' : 'All Portland'
+  if (city === 'san francisco') return curated ? 'Curated San Francisco' : 'All San Francisco'
+  return curated ? 'Launch 33' : 'All Seattle'
 }
 
 export function catalogQualityLine(venue: Pick<Venue, 'neighborhood' | 'city' | 'inventorySource' | 'seeded'>): string | null {
@@ -58,7 +93,7 @@ export function neighborhoodTag(venue: Pick<Venue, 'neighborhood' | 'city'>): st
 }
 
 export function isObviouslyBadPin(venue: Venue): boolean {
-  if (!hasValidSeattleCoords(venue)) return true
+  if (!hasValidCatalogCoords(venue)) return true
   if (isGenericVenueName(venue.name)) return true
   return false
 }
@@ -91,7 +126,7 @@ export function isSoftDuplicateOfCurated(
 }
 
 export function filterTonightCatalog(venues: Venue[]): Venue[] {
-  const curated = venues.filter((venue) => isCuratedVenue(venue) && hasValidSeattleCoords(venue))
+  const curated = venues.filter((venue) => isCuratedVenue(venue) && hasValidCatalogCoords(venue))
   return venues.filter((venue) => {
     if (isObviouslyBadPin(venue)) return false
     if (isSoftDuplicateOfCurated(venue, curated)) return false
@@ -108,7 +143,7 @@ export interface CatalogQualityReport {
 }
 
 export function reportCatalogQuality(venues: Venue[]): CatalogQualityReport {
-  const curated = venues.filter((venue) => isCuratedVenue(venue) && hasValidSeattleCoords(venue))
+  const curated = venues.filter((venue) => isCuratedVenue(venue) && hasValidCatalogCoords(venue))
   let hiddenBadPins = 0
   let hiddenOsmDupes = 0
   let missingNeighborhood = 0

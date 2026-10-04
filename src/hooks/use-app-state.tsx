@@ -28,20 +28,24 @@ import { isFeatureEnabled } from '@/lib/feature-flags'
 import { initializeSeededHashtags, applyHashtagDecay } from '@/lib/seeded-hashtags'
 import { calculateScoreVelocity, TRENDING_THRESHOLDS } from '@/lib/venue-trending'
 import { fetchEventsFromApi } from '@/lib/server-api'
-import { fetchVenuesFromSupabase, fetchPulsesFromSupabase } from '@/lib/supabase-api'
-import { hasSupabaseConfig, isVisualPreviewEnabled, supabase } from '@/lib/supabase'
+import { fetchPulsesFromSupabase } from '@/lib/supabase-api'
+import { hasSupabaseConfig, supabase } from '@/lib/supabase'
 import { trackEvent, trackError, trackPerformance } from '@/lib/analytics'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { TabId } from '@/components/BottomNav'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription'
-import { loadPrototypeCatalog, loadSimulatedLocation } from '@/lib/prototype-catalog'
+import { loadSimulatedLocation } from '@/lib/prototype-catalog'
 import { filterVenuesByLaunchedMarkets, parseLaunchedCities } from '@/lib/geo-launch'
+import { loadCityCatalog } from '@/lib/city-catalog'
 import {
-  ALL_US_MARKETS_KEY,
+  listSelectableCoastCities,
+  resolveSelectedCoastCity,
+  type CoastCity,
+} from '@/lib/coast-cities'
+import {
   getMarketByKey,
-  getUsMarkets,
   getVenuesForMarket,
   type UsMarket,
 } from '@/lib/us-markets'
@@ -141,6 +145,7 @@ export interface AppState {
   setSelectedMarketKey: (v: string) => void
   selectedMarket: UsMarket | null
   availableMarkets: UsMarket[]
+  coastCities: CoastCity[]
 
   // Preferences
   unitSystem: 'imperial' | 'metric'
@@ -254,7 +259,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const { profile: supabaseProfile, session } = useSupabaseAuth()
 
   const [currentUser, setCurrentUser] = useState<User | undefined>(() => createGuestBrowseUser())
-  const [prototypeVenues, setPrototypeVenues] = useState<Venue[]>([])
   const hasTrackedVenueFallback = useRef(false)
 
   // Bridge Supabase Profile -> Local State. Guests keep a browse identity
@@ -293,10 +297,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [session, supabaseProfile?.id])
 
   const launchedCitiesRaw = import.meta.env.VITE_LAUNCHED_CITIES ?? ''
-  const launchedCities = useMemo(
-    () => launchedCitiesRaw.split(/[;|]/).map((city: string) => city.trim()).filter(Boolean),
-    [launchedCitiesRaw]
+  const launchedMarkets = useMemo(
+    () => parseLaunchedCities(launchedCitiesRaw),
+    [launchedCitiesRaw],
   )
+  const coastCities = useMemo(
+    () => listSelectableCoastCities(launchedMarkets),
+    [launchedMarkets],
+  )
+  const coastCity = useMemo(
+    () => resolveSelectedCoastCity(selectedMarketKey, coastCities),
+    [coastCities, selectedMarketKey],
+  )
+
+  useEffect(() => {
+    if (selectedMarketKey !== coastCity.key) setSelectedMarketKey(coastCity.key)
+  }, [coastCity.key, selectedMarketKey, setSelectedMarketKey])
 
   const [pulses, setPulses] = useState<Pulse[] | undefined>(hasSupabaseConfig ? undefined : [])
   const [venues, setVenues] = useState<Venue[] | undefined>(hasSupabaseConfig ? undefined : undefined)
@@ -316,34 +332,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Activate batched Supabase Realtime subscriptions (Phase 6)
   useRealtimeSubscription(hasSupabaseConfig)
 
-  useEffect(() => {
-    let isMounted = true
-    const startedAt = Date.now()
-
-    loadPrototypeCatalog(launchedCities)
-      .then((catalog) => {
-        if (!isMounted) return
-
-        setPrototypeVenues(catalog.venues)
-        if (!hasSupabaseConfig) {
-          setVenues((current) => isVisualPreviewEnabled ? catalog.venues : current ?? catalog.venues)
-          setPulses((current) => isVisualPreviewEnabled ? catalog.pulses : current ?? catalog.pulses)
-        }
-        trackPerformance('prototype_catalog_ready', Date.now() - startedAt)
-      })
-      .catch((error) => {
-        if (!isMounted) return
-
-        trackError(error instanceof Error ? error : String(error), 'prototype_catalog_bootstrap')
-        setPrototypeVenues([])
-        setVenues((current) => current ?? [])
-        setPulses((current) => current ?? [])
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [launchedCities])
+  const {
+    data: cityCatalog,
+    isFetched: hasFetchedCityCatalog,
+  } = useQuery({
+    queryKey: ['city-catalog', coastCity.key],
+    queryFn: () => loadCityCatalog(coastCity.key),
+    staleTime: 30_000,
+  })
 
   useEffect(() => {
     if (!hashtags || hashtags.length === 0) setHashtags(initializeSeededHashtags())
@@ -355,17 +351,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const { data: serverEvents } = useQuery({
     queryKey: ['events'],
     queryFn: fetchEventsFromApi,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-
-  const {
-    data: serverVenues,
-    isFetched: hasFetchedServerVenues,
-  } = useQuery({
-    queryKey: ['venues'],
-    queryFn: fetchVenuesFromSupabase,
-    enabled: hasSupabaseConfig,
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
@@ -396,25 +381,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [serverEvents, setEvents])
 
   useEffect(() => {
-    if (Array.isArray(serverVenues) && serverVenues.length > 0) {
-      const markets = parseLaunchedCities(launchedCitiesRaw)
-      setVenues(filterVenuesByLaunchedMarkets(serverVenues, markets))
-      return
+    if (!hasFetchedCityCatalog || !cityCatalog || cityCatalog.key !== coastCity.key) return
+    setVenues(filterVenuesByLaunchedMarkets(cityCatalog.venues, launchedMarkets))
+    if (cityCatalog.usedFallback && !hasTrackedVenueFallback.current) {
+      hasTrackedVenueFallback.current = true
+      trackEvent({
+        type: 'venue_data_fallback',
+        timestamp: Date.now(),
+        source: 'supabase_empty',
+        count: cityCatalog.venues.length,
+      })
     }
-
-    if (prototypeVenues.length > 0 && (!venues || venues.length === 0 || hasFetchedServerVenues)) {
-      setVenues(prototypeVenues)
-      if (hasSupabaseConfig && !hasTrackedVenueFallback.current) {
-        hasTrackedVenueFallback.current = true
-        trackEvent({
-          type: 'venue_data_fallback',
-          timestamp: Date.now(),
-          source: Array.isArray(serverVenues) ? 'supabase_empty' : 'supabase_unavailable',
-          count: prototypeVenues.length,
-        })
-      }
-    }
-  }, [hasFetchedServerVenues, launchedCitiesRaw, prototypeVenues, serverVenues, setVenues, venues])
+  }, [cityCatalog, coastCity.key, hasFetchedCityCatalog, launchedMarkets, setVenues])
 
   useEffect(() => {
     if (Array.isArray(serverPulses)) setPulses(serverPulses)
@@ -429,10 +407,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [selectedVenue, venues])
 
   // Location
-  const availableMarkets = useMemo(() => getUsMarkets(venues || []), [venues])
+  const availableMarkets = useMemo<UsMarket[]>(() => coastCities.map((city) => ({
+    key: city.key,
+    name: city.name,
+    city: city.city,
+    state: city.state,
+    lat: city.lat,
+    lng: city.lng,
+    venueCount: city.key === coastCity.key ? (venues?.length ?? 0) : 0,
+  })), [coastCities, coastCity.key, venues])
   const selectedMarket = useMemo(
-    () => selectedMarketKey === ALL_US_MARKETS_KEY ? null : getMarketByKey(availableMarkets, selectedMarketKey),
-    [availableMarkets, selectedMarketKey]
+    () => getMarketByKey(availableMarkets, coastCity.key),
+    [availableMarkets, coastCity.key],
   )
 
   const manualMarketLocation = useMemo(
@@ -479,9 +465,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const [lat, lng] = locationLookupKey.split(',').map(Number)
 
     if (!hasSupabaseConfig) {
-      if (prototypeVenues.length === 0) return
+      if (!venues || venues.length === 0) return
 
-      const fallbackVenue = getVenuesByProximity(prototypeVenues, lat, lng)[0]
+      const fallbackVenue = getVenuesByProximity(venues, lat, lng)[0]
       if (fallbackVenue?.city && fallbackVenue?.state) {
         setLocationName(`${fallbackVenue.city}, ${fallbackVenue.state}`)
         return
@@ -512,7 +498,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false
     }
-  }, [locationLookupKey, prototypeVenues])
+  }, [locationLookupKey, venues])
 
   useEffect(() => {
     if (selectedMarket) {
@@ -765,7 +751,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     realtimeLocation: realtimeLocationValue, locationPermissionDenied, setLocationPermissionDenied,
     simulatedLocation, setSimulatedLocation,
     selectedMarketKey, setSelectedMarketKey,
-    selectedMarket, availableMarkets,
+    selectedMarket, availableMarkets, coastCities,
     unitSystem, notificationSettings,
     integrationsEnabled, socialDashboardEnabled,
     createDialogOpen, setCreateDialogOpen,
@@ -812,6 +798,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSelectedMarketKey,
     selectedMarket,
     availableMarkets,
+    coastCities,
     unitSystem,
     notificationSettings,
     integrationsEnabled,

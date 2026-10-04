@@ -147,6 +147,24 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
   }))
 }
 
+/** One city only. Does not call the all-venues intelligence RPC. */
+export async function fetchVenuesForCity(city: string, state: string): Promise<Venue[] | null> {
+  const { data, error } = await supabase
+    .from('venues')
+    .select('*, venue_live_aggregates(*)')
+    .eq('city', city)
+    .eq('state', state)
+    .order('pulse_score', { ascending: false })
+  if (error || !data) {
+    console.error('Error fetching venues for city:', error)
+    return null
+  }
+  return overlayClaimVerified(data.map(row => {
+    const liveAggregate = getJoinedLiveAggregate(row.venue_live_aggregates)
+    return mapVenueRow(row, liveAggregate)
+  }))
+}
+
 export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
   const now = new Date().toISOString()
   const { data, error } = await supabase

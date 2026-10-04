@@ -21,6 +21,7 @@ import type { VenueClaim } from '@/lib/venue-owner'
 import { confirmImHere } from '@/lib/im-here-confirm'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
 import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
+import { coastCityKeyForVenueId, loadCityCuratedCatalog } from '@/lib/city-catalog'
 import { resolveShareVenueReady } from '@/lib/share-landing'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import { filterModeratedPulses } from '@/lib/content-moderation'
@@ -80,6 +81,8 @@ export function VenueRoute() {
   // Live venue row + paginated pulses when Supabase backend is on.
   const [freshVenue, setFreshVenue] = useState<Venue | null>(null)
   const [serverLookupSettled, setServerLookupSettled] = useState(false)
+  const [seedVenue, setSeedVenue] = useState<Venue | null>(null)
+  const [seedLookupSettled, setSeedLookupSettled] = useState(false)
   const [hereNow, setHereNow] = useState<HereNowSummary>(emptyHereNow)
   const [crewHere, setCrewHere] = useState<CrewPresenceRow[]>([])
   const [replies, setReplies] = useState<PulseReply[]>([])
@@ -127,6 +130,33 @@ export function VenueRoute() {
       cancelled = true
     }
   }, [venueId])
+
+  useEffect(() => {
+    if (!venueId) {
+      setSeedLookupSettled(true)
+      return
+    }
+    const key = coastCityKeyForVenueId(venueId)
+    const localId = localLaunchVenueIdForShareId(venueId) ?? venueId
+    const already = (venues ?? []).some((venue) => venue.id === venueId || venue.id === localId)
+    if (!key || already) {
+      setSeedVenue(null)
+      setSeedLookupSettled(true)
+      return
+    }
+    let cancelled = false
+    setSeedLookupSettled(false)
+    void loadCityCuratedCatalog(key).then((rows) => {
+      if (cancelled) return
+      setSeedVenue(rows.find((venue) => venue.id === venueId || venue.id === localId) ?? null)
+      setSeedLookupSettled(true)
+    }).catch(() => {
+      if (!cancelled) setSeedLookupSettled(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [venueId, venues])
 
   useEffect(() => {
     if (!venueId || !session?.user?.id) {
@@ -200,12 +230,12 @@ export function VenueRoute() {
   const localShareId = localLaunchVenueIdForShareId(venueId)
   const cachedVenue = catalog.find(v => v.id === venueId)
     ?? (localShareId ? catalog.find(v => v.id === localShareId) ?? null : null)
-  const venue = freshVenue ?? cachedVenue
+  const venue = freshVenue ?? cachedVenue ?? seedVenue
   const phase = resolveShareVenueReady({
-    cached: Boolean(cachedVenue),
+    cached: Boolean(cachedVenue || seedVenue),
     fresh: Boolean(freshVenue),
     catalogReady: Array.isArray(venues),
-    lookupSettled: serverLookupSettled || !USE_SUPABASE_BACKEND,
+    lookupSettled: (serverLookupSettled || !USE_SUPABASE_BACKEND) && seedLookupSettled,
   })
   if (!venue && phase === 'pending') {
     return (

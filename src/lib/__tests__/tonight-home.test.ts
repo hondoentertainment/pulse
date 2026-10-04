@@ -56,6 +56,22 @@ describe('resolveHomeNeighborhood', () => {
     expect(resolveHomeNeighborhood(venues, { lat: 47.614, lng: -122.32 }, ['neumos']))
       .toBe('Capitol Hill')
   })
+
+  it('does not keep a Seattle hood when the catalog is another coast city', () => {
+    const pearl = makeVenue({
+      id: 'pdx-crystal-ballroom',
+      name: 'Crystal Ballroom',
+      neighborhood: 'Pearl District',
+      city: 'Portland',
+      state: 'OR',
+      location: { lat: 45.5229, lng: -122.6842, address: '1332 W Burnside St' },
+    })
+    expect(resolveHomeNeighborhood([pearl], { lat: 45.5231, lng: -122.6765 }, [], {
+      savedNeighborhood: 'Capitol Hill',
+      savedCity: 'Portland',
+      persist: false,
+    })).toBe('Pearl District')
+  })
 })
 
 describe('buildTonightHome', () => {

@@ -95,7 +95,7 @@ export function AppRoutes() {
     locationPermissionDenied, queuedPulseCount,
     sortedVenues,
     selectedMarketKey, setSelectedMarketKey,
-    availableMarkets,
+    coastCities = [],
     unreadNotificationCount,
     setCurrentUser,
     storyViewerOpen, storyViewerStories,
@@ -240,7 +240,7 @@ export function AppRoutes() {
     currentTime,
     queuedPulseCount,
     selectedMarketKey,
-    markets: availableMarkets,
+    coastCities,
     onMarketChange: setSelectedMarketKey,
   }
 

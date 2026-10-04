@@ -10,7 +10,7 @@ Production: https://pulse-chi-nine.vercel.app/
 
 Pulse is **venue + map only**. The former Pulse Signal personal check-in product was removed — there is no `VITE_APP_MODE` switch and no Signal shell.
 
-See [PRD.md](PRD.md). Optional venue geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA`. Staging notes: [docs/runbooks/venue-staging.md](docs/runbooks/venue-staging.md).
+See [PRD.md](PRD.md). The map opens one coast city at a time (Seattle by default, then Portland and San Francisco). Optional venue geo-gate: `VITE_LAUNCHED_CITIES=Seattle,WA;Portland,OR;San Francisco,CA` (empty = no gate). Staging notes: [docs/runbooks/venue-staging.md](docs/runbooks/venue-staging.md).
 
 **What to do next:** [RECOMMENDED_NEXT_STEPS.md](RECOMMENDED_NEXT_STEPS.md).
 
