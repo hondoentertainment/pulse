@@ -74,7 +74,7 @@ export function isGeoGateEnabled(markets: LaunchedMarket[] = getLaunchedMarketsF
 
 export function matchesLaunchedMarket(
   venue: { city?: string | null; state?: string | null },
-  markets: LaunchedMarket[],
+  markets: readonly LaunchedMarket[],
 ): boolean {
   if (markets.length === 0) return true
 
