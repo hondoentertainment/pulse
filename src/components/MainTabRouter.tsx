@@ -9,7 +9,8 @@ import type { EnergyFilter } from '@/components/MapFilters'
 import { MapSearch } from '@/components/MapSearch'
 import { MapEnergyPills } from '@/components/MapEnergyPills'
 import { MapInventoryPills } from '@/components/MapInventoryPills'
-import { MarketSelector } from '@/components/MarketSelector'
+import { CoastCitySwitcher } from '@/components/CoastCitySwitcher'
+import { coastCityByKey, coastInventoryLabels } from '@/lib/coast-cities'
 import { TonightHomeHeader } from '@/components/TonightHomeHeader'
 import { LivePulseTimeline } from '@/components/LivePulseTimeline'
 import { FirstOpenCoach } from '@/components/FirstOpenCoach'
@@ -92,6 +93,7 @@ export function MainTabRouter() {
     activeTab,
     selectedMarketKey,
     setSelectedMarketKey,
+    coastCities,
     availableMarkets,
     venues,
     visibleVenues,
@@ -218,7 +220,8 @@ export function MainTabRouter() {
   )
 
   const hereVenueId = parseHereVenueId(location.search)
-  const [allSeattleReady, setAllSeattleReady] = useState(false)
+  const [releasedForCity, setReleasedForCity] = useState<string | null>(null)
+  const allSeattleReady = releasedForCity === selectedMarketKey
   const tabMotion = tabMotionFor(prefersReducedMotion())
   const mapVenues = useMemo(() => {
     const focused = retainFocusedVenue(visibleVenues, venues, hereVenueId)
@@ -254,12 +257,12 @@ export function MainTabRouter() {
   const [mapNearMe, setMapNearMe] = useState(false)
   const [inventoryLayer, setInventoryLayer] = useState<MapInventoryLayer>('curated')
   useEffect(() => {
-    setInventoryLayer(selectedMarketKey === 'seattle' ? 'curated' : 'all')
+    setInventoryLayer('curated')
     setMapNearMe(false)
     setMapEnergyLevels([])
   }, [selectedMarketKey])
   const [showFirstOpenCoach, setShowFirstOpenCoach] = useState(() => shouldShowFirstOpenCoach())
-  const [surgingReady, setSurgingReady] = useState(false)
+  const surgingReady = releasedForCity === selectedMarketKey
   const [mapSurface, setMapSurface] = useState<MapHomeSurface>('map')
   useEffect(() => {
     const lift = activeTab === 'map' && mapSurface === 'map'
@@ -336,9 +339,8 @@ export function MainTabRouter() {
   }, [handleCreatePulse, hereVenueId, isPlaceholder, location.search, session, setSelectedVenue, venues])
 
   useEffect(() => scheduleAllSeattleRelease(() => {
-    setAllSeattleReady(true)
-    setSurgingReady(true)
-  }), [])
+    setReleasedForCity(selectedMarketKey)
+  }), [selectedMarketKey])
 
   const handleMapPinClick = useCallback((venue: Venue) => {
     handleCreatePulse(venue.id)
@@ -420,7 +422,11 @@ export function MainTabRouter() {
                 : 'space-y-3 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6',
             )}
           >
-            <MarketSelector value={selectedMarketKey} markets={availableMarkets} onChange={setSelectedMarketKey} />
+            <CoastCitySwitcher
+              value={selectedMarketKey}
+              cities={coastCities}
+              onChange={setSelectedMarketKey}
+            />
             {visibleVenues.length === 0 && (
               <p role="status" className="py-3 text-sm text-muted-foreground">
                 No venue listings available here yet. Choose another city or check back later.
@@ -486,6 +492,8 @@ export function MainTabRouter() {
                 />
                 <MapInventoryPills
                   seattle={selectedMarketKey === 'seattle'}
+                  curatedLabel={coastInventoryLabels(coastCityByKey(selectedMarketKey)?.city).curated}
+                  allLabel={coastInventoryLabels(coastCityByKey(selectedMarketKey)?.city).all}
                   inventoryLayer={inventoryLayer}
                   nearMeActive={mapNearMe}
                   onInventoryLayerChange={setInventoryLayer}

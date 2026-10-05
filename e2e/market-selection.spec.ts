@@ -1,22 +1,22 @@
 import { expect, test } from '@playwright/test'
 import { completeOnboarding } from './fixtures/onboarding'
 
-test('selects a U.S. market and preserves it across refresh and tabs', async ({ page }) => {
+test('selects one West Coast city and preserves it across refresh and tabs', async ({ page }) => {
   await page.goto('/')
   await completeOnboarding(page)
-  const selector = page.getByRole('combobox', { name: 'Select U.S. market' })
-  await selector.click()
-  await page.getByRole('option', { name: /Miami, FL/ }).click()
-  await expect(selector).toContainText('Miami, FL')
+  const seattle = page.getByRole('button', { name: 'Seattle', exact: true })
+  const portland = page.getByRole('button', { name: 'Portland', exact: true })
+  await expect(seattle).toHaveAttribute('aria-pressed', 'true')
+  await portland.click()
+  await expect(portland).toHaveAttribute('aria-pressed', 'true')
   await page.reload()
-  await expect(selector).toContainText('Miami, FL')
+  await expect(portland).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('tab-Tonight').click()
   await expect(page.getByRole('heading', { name: 'Tonight', exact: true })).toBeVisible()
-  await expect(selector).toHaveCount(1)
-  await expect(selector).toContainText('Miami, FL')
-  await selector.click()
-  await page.getByRole('option', { name: 'United States', exact: true }).click()
-  await expect(selector).toContainText('United States')
+  await expect(page.getByRole('button', { name: 'Portland', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'United States', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Seattle', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Seattle', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
 
 for (const width of [390, 1440]) {
@@ -24,7 +24,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
     await completeOnboarding(page)
-    await expect(page.getByRole('combobox', { name: 'Select U.S. market' })).toBeVisible()
+    await expect(page.getByRole('group', { name: 'West Coast cities' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Launch 33' }).first()).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeInViewport()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

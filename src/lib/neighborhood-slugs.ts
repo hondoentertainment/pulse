@@ -35,9 +35,33 @@ export const SEATTLE_TAGGED_NEIGHBORHOODS = [
   'Wallingford',
 ] as const
 
+export const PORTLAND_TAGGED_NEIGHBORHOODS = [
+  'Pearl District',
+  'Old Town',
+  'Mississippi',
+  'Alberta',
+  'Hawthorne',
+  'Buckman',
+  'Kerns',
+  'Eliot',
+  'Brooklyn',
+] as const
+
+export const SAN_FRANCISCO_TAGGED_NEIGHBORHOODS = [
+  'Mission',
+  'Castro',
+  'SoMa',
+  'North Beach',
+  'Haight-Ashbury',
+  'Marina',
+  'Hayes Valley',
+  'Tenderloin',
+] as const
+
 export interface TaggedNeighborhoodPage {
   slug: string
   name: string
+  city: string
 }
 
 export function neighborhoodSlug(name: string | null | undefined): string | null {
@@ -52,15 +76,20 @@ export function neighborhoodSlug(name: string | null | undefined): string | null
 }
 
 export function listTaggedNeighborhoodPages(): TaggedNeighborhoodPage[] {
-  const bySlug = new Map<string, string>()
-  for (const name of SEATTLE_TAGGED_NEIGHBORHOODS) {
-    const slug = neighborhoodSlug(name)
-    if (slug && !bySlug.has(slug)) bySlug.set(slug, name)
+  const rows: Array<{ name: string; city: string }> = [
+    ...SEATTLE_TAGGED_NEIGHBORHOODS.map((name) => ({ name, city: 'Seattle' })),
+    ...PORTLAND_TAGGED_NEIGHBORHOODS.map((name) => ({ name, city: 'Portland' })),
+    ...SAN_FRANCISCO_TAGGED_NEIGHBORHOODS.map((name) => ({ name, city: 'San Francisco' })),
+  ]
+  const bySlug = new Map<string, { name: string; city: string }>()
+  for (const row of rows) {
+    const slug = neighborhoodSlug(row.name)
+    if (slug && !bySlug.has(slug)) bySlug.set(slug, row)
   }
-  return [...bySlug.entries()].map(([slug, name]) => ({ slug, name }))
+  return [...bySlug.entries()].map(([slug, row]) => ({ slug, name: row.name, city: row.city }))
 }
 
-/** Static Seattle hoods only. Same set as resolveNeighborhoodPage() with no extra venues. */
+/** Tagged hoods on the coast index. Same slugs as /n/:slug. No second domain. */
 export function resolveTaggedNeighborhoodPage(slug: string): TaggedNeighborhoodPage | null {
   const needle = (slug ?? '').trim().toLowerCase()
   if (!needle) return null

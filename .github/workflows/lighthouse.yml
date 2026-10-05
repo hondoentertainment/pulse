@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main, master]
 
+# Share the CI queue so this one job is not cancelled while the other
+# hosted-runner jobs are still starting.
+concurrency:
+  group: pulse-checks-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   lighthouse:
     runs-on: ubuntu-latest

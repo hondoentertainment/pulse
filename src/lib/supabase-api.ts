@@ -147,6 +147,24 @@ export async function fetchVenuesFromSupabase(): Promise<Venue[] | null> {
   }))
 }
 
+/** One city only. Does not call the all-venues intelligence RPC. */
+export async function fetchVenuesForCity(city: string, state: string): Promise<Venue[] | null> {
+  const { data, error } = await supabase
+    .from('venues')
+    .select('*, venue_live_aggregates(*)')
+    .eq('city', city)
+    .eq('state', state)
+    .order('pulse_score', { ascending: false })
+  if (error || !data) {
+    console.error('Error fetching venues for city:', error)
+    return null
+  }
+  return overlayClaimVerified(data.map(row => {
+    const liveAggregate = getJoinedLiveAggregate(row.venue_live_aggregates)
+    return mapVenueRow(row, liveAggregate)
+  }))
+}
+
 export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
   const now = new Date().toISOString()
   const { data, error } = await supabase
@@ -184,7 +202,10 @@ export async function fetchPulsesFromSupabase(): Promise<Pulse[] | null> {
   }))
 }
 
+const PULSE_ID_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export async function uploadPulseToSupabase(pulse: Pulse): Promise<boolean> {
+  const pulseId = PULSE_ID_UUID.test(pulse.id) ? pulse.id : crypto.randomUUID()
   if (typeof supabase.rpc === 'function') {
     const gate = await supabase.rpc('assert_pulse_rate_limit', {
       p_user_id: pulse.userId,
@@ -196,7 +217,7 @@ export async function uploadPulseToSupabase(pulse: Pulse): Promise<boolean> {
   }
 
   const { error } = await supabase.from('pulses').insert({
-    id: pulse.id,
+    id: pulseId,
     user_id: pulse.userId,
     venue_id: pulse.venueId,
     crew_id: pulse.crewId,

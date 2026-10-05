@@ -8,11 +8,12 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: pulse-checks-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   lint:
+    needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -29,6 +30,7 @@ jobs:
         run: npm run lint
 
   test:
+    needs: [lint]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -71,6 +73,7 @@ jobs:
         run: npm run bundle-size
 
   build:
+    needs: [typecheck-strict]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -104,6 +107,7 @@ jobs:
         run: npx tsc -b
 
   smoke-preview-venue:
+    needs: [dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -163,6 +167,7 @@ jobs:
   # a green run. When this fails on an unchanged branch, `npm audit fix`
   # (non-breaking) is the usual remedy.
   dependency-audit:
+    needs: [test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

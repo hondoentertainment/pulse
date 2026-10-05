@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAppState } from '@/hooks/use-app-state'
 import { useAppHandlers } from '@/hooks/use-app-handlers'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
@@ -10,6 +11,8 @@ import {
   findNeighborhoodPage,
   listNeighborhoodVenues,
 } from '@/lib/neighborhood-pages'
+import { aliasCoastCityKey, coastCityKeyForNeighborhoodSlug } from '@/lib/coast-cities'
+import { loadCityCuratedCatalog } from '@/lib/city-catalog'
 import { emptySurgingPulseHref } from '@/lib/empty-surging'
 import { buildAuthPath } from '@/lib/auth-return-intent'
 import {
@@ -24,12 +27,23 @@ import { InstallAffordance } from '@/components/InstallAffordance'
 export function NeighborhoodPage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { venues } = useAppState()
+  const { venues, selectedMarketKey } = useAppState()
   const { handleCreatePulse } = useAppHandlers()
   const { session, isPlaceholder } = useSupabaseAuth()
 
-  const catalog = useMemo(() => venues ?? [], [venues])
-  const page = useMemo(() => findNeighborhoodPage(catalog, slug), [catalog, slug])
+  const page = useMemo(() => findNeighborhoodPage([], slug), [slug])
+  const ownerKey = coastCityKeyForNeighborhoodSlug(slug)
+  const activeKey = aliasCoastCityKey(selectedMarketKey) ?? 'seattle'
+  const otherCity = Boolean(page && ownerKey && ownerKey !== activeKey)
+  const { data: otherCityVenues } = useQuery({
+    queryKey: ['city-curated', ownerKey],
+    queryFn: () => loadCityCuratedCatalog(ownerKey!),
+    enabled: otherCity,
+  })
+  const catalog = useMemo(
+    () => (otherCity ? (otherCityVenues ?? []) : (venues ?? [])),
+    [otherCity, otherCityVenues, venues],
+  )
   const hoodVenues = useMemo(() => listNeighborhoodVenues(catalog, slug), [catalog, slug])
 
   if (!page) {
@@ -40,7 +54,7 @@ export function NeighborhoodPage() {
         </button>
         <h1 className="text-[22px] font-bold">Neighborhood not tagged</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          We only list hoods already on the Seattle catalog. No GPS required.
+          We only list hoods already tagged on a coast city. No GPS required.
         </p>
       </div>
     )
@@ -56,7 +70,7 @@ export function NeighborhoodPage() {
         <CaretLeft size={16} />
         Tonight
       </button>
-      <p className="text-[13px] text-muted-foreground">Tonight · Seattle</p>
+      <p className="text-[13px] text-muted-foreground">Tonight · {page.city}</p>
       <h1 className="text-[28px] font-bold tracking-tight text-foreground">{page.name}</h1>
       {page.slug === 'capitol-hill' && (
         <div className="mt-3">

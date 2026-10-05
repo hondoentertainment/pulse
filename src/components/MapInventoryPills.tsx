@@ -7,6 +7,8 @@ interface MapInventoryPillsProps {
   onInventoryLayerChange: (layer: MapInventoryLayer) => void
   onToggleNearMe: () => void
   seattle?: boolean
+  curatedLabel?: string
+  allLabel?: string
 }
 
 export function MapInventoryPills({
@@ -15,20 +17,24 @@ export function MapInventoryPills({
   onInventoryLayerChange,
   onToggleNearMe,
   seattle = true,
+  curatedLabel,
+  allLabel,
 }: MapInventoryPillsProps) {
+  const curatedText = curatedLabel ?? (seattle ? 'Launch 33' : 'Curated')
+  const allText = allLabel ?? (seattle ? 'All Seattle' : 'All venues')
   return (
     <div className="flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Map inventory">
       <FilterPill
         pressed={inventoryLayer === 'curated'}
         onClick={() => onInventoryLayerChange('curated')}
       >
-        {seattle ? 'Launch 33' : 'Curated'}
+        {curatedText}
       </FilterPill>
       <FilterPill
         pressed={inventoryLayer === 'all'}
         onClick={() => onInventoryLayerChange('all')}
       >
-        {seattle ? 'All Seattle' : 'All venues'}
+        {allText}
       </FilterPill>
       <FilterPill
         pressed={nearMeActive}

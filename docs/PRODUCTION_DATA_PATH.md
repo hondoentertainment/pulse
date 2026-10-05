@@ -16,8 +16,18 @@ and live-intelligence data.
   launch source of truth.
 - Production should serve venues from the Supabase `venues` table and
   the `get_live_venue_intelligence` RPC.
-- The app's U.S. market selector works with both data sources as long as venues
-  include `city`, `state`, `location_lat`, and `location_lng`.
+- The coast index (Seattle, Portland, San Francisco) loads one city at a time.
+  Portland and San Francisco curated seeds live in the client and paint when
+  that city is selected. The same rooms are inserted by
+  `supabase/migrations/20261005120000_portland_san_francisco_launch_venues.sql`
+  (32 Portland, 32 San Francisco). `venues.id` is a UUID, so each row uses the
+  deterministic id the app catalog ships; share slugs such as
+  `pdx-crystal-ballroom` and `sf-chapel` stay aliases. Apply that migration on
+  production project `xeldqwhztcnnvazmshzh` after merge, then verify with
+  `supabase/verify/portland_san_francisco_launch_venues.sql`. Seattle’s
+  533-venue catalog is unchanged.
+- Settings can still simulate a GPS point in other U.S. cities. That does not
+  load those cities onto the map.
 - If Supabase returns zero venues or cannot return venue data, the app
   temporarily falls back to the Seattle launch catalog (when geo-gated) or the
   national prototype catalog and emits a `venue_data_fallback` analytics event.
@@ -45,7 +55,7 @@ After the Seattle catalog migration and deploy:
 1. Open the production Vercel URL.
 2. Confirm the Map tab shows the Seattle catalog (33 curated + 500 OSM, 533 total) — not an empty canvas and not only the 33-venue fixture fallback.
 3. Spot-check Neumos (curated-seed) plus an OSM bar — pins and venue detail should open.
-4. Other supported U.S. markets remain selectable. With `VITE_LAUNCHED_CITIES=Seattle,WA`, they show zero listings until their catalog is launched.
+4. The coast switcher offers Seattle, Portland, and San Francisco when the geo-gate is empty. With `VITE_LAUNCHED_CITIES=Seattle,WA`, only Seattle is selectable. `Seattle,WA;Portland,OR;San Francisco,CA` opens all three, still one city at a time.
 5. Submit or inspect a live venue report to verify Supabase aggregates refresh.
 
 ## Read-Only Coverage Audit

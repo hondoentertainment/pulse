@@ -31,7 +31,8 @@ cp .env.example .env
 ### Venue geo-gate (optional)
 
 ```env
-# VITE_LAUNCHED_CITIES=Seattle,WA   # venue geo-gate
+# VITE_LAUNCHED_CITIES=Seattle,WA;Portland,OR;San Francisco,CA
+# Venue geo-gate. Empty = no gate. Seattle stays the default city.
 ```
 
 ### Minimum for local venue (no backend)

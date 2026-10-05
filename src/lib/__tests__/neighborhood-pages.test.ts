@@ -78,9 +78,12 @@ describe('neighborhood pages', () => {
     expect(resolveNeighborhoodPage('west-seattle')?.name).toBe('West Seattle')
     expect(resolveNeighborhoodPage('queen-anne')?.name).toBe('Queen Anne')
     expect(resolveNeighborhoodPage('portland')).toBeNull()
+    expect(resolveNeighborhoodPage('los-angeles')).toBeNull()
+    expect(resolveNeighborhoodPage('pearl-district')?.name).toBe('Pearl District')
+    expect(resolveNeighborhoodPage('mission')?.name).toBe('Mission')
     expect(slugs).toEqual(expect.arrayContaining(extraSlugs))
     expect(slugs).toEqual(expect.arrayContaining(['capitol-hill', 'ballard', 'georgetown', 'sodo']))
-    expect(new Set(slugs).size).toBe(SEATTLE_TAGGED_NEIGHBORHOODS.length)
+    expect(new Set(slugs).size).toBeGreaterThan(SEATTLE_TAGGED_NEIGHBORHOODS.length)
 
     const catalog = JSON.parse(
       readFileSync(resolve(process.cwd(), 'supabase/seeds/seattle-osm-venues.json'), 'utf8'),

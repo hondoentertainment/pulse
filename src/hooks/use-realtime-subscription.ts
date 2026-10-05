@@ -13,6 +13,7 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/query-client'
+import { patchCityCatalogVenues } from '@/lib/city-catalog-cache'
 import {
   reactionBatcher,
   presenceBatcher,
@@ -54,9 +55,7 @@ function handlePulseBatchFlush(batch: BatchFlush) {
 
   const reviews = newPulses.filter((pulse) => isLiveReview(pulse))
   if (reviews.length > 0) {
-    queryClient.setQueryData<Venue[]>(['venues'], (venues = []) =>
-      stampVenuesFromLiveReviews(venues, reviews),
-    )
+    patchCityCatalogVenues(queryClient, (venues) => stampVenuesFromLiveReviews(venues, reviews))
     trackPerformance('realtime_live_review_insert', reviews.length)
     for (const review of reviews) {
       const sample = recordPulseReflection({
@@ -138,7 +137,7 @@ function handlePresenceBatchFlush(batch: BatchFlush) {
     return merged
   })
 
-  queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
+  patchCityCatalogVenues(queryClient, (old) => {
     const updates = new Map(batch.events.map(event => [event.key, event.payload as Partial<Venue>]))
     if (!old.some(venue => updates.has(venue.id))) return old
     return old.map(venue => {
@@ -274,7 +273,7 @@ export function useRealtimeSubscription(enabled = true) {
           const summary = mapVenueLiveAggregate(row as Parameters<typeof mapVenueLiveAggregate>[0])
           const venueId = row.venue_id
           queryClient.setQueryData(['venue-live-aggregate', venueId], summary)
-          queryClient.setQueryData<Venue[]>(['venues'], (old = []) => {
+          patchCityCatalogVenues(queryClient, (old) => {
             const match = old.find(venue => venue.id === venueId)
             if (!match) return old
             return old.map(venue => {

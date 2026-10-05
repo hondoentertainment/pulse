@@ -8,6 +8,7 @@ interface GeoLaunchGateProps {
 
 export function GeoLaunchGate({ markets, venueCount }: GeoLaunchGateProps) {
   const labels = markets.map((market) => market.label).join(', ')
+  const seattleOnly = markets.length === 0 || markets.every((market) => market.city.toLowerCase() === 'seattle')
   return (
     <aside
       className="rounded-2xl border border-border bg-card/80 p-4"
@@ -19,7 +20,7 @@ export function GeoLaunchGate({ markets, venueCount }: GeoLaunchGateProps) {
         <div>
           <p className="text-sm font-semibold">Launch cities: {labels || 'none yet'}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Venue discovery is geo-gated. Showing {venueCount} curated Seattle listings
+            Venue discovery is geo-gated. Showing {venueCount} curated {seattleOnly ? 'Seattle ' : ''}listings
             {markets.length > 0 ? ` for ${labels}` : ''}. Live reports appear only after real check-ins.
           </p>
         </div>

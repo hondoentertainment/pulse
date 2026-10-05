@@ -28,6 +28,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSupabaseAuth } from '@/hooks/use-supabase-auth'
 import { closeComposerForAuthRedirect, getCreatePulseAuthRedirect, getWriteAuthRedirect, WRITE_AUTH_COPY } from '@/lib/guest-discovery'
 import { venueComposePath } from '@/lib/auth-return-intent'
+import { findWritableVenue } from '@/lib/city-catalog'
 import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 
 import { CheckInData, CrewTonightData, DoorPinData, FollowData, PulseAgreeData, PulseData, PulseReplyData, USE_SUPABASE_BACKEND, UserBlockData, VenueFollowData } from '@/lib/data'
@@ -101,11 +102,11 @@ export function useAppHandlers() {
     }
 
     if (!venues || !currentUser || !pulses) return
-    const venue = venues.find(v => v.id === venueId)
+    const venue = findWritableVenue(venues, venueId)
     if (!venue) return
 
     const userPulses = pulses.filter(p => p.userId === currentUser.id)
-    const cooldownCheck = canPostPulse(venueId, userPulses, COOLDOWN_MINUTES)
+    const cooldownCheck = canPostPulse(venue.id, userPulses, COOLDOWN_MINUTES)
     if (!cooldownCheck.canPost) {
       toast.error('Cooldown active', { description: `Wait ${cooldownCheck.remainingMinutes}m before posting here again` })
       return
@@ -198,7 +199,7 @@ export function useAppHandlers() {
     const locationVerified = data.locationVerified ?? locationProof.locationVerified
 
     const newPulse = {
-      id: `pulse-${Date.now()}`,
+      id: crypto.randomUUID(),
       userId: currentUser.id,
       venueId: venueForPulse.id,
       crewId: currentCrewCheckIn?.crewId,
