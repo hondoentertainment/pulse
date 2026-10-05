@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: pulse-checks-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   lint:
