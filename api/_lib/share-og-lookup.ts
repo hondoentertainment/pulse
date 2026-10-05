@@ -10,6 +10,7 @@ import { resolveTaggedNeighborhoodPage } from '../../src/lib/neighborhood-slugs.
 import { getSeattleLaunchVenues, localLaunchVenueIdForShareId } from '../../src/lib/seattle-launch-venues.js'
 import { getPortlandLaunchVenues } from '../../src/lib/portland-launch-venues.js'
 import { getSanFranciscoLaunchVenues } from '../../src/lib/san-francisco-launch-venues.js'
+import { launchVenueMatchesShareId } from '../../src/lib/coast-venue-ids.js'
 
 export type ShareCatalogClient = Pick<SupabaseClient, 'from'>
 
@@ -44,7 +45,7 @@ export async function loadShareOgEnergy(
       ...getSeattleLaunchVenues(),
       ...getPortlandLaunchVenues(),
       ...getSanFranciscoLaunchVenues(),
-    ].find((venue) => venue.id === venueId || venue.id === localId)
+    ].find((venue) => launchVenueMatchesShareId(venue, venueId) || venue.id === localId)
     if (!curated) return null
     return buildShareOgEnergy({
       venueName: curated.name,

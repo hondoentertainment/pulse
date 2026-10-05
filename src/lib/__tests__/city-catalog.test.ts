@@ -3,9 +3,11 @@ import type { Venue } from '../types'
 import {
   cityColdStartSplit,
   coastCityKeyForVenueId,
+  findWritableVenue,
   loadCityCatalog,
   mergeCuratedWithServer,
 } from '../city-catalog'
+import { indexedLaunchUuid, PORTLAND_LAUNCH_UUID_PREFIX, SAN_FRANCISCO_LAUNCH_UUID_PREFIX } from '../coast-venue-ids'
 import { getPortlandLaunchVenues } from '../portland-launch-venues'
 import { getSanFranciscoLaunchVenues } from '../san-francisco-launch-venues'
 import { getSeattleLaunchVenues } from '../seattle-launch-venues'
@@ -130,8 +132,13 @@ describe('loadCityCatalog', () => {
   it('resolves a shared venue id to one city', () => {
     expect(coastCityKeyForVenueId('pdx-crystal-ballroom')).toBe('portland')
     expect(coastCityKeyForVenueId('sf-chapel')).toBe('san-francisco')
+    expect(coastCityKeyForVenueId(indexedLaunchUuid(PORTLAND_LAUNCH_UUID_PREFIX, 0))).toBe('portland')
+    expect(coastCityKeyForVenueId(indexedLaunchUuid(SAN_FRANCISCO_LAUNCH_UUID_PREFIX, 0))).toBe('san-francisco')
     expect(coastCityKeyForVenueId('venue-1')).toBe('seattle')
     expect(coastCityKeyForVenueId('la-exchange')).toBeNull()
+    const crystal = getPortlandLaunchVenues()[0]
+    expect(findWritableVenue([crystal], 'pdx-crystal-ballroom')?.id).toBe(crystal.id)
+    expect(findWritableVenue([crystal], crystal.id)?.catalogSlug).toBe('pdx-crystal-ballroom')
     expect(mergeCuratedWithServer(
       [venue({ id: 'a', name: 'Crystal Ballroom', city: 'Portland', state: 'OR' })],
       [venue({ id: 'b', name: 'Crystal Ballroom', city: 'Portland', state: 'OR', pulseScore: 4 })],

@@ -6,6 +6,7 @@
 
 import type { CoastCityKey } from './coast-cities'
 import { coastCityByKey } from './coast-cities'
+import { coastCityKeyForLaunchShareId, findWritableVenue } from './coast-venue-ids'
 import { localLaunchVenueIdForShareId } from './seattle-launch-venues'
 import { partitionColdStartCatalog } from './cold-start'
 import type { Venue } from './types'
@@ -45,11 +46,13 @@ export function mergeCuratedWithServer(curated: readonly Venue[], server: readon
 export function coastCityKeyForVenueId(id: string | null | undefined): CoastCityKey | null {
   const raw = (id ?? '').trim()
   if (!raw) return null
-  if (raw.startsWith('pdx-')) return 'portland'
-  if (raw.startsWith('sf-')) return 'san-francisco'
+  const launchCity = coastCityKeyForLaunchShareId(raw)
+  if (launchCity) return launchCity
   if (raw.startsWith('sea-') || raw.startsWith('venue-') || localLaunchVenueIdForShareId(raw)) return 'seattle'
   return null
 }
+
+export { findWritableVenue }
 
 export async function loadCityCuratedCatalog(key: CoastCityKey): Promise<Venue[]> {
   switch (key) {

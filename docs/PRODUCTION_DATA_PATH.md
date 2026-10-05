@@ -17,9 +17,14 @@ and live-intelligence data.
 - Production should serve venues from the Supabase `venues` table and
   the `get_live_venue_intelligence` RPC.
 - The coast index (Seattle, Portland, San Francisco) loads one city at a time.
-  Portland and San Francisco curated seeds live in the client
-  (`portland-launch-venues.ts`, `san-francisco-launch-venues.ts`) and paint when
-  that city is selected. They are not a second Supabase migration. Seattle’s
+  Portland and San Francisco curated seeds live in the client and paint when
+  that city is selected. The same rooms are inserted by
+  `supabase/migrations/20261005120000_portland_san_francisco_launch_venues.sql`
+  (32 Portland, 32 San Francisco). `venues.id` is a UUID, so each row uses the
+  deterministic id the app catalog ships; share slugs such as
+  `pdx-crystal-ballroom` and `sf-chapel` stay aliases. Apply that migration on
+  production project `xeldqwhztcnnvazmshzh` after merge, then verify with
+  `supabase/verify/portland_san_francisco_launch_venues.sql`. Seattle’s
   533-venue catalog is unchanged.
 - Settings can still simulate a GPS point in other U.S. cities. That does not
   load those cities onto the map.

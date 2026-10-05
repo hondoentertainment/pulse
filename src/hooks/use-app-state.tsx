@@ -103,6 +103,8 @@ export interface AppState {
   // Data
   venues: Venue[] | undefined
   setVenues: (fn: ((v: Venue[] | undefined) => Venue[]) | Venue[]) => void
+  /** Keep a shared room writable without putting it on the selected city's map. */
+  pinWritableVenue: (venue: Venue) => void
   pulses: Pulse[] | undefined
   setPulses: (fn: ((p: Pulse[] | undefined) => Pulse[]) | Pulse[]) => void
   notifications: Notification[] | undefined
@@ -260,6 +262,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const [currentUser, setCurrentUser] = useState<User | undefined>(() => createGuestBrowseUser())
   const hasTrackedVenueFallback = useRef(false)
+  const pinnedVenueIds = useRef(new Set<string>())
+  const pinWritableVenue = useCallback((venue: Venue) => {
+    pinnedVenueIds.current.add(venue.id)
+    setVenues((current) => {
+      const list = current ?? []
+      if (list.some((row) => row.id === venue.id)) return list
+      return [...list, venue]
+    })
+  }, [])
 
   // Bridge Supabase Profile -> Local State. Guests keep a browse identity
   // so the map shell is not stuck on the loading gate without a session.
@@ -339,6 +350,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     queryKey: ['city-catalog', coastCity.key],
     queryFn: () => loadCityCatalog(coastCity.key),
     staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 
   useEffect(() => {
@@ -382,7 +394,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hasFetchedCityCatalog || !cityCatalog || cityCatalog.key !== coastCity.key) return
-    setVenues(filterVenuesByLaunchedMarkets(cityCatalog.venues, launchedMarkets))
+    const next = filterVenuesByLaunchedMarkets(cityCatalog.venues, launchedMarkets)
+    setVenues((current) => {
+      const pinned = (current ?? []).filter((venue) => (
+        pinnedVenueIds.current.has(venue.id) && !next.some((row) => row.id === venue.id)
+      ))
+      return pinned.length > 0 ? [...next, ...pinned] : next
+    })
     if (cityCatalog.usedFallback && !hasTrackedVenueFallback.current) {
       hasTrackedVenueFallback.current = true
       trackEvent({
@@ -734,7 +752,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     selectedVenue, setSelectedVenue,
     subPage, setSubPage,
     hasCompletedOnboarding, setHasCompletedOnboarding,
-    venues, setVenues,
+    venues, setVenues, pinWritableVenue,
     pulses, setPulses,
     notifications, setNotifications,
     hashtags, setHashtags,
@@ -773,6 +791,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     hasCompletedOnboarding,
     setHasCompletedOnboarding,
     venues,
+    pinWritableVenue,
     pulses,
     notifications,
     hashtags,

@@ -1,3 +1,4 @@
+import { indexedLaunchUuid, SAN_FRANCISCO_LAUNCH_UUID_PREFIX } from './coast-venue-ids.js'
 import type { Venue } from './types'
 
 export const SAN_FRANCISCO_LAUNCH_NEIGHBORHOODS = [
@@ -389,5 +390,9 @@ export function assertSanFranciscoLaunchInventory(
 
 export function getSanFranciscoLaunchVenues(): SanFranciscoLaunchVenue[] {
   assertSanFranciscoLaunchInventory()
-  return SAN_FRANCISCO_LAUNCH_VENUES
+  return SAN_FRANCISCO_LAUNCH_VENUES.map((venue, index) => ({
+    ...venue,
+    id: indexedLaunchUuid(SAN_FRANCISCO_LAUNCH_UUID_PREFIX, index),
+    catalogSlug: venue.id,
+  }))
 }

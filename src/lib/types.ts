@@ -68,6 +68,8 @@ export interface User {
 
 export interface Venue {
   id: string
+  /** Share slug when `id` is the durable venues UUID (pdx-*, sf-*). */
+  catalogSlug?: string
   name: string
   location: {
     lat: number

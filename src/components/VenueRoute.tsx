@@ -20,8 +20,8 @@ import type { VenueDoorPin } from '@/lib/door-pin'
 import type { VenueClaim } from '@/lib/venue-owner'
 import { confirmImHere } from '@/lib/im-here-confirm'
 import { rememberOpenedVenue } from '@/lib/recent-venues'
-import { localLaunchVenueIdForShareId } from '@/lib/seattle-launch-venues'
-import { coastCityKeyForVenueId, loadCityCuratedCatalog } from '@/lib/city-catalog'
+import { coastCityKeyForVenueId, findWritableVenue, loadCityCuratedCatalog } from '@/lib/city-catalog'
+import { launchVenueMatchesShareId } from '@/lib/coast-venue-ids'
 import { resolveShareVenueReady } from '@/lib/share-landing'
 import { MapHomeSkeleton } from '@/components/MapHomeSkeleton'
 import { filterModeratedPulses } from '@/lib/content-moderation'
@@ -41,6 +41,7 @@ export function VenueRoute() {
 
   const {
     venues,
+    pinWritableVenue,
     currentUser,
     contentReports,
     moderatedPulses: _moderatedPulses,
@@ -91,8 +92,10 @@ export function VenueRoute() {
   const [claims, setClaims] = useState<VenueClaim[]>([])
   const [myNightPinned, setMyNightPinned] = useState(false)
 
+  const [durableVenueId, setDurableVenueId] = useState<string | null>(null)
+  const pulseLookupId = durableVenueId ?? venueId
   const venuePulseQuery = useVenuePulsesInfinite(
-    USE_SUPABASE_BACKEND ? venueId : undefined,
+    USE_SUPABASE_BACKEND ? pulseLookupId : undefined,
     30,
   )
 
@@ -111,7 +114,15 @@ export function VenueRoute() {
 
     ;(async () => {
       try {
-        const venue = await VenueData.getVenue(venueId)
+        const key = coastCityKeyForVenueId(venueId)
+        let lookupId = venueId
+        if (key === 'portland' || key === 'san-francisco') {
+          const rows = await loadCityCuratedCatalog(key)
+          const match = rows.find((row) => launchVenueMatchesShareId(row, venueId))
+          if (match) lookupId = match.id
+        }
+        if (!cancelled) setDurableVenueId(lookupId)
+        const venue = await VenueData.getVenue(lookupId)
         if (cancelled) return
         if (venue) setFreshVenue(venue)
       } catch (error) {
@@ -137,9 +148,9 @@ export function VenueRoute() {
       return
     }
     const key = coastCityKeyForVenueId(venueId)
-    const localId = localLaunchVenueIdForShareId(venueId) ?? venueId
-    const already = (venues ?? []).some((venue) => venue.id === venueId || venue.id === localId)
+    const already = findWritableVenue(venues ?? [], venueId)
     if (!key || already) {
+      if (already) setDurableVenueId(already.id)
       setSeedVenue(null)
       setSeedLookupSettled(true)
       return
@@ -148,7 +159,12 @@ export function VenueRoute() {
     setSeedLookupSettled(false)
     void loadCityCuratedCatalog(key).then((rows) => {
       if (cancelled) return
-      setSeedVenue(rows.find((venue) => venue.id === venueId || venue.id === localId) ?? null)
+      const match = rows.find((venue) => launchVenueMatchesShareId(venue, venueId)) ?? null
+      setSeedVenue(match)
+      if (match) {
+        setDurableVenueId(match.id)
+        pinWritableVenue(match)
+      }
       setSeedLookupSettled(true)
     }).catch(() => {
       if (!cancelled) setSeedLookupSettled(true)
@@ -156,15 +172,15 @@ export function VenueRoute() {
     return () => {
       cancelled = true
     }
-  }, [venueId, venues])
+  }, [pinWritableVenue, venueId, venues])
 
   useEffect(() => {
-    if (!venueId || !session?.user?.id) {
+    if (!pulseLookupId || !session?.user?.id) {
       setCrewHere([])
       return
     }
     let cancelled = false
-    void CrewTonightData.listCrewImHere(venueId).then((rows) => {
+    void CrewTonightData.listCrewImHere(pulseLookupId).then((rows) => {
       if (!cancelled) setCrewHere(rows)
     }).catch(() => {
       if (!cancelled) setCrewHere([])
@@ -172,22 +188,22 @@ export function VenueRoute() {
     return () => {
       cancelled = true
     }
-  }, [session?.user?.id, venueId])
+  }, [pulseLookupId, session?.user?.id])
 
   useEffect(() => {
-    if (!venueId) return
+    if (!pulseLookupId) return
     let cancelled = false
-    void PulseReplyData.listRepliesForVenue(venueId).then((rows) => {
+    void PulseReplyData.listRepliesForVenue(pulseLookupId).then((rows) => {
       if (!cancelled) setReplies(rows)
     }).catch(() => undefined)
     void import('@/lib/data/pulses').then(({ listRecentPulsesAtVenue }) => (
-      listRecentPulsesAtVenue(venueId, 40).then((rows) => (
+      listRecentPulsesAtVenue(pulseLookupId, 40).then((rows) => (
         PulseAgreeData.listAgreesForPulses(rows.map((pulse) => pulse.id))
       )).then((rows) => {
         if (!cancelled) setAgrees(rows)
       })
     )).catch(() => undefined)
-    void DoorPinData.fetchVenueDoorPin(venueId).then((pin) => {
+    void DoorPinData.fetchVenueDoorPin(pulseLookupId).then((pin) => {
       if (!cancelled) setDoorPin(pin)
     }).catch(() => undefined)
     if (session?.user?.id) {
@@ -195,10 +211,10 @@ export function VenueRoute() {
         if (!cancelled) setClaims(rows)
       }).catch(() => undefined)
       void FollowData.listPinnedVenues(session.user.id).then((ids) => {
-        if (!cancelled) setMyNightPinned(ids.includes(venueId))
+        if (!cancelled) setMyNightPinned(ids.includes(pulseLookupId))
       }).catch(() => undefined)
     }
-    void PresenceData.fetchHereNowSummary(venueId, Boolean(session))
+    void PresenceData.fetchHereNowSummary(pulseLookupId, Boolean(session))
       .then((summary) => {
         if (!cancelled) setHereNow(summary)
       })
@@ -208,17 +224,33 @@ export function VenueRoute() {
     return () => {
       cancelled = true
     }
-  }, [venueId, session])
+  }, [pulseLookupId, session])
 
   const openedComposeFor = useRef<string | null>(null)
   useEffect(() => {
     if (!venueId) return
     if (parseComposeVenueId(location.pathname, location.search) !== venueId) return
     if (!session && !isPlaceholder) return
+    const resolved = findWritableVenue(venues ?? [], venueId) ?? seedVenue
+    if (!resolved || !launchVenueMatchesShareId(resolved, venueId)) return
+    if (!findWritableVenue(venues ?? [], resolved.id)) {
+      pinWritableVenue(resolved)
+      return
+    }
     if (openedComposeFor.current === venueId) return
     openedComposeFor.current = venueId
-    handleCreatePulse(venueId)
-  }, [handleCreatePulse, isPlaceholder, location.pathname, location.search, session, venueId])
+    handleCreatePulse(resolved.id)
+  }, [
+    handleCreatePulse,
+    isPlaceholder,
+    location.pathname,
+    location.search,
+    pinWritableVenue,
+    seedVenue,
+    session,
+    venueId,
+    venues,
+  ])
 
   useEffect(() => {
     if (venueId) rememberOpenedVenue(venueId)
@@ -227,9 +259,7 @@ export function VenueRoute() {
   if (!currentUser || !venueId) return <MapHomeSkeleton />
 
   const catalog = venues ?? []
-  const localShareId = localLaunchVenueIdForShareId(venueId)
-  const cachedVenue = catalog.find(v => v.id === venueId)
-    ?? (localShareId ? catalog.find(v => v.id === localShareId) ?? null : null)
+  const cachedVenue = findWritableVenue(catalog, venueId) ?? null
   const venue = freshVenue ?? cachedVenue ?? seedVenue
   const phase = resolveShareVenueReady({
     cached: Boolean(cachedVenue || seedVenue),

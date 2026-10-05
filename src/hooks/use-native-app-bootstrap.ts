@@ -38,6 +38,7 @@ export function useNativeAppBootstrap() {
   useEffect(() => {
     const unsubscribeAppState = onAppStateChange(({ isActive }) => {
       if (!isActive) return
+      queryClient.invalidateQueries({ queryKey: ['city-catalog'] }).catch(() => {})
       queryClient.invalidateQueries({ queryKey: ['venues'] }).catch(() => {})
       queryClient.invalidateQueries({ queryKey: ['pulses'] }).catch(() => {})
       queryClient.invalidateQueries({ queryKey: ['events'] }).catch(() => {})
