@@ -1,3 +1,4 @@
+import Supercluster, { type ClusterProperties } from 'supercluster'
 import type { Venue } from './types'
 import { DOWNTOWN_SEATTLE, LAUNCH_33_CENTER } from './neighborhood-geo'
 import { isCuratedVenue } from './map-filters'
@@ -286,11 +287,9 @@ export function buildVenueRenderPoints(params: {
     ))
 }
 
-import Supercluster from 'supercluster'
-
 type VenuePointProperties = { point: VenueRenderPoint }
 
-let clusterIndex: Supercluster<VenuePointProperties, Supercluster.ClusterProperties> | null = null
+let clusterIndex: Supercluster<VenuePointProperties, ClusterProperties> | null = null
 let lastPointsSignature = ''
 
 function getPointsSignature(points: VenueRenderPoint[]) {
