@@ -6,6 +6,7 @@ import {
   headingBannerCopy,
   headingButtonLabel,
   headingWriteAction,
+  headingVenueKey,
   hopLandingPath,
   hopSharePreviewUrl,
   hopTextInviteHref,
@@ -19,6 +20,10 @@ describe('hop links', () => {
     expect(isHopArrival('?hop=1')).toBe(true)
     expect(isHopArrival('?from=share')).toBe(false)
     expect(hopLandingPath('sf-chapel')).toBe('/venue/sf-chapel?hop=1')
+    expect(headingVenueKey({
+      id: 'e0000000-0000-4000-8000-000000000001',
+      catalogSlug: 'sf-chapel',
+    })).toBe('sf-chapel')
     expect(absoluteHopLink('sf-chapel', 'https://pulse-chi-nine.vercel.app')).toBe(
       'https://pulse-chi-nine.vercel.app/venue/sf-chapel?hop=1',
     )

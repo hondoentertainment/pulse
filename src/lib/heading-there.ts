@@ -24,6 +24,12 @@ export function isHopArrival(search: string | { get(name: string): string | null
   return value === HOP_ACTIVE
 }
 
+/** Public hop id. Launch rooms keep their short slug (`sf-chapel`) on the link. */
+export function headingVenueKey(venue: { id: string; catalogSlug?: string | null }): string {
+  const slug = venue.catalogSlug?.trim()
+  return slug || venue.id
+}
+
 export function hopLandingPath(venueId: string): string {
   return `/venue/${encodeURIComponent(venueId)}?${HOP_QUERY}=${HOP_ACTIVE}`
 }

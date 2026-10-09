@@ -65,6 +65,7 @@ import { HeadingHereBanner } from '@/components/HeadingHereBanner'
 import { HeadingThereSheet } from '@/components/HeadingThereSheet'
 import {
   headingButtonLabel,
+  headingVenueKey,
   headingWriteAction,
   isHopArrival,
   type HeadingRecord,
@@ -197,6 +198,7 @@ export function VenuePage({
   const [searchParams] = useSearchParams()
   const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
   const hopArrival = isHopArrival(searchParams)
+  const hopVenueId = headingVenueKey(venue)
   const notifyHighlight = searchParams.get('highlight')
   const highlightPulseId = searchParams.get('pulse')
   const { session, isPlaceholder } = useSupabaseAuth()
@@ -218,7 +220,7 @@ export function VenuePage({
 
   useEffect(() => {
     let cancelled = false
-    void import('@/lib/heading-there-client').then(({ loadActiveHeading }) => loadActiveHeading(venue.id)).then((row) => {
+    void import('@/lib/heading-there-client').then(({ loadActiveHeading }) => loadActiveHeading(hopVenueId)).then((row) => {
       if (!cancelled) setActiveHeading(row)
     }).catch(() => {
       if (!cancelled) setActiveHeading(null)
@@ -226,13 +228,13 @@ export function VenuePage({
     return () => {
       cancelled = true
     }
-  }, [venue.id])
+  }, [hopVenueId])
 
   const onHeadingThere = async () => {
     const action = headingWriteAction({
       isPlaceholder,
       hasSession: Boolean(session),
-      next: `/venue/${venue.id}`,
+      next: `/venue/${hopVenueId}`,
     })
     if (action.type === 'auth') {
       navigate(action.path)
@@ -245,7 +247,7 @@ export function VenuePage({
     const { saveHeading } = await import('@/lib/heading-there-client')
     const record = await saveHeading({
       userId: currentUser.id,
-      venueId: venue.id,
+      venueId: hopVenueId,
       displayName: currentUser.username,
     })
     setActiveHeading(record)
@@ -258,7 +260,7 @@ export function VenuePage({
       return
     }
     const { cancelHeading } = await import('@/lib/heading-there-client')
-    await cancelHeading(currentUser.id, venue.id)
+    await cancelHeading(currentUser.id, hopVenueId)
     setActiveHeading(null)
     setHeadingOpen(false)
     toast.success('Heading there cancelled')
@@ -1097,7 +1099,7 @@ export function VenuePage({
       <HeadingThereSheet
         open={headingOpen}
         onOpenChange={setHeadingOpen}
-        venueId={venue.id}
+        venueId={hopVenueId}
         venueName={venue.name}
         place={[venue.neighborhood, venue.city].filter(Boolean).join(' · ')}
         displayName={activeHeading?.displayName || currentUser?.username || 'You'}
