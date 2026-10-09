@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
@@ -12,6 +12,8 @@ import { CreatorProfileBadge } from '@/components/CreatorProfileBadge'
 import { toast } from 'sonner'
 import { ScoutProgramCard } from '@/components/ScoutProgramCard'
 import { trackEvent } from '@/lib/analytics'
+import { HiddenPulseNote } from '@/components/HiddenPulseNote'
+import type { OwnerHiddenPulse } from '@/lib/pulse-hide'
 
 interface ProfileTabProps {
   currentUser: User
@@ -42,6 +44,21 @@ export function ProfileTab({
 }: ProfileTabProps) {
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [hiddenPulses, setHiddenPulses] = useState<OwnerHiddenPulse[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    void import('@/lib/pulse-hide-client').then(({ loadOwnHiddenPulses }) => loadOwnHiddenPulses(currentUser.id)).then((rows) => {
+      if (!cancelled) setHiddenPulses(rows)
+    }).catch(() => {
+      if (!cancelled) setHiddenPulses([])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser.id])
+
+  const hiddenIds = new Set(hiddenPulses.map((pulse) => pulse.id))
 
   const totalReactions = pulses
     .filter(p => p.userId === currentUser.id)
@@ -158,8 +175,20 @@ export function ProfileTab({
       )}
 
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold">Your Pulses</h3>
-        {userPulses.map((pulse) => (
+        <h3 className="text-lg font-semibold">Your pulses</h3>
+        {hiddenPulses.length > 0 && (
+          <div className="space-y-3">
+            {hiddenPulses.map((pulse) => (
+              <HiddenPulseNote
+                key={pulse.id}
+                pulse={pulse}
+                onRepost={() => toast.success('Post a new pulse without the name')}
+                onAskReview={() => toast.success('Asked a Pulse admin to take another look')}
+              />
+            ))}
+          </div>
+        )}
+        {userPulses.filter((pulse) => !hiddenIds.has(pulse.id)).map((pulse) => (
           <PulseCard
             key={pulse.id}
             pulse={pulse}
@@ -167,7 +196,7 @@ export function ProfileTab({
             onReaction={(type) => onReaction(pulse.id, type)}
           />
         ))}
-        {userPulses.length === 0 && (
+        {userPulses.filter((pulse) => !hiddenIds.has(pulse.id)).length === 0 && hiddenPulses.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
             No pulses yet. Check into a venue to get started!
           </p>

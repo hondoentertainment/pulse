@@ -61,6 +61,14 @@ import type { VenueClaim } from '@/lib/venue-owner'
 import { VenueCoverPhoto } from '@/components/VenueCoverPhoto'
 import { OpenNowChip } from '@/components/OpenNowChip'
 import { TextInviteButton } from '@/components/TextInviteButton'
+import { HeadingHereBanner } from '@/components/HeadingHereBanner'
+import { HeadingThereSheet } from '@/components/HeadingThereSheet'
+import {
+  headingButtonLabel,
+  headingWriteAction,
+  isHopArrival,
+  type HeadingRecord,
+} from '@/lib/heading-there'
 import { HopNextRow } from '@/components/HopNextRow'
 import { CrewTonightPicker } from '@/components/CrewTonightPicker'
 import { formatCrewImHere, type CrewPresenceRow } from '@/lib/crew-im-here'
@@ -188,10 +196,13 @@ export function VenuePage({
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
+  const hopArrival = isHopArrival(searchParams)
   const notifyHighlight = searchParams.get('highlight')
   const highlightPulseId = searchParams.get('pulse')
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
+  const [headingOpen, setHeadingOpen] = useState(false)
+  const [activeHeading, setActiveHeading] = useState<HeadingRecord | null>(null)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
@@ -201,6 +212,57 @@ export function VenuePage({
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
   const [arrivalTick, setArrivalTick] = useState(0)
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
+  const selfHeading = Boolean(
+    currentUser && activeHeading && activeHeading.userId === currentUser.id && !activeHeading.cancelledAt,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void import('@/lib/heading-there-client').then(({ loadActiveHeading }) => loadActiveHeading(venue.id)).then((row) => {
+      if (!cancelled) setActiveHeading(row)
+    }).catch(() => {
+      if (!cancelled) setActiveHeading(null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [venue.id])
+
+  const onHeadingThere = async () => {
+    const action = headingWriteAction({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${venue.id}`,
+    })
+    if (action.type === 'auth') {
+      navigate(action.path)
+      return
+    }
+    if (!currentUser) {
+      navigate('/auth')
+      return
+    }
+    const { saveHeading } = await import('@/lib/heading-there-client')
+    const record = await saveHeading({
+      userId: currentUser.id,
+      venueId: venue.id,
+      displayName: currentUser.username,
+    })
+    setActiveHeading(record)
+    setHeadingOpen(true)
+  }
+
+  const onCancelHeading = async () => {
+    if (!currentUser) {
+      setHeadingOpen(false)
+      return
+    }
+    const { cancelHeading } = await import('@/lib/heading-there-client')
+    await cancelHeading(currentUser.id, venue.id)
+    setActiveHeading(null)
+    setHeadingOpen(false)
+    toast.success('Heading there cancelled')
+  }
 
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
@@ -458,6 +520,14 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
+          {hopArrival && !fromShare && (
+            <HeadingHereBanner
+              displayName={activeHeading?.displayName}
+              place={venue.neighborhood || venue.city}
+              createdAt={activeHeading?.createdAt}
+              onSkip={() => navigate('/')}
+            />
+          )}
           {!fromShare && <VenueCoverPhoto venue={venue} />}
           {!fromShare && (
           <h1 className="text-[28px] font-bold leading-9 tracking-tight text-foreground">{venue.name}</h1>
@@ -535,6 +605,17 @@ export function VenuePage({
             />
           )}
         </div>
+        <button
+          type="button"
+          data-testid="heading-there"
+          onClick={() => { void onHeadingThere() }}
+          className={selfHeading
+            ? 'flex h-12 w-full items-center justify-center rounded-[14px] bg-primary text-[15px] font-semibold text-primary-foreground'
+            : 'flex h-12 w-full items-center justify-center rounded-[14px] border border-accent/50 bg-accent/10 text-[15px] font-semibold text-accent'}
+        >
+          {headingButtonLabel({ hop: hopArrival, selfActive: selfHeading })}
+          {selfHeading ? ' ✓' : hopArrival ? '' : ' →'}
+        </button>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -1013,6 +1094,15 @@ export function VenuePage({
         </DialogContent>
       </Dialog>
 
+      <HeadingThereSheet
+        open={headingOpen}
+        onOpenChange={setHeadingOpen}
+        venueId={venue.id}
+        venueName={venue.name}
+        place={[venue.neighborhood, venue.city].filter(Boolean).join(' · ')}
+        displayName={activeHeading?.displayName || currentUser?.username || 'You'}
+        onCancel={() => { void onCancelHeading() }}
+      />
       <ShareSheet
         open={shareOpen}
         onOpenChange={setShareOpen}
