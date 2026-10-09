@@ -106,7 +106,7 @@
         "recharts": "^3.10.1",
         "sonner": "^2.0.1",
         "supercluster": "^9.1.0",
-        "tailwind-merge": "^3.0.2",
+        "tailwind-merge": "^3.7.0",
         "three": "^0.175.0",
         "tw-animate-css": "^1.2.4",
         "uuid": "^11.1.0",
