@@ -86,6 +86,26 @@ export function launchQuietCity(venues: readonly Pick<Venue, 'id' | 'city'>[]): 
   return coastCityByKey(key)
 }
 
+/** Every launched non-default city in a mixed catalog. The cron pushes one city at a time. */
+export function launchQuietCities(venues: readonly Pick<Venue, 'id' | 'city'>[]): CoastCity[] {
+  const keys = new Set<CoastCityKey>()
+  for (const venue of venues) {
+    const key = cityKeyForVenue(venue)
+    if (key && key !== DEFAULT_COAST_CITY_KEY) keys.add(key)
+  }
+  return [...keys].flatMap((key) => {
+    const city = coastCityByKey(key)
+    return city ? [city] : []
+  })
+}
+
+export function venuesInCoastCity<T extends Pick<Venue, 'id' | 'city'>>(
+  venues: readonly T[],
+  city: CoastCity,
+): T[] {
+  return venues.filter((venue) => cityKeyForVenue(venue) === city.key)
+}
+
 export function pulseOnLocalNight(pulse: Pick<Pulse, 'createdAt'>, now: Date, timeZone = 'America/Los_Angeles'): boolean {
   const created = new Date(pulse.createdAt)
   if (Number.isNaN(created.getTime())) return false

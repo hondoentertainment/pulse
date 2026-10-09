@@ -6,6 +6,7 @@
 
 export const HOP_QUERY = 'hop'
 export const HOP_ACTIVE = '1'
+export const HEADING_ID_QUERY = 'h'
 export const HEADING_WINDOW_MS = 8 * 60 * 60 * 1000
 
 export interface HeadingRecord {
@@ -30,8 +31,26 @@ export function headingVenueKey(venue: { id: string; catalogSlug?: string | null
   return slug || venue.id
 }
 
-export function hopLandingPath(venueId: string): string {
-  return `/venue/${encodeURIComponent(venueId)}?${HOP_QUERY}=${HOP_ACTIVE}`
+export function newHeadingId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `h_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+export function readHeadingId(search: string | { get(name: string): string | null }): string | null {
+  const value = typeof search === 'string'
+    ? new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get(HEADING_ID_QUERY)
+    : search.get(HEADING_ID_QUERY)
+  const id = value?.trim() ?? ''
+  if (!id || id.length > 80 || /[^a-zA-Z0-9_-]/.test(id)) return null
+  return id
+}
+
+export function hopLandingPath(venueId: string, headingId?: string | null): string {
+  const path = `/venue/${encodeURIComponent(venueId)}?${HOP_QUERY}=${HOP_ACTIVE}`
+  if (!headingId) return path
+  return `${path}&${HEADING_ID_QUERY}=${encodeURIComponent(headingId)}`
 }
 
 function hopOrigin(origin?: string): string {
@@ -42,13 +61,15 @@ function hopOrigin(origin?: string): string {
   return 'https://pulse-chi-nine.vercel.app'
 }
 
-export function absoluteHopLink(venueId: string, origin?: string): string {
-  return `${hopOrigin(origin)}${hopLandingPath(venueId)}`
+export function absoluteHopLink(venueId: string, origin?: string, headingId?: string | null): string {
+  return `${hopOrigin(origin)}${hopLandingPath(venueId, headingId)}`
 }
 
 /** OG/crawler URL. Humans are redirected to hopLandingPath. */
-export function hopSharePreviewUrl(venueId: string, origin?: string): string {
-  return `${hopOrigin(origin)}/api/share/venue?venueId=${encodeURIComponent(venueId)}&${HOP_QUERY}=${HOP_ACTIVE}`
+export function hopSharePreviewUrl(venueId: string, origin?: string, headingId?: string | null): string {
+  const base = `${hopOrigin(origin)}/api/share/venue?venueId=${encodeURIComponent(venueId)}&${HOP_QUERY}=${HOP_ACTIVE}`
+  if (!headingId) return base
+  return `${base}&${HEADING_ID_QUERY}=${encodeURIComponent(headingId)}`
 }
 
 export function headingWriteAction(input: {
@@ -74,9 +95,11 @@ export function buildHeadingRecord(input: {
   venueId: string
   displayName: string
   now?: Date
+  id?: string
 }): HeadingRecord {
   const name = input.displayName.trim() || 'Someone'
   return {
+    id: input.id ?? newHeadingId(),
     userId: input.userId,
     venueId: input.venueId,
     displayName: name.slice(0, 40),
@@ -116,12 +139,29 @@ export function headingButtonLabel(input: {
   return 'Heading there'
 }
 
+export function headingById(
+  records: readonly HeadingRecord[],
+  venueId: string,
+  headingId: string,
+  nowMs: number = Date.now(),
+): HeadingRecord | null {
+  return records.find((record) =>
+    record.id === headingId
+    && record.venueId === venueId
+    && isHeadingActive(record, nowMs),
+  ) ?? null
+}
+
 export function headingBannerCopy(input: {
   displayName?: string | null
   place?: string | null
   createdAt?: string | null
   nowMs?: number
+  ended?: boolean
 }): { title: string; meta: string } {
+  if (input.ended) {
+    return { title: 'This hop link has ended', meta: 'From a hop link' }
+  }
   const name = input.displayName?.trim()
   const title = name ? `${name} is heading here` : 'Someone is heading here'
   const place = input.place?.trim()

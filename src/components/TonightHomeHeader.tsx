@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import {
   buildTonightHome,
@@ -36,7 +36,8 @@ import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import { InstallAffordance } from '@/components/InstallAffordance'
 import { LastNightRecap } from '@/components/LastNightRecap'
 import { LaunchQuietTonight } from '@/components/LaunchQuietTonight'
-import { buildLaunchQuietTonight, launchQuietCity } from '@/lib/launch-city-quiet'
+import { buildLaunchQuietTonight, launchQuietCity, pulseOnLocalNight } from '@/lib/launch-city-quiet'
+import { isCuratedVenue } from '@/lib/map-filters'
 import { AddToCalendarButton } from '@/components/AddToCalendarButton'
 import { PulseThreadActions } from '@/components/PulseThreadActions'
 import { OpenNowChip } from '@/components/OpenNowChip'
@@ -143,6 +144,16 @@ export function TonightHomeHeader({
     return feeds
   }, [launchCity])
   const [tonightFeed, setTonightFeed] = useState<TonightFeed>(launchQuiet ? 'curated' : 'foryou')
+  useEffect(() => {
+    if (!tonightFeeds.some((feed) => feed.id === tonightFeed)) setTonightFeed('foryou')
+  }, [tonightFeed, tonightFeeds])
+  const curatedRooms = useMemo(() => {
+    if (!launchCity) return []
+    const cityName = launchCity.city.trim().toLowerCase()
+    return venues.filter((venue) =>
+      isCuratedVenue(venue) && (venue.city ?? '').trim().toLowerCase() === cityName,
+    )
+  }, [launchCity, venues])
   const home = buildTonightHome({
     venues,
     pulses: publicPulses,
@@ -231,6 +242,36 @@ export function TonightHomeHeader({
             variant="pills"
             className="mt-3"
           />
+
+          {tonightFeed === 'curated' && launchCity && !launchQuiet && (
+            <div className="pt-3 space-y-2">
+              <h2 className="text-[13px] font-semibold text-muted-foreground">{launchCity.curatedLabel}</h2>
+              {curatedRooms.map((venue) => {
+                const count = publicPulses.filter((pulse) =>
+                  pulseOnLocalNight(pulse, new Date())
+                  && (pulse.venueId === venue.id || pulse.venueId === venue.catalogSlug),
+                ).length
+                return (
+                  <button
+                    key={venue.id}
+                    type="button"
+                    onClick={() => onVenueClick(venue)}
+                    className="flex w-full items-center justify-between rounded-2xl border border-border bg-card px-3 py-3 text-left"
+                  >
+                    <span>
+                      <span className="block text-[15px] font-semibold text-foreground">{venue.name}</span>
+                      {venue.neighborhood && (
+                        <span className="mt-0.5 block text-[12px] text-muted-foreground">{venue.neighborhood}</span>
+                      )}
+                    </span>
+                    <span className="text-[12px] font-semibold text-accent">
+                      {count === 0 ? '0 · no pulses yet tonight' : `${count} tonight`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {(tonightFeed === 'foryou' || tonightFeed === 'curated') && launchQuiet && (
             <LaunchQuietTonight

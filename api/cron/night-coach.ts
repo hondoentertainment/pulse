@@ -13,6 +13,7 @@
 import { createAdminClient } from '../_lib/supabase-server.js'
 import { hasVapidKeys } from '../_lib/web-push-live.js'
 import { notifyLaunchQuietCity } from '../_lib/launch-quiet-push.js'
+import { launchQuietCities, venuesInCoastCity } from '../../src/lib/launch-city-quiet.js'
 import {
   authorizeCronNightCoach,
   cronNightCoachNoopPayload,
@@ -217,16 +218,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   if (vapidReady) {
     pushAttempted = true
-    try {
-      const quietPush = await notifyLaunchQuietCity(admin, {
-        venues,
-        pulses,
-        now,
-        env: processEnv,
-      })
-      if (quietPush.sent > 0) pushAttempted = true
-    } catch (err) {
-      console.warn('[night-coach] launch quiet push skipped', err)
+    for (const city of launchQuietCities(venues)) {
+      try {
+        const quietPush = await notifyLaunchQuietCity(admin, {
+          venues: venuesInCoastCity(venues, city),
+          pulses,
+          now,
+          env: processEnv,
+        })
+        if (quietPush.sent > 0) pushAttempted = true
+      } catch (err) {
+        console.warn('[night-coach] launch quiet push skipped', city.key, err)
+      }
     }
   }
 

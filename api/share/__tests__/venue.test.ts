@@ -151,20 +151,23 @@ describe('GET /api/share/venue', () => {
       description: 'Buzzing',
       energyLine: 'Buzzing',
     })
-    hopNameMock.mockResolvedValue('Kyle')
+    hopNameMock.mockImplementation(async (_venueId: unknown, headingId?: string | null) => (
+      headingId === 'heading-kyle' ? 'Kyle' : null
+    ))
     const { res, state } = makeResponse()
     await handler(
       {
         method: 'GET',
-        query: { venueId: 'sf-chapel', hop: '1' },
+        query: { venueId: 'sf-chapel', hop: '1', h: 'heading-kyle' },
         headers: { host: 'pulse-chi-nine.vercel.app', 'x-forwarded-proto': 'https' },
       } as RequestLike,
       res,
     )
     expect(state.status).toBe(200)
+    expect(hopNameMock).toHaveBeenCalledWith('sf-chapel', 'heading-kyle')
     expect(state.body).toContain('content="Kyle is heading to The Chapel"')
-    expect(state.body).toContain('/venue/sf-chapel?hop=1')
-    expect(state.body).toContain('property="og:url" content="https://pulse-chi-nine.vercel.app/api/share/venue?venueId=sf-chapel&amp;hop=1"')
+    expect(state.body).toContain('/venue/sf-chapel?hop=1&h=heading-kyle')
+    expect(state.body).toContain('property="og:url" content="https://pulse-chi-nine.vercel.app/api/share/venue?venueId=sf-chapel&amp;hop=1&amp;h=heading-kyle"')
     expect(state.body).not.toContain('from=share')
   })
 })

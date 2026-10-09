@@ -12,6 +12,7 @@ import {
   hopTextInviteHref,
   isHeadingActive,
   isHopArrival,
+  headingById,
   pickActiveHeading,
 } from '../heading-there'
 
@@ -59,6 +60,16 @@ describe('hop links', () => {
     })
     expect(isHeadingActive(stale, now)).toBe(false)
     expect(pickActiveHeading([cancelled, stale, fresh], 'sf-chapel', now)?.displayName).toBe('Kyle')
+    const ada = buildHeadingRecord({
+      userId: 'u2',
+      venueId: 'sf-chapel',
+      displayName: 'Ada',
+      now: new Date(now - 60 * 1000),
+      id: 'heading-ada',
+    })
+    expect(headingById([fresh, ada], 'sf-chapel', 'heading-ada', now)?.displayName).toBe('Ada')
+    expect(headingById([fresh, ada], 'sf-chapel', fresh.id ?? '', now)?.displayName).toBe('Kyle')
+    expect(hopLandingPath('sf-chapel', 'heading-ada')).toBe('/venue/sf-chapel?hop=1&h=heading-ada')
     expect(headingBannerCopy({
       displayName: 'Kyle',
       place: 'Mission',

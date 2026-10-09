@@ -6,6 +6,7 @@ export function HeadingThereSheet({
   open,
   onOpenChange,
   venueId,
+  headingId,
   venueName,
   place,
   displayName,
@@ -14,13 +15,14 @@ export function HeadingThereSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
   venueId: string
+  headingId?: string | null
   venueName: string
   place?: string | null
   displayName: string
   onCancel: () => void
 }) {
-  const shortLink = absoluteHopLink(venueId)
-  const previewUrl = hopSharePreviewUrl(venueId)
+  const shortLink = absoluteHopLink(venueId, undefined, headingId)
+  const previewUrl = hopSharePreviewUrl(venueId, undefined, headingId)
   const textHref = hopTextInviteHref({ displayName, venueName, url: shortLink })
   const placeLine = place?.trim()
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Venue, Pulse, PulseWithUser, User } from '@/lib/types'
 import { PulseCard } from '@/components/PulseCard'
 import { PulseScore } from '@/components/PulseScore'
@@ -14,6 +15,7 @@ import { ScoutProgramCard } from '@/components/ScoutProgramCard'
 import { trackEvent } from '@/lib/analytics'
 import { HiddenPulseNote } from '@/components/HiddenPulseNote'
 import type { OwnerHiddenPulse } from '@/lib/pulse-hide'
+import { venueComposePath } from '@/lib/auth-return-intent'
 
 interface ProfileTabProps {
   currentUser: User
@@ -42,6 +44,7 @@ export function ProfileTab({
   onOpenCreatorDashboard,
   onOpenModerationQueue,
 }: ProfileTabProps) {
+  const navigate = useNavigate()
   const userPulses = pulsesWithUsers.filter((p) => p.userId === currentUser.id)
   const [inviteCopied, setInviteCopied] = useState(false)
   const [hiddenPulses, setHiddenPulses] = useState<OwnerHiddenPulse[]>([])
@@ -182,8 +185,21 @@ export function ProfileTab({
               <HiddenPulseNote
                 key={pulse.id}
                 pulse={pulse}
-                onRepost={() => toast.success('Post a new pulse without the name')}
-                onAskReview={() => toast.success('Asked a Pulse admin to take another look')}
+                onRepost={() => {
+                  if (!pulse.venueId) return
+                  navigate(venueComposePath(pulse.venueId))
+                }}
+                onAskReview={() => {
+                  void import('@/lib/data/pulses').then(({ createPulseReport }) => createPulseReport({
+                    pulseId: pulse.id,
+                    reason: 'other',
+                    details: 'Owner asked for another look after this post was hidden.',
+                  })).then(() => {
+                    toast.success('Asked a Pulse admin to take another look')
+                  }).catch(() => {
+                    toast.error('Could not ask for another look yet')
+                  })
+                }}
               />
             ))}
           </div>

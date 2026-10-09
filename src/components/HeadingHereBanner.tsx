@@ -4,14 +4,16 @@ export function HeadingHereBanner({
   displayName,
   place,
   createdAt,
+  ended,
   onSkip,
 }: {
   displayName?: string | null
   place?: string | null
   createdAt?: string | null
+  ended?: boolean
   onSkip?: () => void
 }) {
-  const copy = headingBannerCopy({ displayName, place, createdAt })
+  const copy = headingBannerCopy({ displayName, place, createdAt, ended })
   const initial = (displayName?.trim() || 'S').slice(0, 1).toUpperCase()
   return (
     <section

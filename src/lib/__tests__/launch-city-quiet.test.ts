@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildLaunchQuietTonight,
+  launchQuietCities,
+  launchQuietCity,
   launchQuietRateOpen,
+  venuesInCoastCity,
   planLaunchQuietPush,
   shouldSendLaunchQuietPush,
 } from '../launch-city-quiet'
@@ -55,6 +58,17 @@ describe('launch city quiet tonight', () => {
     expect(empty?.countLine).toBe('0 · no pulses yet tonight')
     expect(empty?.launchLine).toContain('Portland launch set')
     expect(empty?.countLine).not.toMatch(/[1-9]/)
+  })
+
+  it('splits a mixed catalog so each launched city can be pushed on its own', () => {
+    const mixed = [
+      venue({ id: 'venue-1', name: 'Neumos', city: 'Seattle', state: 'WA' }),
+      venue(),
+      venue({ id: 'sf-chapel', name: 'The Chapel', city: 'San Francisco', state: 'CA', neighborhood: 'Mission' }),
+    ]
+    expect(launchQuietCity(mixed)).toBeNull()
+    expect(launchQuietCities(mixed).map((city) => city.key)).toEqual(['portland', 'san-francisco'])
+    expect(venuesInCoastCity(mixed, launchQuietCities(mixed)[0]).map((row) => row.id)).toEqual(['pdx-crystal-ballroom'])
   })
 
   it('stays off for Seattle and when a curated room already has a pulse tonight', () => {

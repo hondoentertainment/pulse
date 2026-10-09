@@ -67,6 +67,7 @@ import {
   headingButtonLabel,
   headingVenueKey,
   headingWriteAction,
+  readHeadingId,
   isHopArrival,
   type HeadingRecord,
 } from '@/lib/heading-there'
@@ -199,12 +200,15 @@ export function VenuePage({
   const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
   const hopArrival = isHopArrival(searchParams)
   const hopVenueId = headingVenueKey(venue)
+  const hopHeadingId = readHeadingId(searchParams)
   const notifyHighlight = searchParams.get('highlight')
   const highlightPulseId = searchParams.get('pulse')
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
   const [headingOpen, setHeadingOpen] = useState(false)
-  const [activeHeading, setActiveHeading] = useState<HeadingRecord | null>(null)
+  const [bannerHeading, setBannerHeading] = useState<HeadingRecord | null>(null)
+  const [ownHeading, setOwnHeading] = useState<HeadingRecord | null>(null)
+  const [hopLookupDone, setHopLookupDone] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
@@ -214,21 +218,31 @@ export function VenuePage({
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
   const [arrivalTick, setArrivalTick] = useState(0)
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
-  const selfHeading = Boolean(
-    currentUser && activeHeading && activeHeading.userId === currentUser.id && !activeHeading.cancelledAt,
-  )
+  const viewerId = currentUser?.id
+  const selfHeading = Boolean(viewerId && ownHeading && ownHeading.userId === viewerId && !ownHeading.cancelledAt)
 
   useEffect(() => {
     let cancelled = false
-    void import('@/lib/heading-there-client').then(({ loadActiveHeading }) => loadActiveHeading(hopVenueId)).then((row) => {
-      if (!cancelled) setActiveHeading(row)
+    setHopLookupDone(false)
+    void import('@/lib/heading-there-client').then(async ({ loadHeadingById, loadOwnHeading }) => {
+      const [banner, own] = await Promise.all([
+        hopHeadingId ? loadHeadingById(hopVenueId, hopHeadingId) : Promise.resolve(null),
+        viewerId ? loadOwnHeading(viewerId, hopVenueId) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setBannerHeading(banner)
+      setOwnHeading(own)
+      setHopLookupDone(true)
     }).catch(() => {
-      if (!cancelled) setActiveHeading(null)
+      if (cancelled) return
+      setBannerHeading(null)
+      setOwnHeading(null)
+      setHopLookupDone(true)
     })
     return () => {
       cancelled = true
     }
-  }, [hopVenueId])
+  }, [hopHeadingId, hopVenueId, viewerId])
 
   const onHeadingThere = async () => {
     const action = headingWriteAction({
@@ -250,7 +264,7 @@ export function VenuePage({
       venueId: hopVenueId,
       displayName: currentUser.username,
     })
-    setActiveHeading(record)
+    setOwnHeading(record)
     setHeadingOpen(true)
   }
 
@@ -261,7 +275,7 @@ export function VenuePage({
     }
     const { cancelHeading } = await import('@/lib/heading-there-client')
     await cancelHeading(currentUser.id, hopVenueId)
-    setActiveHeading(null)
+    setOwnHeading(null)
     setHeadingOpen(false)
     toast.success('Heading there cancelled')
   }
@@ -524,9 +538,10 @@ export function VenuePage({
           </button>
           {hopArrival && !fromShare && (
             <HeadingHereBanner
-              displayName={activeHeading?.displayName}
+              displayName={bannerHeading?.displayName}
               place={venue.neighborhood || venue.city}
-              createdAt={activeHeading?.createdAt}
+              createdAt={bannerHeading?.createdAt}
+              ended={hopLookupDone && Boolean(hopHeadingId) && !bannerHeading}
               onSkip={() => navigate('/')}
             />
           )}
@@ -1100,9 +1115,10 @@ export function VenuePage({
         open={headingOpen}
         onOpenChange={setHeadingOpen}
         venueId={hopVenueId}
+        headingId={ownHeading?.id}
         venueName={venue.name}
         place={[venue.neighborhood, venue.city].filter(Boolean).join(' · ')}
-        displayName={activeHeading?.displayName || currentUser?.username || 'You'}
+        displayName={ownHeading?.displayName || currentUser?.username || 'You'}
         onCancel={() => { void onCancelHeading() }}
       />
       <ShareSheet

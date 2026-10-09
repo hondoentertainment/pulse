@@ -16,7 +16,7 @@ import {
 import { loadShareNeighborhoodOg, loadShareOgEnergy } from '../_lib/share-og-lookup.js'
 import { SHARE_OG_HEIGHT, SHARE_OG_WIDTH } from '../_lib/share-og-png.js'
 import { parseNeighborhoodShareSlug } from '../../src/lib/neighborhood-slugs.js'
-import { buildHopOgCopy, hopLandingPath, isHopArrival } from '../../src/lib/heading-there.js'
+import { buildHopOgCopy, hopLandingPath, isHopArrival, readHeadingId } from '../../src/lib/heading-there.js'
 import { loadHopHeadingName } from '../_lib/hop-heading-lookup.js'
 
 function escapeHtml(value: string): string {
@@ -68,17 +68,17 @@ export default async function handler(
     const origin = originFromReq(req)
     const fromRaw = req.query?.from
     const from = Array.isArray(fromRaw) ? fromRaw[0] : fromRaw
-    const hop = isHopArrival({
-      get(name: string) {
-        const raw = req.query?.[name]
-        const value = Array.isArray(raw) ? raw[0] : raw
-        return typeof value === 'string' ? value : null
-      },
-    })
+    const queryValue = (name: string): string | null => {
+      const raw = req.query?.[name]
+      const value = Array.isArray(raw) ? raw[0] : raw
+      return typeof value === 'string' ? value : null
+    }
+    const hop = isHopArrival({ get: queryValue })
+    const headingId = hop ? readHeadingId({ get: queryValue }) : null
     const landingFrom = hop ? 'hop' : from === 'invite' ? 'invite' : 'share'
     const target = venueId
       ? hop
-        ? `${origin}${hopLandingPath(venueId)}`
+        ? `${origin}${hopLandingPath(venueId, headingId)}`
         : `${origin}/venue/${encodeURIComponent(venueId)}?from=${landingFrom}`
       : neighborhoodSlug
         ? `${origin}/n/${encodeURIComponent(neighborhoodSlug)}`
@@ -90,7 +90,7 @@ export default async function handler(
         ? `${origin}/api/share/og?n=${encodeURIComponent(neighborhoodSlug)}`
         : `${origin}/api/share/og`
     const selfUrl = venueId
-      ? `${origin}/api/share/venue?venueId=${encodeURIComponent(venueId)}${hop ? '&hop=1' : landingFrom === 'invite' ? '&from=invite' : ''}`
+      ? `${origin}/api/share/venue?venueId=${encodeURIComponent(venueId)}${hop ? `&hop=1${headingId ? `&h=${encodeURIComponent(headingId)}` : ''}` : landingFrom === 'invite' ? '&from=invite' : ''}`
       : neighborhoodSlug
         ? `${origin}/api/share/venue?n=${encodeURIComponent(neighborhoodSlug)}`
         : `${origin}/api/share/venue`
@@ -111,7 +111,7 @@ export default async function handler(
         /* keep generic card */
       }
       if (hop) {
-        const headingName = await loadHopHeadingName(venueId).catch(() => null)
+        const headingName = await loadHopHeadingName(venueId, headingId).catch(() => null)
         const hopCard = buildHopOgCopy({ venueName: title === 'Venue on Pulse' ? null : title, displayName: headingName })
         title = hopCard.title
         description = hopCard.description

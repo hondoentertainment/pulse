@@ -6,6 +6,7 @@
 
 import {
   buildHeadingRecord,
+  headingById,
   isHeadingActive,
   pickActiveHeading,
   type HeadingRecord,
@@ -44,6 +45,14 @@ function writeAll(records: HeadingRecord[]): void {
 
 export function readLocalHeading(venueId: string, nowMs: number = Date.now()): HeadingRecord | null {
   return pickActiveHeading(readAll(), venueId, nowMs)
+}
+
+export function readLocalHeadingById(
+  venueId: string,
+  headingId: string,
+  nowMs: number = Date.now(),
+): HeadingRecord | null {
+  return headingById(readAll(), venueId, headingId, nowMs)
 }
 
 export function saveLocalHeading(record: HeadingRecord): HeadingRecord {
@@ -90,6 +99,7 @@ export async function saveHeading(input: {
       .eq('venue_id', input.venueId)
       .is('cancelled_at', null)
     const { error } = await client.from('venue_headings').insert({
+      id: record.id,
       user_id: record.userId,
       venue_id: record.venueId,
       display_name: record.displayName,
@@ -119,32 +129,71 @@ export async function cancelHeading(userId: string, venueId: string): Promise<vo
   }
 }
 
-export async function loadActiveHeading(venueId: string, nowMs: number = Date.now()): Promise<HeadingRecord | null> {
-  const local = readLocalHeading(venueId, nowMs)
+function mapHeadingRow(row: {
+  id?: unknown
+  user_id?: unknown
+  display_name?: unknown
+  created_at?: unknown
+}, venueId: string, nowMs: number): HeadingRecord | null {
+  if (typeof row.user_id !== 'string' || typeof row.display_name !== 'string' || typeof row.created_at !== 'string') {
+    return null
+  }
+  const record: HeadingRecord = {
+    id: typeof row.id === 'string' ? row.id : undefined,
+    userId: row.user_id,
+    venueId,
+    displayName: row.display_name,
+    createdAt: row.created_at,
+  }
+  return isHeadingActive(record, nowMs) ? record : null
+}
+
+/** The heading named in this hop link. A different person's newer row is not a substitute. */
+export async function loadHeadingById(
+  venueId: string,
+  headingId: string,
+  nowMs: number = Date.now(),
+): Promise<HeadingRecord | null> {
+  const local = readLocalHeadingById(venueId, headingId, nowMs)
   const client = await db()
   if (!client) return local
   try {
     const { data, error } = await client
       .from('venue_headings')
-      .select('user_id, display_name, created_at')
+      .select('id, user_id, display_name, created_at')
+      .eq('id', headingId)
+      .eq('venue_id', venueId)
+      .is('cancelled_at', null)
+      .maybeSingle()
+    if (error || !data) return local
+    return mapHeadingRow(data, venueId, nowMs) ?? local
+  } catch {
+    return local
+  }
+}
+
+export async function loadOwnHeading(
+  userId: string,
+  venueId: string,
+  nowMs: number = Date.now(),
+): Promise<HeadingRecord | null> {
+  const local = readAll().find((row) =>
+    row.userId === userId && row.venueId === venueId && isHeadingActive(row, nowMs),
+  ) ?? null
+  const client = await db()
+  if (!client) return local
+  try {
+    const { data, error } = await client
+      .from('venue_headings')
+      .select('id, user_id, display_name, created_at')
+      .eq('user_id', userId)
       .eq('venue_id', venueId)
       .is('cancelled_at', null)
       .order('created_at', { ascending: false })
-      .limit(8)
+      .limit(1)
+      .maybeSingle()
     if (error || !data) return local
-    const remote: HeadingRecord[] = data.flatMap((row) => {
-      if (typeof row.user_id !== 'string' || typeof row.display_name !== 'string' || typeof row.created_at !== 'string') {
-        return []
-      }
-      const record: HeadingRecord = {
-        userId: row.user_id,
-        venueId,
-        displayName: row.display_name,
-        createdAt: row.created_at,
-      }
-      return isHeadingActive(record, nowMs) ? [record] : []
-    })
-    return pickActiveHeading([...remote, ...(local ? [local] : [])], venueId, nowMs)
+    return mapHeadingRow(data, venueId, nowMs) ?? local
   } catch {
     return local
   }

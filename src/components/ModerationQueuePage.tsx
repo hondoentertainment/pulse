@@ -99,36 +99,38 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
       toast.error(decision.message)
       return
     }
-    updateStatus(report.id, 'actioned')
     const pulseId = report.targetId
-    void import('@/lib/pulse-hide-client').then(({ persistPulseHide }) => persistPulseHide({
-      pulseId,
-      note: decision.note,
-    })).then((result) => {
-      if (!result.ok && result.message && result.message !== 'Sign in as an admin to hide a post') {
-        toast.error(result.message)
+    void import('@/lib/pulse-hide-client').then(async ({ persistPulseHide }) => {
+      const result = await persistPulseHide({ pulseId, note: decision.note })
+      if (!result.ok) {
+        toast.error(result.message ?? 'Could not hide this post')
+        return
       }
-    })
-    const timer = window.setTimeout(() => {
-      delete undoTimers.current[report.id]
-    }, HIDE_UNDO_MS)
-    undoTimers.current[report.id] = timer
-    toast('Post hidden', {
-      description: "Owner's notified · Undo for 10s",
-      duration: HIDE_UNDO_MS,
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          window.clearTimeout(undoTimers.current[report.id])
-          delete undoTimers.current[report.id]
-          updateStatus(report.id, 'pending')
-          void import('@/lib/pulse-hide-client').then(({ persistPulseHide }) => persistPulseHide({
-            pulseId,
-            undo: true,
-          }))
-          toast.success('Hide undone')
+      updateStatus(report.id, 'actioned')
+      const timer = window.setTimeout(() => {
+        delete undoTimers.current[report.id]
+      }, HIDE_UNDO_MS)
+      undoTimers.current[report.id] = timer
+      toast('Post hidden', {
+        description: "Owner's notified · Undo for 10s",
+        duration: HIDE_UNDO_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            window.clearTimeout(undoTimers.current[report.id])
+            delete undoTimers.current[report.id]
+            updateStatus(report.id, 'pending')
+            void persistPulseHide({ pulseId, undo: true }).then((undoResult) => {
+              if (!undoResult.ok) {
+                updateStatus(report.id, 'actioned')
+                toast.error(undoResult.message ?? 'Could not undo this hide')
+                return
+              }
+              toast.success('Hide undone')
+            })
+          },
         },
-      },
+      })
     })
   }
 
