@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CaretLeft, ShieldCheck } from '@phosphor-icons/react'
+import { toast } from 'sonner'
+import { HIDE_UNDO_MS, hidePulseDecision } from '@/lib/pulse-hide'
 import { REPORT_REASONS } from '@/lib/content-moderation'
 import type { ContentReport } from '@/lib/content-moderation'
 import { listModerationPulseReports } from '@/lib/data/pulses'
@@ -17,6 +19,8 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
   const [query, setQuery] = useState('')
   const [triageMode, setTriageMode] = useState(true)
   const [serverReports, setServerReports] = useState<ContentReport[]>([])
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const undoTimers = useRef<Record<string, number>>({})
 
   useEffect(() => {
     if (!USE_SUPABASE_BACKEND) return
@@ -80,13 +84,54 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
   )
 
   const updateStatus = (reportId: string, status: ContentReport['status']) => {
-    onUpdateReports(
-      sorted.map((report) => (
-        report.id === reportId
-          ? { ...report, status, reviewedAt: new Date().toISOString() }
-          : report
-      ))
-    )
+    const apply = (list: ContentReport[]) => list.map((report) => (
+      report.id === reportId
+        ? { ...report, status, reviewedAt: new Date().toISOString() }
+        : report
+    ))
+    setServerReports((current) => apply(current))
+    onUpdateReports(apply(reports))
+  }
+
+  const hidePost = (report: ContentReport) => {
+    const decision = hidePulseDecision({ admin: true, note: notes[report.id] ?? '' })
+    if (!decision.ok) {
+      toast.error(decision.message)
+      return
+    }
+    const pulseId = report.targetId
+    void import('@/lib/pulse-hide-client').then(async ({ persistPulseHide }) => {
+      const result = await persistPulseHide({ pulseId, note: decision.note })
+      if (!result.ok) {
+        toast.error(result.message ?? 'Could not hide this post')
+        return
+      }
+      updateStatus(report.id, 'actioned')
+      const timer = window.setTimeout(() => {
+        delete undoTimers.current[report.id]
+      }, HIDE_UNDO_MS)
+      undoTimers.current[report.id] = timer
+      toast('Post hidden', {
+        description: "Owner's notified · Undo for 10s",
+        duration: HIDE_UNDO_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            window.clearTimeout(undoTimers.current[report.id])
+            delete undoTimers.current[report.id]
+            updateStatus(report.id, 'pending')
+            void persistPulseHide({ pulseId, undo: true }).then((undoResult) => {
+              if (!undoResult.ok) {
+                updateStatus(report.id, 'actioned')
+                toast.error(undoResult.message ?? 'Could not undo this hide')
+                return
+              }
+              toast.success('Hide undone')
+            })
+          },
+        },
+      })
+    })
   }
 
   return (
@@ -166,6 +211,38 @@ export function ModerationQueuePage({ reports, onBack, onUpdateReports }: Modera
             </div>
             {report.description && (
               <p className="text-sm text-muted-foreground">{report.description}</p>
+            )}
+            {report.targetType === 'pulse' && report.status === 'pending' && (
+              <div className="space-y-2">
+                <label className="block text-[12px] font-semibold text-muted-foreground" htmlFor={`note-${report.id}`}>
+                  Resolution note · shown to post owner
+                </label>
+                <textarea
+                  id={`note-${report.id}`}
+                  value={notes[report.id] ?? ''}
+                  onChange={(event) => setNotes((current) => ({ ...current, [report.id]: event.target.value }))}
+                  rows={3}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  placeholder="Why this post is hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="hide-post"
+                    onClick={() => hidePost(report)}
+                    className="h-11 flex-1 rounded-[14px] border border-rose-400/40 text-[14px] font-semibold text-rose-300"
+                  >
+                    Hide post
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateStatus(report.id, 'dismissed')}
+                    className="h-11 flex-1 rounded-[14px] border border-border text-[14px] font-semibold text-foreground"
+                  >
+                    Keep visible
+                  </button>
+                </div>
+              </div>
             )}
             <div className="flex items-center gap-2">
               <button

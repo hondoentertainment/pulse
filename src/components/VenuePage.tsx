@@ -61,6 +61,16 @@ import type { VenueClaim } from '@/lib/venue-owner'
 import { VenueCoverPhoto } from '@/components/VenueCoverPhoto'
 import { OpenNowChip } from '@/components/OpenNowChip'
 import { TextInviteButton } from '@/components/TextInviteButton'
+import { HeadingHereBanner } from '@/components/HeadingHereBanner'
+import { HeadingThereSheet } from '@/components/HeadingThereSheet'
+import {
+  headingButtonLabel,
+  headingVenueKey,
+  headingWriteAction,
+  readHeadingId,
+  isHopArrival,
+  type HeadingRecord,
+} from '@/lib/heading-there'
 import { HopNextRow } from '@/components/HopNextRow'
 import { CrewTonightPicker } from '@/components/CrewTonightPicker'
 import { formatCrewImHere, type CrewPresenceRow } from '@/lib/crew-im-here'
@@ -188,10 +198,17 @@ export function VenuePage({
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromShare = searchParams.get('from') === 'share' || searchParams.get('from') === 'invite' || invitePrimed
+  const hopArrival = isHopArrival(searchParams)
+  const hopVenueId = headingVenueKey(venue)
+  const hopHeadingId = readHeadingId(searchParams)
   const notifyHighlight = searchParams.get('highlight')
   const highlightPulseId = searchParams.get('pulse')
   const { session, isPlaceholder } = useSupabaseAuth()
   const [shareOpen, setShareOpen] = useState(false)
+  const [headingOpen, setHeadingOpen] = useState(false)
+  const [bannerHeading, setBannerHeading] = useState<HeadingRecord | null>(null)
+  const [ownHeading, setOwnHeading] = useState<HeadingRecord | null>(null)
+  const [hopLookupDone, setHopLookupDone] = useState(false)
   const [shareCard, setShareCard] = useState<ShareCard | null>(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [selectedLiveReview, setSelectedLiveReview] = useState<PulseWithUser | null>(null)
@@ -201,6 +218,67 @@ export function VenuePage({
   const [arrivalWatch, setArrivalWatch] = useState<ArrivalWatch | null>(null)
   const [arrivalTick, setArrivalTick] = useState(0)
   const liveReportsQueryKey = ['venue-live-reports', venue.id]
+  const viewerId = currentUser?.id
+  const selfHeading = Boolean(viewerId && ownHeading && ownHeading.userId === viewerId && !ownHeading.cancelledAt)
+
+  useEffect(() => {
+    let cancelled = false
+    setHopLookupDone(false)
+    void import('@/lib/heading-there-client').then(async ({ loadHeadingById, loadOwnHeading }) => {
+      const [banner, own] = await Promise.all([
+        hopHeadingId ? loadHeadingById(hopVenueId, hopHeadingId) : Promise.resolve(null),
+        viewerId ? loadOwnHeading(viewerId, hopVenueId) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setBannerHeading(banner)
+      setOwnHeading(own)
+      setHopLookupDone(true)
+    }).catch(() => {
+      if (cancelled) return
+      setBannerHeading(null)
+      setOwnHeading(null)
+      setHopLookupDone(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hopHeadingId, hopVenueId, viewerId])
+
+  const onHeadingThere = async () => {
+    const action = headingWriteAction({
+      isPlaceholder,
+      hasSession: Boolean(session),
+      next: `/venue/${hopVenueId}`,
+    })
+    if (action.type === 'auth') {
+      navigate(action.path)
+      return
+    }
+    if (!currentUser) {
+      navigate('/auth')
+      return
+    }
+    const { saveHeading } = await import('@/lib/heading-there-client')
+    const record = await saveHeading({
+      userId: currentUser.id,
+      venueId: hopVenueId,
+      displayName: currentUser.username,
+    })
+    setOwnHeading(record)
+    setHeadingOpen(true)
+  }
+
+  const onCancelHeading = async () => {
+    if (!currentUser) {
+      setHeadingOpen(false)
+      return
+    }
+    const { cancelHeading } = await import('@/lib/heading-there-client')
+    await cancelHeading(currentUser.id, hopVenueId)
+    setOwnHeading(null)
+    setHeadingOpen(false)
+    toast.success('Heading there cancelled')
+  }
 
   const { data: serverLiveReports, refetch: refetchLiveReports } = useQuery({
     queryKey: liveReportsQueryKey,
@@ -458,6 +536,15 @@ export function VenuePage({
             <ArrowLeft size={18} />
             Map
           </button>
+          {hopArrival && !fromShare && (
+            <HeadingHereBanner
+              displayName={bannerHeading?.displayName}
+              place={venue.neighborhood || venue.city}
+              createdAt={bannerHeading?.createdAt}
+              ended={hopLookupDone && Boolean(hopHeadingId) && !bannerHeading}
+              onSkip={() => navigate('/')}
+            />
+          )}
           {!fromShare && <VenueCoverPhoto venue={venue} />}
           {!fromShare && (
           <h1 className="text-[28px] font-bold leading-9 tracking-tight text-foreground">{venue.name}</h1>
@@ -535,6 +622,17 @@ export function VenuePage({
             />
           )}
         </div>
+        <button
+          type="button"
+          data-testid="heading-there"
+          onClick={() => { void onHeadingThere() }}
+          className={selfHeading
+            ? 'flex h-12 w-full items-center justify-center rounded-[14px] bg-primary text-[15px] font-semibold text-primary-foreground'
+            : 'flex h-12 w-full items-center justify-center rounded-[14px] border border-accent/50 bg-accent/10 text-[15px] font-semibold text-accent'}
+        >
+          {headingButtonLabel({ hop: hopArrival, selfActive: selfHeading })}
+          {selfHeading ? ' ✓' : hopArrival ? '' : ' →'}
+        </button>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -1013,6 +1111,16 @@ export function VenuePage({
         </DialogContent>
       </Dialog>
 
+      <HeadingThereSheet
+        open={headingOpen}
+        onOpenChange={setHeadingOpen}
+        venueId={hopVenueId}
+        headingId={ownHeading?.id}
+        venueName={venue.name}
+        place={[venue.neighborhood, venue.city].filter(Boolean).join(' · ')}
+        displayName={ownHeading?.displayName || currentUser?.username || 'You'}
+        onCancel={() => { void onCancelHeading() }}
+      />
       <ShareSheet
         open={shareOpen}
         onOpenChange={setShareOpen}

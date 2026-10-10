@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestLike, ResponseLike } from '../../_lib/http'
 
-const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock } = vi.hoisted(() => ({
+const { loadShareOgEnergyMock, loadShareNeighborhoodOgMock, hopNameMock } = vi.hoisted(() => ({
   loadShareOgEnergyMock: vi.fn(),
   loadShareNeighborhoodOgMock: vi.fn(),
+  hopNameMock: vi.fn(async () => null as string | null),
 }))
 
 vi.mock('../../_lib/share-og-lookup.js', () => ({
@@ -17,6 +18,15 @@ vi.mock('../../_lib/share-og-lookup.ts', () => ({
 vi.mock('../../_lib/share-og-lookup', () => ({
   loadShareOgEnergy: (...args: unknown[]) => loadShareOgEnergyMock(...args),
   loadShareNeighborhoodOg: (...args: unknown[]) => loadShareNeighborhoodOgMock(...args),
+}))
+vi.mock('../../_lib/hop-heading-lookup.js', () => ({
+  loadHopHeadingName: (...args: unknown[]) => hopNameMock(...args),
+}))
+vi.mock('../../_lib/hop-heading-lookup.ts', () => ({
+  loadHopHeadingName: (...args: unknown[]) => hopNameMock(...args),
+}))
+vi.mock('../../_lib/hop-heading-lookup', () => ({
+  loadHopHeadingName: (...args: unknown[]) => hopNameMock(...args),
 }))
 
 import handler from '../venue'
@@ -52,6 +62,8 @@ describe('GET /api/share/venue', () => {
   beforeEach(() => {
     loadShareOgEnergyMock.mockReset()
     loadShareNeighborhoodOgMock.mockReset()
+    hopNameMock.mockReset()
+    hopNameMock.mockResolvedValue(null)
   })
 
   it('sets og:title to Neumos when the venue fetch returns', async () => {
@@ -131,5 +143,31 @@ describe('GET /api/share/venue', () => {
     expect(state.body).toContain('/api/share/og?n=capitol-hill')
     expect(state.body).not.toContain('/venue/')
     expect(loadShareOgEnergyMock).not.toHaveBeenCalled()
+  })
+
+  it('lands hop shares on /venue/:id?hop=1 and names who is heading there', async () => {
+    loadShareOgEnergyMock.mockResolvedValue({
+      title: 'The Chapel',
+      description: 'Buzzing',
+      energyLine: 'Buzzing',
+    })
+    hopNameMock.mockImplementation(async (_venueId: unknown, headingId?: string | null) => (
+      headingId === 'heading-kyle' ? 'Kyle' : null
+    ))
+    const { res, state } = makeResponse()
+    await handler(
+      {
+        method: 'GET',
+        query: { venueId: 'sf-chapel', hop: '1', h: 'heading-kyle' },
+        headers: { host: 'pulse-chi-nine.vercel.app', 'x-forwarded-proto': 'https' },
+      } as RequestLike,
+      res,
+    )
+    expect(state.status).toBe(200)
+    expect(hopNameMock).toHaveBeenCalledWith('sf-chapel', 'heading-kyle')
+    expect(state.body).toContain('content="Kyle is heading to The Chapel"')
+    expect(state.body).toContain('/venue/sf-chapel?hop=1&h=heading-kyle')
+    expect(state.body).toContain('property="og:url" content="https://pulse-chi-nine.vercel.app/api/share/venue?venueId=sf-chapel&amp;hop=1&amp;h=heading-kyle"')
+    expect(state.body).not.toContain('from=share')
   })
 })

@@ -191,6 +191,9 @@ export interface Pulse {
   kind?: PulseKind
   /** True when GPS placed the author inside the venue check-in radius. */
   locationVerified?: boolean
+  /** Set when an admin hides the pulse. Owner can still read hiddenNote. */
+  hiddenAt?: string | null
+  hiddenNote?: string | null
   /** Derived from caption — true when the review has body text. */
   hasBody?: boolean
 }

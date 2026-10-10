@@ -189,6 +189,7 @@ export function filterModeratedPulses(
   )
   return pulses.filter(p => {
     if (hiddenIds.has(p.id)) return false
+    if (p.hiddenAt && p.userId !== currentUserId) return false
     if (isBlocked(blocks, currentUserId, p.userId)) return false
     if (isMuted(mutes, currentUserId, p.userId)) return false
     return true

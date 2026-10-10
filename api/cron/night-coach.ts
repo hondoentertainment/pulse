@@ -12,6 +12,8 @@
 
 import { createAdminClient } from '../_lib/supabase-server.js'
 import { hasVapidKeys } from '../_lib/web-push-live.js'
+import { notifyLaunchQuietCity } from '../_lib/launch-quiet-push.js'
+import { launchQuietCities, venuesInCoastCity } from '../../src/lib/launch-city-quiet.js'
 import {
   authorizeCronNightCoach,
   cronNightCoachNoopPayload,
@@ -90,22 +92,30 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const [{ data: followRows }, { data: pulseRows }, { data: venueRows }] = await Promise.all([
     admin.from('follows').select('follower_id, target_venue_id, target_kind').is('deleted_at', null).eq('target_kind', 'venue'),
     admin.from('pulses').select('id, user_id, venue_id, created_at, energy_rating, photos, expires_at, reactions, views').gte('created_at', since).is('deleted_at', null),
-    admin.from('venues').select('id, name, neighborhood, inventory_source, claim_verified').limit(600),
+    admin.from('venues').select('id, name, neighborhood, city, state, inventory_source, seeded, claim_verified').limit(800),
   ])
 
   const venues = (venueRows ?? []).map((row: {
     id: string
     name?: string
     neighborhood?: string | null
+    city?: string | null
+    state?: string | null
     inventory_source?: string | null
+    seeded?: boolean | null
     claim_verified?: boolean | null
   }) => ({
     id: row.id,
     name: row.name ?? 'Venue',
     neighborhood: row.neighborhood ?? undefined,
+    city: row.city ?? undefined,
+    state: row.state ?? undefined,
     location: { lat: 0, lng: 0, address: '' },
     pulseScore: 0,
-    inventorySource: row.inventory_source ?? undefined,
+    inventorySource: row.inventory_source === 'curated-seed' || row.inventory_source === 'user' || row.inventory_source === 'import' || row.inventory_source === 'osm'
+      ? row.inventory_source
+      : undefined,
+    seeded: Boolean(row.seeded),
     claimVerified: Boolean(row.claim_verified),
   }))
 
@@ -208,6 +218,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   if (vapidReady) {
     pushAttempted = true
+    for (const city of launchQuietCities(venues)) {
+      try {
+        const quietPush = await notifyLaunchQuietCity(admin, {
+          venues: venuesInCoastCity(venues, city),
+          pulses,
+          now,
+          env: processEnv,
+        })
+        if (quietPush.sent > 0) pushAttempted = true
+      } catch (err) {
+        console.warn('[night-coach] launch quiet push skipped', city.key, err)
+      }
+    }
   }
 
   res.status(200).json({

@@ -27,7 +27,15 @@ self.addEventListener('push', function (event) {
       url: url,
       kind: typeof extra.kind === 'string' ? extra.kind : null,
       tag: tag,
+      postUrl: typeof extra.postUrl === 'string' ? extra.postUrl : null,
+      openUrl: typeof extra.openUrl === 'string' ? extra.openUrl : null,
+      muteUrl: typeof extra.muteUrl === 'string' ? extra.muteUrl : null,
     },
+  }
+  if (Array.isArray(payload.actions) && payload.actions.length > 0) {
+    options.actions = payload.actions.slice(0, 3).filter(function (action) {
+      return action && typeof action.action === 'string' && typeof action.title === 'string'
+    })
   }
   if (extra.renotify === true) options.renotify = true
   event.waitUntil(self.registration.showNotification(title, options))
@@ -35,7 +43,11 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  var url = (event.notification.data && event.notification.data.url) || '/'
+  var data = event.notification.data || {}
+  var url = data.url || '/'
+  if (event.action === 'post' && data.postUrl) url = data.postUrl
+  else if (event.action === 'open' && data.openUrl) url = data.openUrl
+  else if (event.action === 'mute' && data.muteUrl) url = data.muteUrl
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(function (clients) {
       var existing = clients.find(function (c) { return c.url.indexOf(url) !== -1 && 'focus' in c })

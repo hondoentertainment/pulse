@@ -121,6 +121,7 @@ export function getLiveNowReviews<T extends Pulse>(
   const matches: T[] = []
   for (const pulse of pulses) {
     if (venueId && pulse.venueId !== venueId) continue
+    if (pulse.hiddenAt) continue
     if (!isLiveReview(pulse) || !isWithinLiveNowWindow(pulse.createdAt, nowMs, windowMinutes)) continue
     matches.push(pulse)
   }
