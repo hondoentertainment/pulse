@@ -8,7 +8,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
-import { fromAlive, unwrap, unwrapMaybe } from '@/lib/auth/rls-helpers'
+import { fromAlive, unwrap, unwrapMaybe, type SupabaseResult } from '@/lib/auth/rls-helpers'
 import type { EnergyRating, Pulse, PulseKind } from '@/lib/types'
 import { sanitizeDoorChips, type DoorChip } from '@/lib/door-chips'
 import { PULSE_DECAY_MINUTES } from '@/lib/types'
@@ -37,6 +37,8 @@ interface PulseRow {
   location_verified?: boolean | null
   has_body?: boolean | null
   door_chips?: string[] | null
+  hidden_at?: string | null
+  hidden_note?: string | null
 }
 
 function rowToPulse(row: PulseRow): Pulse {
@@ -60,6 +62,10 @@ function rowToPulse(row: PulseRow): Pulse {
     uploadError: false,
     ...mapLiveReviewFields(row),
     doorChips: sanitizeDoorChips(row.door_chips),
+    hiddenAt: typeof row.hidden_at === 'string' ? row.hidden_at : undefined,
+    hiddenNote: typeof row.hidden_note === 'string' && row.hidden_note.trim()
+      ? row.hidden_note.trim()
+      : undefined,
   }
 }
 
@@ -70,16 +76,35 @@ const SELECT_COLUMNS = `
   kind, location_verified, has_body, door_chips
 `.trim()
 
+const SELECT_COLUMNS_WITH_HIDE = `${SELECT_COLUMNS}, hidden_at, hidden_note`
+
+function missingHideColumn(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false
+  const message = error.message ?? ''
+  return error.code === '42703'
+    || error.code === 'PGRST204'
+    || /hidden_at|hidden_note/i.test(message)
+}
+
+/** Hide columns are optional until the migration is applied. */
+async function selectPulses(
+  run: (columns: string) => Promise<SupabaseResult>,
+): Promise<SupabaseResult> {
+  const withHide = await run(SELECT_COLUMNS_WITH_HIDE)
+  if (missingHideColumn(withHide.error)) return run(SELECT_COLUMNS)
+  return withHide
+}
+
 // ── Read queries ─────────────────────────────────────────────────────────
 
 export async function listRecentPulsesAtVenue(
   venueId: string,
   limit = 50,
 ): Promise<Pulse[]> {
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .eq('venue_id', venueId)
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(limit))
   const rows = unwrap<PulseRow[]>(result)
   return rows.map(rowToPulse)
 }
@@ -88,18 +113,18 @@ export async function listPulsesByUser(
   userId: string,
   limit = 100,
 ): Promise<Pulse[]> {
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(limit))
   const rows = unwrap<PulseRow[]>(result)
   return rows.map(rowToPulse)
 }
 
 export async function getPulse(id: string): Promise<Pulse | null> {
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .eq('id', id)
-    .maybeSingle()
+    .maybeSingle())
   const row = unwrapMaybe<PulseRow>(result)
   return row ? rowToPulse(row) : null
 }
@@ -110,10 +135,10 @@ export async function getPulse(id: string): Promise<Pulse | null> {
  */
 export async function listLivePulses(limit = 500): Promise<Pulse[]> {
   const now = new Date().toISOString()
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .gt('expires_at', now)
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(limit))
   const rows = unwrap<PulseRow[]>(result)
   return rows.map(rowToPulse)
 }
@@ -138,10 +163,10 @@ export async function listLivePulsesPaged(
   const now = new Date().toISOString()
   const safeLimit = clampPageSize(limit)
   const safeOffset = Math.max(0, Math.floor(offset))
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .gt('expires_at', now)
     .order('created_at', { ascending: false })
-    .range(safeOffset, safeOffset + safeLimit - 1)
+    .range(safeOffset, safeOffset + safeLimit - 1))
   const rows = unwrap<PulseRow[]>(result)
   const nextOffset = rows.length === safeLimit ? safeOffset + safeLimit : null
   return { items: rows.map(rowToPulse), nextOffset }
@@ -157,10 +182,10 @@ export async function listRecentPulsesAtVenuePaged(
 ): Promise<PulsePage> {
   const safeLimit = clampPageSize(limit)
   const safeOffset = Math.max(0, Math.floor(offset))
-  const result = await fromAlive('pulses', SELECT_COLUMNS)
+  const result = await selectPulses((columns) => fromAlive('pulses', columns)
     .eq('venue_id', venueId)
     .order('created_at', { ascending: false })
-    .range(safeOffset, safeOffset + safeLimit - 1)
+    .range(safeOffset, safeOffset + safeLimit - 1))
   const rows = unwrap<PulseRow[]>(result)
   const nextOffset = rows.length === safeLimit ? safeOffset + safeLimit : null
   return { items: rows.map(rowToPulse), nextOffset }

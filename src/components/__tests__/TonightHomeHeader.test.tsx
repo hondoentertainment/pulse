@@ -45,6 +45,38 @@ function makeVenue(overrides: Partial<Venue> = {}): Venue {
 }
 
 describe('TonightHomeHeader', () => {
+  it('shows the Portland quiet-night empty state without inventing a crowd', () => {
+    renderTonight(
+      <TonightHomeHeader
+        venues={[makeVenue({
+          id: 'pdx-crystal-ballroom',
+          name: 'Crystal Ballroom',
+          city: 'Portland',
+          state: 'OR',
+          neighborhood: 'Pearl District',
+          pulseScore: 0,
+          inventorySource: 'curated-seed',
+          seeded: true,
+        })]}
+        pulses={[]}
+        userLocation={null}
+        locationDenied
+        followedVenueIds={['pdx-crystal-ballroom']}
+        onVenueClick={vi.fn()}
+        onBeFirstPulse={vi.fn()}
+        surface="tonight"
+        onSurfaceChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('launch-quiet-tonight')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Post first pulse' }).length).toBeGreaterThan(0)
+    expect(screen.getByText(/at 0 tonight/)).toBeInTheDocument()
+    expect(screen.getByText(/never invent a crowd/)).toBeInTheDocument()
+    expect(screen.getByText('0 · no pulses yet tonight')).toBeInTheDocument()
+    expect(screen.getByText(/Portland launch set/)).toBeInTheDocument()
+    expect(screen.queryByText('Start here')).not.toBeInTheDocument()
+  })
+
   it('shows X-style Tonight / Live / Map tabs and For you cards on Tonight', () => {
     const onSurfaceChange = vi.fn()
     renderTonight(

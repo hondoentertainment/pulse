@@ -6,6 +6,11 @@
  * Titles stay short. `kind` and `tag` let the service worker collapse updates.
  */
 
+export interface GlancePushAction {
+  action: string
+  title: string
+}
+
 export interface GlancePushPayload {
   title: string
   body: string
@@ -13,6 +18,11 @@ export interface GlancePushPayload {
   kind: string
   tag: string
   renotify: boolean
+  /** Optional notification buttons. Omitted for surge glances. */
+  actions?: GlancePushAction[]
+  postUrl?: string
+  openUrl?: string
+  muteUrl?: string
 }
 
 export function glanceText(value: string, max: number): string {
@@ -25,14 +35,20 @@ export function glanceText(value: string, max: number): string {
 
 /** JSON body stored on the push message. The service worker reads `data.*`. */
 export function encodeGlancePush(payload: GlancePushPayload): string {
-  return JSON.stringify({
+  const data: Record<string, string | boolean> = {
+    url: payload.url,
+    kind: payload.kind,
+    tag: payload.tag,
+    renotify: payload.renotify,
+  }
+  if (payload.postUrl) data.postUrl = payload.postUrl
+  if (payload.openUrl) data.openUrl = payload.openUrl
+  if (payload.muteUrl) data.muteUrl = payload.muteUrl
+  const body: Record<string, unknown> = {
     title: payload.title,
     body: payload.body,
-    data: {
-      url: payload.url,
-      kind: payload.kind,
-      tag: payload.tag,
-      renotify: payload.renotify,
-    },
-  })
+    data,
+  }
+  if (payload.actions && payload.actions.length > 0) body.actions = payload.actions
+  return JSON.stringify(body)
 }

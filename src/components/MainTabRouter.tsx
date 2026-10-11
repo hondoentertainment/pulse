@@ -30,6 +30,7 @@ import { markNavigationStart, partitionColdStartCatalog, scheduleAllSeattleRelea
 import { prefersReducedMotion } from '@/lib/accessibility'
 import { dismissFirstOpenCoach, shouldShowFirstOpenCoach } from '@/lib/first-open-coach'
 import { shareVenueFromSurface } from '@/lib/sharing'
+import { muteLaunchQuiet } from '@/lib/launch-quiet-mute'
 import { getEnergyLabel } from '@/lib/pulse-engine'
 import { getSurgingNearbyVenues, getVenueMapActivity } from '@/lib/map-live-reviews'
 import { SignalPill } from '@/components/ux/SignalPill'
@@ -337,6 +338,15 @@ export function MainTabRouter() {
       }
     }
   }, [handleCreatePulse, hereVenueId, isPlaceholder, location.search, session, setSelectedVenue, venues])
+
+  useEffect(() => {
+    const cityKey = new URLSearchParams(location.search).get('muteQuiet')
+    if (!cityKey) return
+    void muteLaunchQuiet(cityKey).then((result) => {
+      if (result.ok && result.message) toast.success(result.message)
+      else if (result.message) toast.error(result.message)
+    })
+  }, [location.search])
 
   useEffect(() => scheduleAllSeattleRelease(() => {
     setReleasedForCity(selectedMarketKey)

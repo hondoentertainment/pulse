@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Pulse, Venue } from '@/lib/types'
 import {
   buildTonightHome,
@@ -35,6 +35,9 @@ import { Link } from 'react-router-dom'
 import { EmptySurgingStartHere } from '@/components/EmptySurgingStartHere'
 import { InstallAffordance } from '@/components/InstallAffordance'
 import { LastNightRecap } from '@/components/LastNightRecap'
+import { LaunchQuietTonight } from '@/components/LaunchQuietTonight'
+import { buildLaunchQuietTonight, launchQuietCity, pulseOnLocalNight } from '@/lib/launch-city-quiet'
+import { isCuratedVenue } from '@/lib/map-filters'
 import { AddToCalendarButton } from '@/components/AddToCalendarButton'
 import { PulseThreadActions } from '@/components/PulseThreadActions'
 import { OpenNowChip } from '@/components/OpenNowChip'
@@ -49,15 +52,7 @@ const MAP_TABS = [
   { id: 'map' as const, label: 'Map' },
 ]
 
-type TonightFeed = 'foryou' | 'surging' | 'near' | 'open' | 'following'
-
-const TONIGHT_FEEDS: readonly { id: TonightFeed; label: string; tone: 'cyan' | 'electric' | 'chill' | 'amber' | 'dead' }[] = [
-  { id: 'foryou', label: 'For you', tone: 'cyan' },
-  { id: 'surging', label: 'Surging', tone: 'electric' },
-  { id: 'near', label: 'Near me', tone: 'chill' },
-  { id: 'open', label: 'Open now', tone: 'amber' },
-  { id: 'following', label: 'Following', tone: 'dead' },
-]
+type TonightFeed = 'foryou' | 'surging' | 'near' | 'open' | 'following' | 'curated'
 
 interface TonightHomeHeaderProps {
   venues: Venue[]
@@ -120,10 +115,48 @@ export function TonightHomeHeader({
   onSameAgree,
   onBlockUser,
 }: TonightHomeHeaderProps) {
-  const [tonightFeed, setTonightFeed] = useState<TonightFeed>('foryou')
+  const publicPulses = useMemo(
+    () => pulses.filter((pulse) => !pulse.hiddenAt),
+    [pulses],
+  )
+  const launchCity = useMemo(() => launchQuietCity(venues), [venues])
+  const launchQuiet = useMemo(
+    () => buildLaunchQuietTonight({
+      venues,
+      pulses: publicPulses,
+      followedVenueIds,
+    }),
+    [followedVenueIds, publicPulses, venues],
+  )
+  const tonightFeeds = useMemo(() => {
+    const feeds: { id: TonightFeed; label: string; tone: 'cyan' | 'electric' | 'chill' | 'amber' | 'dead' }[] = [
+      { id: 'foryou', label: 'For you', tone: 'cyan' },
+      { id: 'following', label: 'Following', tone: 'dead' },
+    ]
+    if (launchCity) {
+      feeds.push({ id: 'curated', label: launchCity.curatedLabel, tone: 'cyan' })
+    }
+    feeds.push(
+      { id: 'near', label: 'Near me', tone: 'chill' },
+      { id: 'surging', label: 'Surging', tone: 'electric' },
+      { id: 'open', label: 'Open now', tone: 'amber' },
+    )
+    return feeds
+  }, [launchCity])
+  const [tonightFeed, setTonightFeed] = useState<TonightFeed>(launchQuiet ? 'curated' : 'foryou')
+  useEffect(() => {
+    if (!tonightFeeds.some((feed) => feed.id === tonightFeed)) setTonightFeed('foryou')
+  }, [tonightFeed, tonightFeeds])
+  const curatedRooms = useMemo(() => {
+    if (!launchCity) return []
+    const cityName = launchCity.city.trim().toLowerCase()
+    return venues.filter((venue) =>
+      isCuratedVenue(venue) && (venue.city ?? '').trim().toLowerCase() === cityName,
+    )
+  }, [launchCity, venues])
   const home = buildTonightHome({
     venues,
-    pulses,
+    pulses: publicPulses,
     userLocation,
     savedVenueIds,
     followedVenueIds,
@@ -132,14 +165,14 @@ export function TonightHomeHeader({
 
   const followingFeed = useMemo(() => {
     const venueRows = orderFollowingRowsPinnedFirst(
-      listTonightFollowingFeed(venues, pulses, followedVenueIds),
+      listTonightFollowingFeed(venues, publicPulses, followedVenueIds),
       pinnedVenueIds,
     )
     return mixFollowingFeed(
       venueRows,
-      listFollowedPeoplePulses(pulses, venues, followedUserIds),
+      listFollowedPeoplePulses(publicPulses, venues, followedUserIds),
     )
-  }, [followedUserIds, followedVenueIds, pinnedVenueIds, pulses, venues])
+  }, [followedUserIds, followedVenueIds, pinnedVenueIds, publicPulses, venues])
 
   const tonightEvents = useMemo(() => listEventsTonight(catalogEvents), [catalogEvents])
   const hoodLinks = useMemo(() => listNeighborhoodPages(venues), [venues])
@@ -202,7 +235,7 @@ export function TonightHomeHeader({
       {(!onSurfaceChange || surface === 'tonight') && (
         <div className="pt-1">
           <FeedTabBar<TonightFeed>
-            tabs={TONIGHT_FEEDS}
+            tabs={tonightFeeds}
             value={tonightFeed}
             onChange={setTonightFeed}
             ariaLabel="Tonight feeds"
@@ -210,7 +243,51 @@ export function TonightHomeHeader({
             className="mt-3"
           />
 
-          {tonightFeed === 'foryou' && (
+          {tonightFeed === 'curated' && launchCity && !launchQuiet && (
+            <div className="pt-3 space-y-2">
+              <h2 className="text-[13px] font-semibold text-muted-foreground">{launchCity.curatedLabel}</h2>
+              {curatedRooms.map((venue) => {
+                const count = publicPulses.filter((pulse) =>
+                  pulseOnLocalNight(pulse, new Date())
+                  && (pulse.venueId === venue.id || pulse.venueId === venue.catalogSlug),
+                ).length
+                return (
+                  <button
+                    key={venue.id}
+                    type="button"
+                    onClick={() => onVenueClick(venue)}
+                    className="flex w-full items-center justify-between rounded-2xl border border-border bg-card px-3 py-3 text-left"
+                  >
+                    <span>
+                      <span className="block text-[15px] font-semibold text-foreground">{venue.name}</span>
+                      {venue.neighborhood && (
+                        <span className="mt-0.5 block text-[12px] text-muted-foreground">{venue.neighborhood}</span>
+                      )}
+                    </span>
+                    <span className="text-[12px] font-semibold text-accent">
+                      {count === 0 ? '0 · no pulses yet tonight' : `${count} tonight`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {(tonightFeed === 'foryou' || tonightFeed === 'curated') && launchQuiet && (
+            <LaunchQuietTonight
+              empty={launchQuiet}
+              onPost={(venueId) => {
+                const venue = venues.find((row) => row.id === venueId)
+                if (venue) onBeFirstPulse?.(venue)
+              }}
+              onImHere={(venueId) => {
+                const venue = venues.find((row) => row.id === venueId)
+                if (venue) onBeFirstPulse?.(venue)
+              }}
+            />
+          )}
+
+          {tonightFeed === 'foryou' && !launchQuiet && (
             <>
               {home.empty && (
                 <TonightEmptyState
