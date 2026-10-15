@@ -7,9 +7,12 @@ sites off mock data.
 ## 1. Prerequisites
 
 - Supabase CLI `>= 1.170` (`brew install supabase/tap/supabase`).
-- A Supabase project with **PostGIS** extension enabled
+- A Supabase project with **PostGIS** enabled in schema `extensions`
   (Database > Extensions > search `postgis` > enable). The initial schema
-  migration will also `CREATE EXTENSION IF NOT EXISTS postgis` for local.
+  migration still runs `CREATE EXTENSION IF NOT EXISTS postgis` in `public`
+  for existing history. `20261015140000_move_postgis_to_extensions.sql`
+  then recreates it in `extensions` without dropping venue lat/lng.
+  Verify with `supabase/verify/postgis_extensions_schema.sql`.
 - `.env` populated with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
   and for migration tooling: `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
   See `.env.example`.
@@ -157,6 +160,7 @@ create or replace function venues_within_miles(
 returns setof venues
 language sql
 stable
+set search_path = public, extensions
 as $$
   select v.*
   from venues v
