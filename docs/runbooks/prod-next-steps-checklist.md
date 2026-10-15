@@ -16,7 +16,7 @@
 | Catalog | ~536 venues on prod |
 | Leftover `signal_*` tables | Still present — **do not drop** without a dedicated review |
 
-`public.spatial_ref_sys` is PostGIS 3.3.7 installed in `public`, owned by `supabase_admin`. Do not enable RLS on it and do not `REVOKE` as `postgres` (not the owner). Clear advisor `0013_rls_disabled_in_public` by applying `supabase/migrations/20261015140000_move_postgis_to_extensions.sql` after this change is merged, then run `supabase/verify/postgis_extensions_schema.sql` on a **new** connection. Recycle pooled database connections after commit. Details and rollback are in that migration's header.
+`public.spatial_ref_sys` is PostGIS 3.3.7 installed in `public`, owned by `supabase_admin`. Do not enable RLS on it and do not `REVOKE` as `postgres` (not the owner). The first apply of `supabase/migrations/20261015140000_move_postgis_to_extensions.sql` rolled back (`42501` on `ALTER ROLE anon`); that file was edited in place and has not been applied. Clear advisor `0013_rls_disabled_in_public` by applying the updated file after this change is merged, then run `supabase/verify/postgis_extensions_schema.sql` on a **new** connection. Recycle pooled database connections after commit. The migration does not `ALTER` reserved roles. Details and rollback are in that migration's header.
 
 ## Human-only (cannot be closed by the agent)
 
@@ -34,7 +34,7 @@
 - [ ] **OPS-6** Optional: `app_metadata.role=admin` for `/ops`; VAPID trio already on Vercel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY`) — do not invent secrets; custom domain ([custom-domain.md](custom-domain.md))
 - [ ] **OPS-7 / WC-0.5** `VITE_ANALYTICS_BACKEND` + provider key. Until set, funnel events stay console/no-op.
 - [ ] **OPS-8** Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on `xeldqwhztcnnvazmshzh`. Verify with `supabase/verify/venue_surge_owner_replies.sql`. Then prove [#109](https://github.com/hondoentertainment/pulse/issues/109) (not Signal #66).
-- [ ] **OPS-9** After merge, back up `xeldqwhztcnnvazmshzh`, apply `supabase/migrations/20261015140000_move_postgis_to_extensions.sql` in one transaction, then on a new connection run `supabase/verify/postgis_extensions_schema.sql`. Recycle pooled DB connections. Do not apply before merge.
+- [ ] **OPS-9** After merge, back up `xeldqwhztcnnvazmshzh`, apply the edited `supabase/migrations/20261015140000_move_postgis_to_extensions.sql` in one transaction (same filename; the `ce50bcd` attempt rolled back and was never applied), then on a new connection run `supabase/verify/postgis_extensions_schema.sql`. Recycle pooled DB connections. Do not apply before merge. Do not `ALTER` `anon`, `authenticated`, `service_role`, or `authenticator`.
 
 ## Agent-shipped in-repo (this pass)
 

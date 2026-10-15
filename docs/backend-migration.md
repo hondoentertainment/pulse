@@ -163,10 +163,10 @@ stable
 set search_path = public, extensions
 as $$
   select v.*
-  from venues v
+  from public.venues v
   where v.deleted_at is null
-    and calculate_distance(lat, lng, v.location_lat, v.location_lng) <= radius_mi
-  order by calculate_distance(lat, lng, v.location_lat, v.location_lng) asc
+    and public.calculate_distance(lat, lng, v.location_lat, v.location_lng) <= radius_mi
+  order by public.calculate_distance(lat, lng, v.location_lat, v.location_lng) asc
   limit max_rows;
 $$;
 ```
