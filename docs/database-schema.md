@@ -2,7 +2,7 @@
 
 Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. Apply migrations with [Backend Migration](backend-migration.md).
 
-**Extensions:** PostGIS (`venues.geom`)
+**Extensions:** PostGIS 3.3.7 in schema `extensions` (`venues.geom`). `20261015140000_move_postgis_to_extensions.sql` moves it out of `public` so `spatial_ref_sys` is not exposed. Verify with `supabase/verify/postgis_extensions_schema.sql`.
 
 **Auth:** `profiles` extends `auth.users`. Most tables FK to `profiles(id)` or `auth.users(id)`.
 
@@ -109,7 +109,7 @@ Venue catalog with live intelligence fields.
 | `id` | UUID | PK |
 | `name` | TEXT | |
 | `location_lat`, `location_lng` | FLOAT | |
-| `geom` | GEOGRAPHY | Generated PostGIS point |
+| `geom` | `extensions.geometry(Point, 4326)` | Stored generated point from `location_lng` / `location_lat` |
 | `city`, `state`, `category` | TEXT | |
 | `pulse_score`, `score_velocity` | FLOAT | Live energy (0–100) |
 | `last_pulse_at`, `last_activity` | TIMESTAMPTZ | |
