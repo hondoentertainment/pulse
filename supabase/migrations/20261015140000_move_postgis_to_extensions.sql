@@ -45,6 +45,8 @@
 -- before apply. Do not "move it back" with ALTER EXTENSION. Re-running
 -- this file once PostGIS is already in extensions is a no-op for the
 -- table rewrite (it only re-asserts search_path, grants, and functions).
+-- Role search_path updates are ALTER ROLE ... IN DATABASE current_database()
+-- only. Cluster-wide role settings are not read or changed.
 -- Support can instead avoid the rewrite by running, as superuser:
 --   BEGIN;
 --   UPDATE pg_extension SET extrelocatable = true WHERE extname = 'postgis';
@@ -77,8 +79,8 @@ DECLARE
   role_oid oid;
   cfg text[];
   db_cfg text[];
-  global_cfg text[];
   sp text;
+  db_sp text;
   fn regprocedure;
 BEGIN
   SELECT n.nspname, e.extversion
@@ -374,8 +376,12 @@ BEGIN
     RAISE NOTICE 'PostGIS was recreated in extensions. Reconnect before geography/ST_Distance checks. Verify with supabase/verify/postgis_extensions_schema.sql on a new connection.';
   END IF;
 
-  -- Database and API roles must resolve extension objects. Append
-  -- `extensions` to an existing search_path; do not drop other schemas.
+  -- Database and API roles must resolve extension objects in this
+  -- database only. Effective path is the role-in-database search_path,
+  -- else the database search_path, else the default "$user", public.
+  -- Append `extensions` only when that token is missing. Other schemas
+  -- (vault, graphql, ...) stay. Never ALTER ROLE ... SET search_path
+  -- without IN DATABASE: that would rewrite the cluster-wide setting.
   SELECT oid INTO db_oid FROM pg_database WHERE datname = current_database();
 
   SELECT s.setconfig INTO cfg
@@ -391,9 +397,13 @@ BEGIN
   END IF;
 
   IF sp IS NULL THEN
-    EXECUTE format('ALTER DATABASE %I SET search_path TO %s', current_database(), '"$user", public, extensions');
+    db_sp := '"$user", public, extensions';
+    EXECUTE format('ALTER DATABASE %I SET search_path TO %s', current_database(), db_sp);
   ELSIF sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
-    EXECUTE format('ALTER DATABASE %I SET search_path TO %s', current_database(), sp || ', extensions');
+    db_sp := sp || ', extensions';
+    EXECUTE format('ALTER DATABASE %I SET search_path TO %s', current_database(), db_sp);
+  ELSE
+    db_sp := sp;
   END IF;
 
   FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role', 'authenticator', 'postgres']
@@ -407,10 +417,6 @@ BEGIN
     FROM pg_db_role_setting s
     WHERE s.setdatabase = db_oid AND s.setrole = role_oid;
 
-    SELECT s.setconfig INTO global_cfg
-    FROM pg_db_role_setting s
-    WHERE s.setdatabase = 0 AND s.setrole = role_oid;
-
     sp := NULL;
     IF db_cfg IS NOT NULL THEN
       SELECT regexp_replace(x, '^search_path=', '') INTO sp
@@ -419,26 +425,24 @@ BEGIN
       LIMIT 1;
     END IF;
 
-    IF sp IS NOT NULL THEN
-      IF sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
-        EXECUTE format(
-          'ALTER ROLE %I IN DATABASE %I SET search_path TO %s',
-          role_name, current_database(), sp || ', extensions'
-        );
-      END IF;
-    ELSE
-      sp := NULL;
-      IF global_cfg IS NOT NULL THEN
-        SELECT regexp_replace(x, '^search_path=', '') INTO sp
-        FROM unnest(global_cfg) AS x
-        WHERE split_part(x, '=', 1) = 'search_path'
-        LIMIT 1;
-      END IF;
-      IF sp IS NULL THEN
-        EXECUTE format('ALTER ROLE %I SET search_path TO %s', role_name, '"$user", public, extensions');
-      ELSIF sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
-        EXECUTE format('ALTER ROLE %I SET search_path TO %s', role_name, sp || ', extensions');
-      END IF;
+    IF sp IS NULL THEN
+      sp := db_sp;
+    ELSIF sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
+      sp := sp || ', extensions';
+    END IF;
+
+    -- Already stored on this role in this database: leave the row alone
+    -- so other per-database GUCs and an unchanged path are not rewritten.
+    IF db_cfg IS NULL OR NOT EXISTS (
+      SELECT 1
+      FROM unnest(db_cfg) AS x
+      WHERE split_part(x, '=', 1) = 'search_path'
+        AND regexp_replace(x, '^search_path=', '') = sp
+    ) THEN
+      EXECUTE format(
+        'ALTER ROLE %I IN DATABASE %I SET search_path TO %s',
+        role_name, current_database(), sp
+      );
     END IF;
   END LOOP;
 END

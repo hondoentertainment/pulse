@@ -10,6 +10,9 @@
 --   calculate_distance_miles = seattle_portland_meters / 1609.344
 --   venues_geom_type = extensions.geometry
 --   calculate_distance and get_live_venue_intelligence search_path include extensions
+--   each API role's effective search_path (role-in-database, else database)
+--     includes extensions and is stored with ALTER ROLE ... IN DATABASE
+--   cluster_wide_rolconfig is informational; this migration does not set it
 
 SELECT
   (
@@ -66,10 +69,66 @@ WHERE n.nspname = 'public'
   AND p.proname IN ('calculate_distance', 'get_live_venue_intelligence')
 ORDER BY p.proname;
 
-SELECT rolname, rolconfig
-FROM pg_roles
-WHERE rolname IN ('anon', 'authenticated', 'service_role', 'authenticator', 'postgres')
-ORDER BY rolname;
+-- Database search_path for this database only (setrole = 0).
+SELECT current_database() AS database,
+  (
+    SELECT regexp_replace(x, '^search_path=', '')
+    FROM pg_db_role_setting s
+    CROSS JOIN LATERAL unnest(s.setconfig) AS x
+    WHERE s.setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND s.setrole = 0
+      AND split_part(x, '=', 1) = 'search_path'
+    LIMIT 1
+  ) AS database_search_path;
+
+-- Effective path is the role-in-database setting, else the database setting,
+-- else the server default. extensions must be present. cluster_wide_rolconfig
+-- is the setdatabase = 0 row and is not updated by the migration.
+WITH db AS (
+  SELECT oid FROM pg_database WHERE datname = current_database()
+),
+roles AS (
+  SELECT r.oid, r.rolname, r.rolconfig
+  FROM pg_roles r
+  WHERE r.rolname IN ('anon', 'authenticated', 'service_role', 'authenticator', 'postgres')
+),
+role_in_db AS (
+  SELECT
+    r.rolname,
+    (
+      SELECT regexp_replace(x, '^search_path=', '')
+      FROM pg_db_role_setting s
+      CROSS JOIN LATERAL unnest(s.setconfig) AS x
+      WHERE s.setdatabase = (SELECT oid FROM db)
+        AND s.setrole = r.oid
+        AND split_part(x, '=', 1) = 'search_path'
+      LIMIT 1
+    ) AS role_in_db_search_path,
+    r.rolconfig AS cluster_wide_rolconfig
+  FROM roles r
+),
+database_path AS (
+  SELECT (
+    SELECT regexp_replace(x, '^search_path=', '')
+    FROM pg_db_role_setting s
+    CROSS JOIN LATERAL unnest(s.setconfig) AS x
+    WHERE s.setdatabase = (SELECT oid FROM db)
+      AND s.setrole = 0
+      AND split_part(x, '=', 1) = 'search_path'
+    LIMIT 1
+  ) AS database_search_path
+)
+SELECT
+  d.rolname,
+  d.role_in_db_search_path,
+  p.database_search_path,
+  COALESCE(d.role_in_db_search_path, p.database_search_path, '"$user", public') AS effective_search_path,
+  COALESCE(d.role_in_db_search_path, p.database_search_path, '"$user", public')
+    ~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' AS effective_includes_extensions,
+  d.cluster_wide_rolconfig
+FROM role_in_db d
+CROSS JOIN database_path p
+ORDER BY d.rolname;
 
 SELECT COUNT(*) AS intelligence_rows
 FROM public.get_live_venue_intelligence(1000);
