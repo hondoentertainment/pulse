@@ -45,8 +45,21 @@
 -- before apply. Do not "move it back" with ALTER EXTENSION. Re-running
 -- this file once PostGIS is already in extensions is a no-op for the
 -- table rewrite (it only re-asserts search_path, grants, and functions).
--- Role search_path updates are ALTER ROLE ... IN DATABASE current_database()
--- only. Cluster-wide role settings are not read or changed.
+--
+-- Edited in place after ce50bcd. That revision was merged but the hosted
+-- apply rolled back on SQLSTATE 42501 ("anon" is a reserved role, only
+-- superusers can modify it), so this file has not been applied anywhere.
+--
+-- anon, authenticated, service_role, and authenticator are reserved.
+-- Migrations run as postgres and must not ALTER them. On the hosted
+-- project those roles have no search_path GUC, so they inherit
+-- ALTER DATABASE ... SET search_path. postgres already has a role
+-- search_path that includes extensions; that role setting wins over
+-- the database setting and is left unchanged when it already contains
+-- extensions. A best-effort ALTER ROLE postgres IN DATABASE is wrapped
+-- so a reserved-role failure raises a notice instead of rolling back.
+-- PostgREST may also SET search_path per request from db-extra-search-path.
+-- App PostGIS calls do not depend on that: they are schema-qualified.
 -- Support can instead avoid the rewrite by running, as superuser:
 --   BEGIN;
 --   UPDATE pg_extension SET extrelocatable = true WHERE extname = 'postgis';
@@ -75,12 +88,13 @@ DECLARE
   mismatch_count bigint;
   meters double precision;
   db_oid oid;
-  role_name text;
   role_oid oid;
   cfg text[];
   db_cfg text[];
+  cluster_cfg text[];
   sp text;
   db_sp text;
+  cluster_sp text;
   fn regprocedure;
 BEGIN
   SELECT n.nspname, e.extversion
@@ -337,8 +351,8 @@ BEGIN
       point1 extensions.geography;
       point2 extensions.geography;
   BEGIN
-      -- Keep the cast on the value ST_Distance sees. A geometry variable
-      -- would cast geography back to geometry and return degrees.
+      -- Keep the geography cast on the value passed to the distance call.
+      -- A geometry variable would cast it back and return degrees.
       point1 := extensions.ST_SetSRID(extensions.ST_MakePoint(lon1, lat1), 4326)::extensions.geography;
       point2 := extensions.ST_SetSRID(extensions.ST_MakePoint(lon2, lat2), 4326)::extensions.geography;
       RETURN extensions.ST_Distance(point1, point2) / 1609.344;
@@ -376,12 +390,11 @@ BEGIN
     RAISE NOTICE 'PostGIS was recreated in extensions. Reconnect before geography/ST_Distance checks. Verify with supabase/verify/postgis_extensions_schema.sql on a new connection.';
   END IF;
 
-  -- Database and API roles must resolve extension objects in this
-  -- database only. Effective path is the role-in-database search_path,
-  -- else the database search_path, else the default "$user", public.
-  -- Append `extensions` only when that token is missing. Other schemas
-  -- (vault, graphql, ...) stay. Never ALTER ROLE ... SET search_path
-  -- without IN DATABASE: that would rewrite the cluster-wide setting.
+  -- API roles resolve extension objects through the database search_path.
+  -- Do not ALTER ROLE anon, authenticated, service_role, or authenticator:
+  -- hosted supautils rejects that with 42501 and rolls this transaction
+  -- back. Append `extensions` only when that token is missing. Other
+  -- schemas (vault, graphql, ...) stay on the database path.
   SELECT oid INTO db_oid FROM pg_database WHERE datname = current_database();
 
   SELECT s.setconfig INTO cfg
@@ -406,45 +419,62 @@ BEGIN
     db_sp := sp;
   END IF;
 
-  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role', 'authenticator', 'postgres']
-  LOOP
-    SELECT oid INTO role_oid FROM pg_roles WHERE rolname = role_name;
+  -- postgres is not a reserved API role. Change it only when its
+  -- effective path (in-database, else cluster-wide role setting, else
+  -- the database path) does not already name extensions. The cluster-wide
+  -- row is never written. Any failure, including 42501, is a notice.
+  BEGIN
+    SELECT oid, rolconfig INTO role_oid, cluster_cfg
+    FROM pg_roles
+    WHERE rolname = 'postgres';
+
     IF role_oid IS NULL THEN
-      RAISE EXCEPTION 'required role % is missing; cannot set search_path', role_name;
-    END IF;
+      RAISE NOTICE 'role postgres is missing; left search_path unchanged';
+    ELSE
+      SELECT s.setconfig INTO db_cfg
+      FROM pg_db_role_setting s
+      WHERE s.setdatabase = db_oid AND s.setrole = role_oid;
 
-    SELECT s.setconfig INTO db_cfg
-    FROM pg_db_role_setting s
-    WHERE s.setdatabase = db_oid AND s.setrole = role_oid;
+      sp := NULL;
+      IF db_cfg IS NOT NULL THEN
+        SELECT regexp_replace(x, '^search_path=', '') INTO sp
+        FROM unnest(db_cfg) AS x
+        WHERE split_part(x, '=', 1) = 'search_path'
+        LIMIT 1;
+      END IF;
 
-    sp := NULL;
-    IF db_cfg IS NOT NULL THEN
-      SELECT regexp_replace(x, '^search_path=', '') INTO sp
-      FROM unnest(db_cfg) AS x
-      WHERE split_part(x, '=', 1) = 'search_path'
-      LIMIT 1;
-    END IF;
+      cluster_sp := NULL;
+      IF sp IS NULL AND cluster_cfg IS NOT NULL THEN
+        SELECT regexp_replace(x, '^search_path=', '') INTO cluster_sp
+        FROM unnest(cluster_cfg) AS x
+        WHERE split_part(x, '=', 1) = 'search_path'
+        LIMIT 1;
+      END IF;
 
-    IF sp IS NULL THEN
-      sp := db_sp;
-    ELSIF sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
-      sp := sp || ', extensions';
+      IF sp IS NOT NULL
+         AND sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
+        EXECUTE format(
+          'ALTER ROLE postgres IN DATABASE %I SET search_path TO %s',
+          current_database(), sp || ', extensions'
+        );
+      ELSIF sp IS NULL
+            AND cluster_sp IS NOT NULL
+            AND cluster_sp !~ '(^|,)[[:space:]]*"?extensions"?[[:space:]]*(,|$)' THEN
+        EXECUTE format(
+          'ALTER ROLE postgres IN DATABASE %I SET search_path TO %s',
+          current_database(), cluster_sp || ', extensions'
+        );
+      ELSIF sp IS NULL AND cluster_sp IS NULL THEN
+        RAISE NOTICE 'role postgres inherits the database search_path (%)', db_sp;
+      ELSE
+        RAISE NOTICE 'role postgres search_path already includes extensions; left unchanged';
+      END IF;
     END IF;
-
-    -- Already stored on this role in this database: leave the row alone
-    -- so other per-database GUCs and an unchanged path are not rewritten.
-    IF db_cfg IS NULL OR NOT EXISTS (
-      SELECT 1
-      FROM unnest(db_cfg) AS x
-      WHERE split_part(x, '=', 1) = 'search_path'
-        AND regexp_replace(x, '^search_path=', '') = sp
-    ) THEN
-      EXECUTE format(
-        'ALTER ROLE %I IN DATABASE %I SET search_path TO %s',
-        role_name, current_database(), sp
-      );
-    END IF;
-  END LOOP;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'skipped ALTER ROLE postgres IN DATABASE % SET search_path (% %)',
+        current_database(), SQLSTATE, SQLERRM;
+  END;
 END
 $move_postgis$;
 
