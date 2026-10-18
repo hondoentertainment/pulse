@@ -64,7 +64,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const secret = process.env.STRIPE_WEBHOOK_SECRET
   if (!secret) return serverError(res, new Error('STRIPE_WEBHOOK_SECRET not configured'))
 
-  let rawBody = ''
+  let rawBody: string
   try {
     rawBody = await readRawBody(req)
   } catch (err) {

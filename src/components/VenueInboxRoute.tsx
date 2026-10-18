@@ -52,7 +52,7 @@ export function VenueInboxRoute() {
     if (!isE2EAuthBypassEnabled || USE_SUPABASE_BACKEND || !currentUser?.id || !venueId) {
       return base
     }
-    let seedVenueId: string | null = null
+    let seedVenueId: string | null
     try {
       seedVenueId = sessionStorage.getItem(E2E_VERIFIED_CLAIM_KEY)
     } catch {

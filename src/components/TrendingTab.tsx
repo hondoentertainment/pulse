@@ -140,7 +140,7 @@ export function TrendingTab({
           onKeyDown={(event) => {
             const tabs = ['trending', 'my-spots'] as const
             const index = tabs.indexOf(trendingSubTab)
-            let next = trendingSubTab
+            let next: (typeof tabs)[number]
             if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
               event.preventDefault()
               next = event.key === 'ArrowRight'

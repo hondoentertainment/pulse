@@ -100,7 +100,7 @@ export const moderateServer = async (
     return fallbackError(message, 0)
   }
 
-  let payload: unknown = null
+  let payload: unknown
   try {
     payload = await res.json()
   } catch {

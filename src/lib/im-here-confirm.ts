@@ -104,7 +104,7 @@ export async function confirmImHere(
     source: lat !== undefined && lng !== undefined ? 'geo' : 'manual',
   })
 
-  let wrotePresence = false
+  let wrotePresence: boolean
   try {
     await deps.writePresence({ venueId, lat, lng })
     wrotePresence = true

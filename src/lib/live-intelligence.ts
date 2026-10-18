@@ -522,7 +522,7 @@ export function estimateWaitTime(venueId: string): {
   if (crowdReports.length > 0) {
     const crowdLevel = Math.round(weightedAverage(crowdReports))
     // Correlate crowd to wait: 80%+ crowd ~ 15-30 min wait
-    let estimatedWait = 0
+    let estimatedWait: number
     if (crowdLevel >= 90) estimatedWait = 30
     else if (crowdLevel >= 80) estimatedWait = 20
     else if (crowdLevel >= 70) estimatedWait = 15

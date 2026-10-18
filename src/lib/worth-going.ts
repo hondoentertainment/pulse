@@ -42,7 +42,7 @@ export function buildWorthGoingSummary(signal: VenueSignal, venue?: Venue): Wort
     (signal.friction.waitMinutes !== null && signal.friction.waitMinutes > 20) ||
     signal.friction.lineStatus === 'door-risk'
 
-  let verdict: WorthGoingVerdict = 'unknown'
+  let verdict: WorthGoingVerdict
   if (!hasLive) {
     verdict = 'unknown'
   } else if (highFriction && signal.energyScore < 70) {
