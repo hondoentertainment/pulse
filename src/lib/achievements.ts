@@ -353,7 +353,7 @@ export function calculateChallengeProgress(
     return p.userId === userId && t >= start && t <= end
   })
 
-  let current = 0
+  let current: number
 
   switch (challenge.type) {
     case 'venue_count': {

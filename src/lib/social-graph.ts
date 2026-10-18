@@ -76,7 +76,6 @@ export function getPeopleYouMayKnow(
   const suggestions: Map<string, FriendSuggestion> = new Map()
 
   for (const candidate of candidates) {
-    let coLocatedVenues = 0
     let lastVenueName: string | undefined
     let mutualFriends = 0
     let sameVenues = 0
@@ -99,7 +98,7 @@ export function getPeopleYouMayKnow(
         }
       }
     }
-    coLocatedVenues = coLocatedVenueSet.size
+    const coLocatedVenues = coLocatedVenueSet.size
 
     // 2. Mutual friends
     for (const friendId of candidate.friends) {
@@ -114,7 +113,7 @@ export function getPeopleYouMayKnow(
     }
 
     // Score and pick best reason
-    let score = 0
+    let score: number
     let reason: FriendSuggestionReason
 
     if (coLocatedVenues > 0) {

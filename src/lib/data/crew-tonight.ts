@@ -24,7 +24,7 @@ export async function saveCrewTonight(input: {
 
 /** Crew mates here at the pinned venue. Guests and other crews get nothing. */
 export async function listCrewImHere(venueId: string): Promise<CrewPresenceRow[]> {
-  let viewerId = ''
+  let viewerId: string
   try {
     viewerId = await requireUserId({ action: 'see your crew' })
   } catch {
