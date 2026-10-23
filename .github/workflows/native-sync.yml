@@ -17,10 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Text bun.lock (lockfileVersion 1) needs Bun 1.2+. 1.1 fails with
+      # "Unknown lockfile version". Pin the version that regenerated the lockfile
+      # so `bun install --frozen-lockfile` does not rewrite it.
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.1'
+          bun-version: '1.4.4'
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

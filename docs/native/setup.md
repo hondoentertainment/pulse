@@ -5,7 +5,7 @@ This guide takes Pulse from scaffold to a signed iOS / Android build.
 ## 0. Prerequisites
 - macOS (for iOS builds). Xcode ≥ 15, Command Line Tools installed.
 - Android Studio Hedgehog or newer, Android SDK 34, JDK 17.
-- Bun 1.1+ (or npm — scripts alias `cap` via `bunx` / `npx`).
+- Bun 1.4.4 (Native Sync pin). Text `bun.lock` needs Bun 1.2+; Bun 1.1 cannot read it. npm also works — scripts alias `cap` via `bunx` / `npx`.
 
 ## 1. Install Capacitor dev deps
 The deps are already declared in `package.json` as devDependencies. After pulling:
