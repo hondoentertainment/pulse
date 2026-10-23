@@ -134,9 +134,11 @@ Verifies `cap sync` succeeds after a web build. Does **not** compile native apps
 
 ### Steps
 
-1. `bun install --frozen-lockfile`
+1. Bun 1.4.4 (`oven-sh/setup-bun`), then `bun install --frozen-lockfile`
 2. `bun run build`
 3. `bunx cap sync` (continue-on-error if native projects not committed)
+
+Bun 1.1 cannot parse text `bun.lock` (`lockfileVersion` 1). The workflow pins 1.4.4, the version that last regenerated the lockfile.
 4. Upload artifact: `dist/`, `ios/`, `android/`, `capacitor.config.ts`
 
 Retention: 14 days.
