@@ -101,6 +101,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Check bun.lock matches package.json
+        run: node scripts/check-bun-lock.mjs
       - name: Install dependencies
         run: npm ci
       - name: TypeScript (strict project build)
@@ -108,7 +110,8 @@ jobs:
 
   smoke-preview-venue:
     needs: [dependency-audit]
-    runs-on: ubuntu-latest
+    # Playwright 1.58.2 cannot install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read

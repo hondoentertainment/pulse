@@ -17,11 +17,23 @@ merge, without over-fitting to the current state of the app.
 | Bundle size    | `Bundle-size budget`   | Any JS chunk (or the total) exceeds its gzip budget.      | `scripts/check-bundle-size.mjs`, `docs/bundle-budget.md` |
 | Smoke tests    | `smoke-preview-venue` | Playwright venue smoke fails. | `playwright.config.ts`             |
 | Smoke alias    | `smoke-preview`        | Fails if `smoke-preview-venue` failed. Exists so stale branch protection stays green. | `.github/workflows/ci.yml` |
+| Bun lock ranges | `typecheck-strict`    | `bun.lock` ranges or overrides differ from `package.json`. | `scripts/check-bun-lock.mjs` |
 
 Human branch-protection clicks (require these two; remove Signal check names): [github-branch-protection.md](./runbooks/github-branch-protection.md) (#65).
 
 Hard-fail gates: lint, test, build, bundle-size, `smoke-preview-venue`, `smoke-preview`.
 Advisory: none of the smoke jobs. `typecheck-strict` and `dependency-audit` are blocking on current `main`.
+
+`dependency-audit` fails on high and critical advisories. These moderates stay deferred because the only `npm audit` fix is a major downgrade, or the parent range cannot accept the patched release:
+
+| Finding | Parent range | Why it stays |
+| --- | --- | --- |
+| `minimatch` &lt;11 ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)) | `^3.1.2` (`eslint`, `@eslint/config-array`, `@eslint/eslintrc`, `eslint-plugin-jsx-a11y`), `^5.0.1` (`filelist`), `^9.0.4` (`@typescript-eslint/typescript-estree`), `^10` (`glob`) | Patched release is 11.x. Suggested fixes downgrade ESLint or `eslint-plugin-jsx-a11y`. |
+| `glob` &lt;=14.0.1 ([GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)) | `^11.0.1` (`workbox-build`), `^13.0.3` (`rimraf`) | Patched release is 14.0.2+. Suggested fix downgrades `vite-plugin-pwa` to 1.1.0. |
+| `ejs`, `jake`, `filelist`, `@trickfilm400/rollup-plugin-off-main-thread`, `workbox-build`, `vite-plugin-pwa` | `vite-plugin-pwa` `^2.0.0` | Same downgrade to `vite-plugin-pwa` 1.1.0. |
+| `uuid` 7.0.3 under `xcode` ([GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq)) | `uuid` `^7.0.3` via `@capacitor/cli` | Direct `uuid` is 11.1.1. Suggested fix downgrades `@capacitor/cli` to 4.8.2. |
+| `typescript-eslint` packages | declared `^8.38.0` | Suggested fix is `typescript-eslint` 8.36.0, below the declared range. The nested finding is `minimatch`. |
+| `rimraf` | `@capacitor/cli` `^8.5.3` | Finding comes through `glob` / `minimatch`. Suggested fix downgrades Capacitor CLI. |
 
 ## Coverage thresholds
 

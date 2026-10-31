@@ -138,7 +138,7 @@ Verifies `cap sync` succeeds after a web build. Does **not** compile native apps
 2. `bun run build`
 3. `bunx cap sync` (continue-on-error if native projects not committed)
 
-Bun 1.1 cannot parse text `bun.lock` (`lockfileVersion` 1). The workflow pins 1.4.4, the version that last regenerated the lockfile.
+Bun 1.1 cannot parse text `bun.lock` (`lockfileVersion` 1). The workflow pins Bun 1.4.4, which is the Bun that writes this lockfile. After any `package.json` change, regenerate with Bun 1.4.4 (`bun install --lockfile-only`). CI runs `node scripts/check-bun-lock.mjs` on `typecheck-strict` and fails when the ranges or overrides in `bun.lock` differ from `package.json`. Dependabot's npm updates do not refresh `bun.lock`.
 4. Upload artifact: `dist/`, `ios/`, `android/`, `capacitor.config.ts`
 
 Retention: 14 days.
