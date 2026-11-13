@@ -43,7 +43,7 @@ Same row shape as the [#126](https://github.com/hondoentertainment/pulse/pull/12
 
 ## Push timing
 
-Quiet hours live on `push_tokens.quiet_hours_start` / `quiet_hours_end`, Pacific time (`America/Los_Angeles`), which covers Seattle, Portland, and San Francisco. A window of 22 to 7 is quiet overnight. Empty bounds mean no quiet hours; nothing here turns on a default window. The Friday prompt also checks `launch_quiet_notices` (one per city per night) and `launch_quiet_mutes`. Surge checks `venue_surge_notices` and `follows.surge_muted`. No new keys. If VAPID is unset, both sends return a no-op.
+Quiet hours live on `push_tokens.quiet_hours_start` / `quiet_hours_end`, Pacific time (`America/Los_Angeles`), which covers Seattle, Portland, and San Francisco. A window of 22 to 7 is quiet overnight and still allows the 9pm prompt (hour 21 is outside that window). A window that starts at 21 or earlier is what suppresses 9pm. Empty bounds mean no quiet hours; nothing here turns on a default window. The Friday prompt also checks `launch_quiet_notices` (one per city per night) and `launch_quiet_mutes`. Surge checks `venue_surge_notices` and `follows.surge_muted`. No new keys. If VAPID is unset, both sends return a no-op.
 
 ## Share and hop
 
@@ -55,7 +55,7 @@ Heading there copies `/venue/{slug}?hop=1`. Crawlers hit `/api/share/venue?venue
 
 **PR 2 — City-correct the Friday night screen.** Tonight’s empty steps name the selected city. The quiet-push body says “rooms you follow” only when the room is actually followed. Files: `src/lib/tonight-home.ts`, `src/lib/launch-city-quiet.ts`, `src/components/TonightHomeHeader.tsx`, their tests. Migration: no. Smoke: Portland at 9pm with zero pulses shows the quiet card; one pulse shows the ranked list; San Francisco matches; Seattle copy is unchanged.
 
-**PR 3 — Lock push timing.** No new sender. Tests cover Pacific quiet hours, one quiet push per city per night, mute, and the two-hour Electric cap. Files: `src/lib/venue-surge-notify.ts`, `src/lib/launch-city-quiet.ts`, `src/lib/quiet-night.ts`, existing notify tests, the night-coach cron if it is what fires the 9pm send. Migration: no. Smoke: with no VAPID, both paths no-op; a 22–7 window suppresses a 9pm send for that user.
+**PR 3 — Lock push timing.** No new sender. Tests cover Pacific quiet hours, one quiet push per city per night, mute, and the two-hour Electric cap. Files: `src/lib/venue-surge-notify.ts`, `src/lib/launch-city-quiet.ts`, `src/lib/quiet-night.ts`, existing notify tests, the night-coach cron if it is what fires the 9pm send. Migration: no. Smoke: with no VAPID, both paths no-op. A 21–7 window suppresses the 9pm send for that user. A 22–7 window still allows it, because hour 21 is outside those bounds.
 
 **PR 4 — Hop the new rooms.** Slug aliases and OG for the new ids. Files: `src/lib/coast-venue-ids.ts`, `src/lib/heading-there.ts`, `src/lib/hop-next.ts`, `api/share/venue`, share tests. Migration: no, unless `venue_headings` is still missing on prod (do not re-apply `20261009120000` if it is already there). Smoke: a hop link for a new room opens that room with the heading banner, on this origin.
 
