@@ -17,7 +17,8 @@ mismatch. Never auto-verify from pending alone. Never invent admin.
 - Migrations:
   - `20260910140000_venue_claims_and_report_queue.sql` (already on prod from #82)
   - Optional: `20260911000000_owner_report_triage.sql` (owner dismiss via RLS)
-  - Already on prod: `20260912000000_venue_claim_verified_badge.sql` (`venues.claim_verified` + `venue_claim_badges`; pending still hidden)
+  - Already on prod: `20260912000000_venue_claim_verified_badge.sql` (`venues.claim_verified` + `venue_claim_badges`; pending still hidden). Do not re-apply it.
+  - After merge: `20261113170000_venue_claim_badges_security_invoker.sql` (`venue_claim_badges` `security_invoker` over live `venues.claim_verified`; no new `venue_claims` policy). Verify with `supabase/verify/venue_claim_badges_security_invoker.sql`.
   - Additive: `20260912120000_venue_follows_push_claim_rate.sql` (`owner_email_domain`, `work_email`, domain-match RPC). Reuses `follows` / `push_tokens` / `notifications`.
 
 ## Procedure — UI (`/ops`)
