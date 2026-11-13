@@ -35,6 +35,7 @@
 - [ ] **OPS-7 / WC-0.5** `VITE_ANALYTICS_BACKEND` + provider key. Until set, funnel events stay console/no-op.
 - [ ] **OPS-8** Apply `supabase/migrations/20260924153000_venue_surge_and_owner_replies.sql` on `xeldqwhztcnnvazmshzh`. Verify with `supabase/verify/venue_surge_owner_replies.sql`. Then prove [#109](https://github.com/hondoentertainment/pulse/issues/109) (not Signal #66).
 - [ ] **OPS-9** After merge, back up `xeldqwhztcnnvazmshzh`, apply the edited `supabase/migrations/20261015140000_move_postgis_to_extensions.sql` in one transaction (same filename; the `ce50bcd` attempt rolled back and was never applied), then on a new connection run `supabase/verify/postgis_extensions_schema.sql`. Recycle pooled DB connections. Do not apply before merge. Do not `ALTER` `anon`, `authenticated`, `service_role`, or `authenticator`.
+- [ ] **OPS-10** After merge, apply `supabase/migrations/20261113170000_venue_claim_badges_security_invoker.sql` on `xeldqwhztcnnvazmshzh` (Security Advisor `0010_security_definer_view` on `public.venue_claim_badges`). Then run `supabase/verify/venue_claim_badges_security_invoker.sql` as one script. Do not apply before merge. Do not re-apply `20260912000000`. Do not `ALTER` `anon`, `authenticated`, `service_role`, or `authenticator`.
 
 ## Agent-shipped in-repo (this pass)
 

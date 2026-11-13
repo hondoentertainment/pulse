@@ -38,9 +38,10 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260910140000_venue_claims_and_report_queue.sql` | `venue_claims` + `pulse_reports.status` |
 | `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
 | `20260912000000_venue_claim_verified_badge.sql` | `venues.claim_verified` + public `venue_claim_badges` |
+| `20261113170000_venue_claim_badges_security_invoker.sql` | Recreate `venue_claim_badges` as `security_invoker` over `venues.claim_verified` |
 | `20260912120000_venue_follows_push_claim_rate.sql` | Reuses `follows` + `push_tokens` + `notifications`; web-push columns on `push_tokens`; domain-match claim RPC; pulse rate-limit trigger. Does **not** create `venue_follows` / `web_push_subscriptions`. |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/follows.sql](../supabase/verify/follows.sql), [supabase/verify/push_tokens.sql](../supabase/verify/push_tokens.sql), [supabase/verify/notifications.sql](../supabase/verify/notifications.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/venue_claim_badges_security_invoker.sql](../supabase/verify/venue_claim_badges_security_invoker.sql) (`security_invoker` badge view), [supabase/verify/follows.sql](../supabase/verify/follows.sql), [supabase/verify/push_tokens.sql](../supabase/verify/push_tokens.sql), [supabase/verify/notifications.sql](../supabase/verify/notifications.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql).
 
 ---
 
@@ -346,11 +347,11 @@ Server source of truth for venue inbox access (`20260910140000`). Unique `(venue
 | `work_email_confirmed_at` | Set when domain-match RPC verifies |
 | `reviewed_at` | Set when verified/rejected |
 
-RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row. Guests read claimed venue ids only via `venue_claim_badges` (no evidence / user ids).
+RLS: claimant reads own rows and inserts/updates **pending** only. `is_admin()` can do all. Inbox unlocks on `verified` or a `venue_staff` row. Guests and signed-in users read claimed venue ids from `venue_claim_badges` (column `venue_id` only). That view is `security_invoker` and selects non-deleted `venues` where `claim_verified` is true, so `venues` RLS applies. It does not read `venue_claims`, and there is no public `venue_claims` SELECT policy. Evidence, user ids, notes, and work emails stay on the claim row.
 
 Self-serve verify: `try_verify_venue_claim_by_email_domain(claim_id)` — session email must equal `work_email` and the domain must match `website` host or `owner_email_domain`. Mismatch stays `pending`. Never verifies from pending alone.
 
-`venues.claim_verified` + `venue_claim_badges` are **already on prod**. This migration does not recreate them.
+`venues.claim_verified` + `venue_claim_badges` are **already on prod**. `20260912120000` does not recreate them. `20261113170000_venue_claim_badges_security_invoker.sql` replaces the view with `WITH (security_invoker = true)` after merge. Do not re-apply `20260912000000`.
 
 Pulse create rate limits (same migration): max **5** pulses per user per **10 minutes**, and **1** per user+venue per **2 minutes**. Enforced by `pulses_enforce_rate_limit` + `assert_pulse_rate_limit`. Clients cannot bypass.
 
