@@ -45,6 +45,7 @@ export const PORTLAND_TAGGED_NEIGHBORHOODS = [
   'Kerns',
   'Eliot',
   'Brooklyn',
+  'Division',
 ] as const
 
 export const SAN_FRANCISCO_TAGGED_NEIGHBORHOODS = [
@@ -56,6 +57,7 @@ export const SAN_FRANCISCO_TAGGED_NEIGHBORHOODS = [
   'Marina',
   'Hayes Valley',
   'Tenderloin',
+  'Western Addition',
 ] as const
 
 export interface TaggedNeighborhoodPage {
