@@ -81,6 +81,8 @@ describe('neighborhood pages', () => {
     expect(resolveNeighborhoodPage('los-angeles')).toBeNull()
     expect(resolveNeighborhoodPage('pearl-district')?.name).toBe('Pearl District')
     expect(resolveNeighborhoodPage('mission')?.name).toBe('Mission')
+    expect(resolveNeighborhoodPage('division')).toMatchObject({ name: 'Division', city: 'Portland' })
+    expect(resolveNeighborhoodPage('western-addition')).toMatchObject({ name: 'Western Addition', city: 'San Francisco' })
     expect(slugs).toEqual(expect.arrayContaining(extraSlugs))
     expect(slugs).toEqual(expect.arrayContaining(['capitol-hill', 'ballard', 'georgetown', 'sodo']))
     expect(new Set(slugs).size).toBeGreaterThan(SEATTLE_TAGGED_NEIGHBORHOODS.length)

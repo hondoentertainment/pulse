@@ -26,6 +26,12 @@ and live-intelligence data.
   production project `xeldqwhztcnnvazmshzh` after merge, then verify with
   `supabase/verify/portland_san_francisco_launch_venues.sql`. Seattle’s
   533-venue catalog is unchanged.
+- Division (Portland) and Western Addition (San Francisco) add 3 curated rooms
+  each, still inside the 40-room cap (35 and 35). The idempotent prod seed is
+  `supabase/migrations/20261115180000_portland_san_francisco_weekend_venues.sql`.
+  Do not apply it on `xeldqwhztcnnvazmshzh` until Kyle OKs. When he does, apply
+  it before the catalog PR merges, then re-run the same verify script
+  (Division = 3, Western Addition = 3, 35 curated per city).
 - Settings can still simulate a GPS point in other U.S. cities. That does not
   load those cities onto the map.
 - If Supabase returns zero venues or cannot return venue data, the app

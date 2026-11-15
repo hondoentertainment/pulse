@@ -39,9 +39,10 @@ Reference for the Supabase PostgreSQL schema defined in `supabase/migrations/`. 
 | `20260911000000_owner_report_triage.sql` | Owner/staff RLS to read + dismiss venue reports |
 | `20260912000000_venue_claim_verified_badge.sql` | `venues.claim_verified` + public `venue_claim_badges` |
 | `20261113170000_venue_claim_badges_security_invoker.sql` | Recreate `venue_claim_badges` as `security_invoker` over `venues.claim_verified` |
+| `20261113230427_security_advisor_function_grants.sql` | Empty `search_path` on flagged functions; revoke client `EXECUTE` on security-definer functions the app does not call |
 | `20260912120000_venue_follows_push_claim_rate.sql` | Reuses `follows` + `push_tokens` + `notifications`; web-push columns on `push_tokens`; domain-match claim RPC; pulse rate-limit trigger. Does **not** create `venue_follows` / `web_push_subscriptions`. |
 
-Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/venue_claim_badges_security_invoker.sql](../supabase/verify/venue_claim_badges_security_invoker.sql) (`security_invoker` badge view), [supabase/verify/follows.sql](../supabase/verify/follows.sql), [supabase/verify/push_tokens.sql](../supabase/verify/push_tokens.sql), [supabase/verify/notifications.sql](../supabase/verify/notifications.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql).
+Verification queries: [supabase/verify/signal_launch.sql](../supabase/verify/signal_launch.sql) (leftover Signal tables), [supabase/verify/seattle_launch_venues.sql](../supabase/verify/seattle_launch_venues.sql) (533 Seattle venues), [supabase/verify/venue_claims.sql](../supabase/verify/venue_claims.sql), [supabase/verify/venue_claim_badges_security_invoker.sql](../supabase/verify/venue_claim_badges_security_invoker.sql) (`security_invoker` badge view), [supabase/verify/follows.sql](../supabase/verify/follows.sql), [supabase/verify/push_tokens.sql](../supabase/verify/push_tokens.sql), [supabase/verify/notifications.sql](../supabase/verify/notifications.sql), [supabase/verify/venue_claim_domain.sql](../supabase/verify/venue_claim_domain.sql), [supabase/verify/pulse_rate_limit.sql](../supabase/verify/pulse_rate_limit.sql), [supabase/verify/security_advisor_function_grants.sql](../supabase/verify/security_advisor_function_grants.sql) (empty `search_path`, security-definer `EXECUTE`, deny-all notice tables).
 
 ---
 
@@ -303,6 +304,12 @@ Native APNs/FCM **and** PWA Web Push. Do not add `web_push_subscriptions`.
 
 **RLS (prod, unchanged):** owner-only CRUD (`auth.uid() = user_id`). Native senders skip `platform='web'`. No new policies. Do not reuse leftover `signal_push_subscriptions`.
 
+### `launch_quiet_notices` / `venue_surge_notices`
+
+Rate-limit rows for quiet-night and venue-surge Web Push. The night-coach cron and surge sender write them with the service-role client. `src/` does not read them.
+
+RLS is enabled and there is no policy. That is deny-all for `anon` and `authenticated`. `service_role` bypasses RLS, so the cron still inserts. `20261113230427_security_advisor_function_grants.sql` records that on the table comment. Advisor info `0008_rls_enabled_no_policy` stays for these tables.
+
 ### `video_reports`
 
 Moderation queue for video pulses.
@@ -386,6 +393,8 @@ Stripe Connect state (1:1 with venue).
 ### `stripe_webhook_events`
 
 Idempotency ledger for Stripe webhooks. Service role only.
+
+RLS is enabled and there is no policy. That is deny-all for `anon` and `authenticated`. The webhook handler uses the service-role key, and `service_role` bypasses RLS. `20261113230427_security_advisor_function_grants.sql` records that on the table comment. Advisor info `0008_rls_enabled_no_policy` stays for this table.
 
 ---
 
@@ -545,7 +554,29 @@ Full policies live in `20260329000002_rls_policies.sql` and `20260417000002_rls_
 | Owner read/write | `notifications`, `push_tokens`, `safety_sessions` |
 | Staff read | `tickets` (via events join), `reservations` |
 | Admin bypass | `is_admin()` function checks `SUPABASE_ADMIN_EMAILS` |
-| Service role only | `stripe_webhook_events`, referral writes, cron jobs |
+| Service role only | `stripe_webhook_events`, `launch_quiet_notices`, `venue_surge_notices`, referral writes, cron jobs |
+
+`stripe_webhook_events`, `launch_quiet_notices`, and `venue_surge_notices` keep RLS on with zero policies. API roles see no rows. `service_role` bypasses RLS.
+
+Flagged public functions in `20261113230427_security_advisor_function_grants.sql` use `SET search_path = ''`. PostGIS stays in `extensions`; those functions do not call it. `get_live_venue_intelligence` already uses `search_path = public, extensions`.
+
+Security-definer functions the app calls keep `EXECUTE` for that role:
+
+| Function | Who calls it | `EXECUTE` kept |
+|----------|----------------|----------------|
+| `get_live_venue_intelligence(integer)` | Map, including guests (`src/lib/supabase-api.ts`) | `anon`, `authenticated` |
+| `venue_here_now_count(uuid)` | Map hover, including guests (`src/lib/data/presence.ts`) | `anon`, `authenticated` |
+| `venue_here_now_friends(uuid)` | Signed-in here-now names | `authenticated` |
+| `assert_pulse_rate_limit(uuid, uuid)` | Signed-in pulse create | `authenticated` |
+| `assert_pulse_reply_rate_limit(uuid, uuid)` | Signed-in replies | `authenticated` |
+| `toggle_pulse_reaction(uuid, pulse_reaction_type)` | Signed-in reactions | `authenticated` |
+| `try_verify_venue_claim_by_email_domain(uuid)` | Signed-in claim verify | `authenticated` |
+
+`get_live_venue_intelligence` and `venue_here_now_count` do not require `auth.uid()`. Guests call them, and they return venue fields or a count. `assert_pulse_rate_limit`, `assert_pulse_reply_rate_limit`, and `try_verify_venue_claim_by_email_domain` reject a missing or mismatched `auth.uid()`. `toggle_pulse_reaction` raises when `auth.uid()` is null. `venue_here_now_friends` returns rows only when `auth.uid()` is set.
+
+Functions the app does not call (`calculate_venue_pulse_score`, `calculate_venue_score_velocity`, `enforce_pulse_reply_rate_limit`, `pulse_agree_count`, `pulse_reply_rate_limit_violation`, `refresh_venue_intelligence`, `refresh_venue_intelligence_trigger`, `refresh_venue_live_aggregate`, `refresh_venue_live_aggregate_trigger`, `sync_pulse_reactions`, `sync_venue_claim_verified`) lose `EXECUTE` from `anon` and `authenticated`. Triggers still run. `pulse_agree_count` has no caller under `src/` or `supabase/functions`; agree rows stay readable through `pulse_agrees` (`listAgreesForPulses`). `fetchAgreeCount` is unused and would get a permission error if something called it.
+
+`service_role` keeps `EXECUTE` on these functions. This migration does not `ALTER` `anon`, `authenticated`, `service_role`, or `authenticator`.
 
 Server routes pass the caller's JWT to Supabase so RLS enforces identity. See `api/_lib/auth.ts`.
 

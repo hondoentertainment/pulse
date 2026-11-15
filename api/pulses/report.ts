@@ -3,6 +3,7 @@
  * GET  /api/pulses/report — list the caller's reports.
  * GET  /api/pulses/report?scope=all — admin triage list.
  * GET  /api/pulses/report?venueId= — verified owner / staff / admin venue reports.
+ *       Reason and time only. Never who filed the report.
  * PATCH /api/pulses/report — admin or verified owner status update { reportId|pulseId, status }.
  */
 
@@ -19,6 +20,9 @@ import { consume } from '../_lib/rate-limit.js'
 import { asString, asEnum, isPlainObject } from '../_lib/validate.js'
 import { createUserClient } from '../_lib/supabase-server.js'
 import { moderationResolution } from '../_lib/moderation-sla.js'
+
+const OWNER_REPORT_SELECT =
+  'id, pulse_id, reason, details, created_at, status, reviewed_at'
 
 const REPORT_REASONS = [
   'spam',
@@ -54,6 +58,26 @@ async function hasVerifiedVenueAccess(
       .maybeSingle(),
   ])
   return Boolean(claim || staff)
+}
+
+function publicOwnerReport(row: {
+  id?: unknown
+  pulse_id?: unknown
+  reason?: unknown
+  details?: unknown
+  created_at?: unknown
+  status?: unknown
+  reviewed_at?: unknown
+}) {
+  return {
+    id: row.id,
+    pulse_id: row.pulse_id,
+    reason: row.reason,
+    details: row.details ?? null,
+    created_at: row.created_at,
+    status: row.status,
+    reviewed_at: row.reviewed_at ?? null,
+  }
 }
 
 function isAdminToken(token: string): boolean {
@@ -111,7 +135,7 @@ export default async function handler(
       }
       const { data, error } = await client
         .from('pulse_reports')
-        .select('id, pulse_id, reporter_id, reason, details, created_at, status, reviewed_at')
+        .select(OWNER_REPORT_SELECT)
         .in('pulse_id', pulseIds)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -119,7 +143,7 @@ export default async function handler(
         fail(res, 500, 'report_list_failed', error.message)
         return
       }
-      ok(res, { reports: data ?? [] })
+      ok(res, { reports: (data ?? []).map((row) => publicOwnerReport(row)) })
       return
     }
     const scope = typeof req.query?.scope === 'string' ? req.query.scope : 'mine'
