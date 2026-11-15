@@ -8,14 +8,10 @@ import { supabase } from '@/lib/supabase'
 export interface OpsClaimRow {
   id: string
   venue_id: string
-  user_id: string
   status: 'pending' | 'verified' | 'rejected'
-  evidence: string | null
-  notes: string | null
   created_at: string
-  reviewed_at: string | null
-  venue_name?: string | null
-  neighborhood?: string | null
+  venue_name: string | null
+  neighborhood: string | null
 }
 
 export interface OpsReportRow {
@@ -27,6 +23,46 @@ export interface OpsReportRow {
   created_at: string
   status: 'pending' | 'reviewed' | 'actioned' | 'dismissed'
   reviewed_at: string | null
+}
+
+/** Owner inbox report. Who filed it is not part of this row. */
+export interface VenueOpsReportRow {
+  id: string
+  pulse_id: string
+  reason: string
+  details: string | null
+  created_at: string
+  status: OpsReportRow['status']
+  reviewed_at: string | null
+}
+
+function toOpsClaimRow(value: unknown): OpsClaimRow {
+  const row = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const status = row.status
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    venue_id: typeof row.venue_id === 'string' ? row.venue_id : '',
+    status: status === 'verified' || status === 'rejected' ? status : 'pending',
+    created_at: typeof row.created_at === 'string' ? row.created_at : '',
+    venue_name: typeof row.venue_name === 'string' ? row.venue_name : null,
+    neighborhood: typeof row.neighborhood === 'string' ? row.neighborhood : null,
+  }
+}
+
+function toVenueReportRow(value: unknown): VenueOpsReportRow {
+  const row = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const status = row.status
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    pulse_id: typeof row.pulse_id === 'string' ? row.pulse_id : '',
+    reason: typeof row.reason === 'string' ? row.reason : '',
+    details: typeof row.details === 'string' ? row.details : null,
+    created_at: typeof row.created_at === 'string' ? row.created_at : '',
+    status: status === 'reviewed' || status === 'actioned' || status === 'dismissed' || status === 'pending'
+      ? status
+      : 'pending',
+    reviewed_at: typeof row.reviewed_at === 'string' ? row.reviewed_at : null,
+  }
 }
 
 async function authHeader(): Promise<HeadersInit> {
@@ -54,8 +90,8 @@ export async function listOpsClaims(status = 'pending'): Promise<OpsClaimRow[]> 
   const headers = await authHeader()
   const res = await fetch(`/api/admin/venue-claims?status=${encodeURIComponent(status)}`, { headers })
   if (!res.ok) throw new Error(await readError(res, 'Could not list claims'))
-  const json = (await res.json()) as { data?: { claims?: OpsClaimRow[] } }
-  return json.data?.claims ?? []
+  const json = (await res.json()) as { data?: { claims?: unknown[] } }
+  return (json.data?.claims ?? []).map(toOpsClaimRow)
 }
 
 export async function decideOpsClaim(input: {
@@ -108,14 +144,14 @@ export async function dismissReportsForPulseOnServer(pulseId: string): Promise<b
   }
 }
 
-/** Owner inbox: reports for pulses at this venue (403 → []). */
-export async function listVenueReportsOnServer(venueId: string): Promise<OpsReportRow[]> {
+/** Owner inbox: reports for pulses at this venue (403 → []). Omits who filed each report. */
+export async function listVenueReportsOnServer(venueId: string): Promise<VenueOpsReportRow[]> {
   try {
     const headers = await authHeader()
     const res = await fetch(`/api/pulses/report?venueId=${encodeURIComponent(venueId)}`, { headers })
     if (!res.ok) return []
-    const json = (await res.json()) as { data?: { reports?: OpsReportRow[] } }
-    return json.data?.reports ?? []
+    const json = (await res.json()) as { data?: { reports?: unknown[] } }
+    return (json.data?.reports ?? []).map(toVenueReportRow)
   } catch {
     return []
   }

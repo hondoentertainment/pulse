@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type QueryResult = { data: unknown; error: null }
 
-const { access } = vi.hoisted(() => ({
+const { access, selects } = vi.hoisted(() => ({
+  selects: [] as { table: string; cols: string }[],
   access: {
     claim: null as { id: string } | null,
     staff: null as { user_id: string } | null,
@@ -20,10 +21,13 @@ const { access } = vi.hoisted(() => ({
   },
 }))
 
-function chain(result: QueryResult) {
+function chain(result: QueryResult, table: string) {
   const query: Record<string, unknown> = {}
   const self = () => query
-  query.select = self
+  query.select = (cols: string) => {
+    selects.push({ table, cols })
+    return query
+  }
   query.eq = self
   query.in = self
   query.order = self
@@ -39,23 +43,23 @@ vi.mock('../../_lib/supabase-server.js', () => ({
   createUserClient: () => ({
     from: (table: string) => {
       if (table === 'venue_claims') {
-        return chain({ data: access.claim, error: null })
+        return chain({ data: access.claim, error: null }, table)
       }
       if (table === 'venue_staff') {
-        return chain({ data: access.staff, error: null })
+        return chain({ data: access.staff, error: null }, table)
       }
       if (table === 'pulses') {
         const query = chain({
           data: { id: access.pulse.id, venue_id: access.pulse.venue_id },
           error: null,
-        })
+        }, table)
         query.then = (resolve: (value: QueryResult) => void) => resolve({
           data: [{ id: access.pulse.id }],
           error: null,
         })
         return query
       }
-      return chain({ data: access.reports, error: null })
+      return chain({ data: access.reports, error: null }, table)
     },
   }),
 }))
@@ -93,9 +97,10 @@ describe('/api/pulses/report venue inbox access', () => {
   beforeEach(() => {
     access.claim = null
     access.staff = null
+    selects.length = 0
   })
 
-  it('lists reports for a verified owner venue', async () => {
+  it('lists venue reports without who filed them', async () => {
     access.claim = { id: 'ok' }
     const res = mockRes()
     await handler({
@@ -104,7 +109,25 @@ describe('/api/pulses/report venue inbox access', () => {
       query: { venueId: 'neumos' },
     } as never, res as never)
     expect(res.statusCode).toBe(200)
-    expect(JSON.stringify(res.body)).toContain('p1')
+    expect(selects.filter((row) => row.table === 'pulse_reports').map((row) => row.cols)).toEqual([
+      'id, pulse_id, reason, details, created_at, status, reviewed_at',
+    ])
+    expect(res.body).toEqual({
+      data: {
+        reports: [{
+          id: 'r1',
+          pulse_id: 'p1',
+          reason: 'spam',
+          details: null,
+          created_at: '2026-09-12T01:00:00.000Z',
+          status: 'pending',
+          reviewed_at: null,
+        }],
+      },
+    })
+    const json = JSON.stringify(res.body)
+    expect(json).not.toContain('reporter_id')
+    expect(json).not.toContain('u2')
   })
 
   it('rejects a pending claim from listing venue reports', async () => {

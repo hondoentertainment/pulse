@@ -97,7 +97,22 @@ describe('owner inbox v2', () => {
       targetId: 'p1',
       reason: 'spam',
       status: 'pending',
+      reporterId: 'u9',
     })])
+  })
+
+  it('does not invent a filer when the owner report row omits reporter_id', () => {
+    const mapped = mapPulseReportsToContentReports([{
+      id: 'r-server',
+      pulse_id: 'p1',
+      reason: 'spam',
+      details: 'bot',
+      created_at: '2026-09-12T01:00:00.000Z',
+      status: 'pending',
+    }])
+    expect(mapped[0]?.reporterId).toBe('')
+    expect(mapped[0]).not.toHaveProperty('reporter_id')
+    expect(JSON.stringify(mapped)).not.toContain('reporter_id')
   })
 
   it('loads reports only after a verified claim or staff role is ready', () => {
