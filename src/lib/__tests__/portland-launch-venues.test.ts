@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hasValidCatalogCoords, reportCatalogQuality } from '../catalog-quality'
+import { listHopNextVenues } from '../hop-next'
 import { neighborhoodSlug } from '../neighborhood-slugs'
 import { SEATTLE_TAGGED_NEIGHBORHOODS } from '../neighborhood-slugs'
 import { readFileSync } from 'node:fs'
@@ -36,10 +37,10 @@ describe('Portland launch inventory', () => {
   })
 
   it('ships the same UUID the seed migration inserts, and keeps the share slug', () => {
-    const sql = readFileSync(
+    const sql = [
       'supabase/migrations/20261005120000_portland_san_francisco_launch_venues.sql',
-      'utf8',
-    )
+      'supabase/migrations/20261115180000_portland_san_francisco_weekend_venues.sql',
+    ].map((path) => readFileSync(path, 'utf8')).join('\n')
     const durable = getPortlandLaunchVenues()
     expect(durable).toHaveLength(PORTLAND_LAUNCH_VENUES.length)
     expect(durable.map((venue) => venue.catalogSlug)).toEqual(PORTLAND_LAUNCH_VENUES.map((venue) => venue.id))
@@ -51,7 +52,18 @@ describe('Portland launch inventory', () => {
     }
     const sf = getSanFranciscoLaunchVenues()
     expect(sf[0]?.catalogSlug).toBe('sf-chapel')
-    expect(sf).toHaveLength(32)
+    expect(sf).toHaveLength(35)
+    expect(durable.filter((venue) => venue.neighborhood === 'Division')).toHaveLength(3)
+    const division = listHopNextVenues(
+      durable.filter((venue) => venue.neighborhood === 'Division'),
+      durable.find((venue) => venue.catalogSlug === 'pdx-double-barrel'),
+    )
+    expect(division).toHaveLength(2)
+    expect(division.every((venue) => venue.neighborhood === 'Division')).toBe(true)
+    const divisionRooms = PORTLAND_LAUNCH_VENUES.filter((venue) => venue.neighborhood === 'Division')
+    expect(divisionRooms.find((venue) => venue.id === 'pdx-double-barrel')?.website).toBeUndefined()
+    expect(divisionRooms.find((venue) => venue.id === 'pdx-reel-m-inn')?.website).toBe('https://www.reelminnpdx.com')
+    expect(divisionRooms.find((venue) => venue.id === 'pdx-the-automatic')?.website).toBe('https://www.theautomaticbarpdx.com')
     for (const venue of sf) {
       expect(sql).toContain(venue.id)
       expect(sql).toContain(venue.catalogSlug)

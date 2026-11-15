@@ -10,6 +10,7 @@ export const SAN_FRANCISCO_LAUNCH_NEIGHBORHOODS = [
   'Marina',
   'Hayes Valley',
   'Tenderloin',
+  'Western Addition',
 ] as const
 
 export type SanFranciscoLaunchNeighborhood = (typeof SAN_FRANCISCO_LAUNCH_NEIGHBORHOODS)[number]
@@ -357,6 +358,37 @@ export const SAN_FRANCISCO_LAUNCH_VENUES: SanFranciscoLaunchVenue[] = [
     lat: 37.7832,
     lng: -122.4116,
     address: '133 Turk St, San Francisco, CA',
+  }),
+
+  room({
+    id: 'sf-the-fillmore',
+    name: 'The Fillmore',
+    neighborhood: 'Western Addition',
+    category: 'Music Venue',
+    lat: 37.7841,
+    lng: -122.4332,
+    address: '1805 Geary Blvd, San Francisco, CA',
+    website: 'https://www.thefillmore.com',
+  }),
+  room({
+    id: 'sf-the-independent',
+    name: 'The Independent',
+    neighborhood: 'Western Addition',
+    category: 'Music Venue',
+    lat: 37.7755,
+    lng: -122.4376,
+    address: '628 Divisadero St, San Francisco, CA',
+    website: 'https://www.theindependentsf.com',
+  }),
+  room({
+    id: 'sf-boom-boom-room',
+    name: 'Boom Boom Room',
+    neighborhood: 'Western Addition',
+    category: 'Music Venue',
+    lat: 37.7846,
+    lng: -122.4331,
+    address: '1601 Fillmore St, San Francisco, CA',
+    website: 'https://boomboomroom.com',
   }),
 ]
 

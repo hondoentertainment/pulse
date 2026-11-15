@@ -11,6 +11,7 @@ export const PORTLAND_LAUNCH_NEIGHBORHOODS = [
   'Kerns',
   'Eliot',
   'Brooklyn',
+  'Division',
 ] as const
 
 export type PortlandLaunchNeighborhood = (typeof PORTLAND_LAUNCH_NEIGHBORHOODS)[number]
@@ -359,6 +360,36 @@ export const PORTLAND_LAUNCH_VENUES: PortlandLaunchVenue[] = [
     lng: -122.6546,
     address: '3017 SE Milwaukie Ave, Portland, OR',
     website: 'https://www.aladdin-theater.com',
+  }),
+
+  room({
+    id: 'pdx-double-barrel',
+    name: 'Double Barrel Tavern',
+    neighborhood: 'Division',
+    category: 'Bar',
+    lat: 45.5046,
+    lng: -122.6454,
+    address: '2002 SE Division St, Portland, OR',
+  }),
+  room({
+    id: 'pdx-reel-m-inn',
+    name: 'Reel M Inn',
+    neighborhood: 'Division',
+    category: 'Bar',
+    lat: 45.5047,
+    lng: -122.6406,
+    address: '2430 SE Division St, Portland, OR',
+    website: 'https://www.reelminnpdx.com',
+  }),
+  room({
+    id: 'pdx-the-automatic',
+    name: 'The Automatic',
+    neighborhood: 'Division',
+    category: 'Bar',
+    lat: 45.5047,
+    lng: -122.6254,
+    address: '3652 SE Division St, Portland, OR',
+    website: 'https://www.theautomaticbarpdx.com',
   }),
 ]
 

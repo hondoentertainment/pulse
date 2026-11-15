@@ -1,4 +1,4 @@
--- Seed data: 20 representative venues across diverse US cities and categories
+-- Seed data: 19 representative venues across diverse US cities and categories
 -- Uses deterministic UUIDs so foreign-key references are stable across resets.
 --
 -- Seattle launch catalog (33 venues): the idempotent production apply path is
@@ -59,9 +59,10 @@ VALUES
 
   ('a0000000-0000-4000-8000-000000000016', 'The Bluebird Cafe', 36.1012, -86.8168, '4104 Hillsboro Pike, Nashville, TN', 'Nashville', 'TN', 'Music Venue', 75, 1.2, true, NULL, now() - interval '1 hour', now()),
 
-  -- San Francisco
-  ('a0000000-0000-4000-8000-000000000017', 'The Fillmore', 37.7840, -122.4334, '1805 Geary Blvd, San Francisco, CA', 'San Francisco', 'CA', 'Music Venue', 80, 1.8, true,
-   '{"thursday": "7:00 PM - 12:00 AM", "friday": "7:00 PM - 1:00 AM", "saturday": "7:00 PM - 1:00 AM"}', now() - interval '25 minutes', now()),
+  -- The Fillmore is a curated San Francisco room (Western Addition) in
+  -- 20261115180000_portland_san_francisco_weekend_venues.sql. A second
+  -- prototype row at the same name and address would fail the alive
+  -- name+address unique index. pulse_score stays 0 on that curated row.
 
   -- Seattle
   ('a0000000-0000-4000-8000-000000000018', 'Neumos', 47.6145, -122.3205, '925 E Pike St, Seattle, WA', 'Seattle', 'WA', 'Music Venue', 85, 1.6, true,
