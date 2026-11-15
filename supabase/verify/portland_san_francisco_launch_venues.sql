@@ -55,3 +55,9 @@ ORDER BY id;
 -- e000…0033 The Fillmore (sf-the-fillmore)
 -- e000…0034 The Independent (sf-the-independent)
 -- e000…0035 Boom Boom Room (sf-boom-boom-room)
+
+SELECT COUNT(*) AS live_prototype_fillmore
+FROM venues
+WHERE deleted_at IS NULL
+  AND id = 'a0000000-0000-4000-8000-000000000017'::uuid;
+-- live_prototype_fillmore = 0. The Fillmore's curated id is e000…0033.

@@ -45,6 +45,8 @@ describe('Portland launch inventory', () => {
     expect(durable).toHaveLength(PORTLAND_LAUNCH_VENUES.length)
     expect(durable.map((venue) => venue.catalogSlug)).toEqual(PORTLAND_LAUNCH_VENUES.map((venue) => venue.id))
     expect(durable[0]?.catalogSlug).toBe('pdx-crystal-ballroom')
+    expect(sql).toContain('a0000000-0000-4000-8000-000000000017')
+    expect(sql).toContain('e0000000-0000-4000-8000-000000000033')
     for (const venue of durable) {
       expect(venue.id).toMatch(/^d0000000-0000-4000-8000-[0-9a-f]{12}$/)
       expect(sql).toContain(venue.id)

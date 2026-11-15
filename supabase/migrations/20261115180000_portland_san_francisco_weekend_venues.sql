@@ -108,10 +108,109 @@ WHERE NOT EXISTS (
 );
 
 -- San Francisco, CA: Western Addition. Three rooms (catalog indexes 33-35).
+--
+-- supabase/seed.sql used to insert The Fillmore as
+-- a0000000-0000-4000-8000-000000000017 at this same name and address.
+-- A name+address match would keep that id and skip
+-- e0000000-0000-4000-8000-000000000033, which is the id the catalog ships
+-- for sf-the-fillmore. Move any live row at that name and address onto
+-- the curated id, including rows that reference it, before the upsert.
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_venues_san_francisco_name_address_alive
   ON venues (lower(name), lower(location_address))
   WHERE city = 'San Francisco' AND state = 'CA' AND deleted_at IS NULL;
+
+DO $$
+DECLARE
+  new_id uuid := 'e0000000-0000-4000-8000-000000000033';
+  old_id uuid;
+  col_list text;
+  select_list text;
+  ref record;
+BEGIN
+  SELECT v.id
+  INTO old_id
+  FROM public.venues v
+  WHERE v.deleted_at IS NULL
+    AND v.id <> new_id
+    AND lower(v.name) = 'the fillmore'
+    AND lower(v.location_address) = lower('1805 Geary Blvd, San Francisco, CA')
+    AND v.city = 'San Francisco'
+    AND v.state = 'CA'
+  LIMIT 1;
+
+  IF old_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.venues WHERE id = new_id) THEN
+    SELECT
+      string_agg(quote_ident(a.attname), ', ' ORDER BY a.attnum),
+      string_agg(
+        CASE
+          WHEN a.attname = 'id' THEN quote_literal(new_id) || '::uuid'
+          WHEN a.attname = 'location_address' THEN quote_ident(a.attname) || ' || '' (curated id)'''
+          ELSE quote_ident(a.attname)
+        END,
+        ', ' ORDER BY a.attnum
+      )
+    INTO col_list, select_list
+    FROM pg_attribute a
+    WHERE a.attrelid = 'public.venues'::regclass
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND a.attgenerated = '';
+
+    EXECUTE format(
+      'INSERT INTO public.venues (%s) SELECT %s FROM public.venues WHERE id = $1',
+      col_list,
+      select_list
+    ) USING old_id;
+  END IF;
+
+  FOR ref IN
+    SELECT
+      ns.nspname AS schema_name,
+      cl.relname AS table_name,
+      att.attname AS column_name
+    FROM pg_constraint con
+    JOIN pg_class cl ON cl.oid = con.conrelid
+    JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+    JOIN LATERAL unnest(con.conkey) AS key(attnum) ON true
+    JOIN pg_attribute att ON att.attrelid = cl.oid AND att.attnum = key.attnum
+    WHERE con.contype = 'f'
+      AND con.confrelid = 'public.venues'::regclass
+  LOOP
+    EXECUTE format(
+      'UPDATE %I.%I SET %I = $1 WHERE %I = $2',
+      ref.schema_name,
+      ref.table_name,
+      ref.column_name,
+      ref.column_name
+    ) USING new_id, old_id;
+  END LOOP;
+
+  FOR ref IN
+    SELECT n.nspname AS schema_name, c.relname AS table_name
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_type t ON t.oid = a.atttypid
+    WHERE a.attname = 'venue_id'
+      AND t.typname = 'text'
+      AND n.nspname = 'public'
+      AND c.relkind = 'r'
+      AND NOT a.attisdropped
+  LOOP
+    EXECUTE format(
+      'UPDATE %I.%I SET venue_id = $1 WHERE venue_id = $2',
+      ref.schema_name,
+      ref.table_name
+    ) USING new_id::text, old_id::text;
+  END LOOP;
+
+  DELETE FROM public.venues WHERE id = old_id;
+END $$;
 
 WITH catalog (
   id,

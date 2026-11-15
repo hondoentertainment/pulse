@@ -60,9 +60,9 @@ VALUES
   ('a0000000-0000-4000-8000-000000000016', 'The Bluebird Cafe', 36.1012, -86.8168, '4104 Hillsboro Pike, Nashville, TN', 'Nashville', 'TN', 'Music Venue', 75, 1.2, true, NULL, now() - interval '1 hour', now()),
 
   -- The Fillmore is a curated San Francisco room (Western Addition) in
-  -- 20261115180000_portland_san_francisco_weekend_venues.sql. A second
-  -- prototype row at the same name and address would fail the alive
-  -- name+address unique index. pulse_score stays 0 on that curated row.
+  -- 20261115180000_portland_san_francisco_weekend_venues.sql. That file
+  -- moves a leftover a000…0017 prototype row onto e000…0033. Do not insert
+  -- another row at the same name and address. pulse_score stays 0.
 
   -- Seattle
   ('a0000000-0000-4000-8000-000000000018', 'Neumos', 47.6145, -122.3205, '925 E Pike St, Seattle, WA', 'Seattle', 'WA', 'Music Venue', 85, 1.6, true,
