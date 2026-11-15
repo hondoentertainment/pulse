@@ -66,6 +66,8 @@ The shipping product is **Pulse** (venue + map). The former Pulse Signal check-i
 | [Uber UX Targets](uber-ux.md) | Figma Uber UX frames → map, create, share, inbox, offline |
 | [Uber × X UX](uber-x-ux.md) | Uber map chrome + X timeline tokens → components |
 | [Next steps #84–#87](next-steps.md) | Guest /auth, inbox, share, tonight, PWA, ops, funnel, catalog |
+| [Portland and SF weekend push](plans/portland-sf-weekend-push.md) | Friday/Saturday guest plan for Portland and San Francisco |
+| [Next owner tools](plans/owner-tools.md) | Claims, Claimed badge, inbox edits, replies, stats, admin queue |
 | [VENTURE_NEXT_STEPS.md](VENTURE_NEXT_STEPS.md) | Venture-scale roadmap notes |
 | [Pulse Pro interview brief](pulse-pro-offer-research.md) | Offer research — no invented price |
 
