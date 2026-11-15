@@ -7,11 +7,12 @@ import { supabase } from '@/lib/supabase'
 import { requireUserId } from '@/lib/auth/require-auth'
 import type { OwnerInboxReply } from '@/lib/owner-inbox'
 
+const PUBLIC_REPLY_COLUMNS = 'id, pulse_id, venue_id, body, created_at'
+
 interface ReplyRow {
   id: string
   pulse_id: string
   venue_id: string
-  user_id: string
   body: string
   created_at: string
 }
@@ -30,7 +31,7 @@ export async function listOwnerRepliesForVenue(venueId: string): Promise<OwnerIn
   if (!venueId) return []
   const { data, error } = await supabase
     .from('venue_owner_replies')
-    .select('id, pulse_id, venue_id, user_id, body, created_at')
+    .select(PUBLIC_REPLY_COLUMNS)
     .eq('venue_id', venueId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
@@ -54,7 +55,7 @@ export async function createOwnerReplyOnServer(input: {
         user_id: userId,
         body: input.body.trim(),
       })
-      .select('id, pulse_id, venue_id, user_id, body, created_at')
+      .select(PUBLIC_REPLY_COLUMNS)
       .single()
     if (error || !data) return null
     return rowToReply(data as ReplyRow)
