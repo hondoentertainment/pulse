@@ -188,7 +188,7 @@ const REPORT_REASONS: readonly ReportReason[] = [
 export interface PulseReportLike {
   id: string
   pulse_id: string
-  reporter_id: string
+  reporter_id?: string
   reason: string
   details?: string | null
   created_at: string
@@ -210,7 +210,8 @@ export function mapPulseReportsToContentReports(
       : 'pending'
     return {
       id: row.id,
-      reporterId: row.reporter_id,
+      // Owner venue rows omit reporter_id. The caller's own reports still carry it.
+      reporterId: row.reporter_id ?? '',
       targetType: 'pulse',
       targetId: row.pulse_id,
       reason,

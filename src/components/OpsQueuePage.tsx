@@ -101,7 +101,6 @@ export function OpsQueuePage() {
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  <p className="text-xs text-muted-foreground">{claim.evidence}</p>
                   <div className="flex gap-2">
                     <Button
                       type="button"
